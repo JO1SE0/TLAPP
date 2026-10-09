@@ -691,6 +691,31 @@
             </div>
           </section>
 
+          <!-- ═══ Líneas y tamaños ═══
+               Aparte de «Gráficos planos»: eso lo deja todo en 1 px; esto deja
+               elegir cuánto pesa cada línea y qué tan grandes se ven la ficha y
+               la pelota. Sólo se ve en tu pantalla. -->
+          <section class="sec" data-sec="trazos">
+            <header class="sec__head">
+              <h2 class="sec__title" data-i18n="visual.title">Líneas y tamaños</h2>
+              <span class="tag" data-i18n="skin.tag">Sólo lo ves vos</span>
+            </header>
+            <p class="sec__desc" data-i18n="visual.desc">100% es como lo dibuja HaxBall. Cambia solo lo que ves en tu pantalla: la física y lo que ven los demás no se tocan.</p>
+            <p class="note" id="visualFlatNote" hidden data-i18n="visual.flatNote">«Gráficos planos» está activado y manda sobre el grosor: apagalo para usar estos valores. Los tamaños sí se aplican.</p>
+            <div class="sec__body">
+              <h3 class="subhead" data-i18n="visual.lines">Grosor de las líneas</h3>
+              <div class="rows" id="visualLines"></div>
+              <h3 class="subhead" data-i18n="visual.sizes">Tamaño</h3>
+              <div class="rows" id="visualSizes"></div>
+              <div class="row">
+                <div class="row__text"></div>
+                <div class="row__ctl">
+                  <button class="btn btn--ghost btn--sm" id="visualReset" data-i18n="visual.reset">Volver a lo normal</button>
+                </div>
+              </div>
+            </div>
+          </section>
+
           <section class="sec" data-sec="red">
             <header class="sec__head"><h2 class="sec__title" data-i18n="perf.net">Red</h2></header>
             <div class="sec__body" id="gameNet"></div>

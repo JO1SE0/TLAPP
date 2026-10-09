@@ -4419,7 +4419,8 @@ function rippleBounds(stadium) {
   return { halfW, halfH };
 }
 
-function drawBall(ctx, x, y, r, indice) {
+/** La red de los arcos y la medida de los palos: va aparte, sin el tamaño de la pelota. */
+function netStep(ctx, x, y, r, indice) {
   // La red de los arcos se dibuja una vez por cuadro, junto con la pelota (disco 0).
   if (state.config.pitch && state.config.pitch.netRipple && !(state.config.perf && state.config.perf.flatGraphics)) {
     try {
@@ -4430,6 +4431,37 @@ function drawBall(ctx, x, y, r, indice) {
       }
     } catch { /* un adorno no puede romper el dibujo */ }
   }
+}
+
+/**
+ * Lo que el juego llama por cada disco sin jugador. Acá se resuelve el tamaño
+ * y el grosor propios de la pelota; el dibujo en sí está en `drawBallInner`.
+ */
+function drawBall(ctx, x, y, r, indice) {
+  netStep(ctx, x, y, r, indice);
+  const wantSize = indice === 0 && visual.ballSize !== 1;
+  if (wantSize) {
+    // El trazo del círculo ya está armado con el radio de HaxBall, y un trazo
+    // ya armado no se agranda con la escala: se rehace con el radio nuevo.
+    r *= visual.ballSize;
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, 2 * Math.PI, false);
+  }
+  let handled = false;
+  try {
+    handled = drawBallInner(ctx, x, y, r, indice);
+  } finally {
+    // Lo que sigue en el juego es el `stroke()` de este mismo disco.
+    if (indice === 0 && visual.lines) {
+      pend.on = true; pend.kind = 'ball'; pend.k = 1; pend.x = x; pend.y = y;
+    } else if (indice > 0 && visual.lines) {
+      pend.on = true; pend.kind = 'post'; pend.k = 1; pend.x = x; pend.y = y;
+    }
+  }
+  return handled;
+}
+
+function drawBallInner(ctx, x, y, r, indice) {
   /*
    * Sólo el disco 0. Los PALOS DEL ARCO también son discos sin jugador y
    * entraban por acá, así que salían con la imagen puesta igual que la pelota.
@@ -5561,11 +5593,14 @@ function installTracking(view) {
   let brushBroken = false;
   view.__tvmPaint = (ctx, renderer, zoom) => {
     if (brushBroken) return;
+    ownDraw++;
     try {
       paintPitch(ctx, renderer, zoom);
     } catch (err) {
       brushBroken = true;
       log('error', `las ayudas de cancha se apagaron: ${err && err.message ? err.message : err}`, 'juego');
+    } finally {
+      ownDraw--;
     }
   };
 
@@ -5577,11 +5612,14 @@ function installTracking(view) {
   view.__tvmSkin = (ctx, w, h, stadium) => {
     if (stadium !== currentStadium) { currentStadium = stadium; try { netRipple.reset(); } catch (e) {} }
     if (skinBroken) return;
+    ownDraw++;
     try {
       skinPitch(ctx, w, h, stadium);
     } catch (err) {
       skinBroken = true;
       log('error', `el color de cancha se apagó: ${err && err.message ? err.message : err}`, 'juego');
+    } finally {
+      ownDraw--;
     }
   };
 }
@@ -5872,7 +5910,7 @@ function roundedRect(ctx, x, y, w, h, r) {
 function pitchSkinPrint() {
   const skin = (state.config.pitch && state.config.pitch.skin) || {};
   const field = pitchSkinColor();
-  return `${skin.mode}|${field}|${pitchOutsideColor(field)}|${skin.strength}|${skin.brightness}|${skin.stripes}`;
+  return `${skin.mode}|${field}|${pitchOutsideColor(field)}|${skin.strength}|${skin.brightness}|${skin.stripes}|${visual.pitchLine}|${flatGraphicsEnabled}`;
 }
 
 /** Le tira el cache al estadio para que se vuelva a dibujar con el color nuevo. */
@@ -8015,8 +8053,25 @@ function clockText(seconds) {
  */
 let flatGraphicsEnabled = false;
 
+/*
+ * Grosor de líneas y tamaño de fichas y pelota, sólo en esta pantalla.
+ *
+ * Son multiplicadores sobre lo que dibuja HaxBall: 1 es «como viene». Se
+ * guardan acá, ya acotados, por la misma razón que la bandera de arriba: se
+ * consultan en cada trazo.
+ */
+const visual = { pitchLine: 1, discLine: 1, ballLine: 1, ballSize: 1, discSize: 1, lines: false, sizes: false };
+
 function syncCanvasHotFlags() {
   flatGraphicsEnabled = !!(state.config && state.config.perf && state.config.perf.flatGraphics);
+  const cfg = (state.config && state.config.visual) || {};
+  visual.pitchLine = clampNum(cfg.pitchLine, 0.3, 4, 1);
+  visual.discLine = clampNum(cfg.discLine, 0.3, 4, 1);
+  visual.ballLine = clampNum(cfg.ballLine, 0.3, 4, 1);
+  visual.ballSize = clampNum(cfg.ballSize, 0.5, 2, 1);
+  visual.discSize = clampNum(cfg.discSize, 0.5, 2, 1);
+  visual.lines = visual.pitchLine !== 1 || visual.discLine !== 1 || visual.ballLine !== 1;
+  visual.sizes = visual.ballSize !== 1 || visual.discSize !== 1;
 }
 
 function flatOn() {
@@ -8030,6 +8085,18 @@ function flatOn() {
  * y cuando se descarta la sala se los lleva el recolector con todo lo demás.
  */
 const flatPatterns = new WeakMap();
+
+/** Texturas de jugador (canvas de 64×64): lo que distingue a una ficha de la cancha. */
+const playerPatterns = new WeakSet();
+
+/**
+ * Lo que está esperando su `stroke()`: el disco que se acaba de armar y cómo
+ * deshacer su agrandado. `kind`: `disc` (ficha) · `ball` · `post` (palos).
+ */
+const pend = { on: false, kind: '', k: 1, x: 0, y: 0 };
+
+/** > 0 mientras dibuja el propio cliente (ayudas, color de cancha): no se toca. */
+let ownDraw = 0;
 
 function installCanvasHooks(doc) {
   const view = doc && doc.defaultView;
@@ -8096,7 +8163,12 @@ function installCanvasHooks(doc) {
   const origCreatePattern = proto.createPattern;
   proto.createPattern = function (image, repetition) {
     const pattern = origCreatePattern.call(this, image, repetition);
-    if (!pattern || !image || typeof image.getContext === 'function') return pattern;
+    if (pattern && image && typeof image.getContext === 'function') {
+      // La textura de un jugador (un canvas de 64×64): así se reconoce su disco.
+      playerPatterns.add(pattern);
+      return pattern;
+    }
+    if (!pattern || !image) return pattern;
 
     try {
       const targetDoc = (this.canvas && this.canvas.ownerDocument) || doc;
@@ -8186,8 +8258,25 @@ function installCanvasHooks(doc) {
   const BLACK_STROKES = new Set(['#000000', '#000', 'black', 'rgba(0, 0, 0, 1)']);
 
   const origStroke = proto.stroke;
-  proto.stroke = function (...args) {
-    if (!flatOn()) return origStroke.apply(this, args);
+  const baseStroke = function (args) {
+    if (!flatOn()) {
+      // Grosor propio. «Gráficos planos» manda sobre esto: si está puesto, no se toca.
+      if (!visual.lines || ownDraw > 0) return origStroke.apply(this, args);
+      let mul = 1;
+      if (pend.on) {
+        mul = pend.kind === 'ball' ? visual.ballLine : pend.kind === 'disc' ? visual.discLine : visual.pitchLine;
+      } else if (Math.abs(this.lineWidth - 3) < 0.01) {
+        mul = visual.pitchLine; // las líneas de la cancha las dibuja HaxBall a 3
+      }
+      if (mul === 1) return origStroke.apply(this, args);
+      const prev = this.lineWidth;
+      this.lineWidth = prev * mul;
+      try {
+        return origStroke.apply(this, args);
+      } finally {
+        this.lineWidth = prev;
+      }
+    }
 
     const style = this.strokeStyle;
     const width = this.lineWidth;
@@ -8201,6 +8290,49 @@ function installCanvasHooks(doc) {
       this.lineWidth = width;
       if (recolor) this.strokeStyle = style;
     }
+  };
+
+  proto.stroke = function (...args) {
+    if (!pend.on) return baseStroke.call(this, args);
+    const { k, x, y } = pend;
+    try {
+      return baseStroke.call(this, args);
+    } finally {
+      pend.on = false;
+      // Se deshace el agrandado de este disco: la escala se hizo alrededor de
+      // su centro y se saca igual, así el resto del cuadro no se entera.
+      if (k !== 1) {
+        this.translate(x, y);
+        this.scale(1 / k, 1 / k);
+        this.translate(-x, -y);
+      }
+    }
+  };
+
+  /*
+   * ── Tamaño de la ficha ──────────────────────────────────────────────────
+   *
+   * El disco de un jugador se arma con `arc()` y el relleno es la textura del
+   * equipo con el avatar. En vez de tocar el radio —y que la textura quede
+   * del tamaño viejo— se agranda TODO el dibujo del disco alrededor de su
+   * centro, y se deshace en el `stroke()` que cierra ese disco.
+   */
+  const origArc = proto.arc;
+  proto.arc = function (x, y, r, a0, a1, ccw) {
+    if ((visual.sizes || visual.lines) && ownDraw === 0 && playerPatterns.has(this.fillStyle)) {
+      const k = visual.discSize;
+      pend.on = true;
+      pend.kind = 'disc';
+      pend.k = k;
+      pend.x = x;
+      pend.y = y;
+      if (k !== 1) {
+        this.translate(x, y);
+        this.scale(k, k);
+        this.translate(-x, -y);
+      }
+    }
+    return origArc.call(this, x, y, r, a0, a1, ccw);
   };
 
   /* --- Hook de Avatar ---

@@ -362,6 +362,19 @@ const DEFAULTS = {
    * `replay*` es la excepción y por eso está separado: en una grabación no hay
    * a quién ventajear, así que ahí las mismas ayudas van sin límite.
    */
+  /**
+   * Grosor de líneas y tamaño de fichas y pelota. Todo es un multiplicador sobre
+   * lo que dibuja HaxBall (1 = como viene) y sólo cambia TU pantalla: no toca la
+   * física ni lo que ven los demás. «Gráficos planos» (perf) manda sobre el
+   * grosor. Ver `visual` en game-preload.js.
+   */
+  visual: {
+    pitchLine: 1,
+    discLine: 1,
+    ballLine: 1,
+    ballSize: 1,
+    discSize: 1
+  },
   pitch: {
     ball3d: false,
     /** Red del arco que ondula unos instantes después de un gol (sólo visual). */

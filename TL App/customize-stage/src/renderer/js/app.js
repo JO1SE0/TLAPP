@@ -7257,9 +7257,59 @@ setFocus(document.hasFocus());
 /* ══════════════════════════════════════════════════════════
    Arranque
    ══════════════════════════════════════════════════════════ */
+/* ── Líneas y tamaños ───────────────────────────────────────────────────────
+ * Multiplicadores sobre lo que dibuja HaxBall (100% = como viene). Se aplican
+ * en la pantalla de cada uno, así que no afectan a nadie más.
+ */
+const VISUAL_LINES = [
+  { key: 'pitchLine', label: 'visual.pitchLine', min: 0.3, max: 4 },
+  { key: 'discLine', label: 'visual.discLine', min: 0.3, max: 4 },
+  { key: 'ballLine', label: 'visual.ballLine', min: 0.3, max: 4 }
+];
+const VISUAL_SIZES = [
+  { key: 'discSize', label: 'visual.discSize', min: 0.6, max: 1.6 },
+  { key: 'ballSize', label: 'visual.ballSize', min: 0.6, max: 1.6 }
+];
+
+function renderVisual() {
+  const cfg = state.config.visual || {};
+  const build = (host, items) => {
+    host.replaceChildren();
+    for (const item of items) {
+      const value = Number(cfg[item.key]) || 1;
+      const row = document.createElement('div');
+      row.className = 'row';
+      row.innerHTML = '<div class="row__text"><span class="row__label"></span></div>' +
+        '<div class="row__ctl"><input type="range" step="0.05" /><b class="row__val"></b></div>';
+      row.querySelector('.row__label').textContent = t(item.label);
+      const input = row.querySelector('input');
+      const out = row.querySelector('.row__val');
+      input.min = item.min;
+      input.max = item.max;
+      input.value = value;
+      out.textContent = `${Math.round(value * 100)}%`;
+      syncRangeFill(input);
+      input.addEventListener('input', () => {
+        syncRangeFill(input);
+        out.textContent = `${Math.round(Number(input.value) * 100)}%`;
+      });
+      input.addEventListener('change', () => patchConfig({ visual: { [item.key]: Number(input.value) } }));
+      host.append(row);
+    }
+  };
+  build($('#visualLines'), VISUAL_LINES);
+  build($('#visualSizes'), VISUAL_SIZES);
+  $('#visualFlatNote').hidden = !(state.config.perf && state.config.perf.flatGraphics);
+}
+
+$('#visualReset').addEventListener('click', () => {
+  patchConfig({ visual: { pitchLine: 1, discLine: 1, ballLine: 1, ballSize: 1, discSize: 1 } });
+});
+
 function renderAll() {
   window.i18n.applyStatic();
   renderPerf();
+  renderVisual();
   renderAspect();
   renderSettings();
   renderDiscord();
