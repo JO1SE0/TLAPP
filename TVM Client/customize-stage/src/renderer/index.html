@@ -821,10 +821,10 @@
           <section class="sec" data-sec="teclashud">
             <header class="sec__head">
               <h2 class="sec__title"><span data-i18n="keys.hudTitle">Cartel de teclas</span></h2>
-              <span class="vipmark">VIP</span>
+              
             </header>
             <p class="sec__desc" data-i18n="keys.hudHint">Sólo lo ves vos. Tocá «Acomodar» y arrastralo a donde quieras.</p>
-            <p class="tray note" data-vip-locked hidden data-i18n="vip.needRole">Hace falta el rol VIP en el server de Thrivium.</p>
+            <p class="tray note" data-vip-locked hidden data-i18n="vip.needRole"></p>
             <div class="sec__body" data-vip-perk hidden>
               <div class="rows" id="keysHudSwitches"></div>
               <div class="row">
@@ -1017,7 +1017,7 @@
           <!-- ═══ VIP ═══ -->
           <section class="sec vipsec" data-sec="vip" id="vipCard">
             <header class="sec__head">
-              <h2 class="sec__title"><span class="vipmark">VIP</span> <span data-i18n="vip.title">Beneficios</span></h2>
+              <h2 class="sec__title"><span data-i18n="vip.title">Beneficios</span></h2>
               <div class="rowactions" id="vipActions"></div>
             </header>
             <p class="sec__desc" id="vipStatus"></p>
@@ -1437,7 +1437,7 @@
         <p class="profile__bio" id="profileBio" hidden></p>
         <form class="field profile__bioform" id="profileBioForm" hidden>
           <label for="profileBioText" data-i18n="profile.bio">Sobre vos</label>
-          <textarea id="profileBioText" rows="2" maxlength="140" data-i18n-placeholder="profile.bioPlaceholder" placeholder="Una línea sobre vos. Se ve también en tu perfil de thriviumhax.com."></textarea>
+          <textarea id="profileBioText" rows="2" maxlength="140" data-i18n-placeholder="profile.bioPlaceholder" placeholder="Una línea sobre vos."></textarea>
           <div class="profile__bioactions">
             <span class="note" id="profileBioLeft">140</span>
             <button class="btn btn--primary btn--sm" type="submit" data-i18n="profile.save"><svg data-icon viewBox="0 0 24 24"><path d="M5 12.6 9.7 17.3 19 7.6"/></svg>Guardar</button>
@@ -1484,7 +1484,7 @@
               <button class="btn btn--ghost btn--sm" type="button" id="profileLookClear" data-i18n="vip.clear"><svg data-icon viewBox="0 0 24 24"><path d="M6.4 6.4l11.2 11.2M17.6 6.4 6.4 17.6"/></svg>Quitar</button>
             </div>
           </div>
-          <p class="note" id="profileLookLocked" hidden data-i18n="profile.looksVip">Los degradados y la fuente son un beneficio VIP del server de Thrivium.</p>
+          <p class="note" id="profileLookLocked" hidden data-i18n="profile.looksVip"></p>
         </div>
 
         <div class="modal__actions" id="profileActions"></div>

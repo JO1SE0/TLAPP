@@ -63,7 +63,7 @@ const STRINGS = {
 
     'pitch.section': 'La cancha',
     'keys.hudPlace': 'Dónde va',
-    'vip.needRole': 'Hace falta el rol VIP en el server de Thrivium.',
+    'vip.needRole': '',
 
     'settings.subtitle': 'El cliente: cómo arranca, cómo suena y cómo se actualiza.',
     'settings.config': 'Configuración',
@@ -83,7 +83,7 @@ const STRINGS = {
 
     /* Tu perfil (el chip de la barra) */
     'me.noNick': 'Sin apodo',
-    'me.vipActive': 'activo',
+    'me.vipActive': 'Todo habilitado',
     'me.vipForever': 'permanente',
     'me.vipDays': 'quedan {days} días',
     'me.vipLastDay': 'último día',
@@ -95,7 +95,7 @@ const STRINGS = {
     'me.profile': 'Ver mi perfil',
     'me.nick': 'Cambiar de apodo',
     'me.looks': 'Tu jugador',
-    'me.vip': 'Administrar VIP',
+    'me.vip': 'Personalización',
     'me.privacy': 'Privacidad con tus amigos',
     'me.settings': 'Identidades y ajustes',
     'me.logout': 'Cerrar sesión de Discord',
@@ -123,7 +123,7 @@ const STRINGS = {
     'rooms.refresh': 'Actualizar',
     'rooms.back': 'Volver a la última sala',
     'rivals.title': 'Con quién jugaste',
-    'rivals.help': 'Sale de los partidos de las salas de Thrivium, contados por el sitio: no se lleva ninguna cuenta en tu máquina, así que no se puede tocar desde los archivos del cliente. En la sala lo ves con clic derecho sobre alguien.',
+    'rivals.help': 'El historial contra otros jugadores no está disponible en TL App.',
     'rooms.search': 'Buscar sala por nombre…',
     'rooms.summary': '{players} jugadores en {rooms} salas',
     'rooms.loading': 'Buscando salas…',
@@ -288,7 +288,7 @@ const STRINGS = {
     'tip.replays': 'Los replays se abren desde el cliente, sin pasar por la web de HaxBall.',
     'tip.theme': 'El tema que elijas pinta el cliente entero y también las pantallas de HaxBall.',
 
-    'vip.title': 'Beneficios',
+    'vip.title': 'Personalización',
     'vip.clubAccess': 'Los beneficios locales están habilitados para todos en esta PC. El servidor puede seguir controlando los cosméticos que se comparten.',
     'vip.devMode': 'Modo desarrollo: los beneficios VIP están activos para probarlos.',
     'vip.login': 'Entrar con Discord',
@@ -545,13 +545,13 @@ const STRINGS = {
     'profile.you': 'Vos',
     'profile.levelLine': 'Nivel {level}',
     'profile.bio': 'Sobre vos',
-    'profile.bioPlaceholder': 'Una línea sobre vos. Se ve también en tu perfil de thriviumhax.com.',
+    'profile.bioPlaceholder': 'Una línea sobre vos.',
     'profile.save': 'Guardar',
     'profile.saved': 'Perfil guardado',
     'profile.message': 'Escribirle',
     'profile.add': 'Agregar a amigos',
     'profile.noStats': 'Todavía no jugó ningún partido con el cliente.',
-    'profile.looksVip': 'Los degradados y la fuente son un beneficio VIP del server de Thrivium.',
+    'profile.looksVip': '',
 
     'vip.looks': 'Cómo te ven en la lista',
     'vip.looksGradients': 'Elegí un degradado',
@@ -682,7 +682,7 @@ const STRINGS = {
 
     'pitch.section': 'The pitch',
     'keys.hudPlace': 'Where it sits',
-    'vip.needRole': 'Needs the VIP role in the Thrivium server.',
+    'vip.needRole': '',
 
     'settings.subtitle': 'The client: how it starts, how it sounds, how it updates.',
     'settings.config': 'Configuration',
@@ -702,7 +702,7 @@ const STRINGS = {
 
     /* Your profile (the top-bar chip) */
     'me.noNick': 'No nickname',
-    'me.vipActive': 'active',
+    'me.vipActive': 'Everything unlocked',
     'me.vipForever': 'permanent',
     'me.vipDays': '{days} days left',
     'me.vipLastDay': 'last day',
@@ -714,7 +714,7 @@ const STRINGS = {
     'me.profile': 'View my profile',
     'me.nick': 'Change nickname',
     'me.looks': 'Your player',
-    'me.vip': 'Manage VIP',
+    'me.vip': 'Customization',
     'me.privacy': 'Privacy with your friends',
     'me.settings': 'Identities and settings',
     'me.logout': 'Sign out of Discord',
@@ -742,7 +742,7 @@ const STRINGS = {
     'rooms.refresh': 'Refresh',
     'rooms.back': 'Back to your last room',
     'rivals.title': 'Who you have played with',
-    'rivals.help': 'It comes from matches played in the Thrivium rooms, counted by the site: nothing is tallied on your machine, so it cannot be edited from the client files. In the room, right-click a player to see it.',
+    'rivals.help': 'Head-to-head history is not available in TL App.',
     'rooms.search': 'Search rooms by name…',
     'rooms.summary': '{players} players in {rooms} rooms',
     'rooms.loading': 'Looking for rooms…',
@@ -903,7 +903,7 @@ const STRINGS = {
     'tip.replays': 'Replays open from the client, no need to go through the HaxBall site.',
     'tip.theme': 'The theme you pick paints the whole client and HaxBall’s own screens too.',
 
-    'vip.title': 'Perks',
+    'vip.title': 'Customization',
     'vip.clubAccess': 'Local perks are enabled for everyone on this PC. The server may still control cosmetics shared with other players.',
     'vip.devMode': 'Dev mode: VIP perks are on so you can test them.',
     'vip.login': 'Sign in with Discord',
@@ -1154,13 +1154,13 @@ const STRINGS = {
     'profile.you': 'You',
     'profile.levelLine': 'Level {level}',
     'profile.bio': 'About you',
-    'profile.bioPlaceholder': 'One line about you. It also shows on your thriviumhax.com profile.',
+    'profile.bioPlaceholder': 'One line about you.',
     'profile.save': 'Save',
     'profile.saved': 'Profile saved',
     'profile.message': 'Message',
     'profile.add': 'Add friend',
     'profile.noStats': 'Has not played a match with the client yet.',
-    'profile.looksVip': 'Gradients and fonts are a VIP perk of the Thrivium server.',
+    'profile.looksVip': '',
 
     'vip.looks': 'How others see you in the list',
     'vip.looksGradients': 'Pick a gradient',

@@ -2,9 +2,9 @@
   "name": "TVM-client",
   "productName": "TVM Client",
   "version": "1.0.41",
-  "description": "Cliente de escritorio premium para HaxBall",
+  "description": "TL App — cliente de escritorio de HaxBall del equipo Toda la Lecce",
   "main": "src/main/main.js",
-  "author": "TVM",
+  "author": "TL App",
   "license": "UNLICENSED",
   "private": true,
   "dependencies": {

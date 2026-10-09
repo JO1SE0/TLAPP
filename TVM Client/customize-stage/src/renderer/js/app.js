@@ -1298,7 +1298,7 @@ function paintMeChip() {
   const vip = isVip();
 
   $('#meChipName').textContent = profile ? profile.username : nick;
-  $('#meChipVip').hidden = !vip;
+  $('#meChipVip').hidden = true; // TL App no tiene niveles VIP
   paintFace($('#meChipAvatar'), profile ? { name: profile.username, avatar: profile.avatar } : { name: nick });
 }
 
@@ -1314,23 +1314,12 @@ function paintMeMenu() {
   const estado = $('#meMenuState');
   estado.replaceChildren();
   if (vip) {
-    const marca = document.createElement('span');
-    marca.className = 'vipmark';
-    marca.textContent = 'VIP';
+    // TL App: todos los beneficios están activos para todo el equipo, sin insignia ni vencimiento.
     const activo = document.createElement('span');
     activo.className = 'ok';
     activo.append(document.createElement('i'), document.createTextNode(t('me.vipActive')));
-    estado.append(marca, activo);
+    estado.append(activo);
 
-    // Y cuánto te queda, al lado. Va callado —el color de los textos terciarios—
-    // porque el que importa acá es el «activo»: esto es el detalle.
-    const queda = vipRemainingShort(profile);
-    if (queda) {
-      const resto = document.createElement('span');
-      resto.className = 'memenu__until';
-      resto.textContent = queda;
-      estado.append(resto);
-    }
   } else {
     estado.textContent = profile ? t('me.noRole') : t('me.noSession');
   }
@@ -1434,10 +1423,8 @@ async function toggleFavorite(token) {
 }
 
 /** Salas de la casa: van arriba de todo, marcadas como patrocinadas. */
-const SPONSOR_RE = /thrivium/i;
-
-function isSponsored(room) {
-  return SPONSOR_RE.test(room.name);
+function isSponsored() {
+  return false; // TL App no destaca salas de terceros
 }
 
 /** Último desempate: el orden en el que la API devolvió las salas. */
@@ -2868,12 +2855,6 @@ function renderThemes() {
 
     card.append(preview, name, desc);
 
-    if (meta.vip) {
-      const tag = document.createElement('span');
-      tag.className = 'themecard__vip';
-      tag.textContent = 'VIP';
-      card.append(tag);
-    }
 
     // Sólo los VIP pueden tener temas personalizados: el lápiz de edición
     // aparece únicamente si sos VIP y el tema es custom.

@@ -4206,7 +4206,7 @@ function logoMark(doc) {
 function vipMark(doc) {
   const mark = doc.createElement('span');
   mark.className = 'tvm-mark tvm-mark--vip';
-  mark.title = 'VIP de Thrivium';
+  mark.title = 'TL App';
   mark.hidden = true;
   mark.innerHTML = VIP_GEM_SVG;
   return mark;

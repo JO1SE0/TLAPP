@@ -1,3 +1,7 @@
 # Ejecutables y copias de respaldo de TVM Client
 TVM Client/*.exe
 TVM Client/*.exe.*
+
+# Copias de respaldo del empaquetado (no van en el repo)
+TVM Client/resources/app.asar.before-*
+TVM Client/resources/app.asar.original

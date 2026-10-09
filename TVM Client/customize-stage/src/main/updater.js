@@ -38,7 +38,9 @@
  * viaja por IPC. Un config.json importado no puede apuntarla a otro lado.
  */
 
-const FEED_URL = 'https://pub-4437ce05d7cc409db8a7799ed0b3e745.r2.dev/updates.json';
+// Sin feed: TL App no consulta ni descarga actualizaciones de ningún servidor.
+// Para activarlo, poné acá una URL https propia que devuelva el JSON descrito arriba.
+const FEED_URL = '';
 const CHANNEL = 'stable';
 
 const fs = require('fs');
@@ -92,6 +94,10 @@ async function fetchJson(url) {
 
 /** @param {string} currentVersion */
 async function check(currentVersion) {
+  if (!FEED_URL) {
+    return { status: 'uptodate', current: currentVersion, latest: currentVersion, notes: '', size: null, canDownload: false,
+      message: 'Las actualizaciones automáticas están desactivadas en TL App.' };
+  }
   assertHttps(FEED_URL, 'El feed');
   const feed = await fetchJson(FEED_URL);
   const entry = (feed.channels && feed.channels[CHANNEL]) || feed;
@@ -126,6 +132,7 @@ async function check(currentVersion) {
  * @param {(p:{received:number,total:number|null,percent:number|null}) => void} onProgress
  */
 async function download(currentVersion, targetDir, onProgress) {
+  if (!FEED_URL) throw new Error('Las actualizaciones automáticas están desactivadas.');
   const feed = await fetchJson(FEED_URL);
   const entry = (feed.channels && feed.channels[CHANNEL]) || feed;
   if (!entry || !entry.version) throw new Error('El feed no incluye un campo "version".');
@@ -196,7 +203,7 @@ async function download(currentVersion, targetDir, onProgress) {
 /** Deja sólo un nombre de archivo plano y con extensión conocida. */
 function sanitizeName(raw, version) {
   const base = String(raw || '').replace(/[^A-Za-z0-9._-]/g, '');
-  return /\.(exe|msi)$/i.test(base) ? base : `TVM-Client-${version}.exe`;
+  return /\.(exe|msi)$/i.test(base) ? base : `TL-App-${version}.exe`;
 }
 
 function safeUnlink(file) {

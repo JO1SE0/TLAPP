@@ -5,7 +5,6 @@ const path = require('path');
 const crypto = require('crypto');
 const { app } = require('electron');
 const store = require('./store');
-const { CONFIG } = require('./vip');
 const { ASSETS, portable, safe, reconcile, equal } = require('./preferences');
 const EXT = new Set(['.png', '.jpg', '.jpeg', '.webp', '.gif', '.mp3', '.wav', '.ogg', '.m4a']);
 let active = null, record = null, busy = false, timer = null, started = false, applying = false;
@@ -145,17 +144,9 @@ function schedule(delay = 2000) {
   timer = setTimeout(() => sync(), delay);
   timer.unref();
 }
-async function request(profile, body) {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 30000);
-  try {
-    const res = await fetch(`${CONFIG.site}/client/settings`, { method: 'POST', signal: controller.signal,
-      headers: { 'content-type': 'application/json', authorization: `Bearer ${profile.refresh}` }, body: JSON.stringify(body) });
-    if (res.status === 409) return { conflict: true };
-    if (res.status === 404) throw new Error('El servidor todavía no tiene habilitada la sincronización');
-    if (!res.ok) throw new Error(res.status === 401 ? 'Volvé a iniciar sesión con Discord' : `Sincronización: HTTP ${res.status}`);
-    return await res.json();
-  } finally { clearTimeout(timeout); }
+async function request() {
+  // TL App no sincroniza con ningún servidor: la configuración vive sólo en esta PC.
+  throw new Error('La sincronización en la nube no está disponible en TL App');
 }
 async function sync(manual = false) {
   const profile = store.get().vip.discord;

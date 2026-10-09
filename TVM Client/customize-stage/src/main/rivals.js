@@ -35,7 +35,6 @@
 const fs = require('fs');
 const path = require('path');
 const { app } = require('electron');
-const panel = require('./panel');
 
 /** Cada cuánto se lo vuelve a pedir en uso normal. */
 const FRESH_MS = 5 * 60 * 1000;
@@ -74,34 +73,9 @@ function dropLegacyFile() {
  * @param {object} profile  el perfil de Discord guardado (`config.vip.discord`)
  * @param {{force?: boolean}} [options]
  */
-async function refresh(profile, { force = false } = {}) {
-  if (!profile) return cache;
-  if (!force && Date.now() - cache.at < FRESH_MS) return cache;
-  // Dos pedidos a la vez traen lo mismo: el segundo espera al primero.
-  if (inFlight) return inFlight;
-
-  inFlight = (async () => {
-    try {
-      const res = await panel.rivals(profile);
-      if (!res) return cache;
-      const people = new Map();
-      for (const person of res.people || []) {
-        const name = String(person.name || '').trim();
-        if (name) people.set(name, person);
-      }
-      cache = { linked: !!res.linked, at: Date.now(), people };
-      return cache;
-    } catch (err) {
-      // Sin internet se conserva lo último que se supo: es de hace unos minutos
-      // y sigue siendo cierto. Vaciarlo sería peor.
-      console.error('[rivals] no se pudo actualizar:', err.message);
-      return cache;
-    } finally {
-      inFlight = null;
-    }
-  })();
-
-  return inFlight;
+async function refresh() {
+  // Sin servidor no hay historial de rivales: se devuelve el estado vacío.
+  return cache;
 }
 
 /**
