@@ -176,19 +176,29 @@ function tileFor(doc, name) {
     }
   } else if (name === 'marble') {
     // Mármol: manchas suaves y vetas finas.
-    for (let i = 0; i < 10; i++) {
-      const g = c.createRadialGradient(rand() * size, rand() * size, 2, rand() * size, rand() * size, 30 + rand() * 30);
-      g.addColorStop(0, rand() > 0.5 ? 'rgba(255,255,255,0.14)' : 'rgba(0,0,0,0.1)');
-      g.addColorStop(1, 'rgba(128,128,128,0)');
-      c.fillStyle = g; c.fillRect(0, 0, size, size);
+    for (let i = 0; i < 8; i++) {
+      const bx = rand() * size, by = rand() * size, br = 26 + rand() * 24;
+      const col = rand() > 0.5 ? 'rgba(255,255,255,0.14)' : 'rgba(0,0,0,0.1)';
+      // Se dibuja también corrido un tile hacia cada lado: así empalma sin costura.
+      for (let dx = -size; dx <= size; dx += size) {
+        for (let dy = -size; dy <= size; dy += size) {
+          const g = c.createRadialGradient(bx + dx, by + dy, 1, bx + dx, by + dy, br);
+          g.addColorStop(0, col);
+          g.addColorStop(1, 'rgba(128,128,128,0)');
+          c.fillStyle = g;
+          c.fillRect(0, 0, size, size);
+        }
+      }
     }
     for (let i = 0; i < 6; i++) {
       c.strokeStyle = `rgba(0,0,0,${0.12 + rand() * 0.2})`;
       c.lineWidth = 0.6 + rand() * 0.8;
       c.beginPath();
-      let x = 0, y = rand() * size;
+      const y0 = rand() * size;
+      let x = 0, y = y0;
       c.moveTo(x, y);
-      while (x < size) { x += 10 + rand() * 14; y += (rand() - 0.5) * 22; c.lineTo(x, y); }
+      while (x < size - 14) { x += 10 + rand() * 14; y += (rand() - 0.5) * 22; c.lineTo(Math.min(x, size), y); }
+      c.lineTo(size, y0); // termina a la altura donde empezó: empalma con el tile de al lado
       c.stroke();
     }
   } else if (name === 'hex') {
