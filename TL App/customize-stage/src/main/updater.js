@@ -110,8 +110,8 @@ async function check(currentVersion) {
     size: Number(entry.size) || null,
     canDownload,
     message: behind
-      ? `Hay una versión nueva: ${entry.version}`
-      : 'Estás en la última versión.'
+      ? `Hay una versión nueva: ${entry.version} (tenés la ${currentVersion})`
+      : `Estás en la última versión (${currentVersion}).`
   };
 }
 
