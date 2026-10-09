@@ -2684,6 +2684,10 @@ function renderFpsCap() {
 function renderPerf() {
   renderGameSettings($('#gameVideo'), 'video');
   renderGameSettings($('#gameNet'), 'net');
+  // La sección de red se dibuja con lo que HaxBall expone en su grupo «net»: si
+  // no hay nada, una tarjeta con sólo un título es ruido, así que se esconde.
+  const redSec = $('[data-sec="red"]');
+  if (redSec) redSec.hidden = !$('#gameNet').childElementCount;
   renderFpsCap();
   renderKeys();
 
