@@ -5730,7 +5730,7 @@ function skinPitch(ctx, w, h, stadium) {
 
   let field = modeOn ? pitchSkinColor() : null;
   let outside = modeOn ? pitchOutsideColor(field) : null;
-  const brightness = modeOn ? clampNum(skin.brightness, -0.6, 0.6, 0) : 0;
+  let brightness = modeOn ? clampNum(skin.brightness, -0.6, 0.6, 0) : 0;
   const stripes = modeOn ? Math.round(clampNum(skin.stripes, 0, 24, 0)) : 0;
   let strength = clampNum(skin.strength, 0, 1, 0.8);
   // Un acabado sin color propio de cancha trae el suyo.
@@ -5738,6 +5738,9 @@ function skinPitch(ctx, w, h, stadium) {
     field = tex.tint;
     outside = tex.tint;
     strength = tex.strength;
+    // El 'color' conserva la luz del césped original: los acabados claros
+    // (arena, cemento, mármol) la levantan para no quedar barrosos.
+    brightness = tex.lum || 0;
   }
   if (!field && !outside && !brightness && !stripes && !tex && !visual.crest) return;
 

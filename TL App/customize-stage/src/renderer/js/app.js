@@ -7325,7 +7325,7 @@ const FONT_OPTIONS = [
 
 const LOOK_SECTIONS = {
   lookPitch: [
-    { key: 'texture', type: 'select', label: 'look.texture', options: [['none', 'look.opt.none'], ['wood', 'look.tex.wood'], ['ice', 'look.tex.ice'], ['sand', 'look.tex.sand'], ['concrete', 'look.tex.concrete'], ['night', 'look.tex.night']] },
+    { key: 'texture', type: 'select', label: 'look.texture', options: [['none', 'look.opt.none'], ['wood', 'look.tex.wood'], ['ice', 'look.tex.ice'], ['sand', 'look.tex.sand'], ['concrete', 'look.tex.concrete'], ['night', 'look.tex.night'], ['clay', 'look.tex.clay'], ['checker', 'look.tex.checker'], ['carbon', 'look.tex.carbon'], ['marble', 'look.tex.marble'], ['hex', 'look.tex.hex']] },
     { key: 'crest', type: 'switch', label: 'look.crest', desc: 'look.crestHelp' },
     { key: 'crestOpacity', type: 'range', label: 'look.crestOpacity', min: 0.05, max: 0.6, step: 0.01, showIf: (v) => v.crest },
     { key: 'crestSize', type: 'range', label: 'look.crestSize', min: 0.2, max: 1, step: 0.01, showIf: (v) => v.crest },

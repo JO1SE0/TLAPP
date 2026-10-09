@@ -24,11 +24,16 @@ const TAU = Math.PI * 2;
  * y las sombras de la cancha) y un tile de grano que se aplica con `overlay`.
  */
 const TEXTURES = {
-  wood: { tint: '#b4803f', strength: 0.88, tile: 'wood' },
-  ice: { tint: '#a8d6ee', strength: 0.82, tile: 'ice' },
-  sand: { tint: '#d9b974', strength: 0.88, tile: 'grain' },
-  concrete: { tint: '#7e8996', strength: 0.82, tile: 'grain' },
-  night: { tint: '#1d4636', strength: 0.92, tile: 'none' }
+  wood: { tint: '#b4803f', strength: 0.88, tile: 'wood', lum: 0 },
+  ice: { tint: '#a8d6ee', strength: 0.82, tile: 'ice', lum: 0.12 },
+  sand: { tint: '#dcbc7a', strength: 0.92, tile: 'sand', lum: 0.28 },
+  concrete: { tint: '#8a949f', strength: 0.9, tile: 'concrete', lum: 0.22 },
+  night: { tint: '#1d4636', strength: 0.92, tile: 'turf', lum: -0.12 },
+  clay: { tint: '#b4573a', strength: 0.92, tile: 'clay', lum: 0.12 },
+  checker: { tint: '#3b6ea5', strength: 0.9, tile: 'checker', lum: 0.1 },
+  carbon: { tint: '#4a4f58', strength: 0.92, tile: 'carbon', lum: -0.05 },
+  marble: { tint: '#c9ccd2', strength: 0.9, tile: 'marble', lum: 0.3 },
+  hex: { tint: '#2f8f9d', strength: 0.9, tile: 'hex', lum: 0.08 }
 };
 
 function textureSpec(key) {
@@ -59,7 +64,9 @@ function tileFor(doc, name) {
   tile.width = size;
   tile.height = size;
   const c = tile.getContext('2d');
-  const rand = rng(name === 'wood' ? 7 : name === 'ice' ? 11 : 23);
+  let seed = 17;
+  for (let i = 0; i < name.length; i++) seed = (seed * 31 + name.charCodeAt(i)) >>> 0;
+  const rand = rng(seed);
   c.fillStyle = 'rgb(128,128,128)';
   c.fillRect(0, 0, size, size);
 
@@ -95,6 +102,112 @@ function tileFor(doc, name) {
     for (let i = 0; i < 160; i++) {
       c.fillStyle = `rgba(255,255,255,${rand() * 0.12})`;
       c.fillRect(rand() * size, rand() * size, 2, 1);
+    }
+  } else if (name === 'sand') {
+    // Ondas de duna: bandas suaves y grano fino.
+    for (let y = 0; y < size; y += 8) {
+      c.strokeStyle = (y / 8) % 2 ? 'rgba(255,255,255,0.14)' : 'rgba(0,0,0,0.12)';
+      c.lineWidth = 2;
+      c.beginPath();
+      const ph = rand() * 6;
+      for (let x = 0; x <= size; x += 8) c.lineTo(x, y + Math.sin((x / size) * TAU * 2 + ph) * 2.5);
+      c.stroke();
+    }
+    for (let i = 0; i < 1400; i++) {
+      c.fillStyle = rand() > 0.5 ? `rgba(255,255,255,${rand() * 0.2})` : `rgba(0,0,0,${rand() * 0.18})`;
+      c.fillRect(Math.floor(rand() * size), Math.floor(rand() * size), 1, 1);
+    }
+  } else if (name === 'concrete') {
+    // Losas con juntas, manchas y motitas.
+    for (let gy = 0; gy < 2; gy++) {
+      for (let gx = 0; gx < 2; gx++) {
+        const sh = (rand() - 0.5) * 0.16;
+        c.fillStyle = sh > 0 ? `rgba(255,255,255,${sh})` : `rgba(0,0,0,${-sh})`;
+        c.fillRect(gx * 64, gy * 64, 64, 64);
+      }
+    }
+    c.fillStyle = 'rgba(0,0,0,0.4)';
+    c.fillRect(0, 0, size, 1); c.fillRect(0, 64, size, 1);
+    c.fillRect(0, 0, 1, size); c.fillRect(64, 0, 1, size);
+    for (let i = 0; i < 900; i++) {
+      c.fillStyle = rand() > 0.5 ? `rgba(255,255,255,${rand() * 0.14})` : `rgba(0,0,0,${rand() * 0.18})`;
+      c.fillRect(Math.floor(rand() * size), Math.floor(rand() * size), 1 + (rand() > 0.9 ? 1 : 0), 1);
+    }
+  } else if (name === 'turf') {
+    // Pasto: hojitas verticales claras y oscuras.
+    for (let i = 0; i < 900; i++) {
+      c.strokeStyle = rand() > 0.5 ? `rgba(255,255,255,${0.06 + rand() * 0.14})` : `rgba(0,0,0,${0.08 + rand() * 0.16})`;
+      c.lineWidth = 1;
+      const x = rand() * size, y = rand() * size;
+      c.beginPath(); c.moveTo(x, y); c.lineTo(x + (rand() - 0.5) * 2, y - 2 - rand() * 4); c.stroke();
+    }
+  } else if (name === 'clay') {
+    // Polvo de ladrillo: grano grueso y piedritas.
+    for (let i = 0; i < 1500; i++) {
+      c.fillStyle = rand() > 0.5 ? `rgba(255,220,200,${rand() * 0.2})` : `rgba(60,10,0,${rand() * 0.22})`;
+      const q = rand() > 0.85 ? 2 : 1;
+      c.fillRect(Math.floor(rand() * size), Math.floor(rand() * size), q, q);
+    }
+    for (let i = 0; i < 12; i++) {
+      c.fillStyle = 'rgba(255,255,255,0.12)';
+      c.beginPath(); c.arc(rand() * size, rand() * size, 1 + rand() * 1.5, 0, TAU); c.fill();
+    }
+  } else if (name === 'checker') {
+    // Damero.
+    const q = 32;
+    for (let y = 0; y < size; y += q) {
+      for (let x = 0; x < size; x += q) {
+        if (((x + y) / q) % 2) { c.fillStyle = 'rgba(255,255,255,0.2)'; c.fillRect(x, y, q, q); }
+        else { c.fillStyle = 'rgba(0,0,0,0.18)'; c.fillRect(x, y, q, q); }
+      }
+    }
+  } else if (name === 'carbon') {
+    // Fibra de carbono: trama en diagonal.
+    const q = 8;
+    for (let y = 0; y < size; y += q) {
+      for (let x = 0; x < size; x += q) {
+        const alt = ((x + y) / q) % 2;
+        const g = c.createLinearGradient(x, y, x + q, y + q);
+        g.addColorStop(0, alt ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.28)');
+        g.addColorStop(1, alt ? 'rgba(0,0,0,0.22)' : 'rgba(255,255,255,0.16)');
+        c.fillStyle = g;
+        c.fillRect(x, y, q, q);
+      }
+    }
+  } else if (name === 'marble') {
+    // Mármol: manchas suaves y vetas finas.
+    for (let i = 0; i < 10; i++) {
+      const g = c.createRadialGradient(rand() * size, rand() * size, 2, rand() * size, rand() * size, 30 + rand() * 30);
+      g.addColorStop(0, rand() > 0.5 ? 'rgba(255,255,255,0.14)' : 'rgba(0,0,0,0.1)');
+      g.addColorStop(1, 'rgba(128,128,128,0)');
+      c.fillStyle = g; c.fillRect(0, 0, size, size);
+    }
+    for (let i = 0; i < 6; i++) {
+      c.strokeStyle = `rgba(0,0,0,${0.12 + rand() * 0.2})`;
+      c.lineWidth = 0.6 + rand() * 0.8;
+      c.beginPath();
+      let x = 0, y = rand() * size;
+      c.moveTo(x, y);
+      while (x < size) { x += 10 + rand() * 14; y += (rand() - 0.5) * 22; c.lineTo(x, y); }
+      c.stroke();
+    }
+  } else if (name === 'hex') {
+    // Panal de abejas.
+    // Medidas pensadas para que el tile empalme sin costura: 4 períodos de 3r
+    // de ancho y 7 filas de alto.
+    tile.height = 129;
+    c.fillStyle = 'rgb(128,128,128)';
+    c.fillRect(0, 0, size, 129);
+    c.strokeStyle = 'rgba(0,0,0,0.34)';
+    c.lineWidth = 1.2;
+    const r = size / 12, hh = 129 / 7;
+    for (let row = -1; row < 8; row++) {
+      for (let col = -1; col < 9; col++) {
+        const cx = col * 1.5 * r, cy = row * hh + (col % 2 ? hh / 2 : 0);
+        c.beginPath();
+        for (let k = 0; k < 6; k++) c.lineTo(cx + r * Math.cos(k * TAU / 6), cy + r * Math.sin(k * TAU / 6));
+        c.closePath(); c.stroke();
+      }
     }
   } else {
     // Grano: puntitos claros y oscuros.
