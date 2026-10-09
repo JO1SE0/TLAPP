@@ -1373,8 +1373,8 @@ $('#meMenu').addEventListener('click', (e) => {
   const que = item.dataset.me;
   if (que === 'perfil') openProfile(null);
   else if (que === 'nick') showStart(null);
-  else if (que === 'aspecto') goToSection('cuenta', 'jugador');
-  else if (que === 'vip') goToSection('cuenta', 'vip');
+  else if (que === 'aspecto') goToSection('aspecto', 'jugador');
+  else if (que === 'vip') goToSection('aspecto', 'sonidos');
   else if (que === 'ajustes') setView('ajustes');
 });
 
@@ -2010,7 +2010,7 @@ $('#favToggle').addEventListener('click', () => {
 // id que no existe, y eso tiraba TODO el renderer (ver la red de seguridad del
 // arranque, al principio de este archivo).
 $('#actChangeNick').addEventListener('click', () => {
-  goToSection('cuenta', 'jugador');
+  goToSection('aspecto', 'jugador');
   $('#nickname').focus();
   $('#nickname').select();
 });
