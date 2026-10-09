@@ -3680,6 +3680,7 @@ input[type="color"]::-webkit-color-swatch { border: 0; border-radius: 6px; }
   white-space: nowrap;
   -webkit-app-region: no-drag;
 }
+.toplast[hidden] { display: none; }
 .toplast:hover { background: rgb(var(--accent-rgb) / 30%); }
 .toplast svg { width: 14px; height: 14px; }
 .lastroom {
