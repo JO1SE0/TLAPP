@@ -1433,9 +1433,9 @@ const byIndex = (a, b) => a.index - b.index;
 /**
  * Orden geográfico. Es el que hace que funcionen los separadores.
  *
- * Muchos hosts publican salas "separador" (═══ THRIVIUM ═══, 0/2 y con
+ * Muchos hosts publican salas "separador" (═══ NOMBRE ═══, 0/2 y con
  * contraseña) para que en la lista queden encerrando a las suyas. El truco es
- * la ubicación: medido en vivo, las salas reales de Thrivium están todas en
+ * la ubicación: medido en vivo, las salas reales de un mismo host están todas en
  * -34.6890,-58.4210 y los separadores en -34.6889,-58.4211 y -34.6891,-58.4209
  * — corridos una diezmilésima de grado (unos 11 metros) en direcciones
  * opuestas. Ordenando por distancia al jugador, uno cae justo antes del bloque
@@ -1832,7 +1832,30 @@ function checkAutoJoin() {
 }
 
 /* ── Pantalla de inicio ─────────────────────────────────── */
+/** Racha, partidos, goles y horas jugadas, con los números reales de este equipo. */
+function paintStartSummary(roomName) {
+  const box = $('#startSummary');
+  if (!box) return;
+  const stats = state.config.stats || {};
+  const hours = Math.floor((stats.secondsPlayed || 0) / 3600);
+  const chips = [];
+  if (stats.streak > 0) chips.push(t('stats.streak', { days: stats.streak }));
+  if (stats.matches > 0) chips.push(t('start.sum.matches', { n: stats.matches }));
+  if (stats.goals > 0) chips.push(t('start.sum.goals', { n: stats.goals }));
+  if (stats.assists > 0) chips.push(t('start.sum.assists', { n: stats.assists }));
+  if (hours > 0) chips.push(t('start.sum.hours', { n: hours }));
+  const show = !roomName && state.config.general.welcomeSummary !== false && chips.length > 0;
+  box.hidden = !show;
+  box.replaceChildren(...(show ? chips : []).map((text) => {
+    const chip = document.createElement('span');
+    chip.className = 'startsummary__chip';
+    chip.textContent = text;
+    return chip;
+  }));
+}
+
 function showStart(roomName) {
+  paintStartSummary(roomName);
   $('#startTitle').textContent = roomName ? t('start.titleRoom') : t('start.title');
   $('#startText').textContent = roomName || t('start.text');
   $('#startNick').value = state.config.general.nickname || '';
@@ -5693,11 +5716,13 @@ $('#authAdd').addEventListener('click', async () => {
 const SYSTEM_SWITCHES = {
   es: [
     { key: 'launchOnStartup', label: 'Abrir con Windows', description: 'El cliente arranca al iniciar sesión.' },
-    { key: 'confirmOnExit', label: 'Confirmar antes de cerrar', description: 'Sólo pregunta si estás en medio de una partida.' }
+    { key: 'confirmOnExit', label: 'Confirmar antes de cerrar', description: 'Sólo pregunta si estás en medio de una partida.' },
+    { key: 'welcomeSummary', label: 'Resumen al abrir', description: 'Muestra tu racha, partidos, goles y horas jugadas en la pantalla de inicio.' }
   ],
   en: [
     { key: 'launchOnStartup', label: 'Launch with Windows', description: 'The client starts when you log in.' },
-    { key: 'confirmOnExit', label: 'Confirm before closing', description: 'Only asks if you are in a match.' }
+    { key: 'confirmOnExit', label: 'Confirm before closing', description: 'Only asks if you are in a match.' },
+    { key: 'welcomeSummary', label: 'Summary on start', description: 'Shows your streak, matches, goals and hours played on the start screen.' }
   ]
 };
 

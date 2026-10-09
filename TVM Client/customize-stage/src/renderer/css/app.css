@@ -3241,6 +3241,16 @@ input[type="color"]::-webkit-color-swatch { border: 0; border-radius: 6px; }
 }
 .startcard h1 { font-family: var(--font-display); font-size: 21px; font-weight: 700; }
 .startcard p { font-size: 12.5px; color: var(--text-dim); line-height: 1.5; }
+.startsummary { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin: 2px 0 4px; }
+.startsummary__chip {
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--accent-mid);
+  background: var(--accent-soft);
+  border: 1px solid var(--accent-line);
+}
 .startcard__label {
   margin-top: 10px;
   text-align: left;

@@ -15,6 +15,8 @@ const DEFAULTS = {
     nickname: '',
     launchOnStartup: false,
     confirmOnExit: true,
+    /** En la pantalla de inicio: racha, partidos, goles y horas jugadas. */
+    welcomeSummary: true,
     /**
      * Resolución de LA CANCHA, no de la ventana: `'AnchoxAlto'` dibuja el juego
      * a ese tamaño y lo estira hasta llenar la ventana (o la pantalla), o
@@ -181,9 +183,9 @@ const DEFAULTS = {
    */
   countryOverride: '',
   /**
-   * VIP. Iniciar sesión con Discord es opcional: el cliente entero funciona sin
-   * tocarlo. Sólo sirve para comprobar el rol del server de Thrivium y
-   * desbloquear cosméticos.
+   * Personalización: avatar, pelota, sonidos y aspecto en la lista de jugadores.
+   * El nombre `vip` es histórico y se conserva para no perder lo ya guardado;
+   * en TL App todo está habilitado y no hay inicio de sesión con Discord.
    */
   vip: {
     /** Perfil de Discord, o null si nunca inició sesión. */

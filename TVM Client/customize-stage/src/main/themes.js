@@ -50,12 +50,12 @@ const BUILT_IN = {
   },
   toda: {
     label: 'TL App · Club',
-    description: 'Azul marino y dorado del escudo, con el rojo del club.',
+    description: 'Azul marino y dorado del escudo de Toda la Lecce.',
     dark: true,
-    bg: '#090f1d', bg1: '#0d1930', panel: '#142544', panelTop: '#1c3153',
-    field: '#0a1426',
-    text: '#f4f0df', dim: '#cec5a5', faint: '#a79b70',
-    accent: '#8c702a', accent2: '#bf2436', accentText: '#ffffff'
+    bg: '#0a1327', bg1: '#0f1d3a', panel: '#172a50', panelTop: '#203860',
+    field: '#0b1630',
+    text: '#f4f0df', dim: '#c9d0e0', faint: '#97a3bd',
+    accent: '#c9a85c', accent2: '#a8873f', accentText: '#0c1630'
   },
   oscuro: {
     label: 'Oscuro',
@@ -121,18 +121,8 @@ const BUILT_IN = {
    * Lo brillante va en el `aura`, que es fondo y nunca lleva texto encima: ahí
    * sí entran los verdes y los rosas que le dan el nombre a cada tema.
    *
-   * ── Son los cuatro para VIP ────────────────────────────────────────────
-   *
-   * `vip: true` lo miran tres lugares que ya existían y estaban sin usar desde
-   * que se sacaron los temas VIP anteriores:
-   *
-   *   · `cfg:set` en main.js, que rechaza el cambio sin el rol. Es la guarda
-   *     que importa: un config.json editado a mano tampoco los activa.
-   *   · `enforceVipTheme`, que devuelve el tema a Toda la Lecce cuando el rol se cae.
-   *   · La tarjeta de Aspecto, que se dibuja con el candado.
    */
   aurora: {
-    vip: true,
     label: 'Aurora',
     description: 'Verde y violeta, como el cielo del norte.',
     dark: true,
@@ -143,7 +133,6 @@ const BUILT_IN = {
     aura: { stops: ['#12b489', '#2fd8c4', '#8258e4', '#2a1f52'], seconds: 34 }
   },
   ocaso: {
-    vip: true,
     label: 'Ocaso',
     description: 'Naranja que se apaga en magenta.',
     dark: true,
@@ -154,7 +143,6 @@ const BUILT_IN = {
     aura: { stops: ['#f0762c', '#e8437f', '#8e2bb0', '#2a0d20'], seconds: 30 }
   },
   nebulosa: {
-    vip: true,
     label: 'Nebulosa',
     description: 'Azul y rosa sobre índigo.',
     dark: true,
@@ -179,7 +167,6 @@ const BUILT_IN = {
    * mancha de tinta, no como luz.
    */
   amanecer: {
-    vip: true,
     label: 'Amanecer',
     description: 'Claro, con rosa y lavanda.',
     dark: false,

@@ -15,12 +15,8 @@
  *  cuando la llave también está en la máquina de esa persona. Un número que no
  *  se puede defender no sirve para mostrárselo a nadie.
  *
- *  Ahora lo calcula el panel con los partidos que reportan los hosts —los
- *  mismos que alimentan el ELO—, autenticados con su API key. Es dato que el
- *  jugador no toca. Ver `/client/rivals` en `client.routes.js`.
- *
- *  Lo que se pierde, y la interfaz lo dice: sólo cuenta lo jugado en las salas
- *  de Thrivium, y sólo para quien tenga la cuenta de Haxball vinculada.
+ *  TL App no tiene servidor: este historial está desactivado y siempre devuelve
+ *  el estado vacío. Se conserva el módulo para no tocar a quienes lo llaman.
  *
  *  ── Por qué esto no toca el disco ─────────────────────────────────────────
  *

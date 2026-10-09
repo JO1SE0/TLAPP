@@ -22,7 +22,7 @@
  *
  * ── Lo que NO se traduce ────────────────────────────────────────────────
  *
- * Lo que escriben los BOTS DE LOS HOSTS. En una sala de Thrivium eso es la
+ * Lo que escriben los BOTS DE LOS HOSTS. En muchas salas eso es la
  * mayor parte de lo que se lee en el chat —«¡Comenzó el 1v1!», «GK Rojo»— y no
  * pasa por acá: lo manda el servidor de la sala ya escrito. Traducirlo sería
  * adivinar sobre texto ajeno, y un host que escribe en inglés a propósito

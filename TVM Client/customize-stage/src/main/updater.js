@@ -1,29 +1,25 @@
 'use strict';
 
 /**
- * Actualizaciones servidas desde un bucket de Cloudflare R2.
+ * Actualizaciones servidas desde los Releases de GitHub del repo del equipo.
  *
- * R2 no ejecuta nada: es almacenamiento de objetos que entrega archivos por
- * HTTPS. Para esto alcanza y sobra — el cliente pide un JSON, compara
- * versiones y, si hay una nueva, se baja el instalador y lo abre.
+ * Cada Release lleva dos archivos: el instalador y un `updates.json` (lo genera
+ * `tools/make-update-feed.js`). La URL de abajo apunta siempre al `updates.json`
+ * del ÚLTIMO Release, así que publicar una versión nueva alcanza para que todos
+ * la reciban: el cliente pide el JSON, compara versiones y, si hay una nueva,
+ * baja el instalador, verifica el sha256 y lo abre.
  *
- * Qué va en el bucket (público, o detrás de un dominio propio apuntado a él):
- *
- *   updates.json                    el feed
- *   TVM-Client-Setup-0.2.0.exe      el instalador de cada versión
- *
- * y el feed se ve así:
+ * El feed se ve así:
  *
  *   {
  *     "channels": {
  *       "stable": {
- *         "version": "0.2.0",
- *         "url": "https://pub-xxxx.r2.dev/TVM-Client-Setup-0.2.0.exe",
+ *         "version": "1.0.42",
+ *         "url": "https://github.com/JO1SE0/TLAPP/releases/download/v1.0.42/TL-App-Setup-1.0.42.exe",
  *         "sha256": "9f86d081884c7d65…",
  *         "size": 78123456,
  *         "notes": "Qué cambió en esta versión"
- *       },
- *       "beta": { ... }
+ *       }
  *     }
  *   }
  *
@@ -38,9 +34,7 @@
  * viaja por IPC. Un config.json importado no puede apuntarla a otro lado.
  */
 
-// Sin feed: TL App no consulta ni descarga actualizaciones de ningún servidor.
-// Para activarlo, poné acá una URL https propia que devuelva el JSON descrito arriba.
-const FEED_URL = '';
+const FEED_URL = 'https://github.com/JO1SE0/TLAPP/releases/latest/download/updates.json';
 const CHANNEL = 'stable';
 
 const fs = require('fs');
