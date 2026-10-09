@@ -4356,3 +4356,84 @@ input[type="color"].is-unset { opacity: .45; }
 .secmodal .sec { padding: 0; border: 0; background: none; margin: 0; }
 .secmodal .sec__head { padding-right: 44px; }
 .secmodal .sec__title { font-size: 24px; }
+
+/* ══════════════════════════════════════════════════════════
+   Plantel en el riel — los nombres del club, "grabados" en dorado
+   ══════════════════════════════════════════════════════════ */
+.roster {
+  flex: 1 1 0;
+  min-height: 0;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(8px, 1.9vh, 22px);
+  overflow: hidden;
+  padding: 10px 0;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-select: none;
+  background: radial-gradient(ellipse 70% 55% at 50% 50%, rgb(32 56 96 / 42%), transparent 72%);
+  font-family: "Trajan Pro", "Cinzel", "Constantia", "Palatino Linotype", "Book Antiqua", Georgia, serif;
+}
+.roster__crest {
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: .34em;
+  text-indent: .34em; /* compensa el espacio que deja el último caracter */
+  text-transform: uppercase;
+  color: rgb(208 184 120 / 62%);
+}
+/* Filete con rombo al medio: separa el escudo de la lista y la cierra abajo. */
+.roster__orn {
+  position: relative;
+  width: 78%;
+  height: 9px;
+  flex: none;
+}
+.roster__orn::before {
+  content: "";
+  position: absolute;
+  left: 0; right: 0; top: 4px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgb(208 184 120 / 55%) 28%, rgb(208 184 120 / 55%) 72%, transparent);
+}
+.roster__orn i {
+  position: absolute;
+  left: 50%; top: 1px;
+  width: 6px; height: 6px;
+  transform: translateX(-50%) rotate(45deg);
+  background: #d0b878;
+  box-shadow: 0 0 0 3px var(--bg-0, #0b1426);
+}
+.roster__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: clamp(7px, 1.75vh, 21px);
+}
+.roster__list li {
+  max-width: 100%;
+  font-size: clamp(11px, 1.36vh, 13px);
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: .13em;
+  text-indent: .13em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  text-align: center;
+  /* Dorado con volumen: claro arriba, oscuro abajo, y un filo negro que lo
+     hunde en el fondo como si estuviera grabado en la chapa. */
+  background: linear-gradient(180deg, #f6e8b4 0%, #d0b878 46%, #977c3c 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 1px 0 rgb(0 0 0 / 70%)) drop-shadow(0 -1px 0 rgb(255 240 190 / 10%));
+}
+@media (max-height: 720px) { .roster { display: none; } }
+@media (max-width: 820px) { .roster { display: none; } }

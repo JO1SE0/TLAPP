@@ -244,7 +244,28 @@
         <button class="railitem" data-view="replays">
           <svg data-icon viewBox="0 0 24 24"><path d="m15 10 4.5-2.25A1 1 0 0 1 21 8.62v6.76a1 1 0 0 1-1.5.88L15 14M5 6h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2Z"/></svg><span data-i18n="nav.replays">Replays</span>
         </button>
-        <span class="rail__sp"></span>
+        <!-- Plantel: llena el hueco del riel con los nombres del club. Es sólo
+             decoración (aria-hidden, sin eventos) y se esconde en ventanas bajas. -->
+        <div class="roster" aria-hidden="true">
+          <span class="roster__crest">Toda la Lecce</span>
+          <span class="roster__orn"><i></i></span>
+          <ul class="roster__list">
+            <li>Miclovin</li>
+            <li>Abiss</li>
+            <li>Paco Amoroso</li>
+            <li>Atuvi</li>
+            <li>Cuti</li>
+            <li>Paxe</li>
+            <li>Kag</li>
+            <li>Nardo</li>
+            <li>Mudryk</li>
+            <li>Ñandu</li>
+            <li>MG</li>
+            <li>Bruno</li>
+            <li>CGL</li>
+          </ul>
+          <span class="roster__orn"><i></i></span>
+        </div>
         <span class="rail__hr" aria-hidden="true"></span>
 
         <!-- La antigua sección Cuenta se conserva como origen de controles
