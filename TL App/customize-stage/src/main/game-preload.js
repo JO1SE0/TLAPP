@@ -4406,6 +4406,8 @@ function ballFrameIndex() {
 
 /** El estadio de la sala actual, capturado cuando el juego dibuja la cancha. */
 let currentStadium = null;
+let ballDrawFailed = false;
+let ball3dLogged = false;
 
 /** Medidas de la cancha para la red. Más permisivo que `pitchBounds`: no exige fondo propio. */
 function rippleBounds(stadium) {
@@ -4439,6 +4441,7 @@ function drawBall(ctx, x, y, r, indice) {
   const animada = ballGifOn();
   const depth = !!(state.config.pitch && state.config.pitch.ball3d);
   if (!animada && !ballImage && !depth) return false;
+  if (depth && !ball3dLogged) { ball3dLogged = true; log('info', 'pelota 3D: dibujando', 'juego'); }
 
   try {
     ctx.save();
@@ -4476,10 +4479,14 @@ function drawBall(ctx, x, y, r, indice) {
     }
     ctx.restore();
     return true;
-  } catch {
+  } catch (err) {
     // El `restore()` va igual: si el clip se queda puesto, se lleva puesto el
     // resto del dibujo de la cancha y no sólo a la pelota.
     try { ctx.restore(); } catch {}
+    if (!ballDrawFailed) {
+      ballDrawFailed = true;
+      log('error', `la pelota no se pudo dibujar: ${err && err.message ? err.message : err}`, 'juego');
+    }
     return false;
   }
 }
