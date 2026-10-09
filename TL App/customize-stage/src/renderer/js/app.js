@@ -1097,7 +1097,12 @@ function closeSecModal() {
 
 $('#secModalClose').addEventListener('click', closeSecModal);
 $('#secModalScrim').addEventListener('click', closeSecModal);
-document.addEventListener('click', (e) => {
+/*
+ * En el panel y no en `document`: el panel corta la propagación de los clics
+ * (ver `PANEL_BLOCK_EVENTS`), así que un oyente de más arriba no los recibe nunca.
+ * Las tarjetas se escuchan acá, donde el clic todavía llega.
+ */
+$('#panel').addEventListener('click', (e) => {
   const card = e.target.closest && e.target.closest('.launch');
   if (card) openSecModal(card.dataset.launch);
 });
