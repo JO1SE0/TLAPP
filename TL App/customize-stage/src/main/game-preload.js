@@ -6095,7 +6095,9 @@ function paintPitch(ctx, renderer, zoom) {
   // `store.js`. La completa la implica, para que prenderla alcance.
   const wantTrail = replay && (cfg.replayTrail || cfg.replayFullTrail);
   const wantTeams = cfg.teamRings;
-  const wantSelf = cfg.selfRing;
+  // Elegir una forma o un color de aro propio ya implica querer el aro: antes
+  // había que prender además «Marcar tu disco» y nadie lo sabía.
+  const wantSelf = cfg.selfRing || visual.ringStyle !== 'default' || !!visual.ringColor;
   const wantTouch = replay && cfg.replayLastTouch;
   const wantHeat = replay && cfg.replayHeatmap;
   const wantSelfTrail = visual.selfTrail && !replay;
