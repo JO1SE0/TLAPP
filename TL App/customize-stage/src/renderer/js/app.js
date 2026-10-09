@@ -35,6 +35,95 @@ const settingsUpdates = $('[data-sec="actualizaciones"]', settingsPage);
 if (!settingsUpdates) throw new Error('Falta la sección de actualizaciones.');
 settingsUpdates.before(accountSection('[data-sec="identidades"]'), accountSection('[data-sec="discord"]'));
 
+/*
+ * ═══ Dos pestañas, con pestañas adentro ═══
+ *
+ * Antes eran tres —Aspecto, Rendimiento y Ajustes— y cada una un scroll largo
+ * con un índice de veinte renglones. Ahora son dos, y cada una se parte en unas
+ * pocas solapas que se eligen en la columna de la izquierda:
+ *
+ *   Personalización: Estilo · Cancha · Fichas y pelota · En partida
+ *   Configuración:   Rendimiento · Ajustes del juego
+ *
+ * Las secciones no se reescriben: se mudan de página y se les anota a qué
+ * solapa pertenecen (`data-tab`). Lo que no es de la solapa activa se esconde
+ * con la clase `is-tab-off`. Tres secciones largas (controles, líneas y tamaños,
+ * cartel de teclas) no se muestran sueltas: en su lugar va una tarjeta que las
+ * abre en una ventana aparte (ver `openSecModal`).
+ */
+const PANEL_TABS = {
+  aspecto: [
+    { id: 'estilo', label: 'tab.style', hint: 'tab.styleHint',
+      secs: ['tema', 'acento', 'looks', 'menubg'] },
+    { id: 'cancha', label: 'tab.pitch', hint: 'tab.pitchHint',
+      secs: ['cancha', 'acabado', 'trazos', 'replays'] },
+    { id: 'fichas', label: 'tab.discs', hint: 'tab.discsHint',
+      secs: ['jugador', 'pelota', 'fichaslook', 'nombres'] },
+    { id: 'partida', label: 'tab.ingame', hint: 'tab.ingameHint',
+      secs: ['chatlook', 'partida', 'teclashud', 'overlay', 'musica', 'sonidos', 'lista'] }
+  ],
+  ajustes: [
+    { id: 'rendimiento', label: 'tab.perf', hint: 'tab.perfHint',
+      secs: ['perfil', 'graficos', 'red', 'avanzado'] },
+    { id: 'juego', label: 'tab.game', hint: 'tab.gameHint',
+      secs: ['teclas', 'cliente', 'audio', 'identidades', 'discord', 'actualizaciones', 'config'] }
+  ]
+};
+
+/** Las secciones que se abren en ventana propia, y qué decir en su tarjeta. */
+const MODAL_SECS = {
+  trazos: { title: 'visual.title', desc: 'launch.trazos' },
+  teclas: { title: 'keys.title', desc: 'launch.teclas' },
+  teclashud: { title: 'keys.hudTitle', desc: 'launch.teclashud' }
+};
+
+(function organizePanel() {
+  const perfPage = $('.page[data-page="rendimiento"]');
+  const pages = { aspecto: appearancePage, ajustes: settingsPage };
+  const findSec = (id) => $(`[data-sec="${id}"]`);
+
+  // Lo de Rendimiento se muda a Configuración; las líneas y tamaños, a la cancha.
+  if (perfPage) {
+    for (const id of ['perfil', 'graficos', 'red', 'teclas', 'avanzado']) {
+      const sec = $(`[data-sec="${id}"]`, perfPage);
+      if (sec) settingsPage.append(sec);
+    }
+    const trazos = $('[data-sec="trazos"]', perfPage);
+    if (trazos) appearancePage.append(trazos);
+    perfPage.remove();
+  }
+
+  for (const [page, tabs] of Object.entries(PANEL_TABS)) {
+    const inner = pages[page];
+    // Se anexan en el orden de la solapa: el orden del DOM es el orden en pantalla.
+    // El encabezado de la página (`.pagehead`) queda arriba, donde estaba.
+    for (const tab of tabs) {
+      for (const id of tab.secs) {
+        const sec = findSec(id);
+        if (!sec) continue;
+        sec.dataset.tab = tab.id;
+        inner.append(sec);
+
+        const meta = MODAL_SECS[id];
+        if (!meta) continue;
+        sec.dataset.modal = '1';
+        const card = document.createElement('button');
+        card.type = 'button';
+        card.className = 'launch';
+        card.dataset.tab = tab.id;
+        card.dataset.launch = id;
+        card.innerHTML =
+          '<span class="launch__text"><b class="launch__title"></b><span class="launch__desc"></span></span>' +
+          '<span class="launch__go"></span>';
+        card.querySelector('.launch__title').dataset.i18n = meta.title;
+        card.querySelector('.launch__desc').dataset.i18n = meta.desc;
+        card.querySelector('.launch__go').dataset.i18n = 'launch.open';
+        sec.before(card);
+      }
+    }
+  }
+})();
+
 const state = {
   config: null,
   schema: null,
@@ -752,12 +841,27 @@ document.addEventListener('pointerleave', hideHint);
    la estela apagada, el tamaño personalizado de ventana). Si el filtro usara
    `hidden`, al limpiar la búsqueda las destaparía a todas.
    ══════════════════════════════════════════════════════════ */
-const NAV_PAGES = ['rendimiento', 'aspecto', 'ajustes'];
+const NAV_PAGES = ['aspecto', 'ajustes'];
 const NAV_PAGE_LABEL = {
-  rendimiento: 'nav.performance',
-  aspecto: 'nav.appearance',
-  ajustes: 'nav.settings'
+  aspecto: 'nav.personalize',
+  ajustes: 'nav.config'
 };
+
+/** La solapa abierta de cada página. */
+const panelTab = { aspecto: 'estilo', ajustes: 'rendimiento' };
+
+function currentTab(page) {
+  const tabs = PANEL_TABS[page] || [];
+  return (tabs.find((x) => x.id === panelTab[page]) || tabs[0] || {}).id;
+}
+
+/** Muestra sólo lo de la solapa abierta (secciones y tarjetas que abren ventanas). */
+function applyTab(page) {
+  const el = navPage(page);
+  if (!el || !PANEL_TABS[page]) return;
+  const cur = currentTab(page);
+  for (const node of $$('[data-tab]', el)) node.classList.toggle('is-tab-off', node.dataset.tab !== cur);
+}
 
 /** Las páginas que llevan índice. Replays no: es una lista con su buscador. */
 function navPage(name) {
@@ -846,11 +950,51 @@ function buildPanelNav() {
 
   const query = (input.value || '').trim().toLowerCase();
   const activa = state.view;
+  const panel = $('#panel');
   list.replaceChildren();
+  panel.classList.toggle('is-searching', Boolean(query));
+
+  /*
+   * Sin búsqueda: las solapas de la página, grandes y con una línea que dice qué
+   * hay adentro. Son pocas a propósito —dos o cuatro— para que se vea de un
+   * vistazo dónde está cada cosa.
+   */
+  if (!query) {
+    for (const name of NAV_PAGES) {
+      const page = navPage(name);
+      if (page) { filterPage(page, ''); paintEmptyState(page, false); }
+    }
+    for (const tab of PANEL_TABS[activa] || []) {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'pnav__tab';
+      btn.dataset.go = tab.id;
+      btn.classList.toggle('is-on', tab.id === currentTab(activa));
+      const title = document.createElement('b');
+      title.dataset.i18n = tab.label;
+      title.textContent = t(tab.label);
+      const hint = document.createElement('small');
+      hint.dataset.i18n = tab.hint;
+      hint.textContent = t(tab.hint);
+      btn.append(title, hint);
+      list.append(btn);
+    }
+    applyTab(activa);
+    $('#settingsSearchClear').hidden = true;
+    return;
+  }
+
+  /*
+   * Con algo escrito: se destapan todas las solapas y el índice lista las
+   * secciones CON RESULTADOS de las dos páginas, agrupadas por página y con la
+   * cantidad de coincidencias.
+   */
+  for (const name of NAV_PAGES) {
+    for (const node of $$('[data-tab]', navPage(name))) node.classList.remove('is-tab-off');
+  }
 
   let total = 0;
-
-  for (const name of query ? NAV_PAGES : [activa]) {
+  for (const name of NAV_PAGES) {
     const page = navPage(name);
     if (!page) continue;
 
@@ -859,16 +1003,14 @@ function buildPanelNav() {
     // cartel de música apagado— no va al índice: sería un renglón que no lleva
     // a ningún lado.
     const secs = $$('[data-sec]', page).filter(isShown);
+    const hits = secs.reduce((n, sec) => n + (counts.get(sec.dataset.sec) || 0), 0);
+    total += hits;
+    if (!hits) continue;
 
-    if (query) {
-      const hits = secs.reduce((n, sec) => n + (counts.get(sec.dataset.sec) || 0), 0);
-      total += hits;
-      if (!hits) continue;
-      const head = document.createElement('span');
-      head.className = 'pnav__group';
-      head.textContent = t(NAV_PAGE_LABEL[name]);
-      list.append(head);
-    }
+    const head = document.createElement('span');
+    head.className = 'pnav__group';
+    head.textContent = t(NAV_PAGE_LABEL[name]);
+    list.append(head);
 
     for (const sec of secs) {
       const item = document.createElement('button');
@@ -877,20 +1019,18 @@ function buildPanelNav() {
       item.dataset.goPage = name;
       item.dataset.goSec = sec.dataset.sec;
       item.append(document.createTextNode(secTitle(sec)));
-      if (query) {
-        const n = document.createElement('span');
-        n.className = 'pnav__n';
-        n.textContent = String(counts.get(sec.dataset.sec) || 0);
-        item.append(n);
-      }
+      const n = document.createElement('span');
+      n.className = 'pnav__n';
+      n.textContent = String(counts.get(sec.dataset.sec) || 0);
+      item.append(n);
       list.append(item);
     }
   }
 
   const page = navPage(activa);
-  if (page) paintEmptyState(page, Boolean(query) && total === 0);
+  if (page) paintEmptyState(page, total === 0);
 
-  $('#settingsSearchClear').hidden = !query;
+  $('#settingsSearchClear').hidden = false;
   syncNavSpy();
 }
 
@@ -904,12 +1044,63 @@ function buildPanelNav() {
  * apuntando a un elemento que ya no estaba ahí, sin fallar y sin hacer nada.
  */
 function goToSection(page, sec) {
+  const target = $(`[data-sec="${sec}"]`);
+  if (target && target.dataset.tab) panelTab[page] = target.dataset.tab;
   setView(page);
   requestAnimationFrame(() => {
-    const target = $(`.page[data-page="${page}"] [data-sec="${sec}"]`);
-    if (target) target.scrollIntoView({ block: 'start' });
+    const el = $(`[data-sec="${sec}"]`);
+    if (!el) return;
+    if (el.dataset.modal) openSecModal(sec);
+    else el.scrollIntoView({ block: 'start' });
   });
 }
+
+/** Abrir una página parada en una solapa. */
+function goToTab(page, tab) {
+  panelTab[page] = tab;
+  if (state.view !== page) { setView(page); return; }
+  buildPanelNav();
+  const el = navPage(page);
+  if (el) el.scrollTop = 0;
+}
+
+/*
+ * ═══ Secciones en ventana propia ═══
+ *
+ * La sección se muda al contenedor de la ventana y vuelve a su lugar al cerrar:
+ * no se copia ni se reescribe, así que todo lo que el resto de la app le tiene
+ * enganchado (ids, escuchas, el redibujado) sigue funcionando igual.
+ */
+let secModal = null;
+
+function openSecModal(id) {
+  if (secModal) closeSecModal();
+  const sec = $(`.page [data-sec="${id}"]`);
+  if (!sec) return;
+  const anchor = document.createComment(`sec:${id}`);
+  sec.before(anchor);
+  sec.classList.remove('is-tab-off');
+  $('#secModalBody').append(sec);
+  $('#secModal').hidden = false;
+  secModal = { sec, anchor, id };
+  $('#secModalClose').focus();
+}
+
+function closeSecModal() {
+  if (!secModal) return;
+  const { sec, anchor } = secModal;
+  secModal = null;
+  if (anchor.parentNode) anchor.replaceWith(sec);
+  $('#secModal').hidden = true;
+  applyTab(state.view);
+}
+
+$('#secModalClose').addEventListener('click', closeSecModal);
+$('#secModalScrim').addEventListener('click', closeSecModal);
+document.addEventListener('click', (e) => {
+  const card = e.target.closest && e.target.closest('.launch');
+  if (card) openSecModal(card.dataset.launch);
+});
 
 /**
  * Limpia el filtro de TODAS las páginas.
@@ -969,9 +1160,13 @@ function scheduleNavSpy() {
 }
 
 $('#panelNavList').addEventListener('click', (e) => {
+  const tab = e.target.closest('.pnav__tab');
+  if (tab) { goToTab(state.view, tab.dataset.go); return; }
   const item = e.target.closest('.pnav__i');
   if (!item) return;
   const { goPage, goSec } = item.dataset;
+  const destino = $(`[data-sec="${goSec}"]`);
+  if (destino && destino.dataset.tab) panelTab[goPage] = destino.dataset.tab;
   const saltar = () => {
     const sec = $(`.page[data-page="${goPage}"] [data-sec="${goSec}"]`);
     if (sec) sec.scrollIntoView({ block: 'start', behavior: 'smooth' });
@@ -1291,6 +1486,7 @@ nav.addEventListener('click', (e) => {
 
 /** Cierra el panel y vuelve al fondo (la cancha o la lista de salas). */
 function closePanel() {
+  closeSecModal();
   // La búsqueda no sobrevive al cierre: volver a abrir y encontrarse media
   // pestaña filtrada por algo que escribiste hace rato, con el campo vacío, se
   // lee como una pestaña rota.
@@ -1375,7 +1571,7 @@ $('#meMenu').addEventListener('click', (e) => {
   else if (que === 'nick') showStart(null);
   else if (que === 'aspecto') goToSection('aspecto', 'jugador');
   else if (que === 'vip') goToSection('aspecto', 'sonidos');
-  else if (que === 'ajustes') setView('ajustes');
+  else if (que === 'ajustes') goToTab('ajustes', 'juego');
 });
 
 $('#panelClose').addEventListener('click', closePanel);
@@ -7147,6 +7343,7 @@ function flushPlayTime() {
 /* ── Atajos ─────────────────────────────────────────────── */
 window.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') {
+    if (secModal) { e.preventDefault(); closeSecModal(); return; }
     if (!$('#askModal').hidden) { e.preventDefault(); closeAsk(null); return; }
     if (!$('#themeModal').hidden) { e.preventDefault(); $('#themeModal').hidden = true; return; }
     if (!$('#createModal').hidden) { e.preventDefault(); closeCreateModal(); return; }
@@ -8301,7 +8498,7 @@ async function boot() {
     renderTabs();
   });
   // El engranaje del HUD del juego abre estos ajustes, no los de HaxBall.
-  tvm.game.onOpenSettings(() => setView('ajustes'));
+  tvm.game.onOpenSettings(() => goToTab('ajustes', 'juego'));
   tvm.game.onToast(({ message, kind }) => toast(message, kind));
   // La ubicación llega después de que carga el juego: recién ahí hay distancias.
   tvm.rooms.onStale(() => { state.rooms.fetchedAt = 0; refreshRoomsIfStale(); });

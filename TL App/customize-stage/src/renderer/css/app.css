@@ -3824,7 +3824,7 @@ input[type="color"]::-webkit-color-swatch { border: 0; border-radius: 6px; }
  */
 :root {
   --topbar-h: 56px;
-  --rail-w: 148px;
+  --rail-w: 164px;
   --radius: 10px;
   --radius-sm: 7px;
   --r-ctl: 6px;
@@ -4161,3 +4161,198 @@ input[type="color"].is-unset { opacity: .45; }
 .lastroom b { color: #fff; font-weight: 800; font-size: 14.5px; }
 .lastroom:hover { background: linear-gradient(90deg, rgb(var(--accent-rgb) / 46%), rgb(var(--accent-rgb) / 16%) 70%), var(--bg-1); }
 .toplast { border-color: var(--accent); background: rgb(var(--accent-rgb) / 22%); }
+
+/* ══════════════════════════════════════════════════════════════════════
+   Panel de Personalización y Configuración — rediseño
+   ──────────────────────────────────────────────────────────────────────
+   El problema de antes: todo medía casi lo mismo. El título de una sección
+   era dos píxeles más grande que el nombre de un ajuste y nada separaba una
+   sección de la otra más que un hueco. Acá cada nivel tiene su propio tamaño,
+   peso y caja:
+
+     página ........ 30 px, peso 800
+     sección ....... tarjeta con borde, título de 19 px con barra de acento
+     ajuste ........ 14.5 px, peso 650 (su explicación, 12.5 px y más apagada)
+     tarjeta de ventana (launch) ... acento, con botón «Abrir»
+   ══════════════════════════════════════════════════════════════════════ */
+:root { --pnav-w: 244px; }
+
+/* Lo que no es de la solapa abierta. La búsqueda destapa todo desde JS. */
+.is-tab-off { display: none !important; }
+.panel:not(.is-searching) .page .sec[data-modal] { display: none; }
+.panel.is-searching .launch { display: none; }
+
+/* Columna de la izquierda: solapas grandes, no un índice de renglones. */
+.pnav { gap: var(--sp-4); padding: var(--sp-6) var(--sp-3) var(--sp-4) var(--sp-4); }
+.pnav__list { gap: 6px; }
+.pnav__tab {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  padding: 12px 14px 12px 16px;
+  border-radius: 11px;
+  border: 1px solid transparent;
+  text-align: left;
+  position: relative;
+  color: var(--text-dim);
+  transition: color var(--fast), background-color var(--fast);
+}
+.pnav__tab b { font-size: 15px; font-weight: 750; color: var(--text); letter-spacing: -.005em; }
+.pnav__tab small { font-size: 11.5px; line-height: 1.35; color: var(--text-faint); }
+.pnav__tab:hover { background: var(--surface); }
+.pnav__tab.is-on {
+  background: var(--accent-soft);
+  border-color: var(--accent-line);
+}
+.pnav__tab.is-on::before {
+  content: "";
+  position: absolute;
+  left: 0; top: 10px; bottom: 10px;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background: var(--accent);
+}
+.pnav__tab.is-on b { color: var(--accent-text); }
+.pnav__tab.is-on small { color: var(--text-dim); }
+
+/* Cabecera de página */
+.page__inner { max-width: 740px; padding: var(--sp-6) var(--sp-8) 64px; }
+.pagehead { margin-bottom: 26px; }
+.pagehead h1 { font-size: 30px; font-weight: 800; letter-spacing: -.03em; line-height: 1.1; }
+.pagehead p { font-size: 13.5px; color: var(--text-dim); max-width: 60ch; margin-top: 4px; }
+
+/* Cada sección es una tarjeta. */
+.sec {
+  padding: 22px 26px 12px;
+  border-radius: 14px;
+  border: 1px solid var(--line-hi);
+  background: var(--surface);
+}
+.sec + .sec, .launch + .sec, .sec + .launch, .launch + .launch, .adv + .sec, .sec + .adv { margin-top: 18px; }
+.sec--feature {
+  padding: 24px 26px 14px;
+  border-color: var(--accent-line);
+  background:
+    radial-gradient(120% 100% at 8% 0%, rgb(var(--accent-rgb) / 16%), transparent 64%),
+    var(--surface);
+}
+.sec__head {
+  margin: 0 0 8px;
+  padding: 0 0 14px;
+  border-bottom: 1px solid var(--line-hi);
+}
+.sec__title {
+  position: relative;
+  padding-left: 14px;
+  font-size: 19px;
+  font-weight: 800;
+  letter-spacing: -.015em;
+  line-height: 1.2;
+}
+.sec__title::before {
+  content: "";
+  position: absolute;
+  left: 0; top: 2px; bottom: 2px;
+  width: 4px;
+  border-radius: 2px;
+  background: var(--accent);
+}
+.sec__desc {
+  max-width: none;
+  margin: 6px 0 4px;
+  font-size: 12.5px;
+  color: var(--text-dim);
+  line-height: 1.55;
+}
+.subhead { margin: 18px 0 6px; font-size: 11.5px; letter-spacing: .1em; color: var(--accent-text); }
+
+/* Cada ajuste: nombre claro, explicación aparte y más apagada. */
+.row { min-height: 56px; padding: 10px 14px; margin: 0 -14px; gap: var(--sp-5, 20px); }
+.row:hover { background: rgb(255 255 255 / 3.5%); }
+.row__label { font-size: 14.5px; font-weight: 650; }
+.row__desc { font-size: 12.5px; color: var(--text-dim); line-height: 1.45; }
+.row__val { font-size: 13px; font-weight: 600; }
+.tag { font-size: 10.5px; padding: 3px 9px; }
+
+/* «Avanzado», como una tarjeta más. */
+.adv { margin-top: 18px; border-radius: 14px; border: 1px dashed var(--line-hi); background: transparent; }
+.adv > summary { padding: 14px 20px; font-size: 14.5px; font-weight: 700; }
+.adv[open] { background: var(--surface); border-style: solid; }
+.adv__body { padding: 0 20px 18px; }
+.adv__body .sec { padding: 16px 0 6px; border: 0; background: none; }
+
+/* La tarjeta que abre una sección en ventana propia. */
+.launch {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 20px 24px;
+  border-radius: 14px;
+  border: 1px solid var(--accent-line);
+  background:
+    linear-gradient(100deg, rgb(var(--accent-rgb) / 16%), transparent 70%),
+    var(--surface);
+  text-align: left;
+  transition: border-color var(--fast), background-color var(--fast);
+}
+.launch:hover { border-color: var(--accent); }
+.launch__text { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.launch__title { font-family: var(--font-display); font-size: 19px; font-weight: 800; letter-spacing: -.015em; color: var(--text); }
+.launch__desc { font-size: 12.5px; color: var(--text-dim); line-height: 1.5; }
+.launch__go {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  height: 34px;
+  padding: 0 18px;
+  border-radius: 9px;
+  background: var(--accent);
+  color: var(--accent-text-on);
+  font-size: 13px;
+  font-weight: 750;
+}
+.launch__go::after { content: "→"; margin-left: 8px; }
+
+/* La ventana de una sección. */
+.secmodal {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 28px;
+}
+.secmodal[hidden] { display: none; }
+.secmodal__scrim { position: absolute; inset: 0; background: rgba(4, 3, 8, 0.72); }
+.secmodal__card {
+  position: relative;
+  width: min(760px, 100%);
+  max-height: 100%;
+  overflow-y: auto;
+  padding: 30px 34px 22px;
+  border-radius: 18px;
+  border: 1px solid var(--accent-line);
+  background:
+    radial-gradient(120% 50% at 50% 0%, rgb(var(--accent-rgb) / 12%), transparent 62%),
+    linear-gradient(168deg, var(--bg-2), var(--bg-0) 78%);
+  box-shadow: 0 30px 70px -20px rgba(0, 0, 0, 0.9);
+}
+.secmodal__close {
+  position: absolute;
+  top: 14px; right: 14px;
+  width: 32px; height: 32px;
+  display: grid;
+  place-items: center;
+  border-radius: 9px;
+  color: var(--text-dim);
+  background: var(--surface);
+  border: 1px solid var(--line);
+}
+.secmodal__close svg { width: 15px; height: 15px; }
+.secmodal__close:hover { color: var(--text); background: var(--surface-hi); }
+.secmodal .sec { padding: 0; border: 0; background: none; margin: 0; }
+.secmodal .sec__head { padding-right: 44px; }
+.secmodal .sec__title { font-size: 24px; }
