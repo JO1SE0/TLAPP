@@ -1851,6 +1851,26 @@ function setActiveGame(contents) {
  * sí misma, para que la interfaz se ponga en esa pantalla sin esperar a que el
  * juego lo vuelva a contar.
  */
+/**
+ * Lo último que contó cada pestaña de juego. Es el respaldo de los avisos que
+ * llegan por evento: si a la interfaz se le pierde uno (o llega antes de que se
+ * suscriba), se pone al día con esto sin depender de que la pantalla cambie otra vez.
+ */
+handle('tabs:snapshot', () => {
+  const out = {};
+  for (const contents of gameTabs) {
+    if (contents.isDestroyed()) continue;
+    const info = tabInfo.get(contents) || {};
+    out[contents.id] = {
+      view: info.view || null,
+      viewSeq: info.viewSeq || 0,
+      room: info.room || null,
+      playing: !!info.playing
+    };
+  }
+  return out;
+});
+
 handle('tabs:activate', (_e, id) => {
   const contents = [...gameTabs].find((c) => !c.isDestroyed() && c.id === id);
   if (!contents) throw new Error('Esa pestaña ya no existe.');
@@ -3481,11 +3501,14 @@ listen('game:view', (e, kind) => {
   const info = tabInfo.get(e.sender);
   if (info) {
     info.view = kind;
+    // Número de aviso: la interfaz lo compara contra el último que recibió para
+    // darse cuenta de si se le perdió alguno (ver `reconcileTabs` en app.js).
+    info.viewSeq = (info.viewSeq || 0) + 1;
     // Fuera de una sala no hay sala: si quedara guardado, al activar la
     // pestaña se contaría el nombre de la anterior.
     if (kind === 'roomlist') { info.room = null; info.playing = false; }
   }
-  send('game:view', kind, tabMeta(e));
+  send('game:view', kind, { ...tabMeta(e), seq: info ? info.viewSeq : 0 });
 });
 
 /**

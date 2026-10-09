@@ -1420,14 +1420,19 @@ function watchViews(doc) {
  */
 function watchGame() {
   let delay = 60;
+  // Después de cargar un documento nuevo (entrar a una sala, salir) la pantalla
+  // cambia varias veces seguidas y un aviso perdido se nota: se mira cada 300 ms
+  // durante 20 s y recién después se afloja a 1,2 s para no robarle tiempo al juego.
+  let fastUntil = 0;
   const tick = () => {
     const doc = gameDocument();
     if (doc && doc !== lastDocument) {
       lastDocument = doc;
       safe(onNewGameDocument, doc);
-      delay = 1200; // ya está estilado: se puede aflojar
+      fastUntil = Date.now() + 20000;
       ipcRenderer.send('game:themed');
     }
+    if (doc) delay = Date.now() < fastUntil ? 300 : 1200;
     /*
      * La vista se vuelve a mirar en cada vuelta, aunque el documento sea el
      * mismo.

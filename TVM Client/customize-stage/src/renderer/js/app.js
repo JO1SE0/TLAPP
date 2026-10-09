@@ -275,11 +275,11 @@ const recentToasts = new Map();
  */
 function toast(message, kind = '', action = null) {
   const text = String(message || '').trim();
-  if (!text) return;
+  if (!text) return null;
 
   const now = Date.now();
   const last = recentToasts.get(text);
-  if (last && now - last < 1200) return;
+  if (last && now - last < 1200) return null;
   recentToasts.set(text, now);
   if (recentToasts.size > 30) recentToasts.clear();
 
@@ -300,10 +300,17 @@ function toast(message, kind = '', action = null) {
   }
 
   $('#toasts').append(node);
-  setTimeout(() => {
-    node.classList.add('is-out');
-    node.addEventListener('animationend', () => node.remove(), { once: true });
-  }, action ? 14000 : 3200);
+  setTimeout(() => dismissToast(node), action ? 14000 : 3200);
+  return node;
+}
+
+/** Saca un aviso ya: lo usa el «Entrando a la sala…» cuando se terminó de entrar. */
+function dismissToast(node) {
+  if (!node || !node.isConnected || node.classList.contains('is-out')) return;
+  node.classList.add('is-out');
+  node.addEventListener('animationend', () => node.remove(), { once: true });
+  // Por si la animación no corre (ventana en segundo plano): no queda colgado.
+  setTimeout(() => node.remove(), 600);
 }
 
 /**
@@ -1797,7 +1804,8 @@ async function doJoin(tokenOrLink) {
   setView('play');
   setStage('game');
   showLoading(t('game.connecting'));
-  toast(t('toast.joining'), 'ok');
+  dismissToast(state.joiningToast);
+  state.joiningToast = toast(t('toast.joining'), 'ok');
   return true;
 }
 
@@ -6613,9 +6621,10 @@ function tabLabel(tab) {
   if (s.gameRoomName) return s.gameRoomName;
   if (s.joinedRoomName && kind !== 'roomlist') return s.joinedRoomName;
   if (!kind) {
-    return tab === state.activeTab && state.stage === 'game'
-      ? t('tabs.connecting')
-      : t('tabs.loading');
+    // Todavía no llegó el aviso de pantalla: se usa lo que la interfaz sí sabe.
+    // En la lista de salas (escenario «browser») es el menú, no «Cargando…».
+    if (tab === state.activeTab) return state.stage === 'game' ? t('tabs.connecting') : t('tabs.lobby');
+    return t('tabs.loading');
   }
   if (kind === 'roomlist') return t('tabs.lobby');
   if (kind === 'connecting') return t('tabs.connecting');
@@ -7010,6 +7019,83 @@ const GAME_STAGES = {
 };
 
 /** Pantallas donde el juego ya terminó de cargar y se puede mostrar. */
+/**
+ * Un aviso de «cambió la pantalla» de una pestaña de juego, venga por evento o
+ * de la consulta de respaldo (`reconcileTabs`).
+ */
+function handleViewEvent(kind, meta) {
+  const { s, active, tab } = tabBucket(meta);
+  if (tab && meta && Number.isFinite(meta.seq)) tab.viewSeq = Math.max(tab.viewSeq || 0, meta.seq);
+  if (!active) {
+    // Una pestaña de atrás cambió de pantalla: sólo cambia su rótulo. Si
+    // volvió a la lista, lo de la sala en la que estaba ya no vale.
+    s.gameView = kind;
+    if (kind === 'roomlist') {
+      s.gameRoomName = null;
+      s.joinedRoomName = null;
+      s.playing = false;
+    }
+    renderTabs();
+    return;
+  }
+  const era = state.gameView;
+  onGameView(kind);
+  // Abrir una grabación dispara el análisis solo. Salir de ella tira lo que
+  // se había leído: el resumen es de la grabación, no de la pantalla.
+  if (kind === 'replay' && era !== 'replay') scheduleAutoAnalyze();
+  else if (kind !== 'replay' && era === 'replay') {
+    state.summary = null;
+    state.summaryError = null;
+    state.replayPath = null;
+  }
+  renderTabs();
+}
+
+/**
+ * Respaldo de los avisos de pantalla.
+ *
+ * La interfaz decide qué mostrar —la lista de salas propia, el velo de
+ * «Conectando…», el rótulo de cada pestaña— según el último «cambió la
+ * pantalla» que le llega del juego. Si uno se pierde (llegó antes de que la
+ * interfaz se suscribiera, o se cruzó con otro), todo queda desfasado: el velo
+ * puesto con la sala ya conectada, la pestaña diciendo «Cargando…» o, al salir
+ * de una sala, la lista nativa de HaxBall en lugar de la nuestra.
+ *
+ * El proceso principal numera cada aviso. Una vez por segundo se le pregunta el
+ * último número de cada pestaña y, si es mayor que el que esta interfaz vio, se
+ * aplica el estado actual. Si no se perdió nada, no hace nada.
+ */
+let reconciling = false;
+async function reconcileTabs() {
+  if (reconciling || document.hidden || !state.tabs.length) return;
+  reconciling = true;
+  try {
+    const snap = await tvm.tabs.snapshot();
+    for (const tab of state.tabs.slice()) {
+      const info = tab.wcId != null ? snap[tab.wcId] : null;
+      if (!info) continue;
+      if (info.view && info.viewSeq > (tab.viewSeq || 0)) {
+        handleViewEvent(info.view, { tab: tab.wcId, seq: info.viewSeq });
+      }
+      // El nombre de la sala también puede haberse perdido.
+      const bucket = tab === state.activeTab ? state : tab.snap;
+      if (info.room && bucket.gameRoomName !== info.room && info.view && info.view !== 'roomlist') {
+        bucket.gameRoomName = info.room;
+        if (tab === state.activeTab) {
+          pushPresence();
+          if (state.stage === 'game') hideLoading();
+        }
+        renderTabs();
+      }
+    }
+  } catch {
+    /* sin respaldo esta vuelta: la próxima */
+  } finally {
+    reconciling = false;
+  }
+}
+setInterval(reconcileTabs, 1000);
+
 const SETTLED = new Set(['roomlist', 'room', 'game', 'disconnected', 'dialog', 'password', 'replay']);
 
 function onGameView(kind) {
@@ -7018,7 +7104,12 @@ function onGameView(kind) {
   state.gameView = kind;
   setStage(GAME_STAGES[kind] || 'browser');
   // El «Conectando…» se mantiene hasta estar realmente dentro de la sala.
-  if (state.themed && (SETTLED.has(kind) || kind === 'connecting')) hideLoading();
+  // Estar en la sala o en la partida no necesita que el tema ya esté confirmado:
+  // esperar ese aviso era lo que dejaba el velo puesto con la sala ya conectada.
+  if (kind === 'room' || kind === 'game' || kind === 'replay') {
+    hideLoading();
+    dismissToast(state.joiningToast);
+  } else if (state.themed && (SETTLED.has(kind) || kind === 'connecting')) hideLoading();
   else if (kind === 'connecting') showLoading(t('game.connecting'));
   pushPresence();
   /*
@@ -7372,36 +7463,16 @@ async function boot() {
   applyResolution();
   state.applyResolution = applyResolution;
 
-  tvm.game.onView((kind, meta) => {
-    const { s, active } = tabBucket(meta);
-    if (!active) {
-      // Una pestaña de atrás cambió de pantalla: sólo cambia su rótulo. Si
-      // volvió a la lista, lo de la sala en la que estaba ya no vale.
-      s.gameView = kind;
-      if (kind === 'roomlist') {
-        s.gameRoomName = null;
-        s.joinedRoomName = null;
-        s.playing = false;
-      }
-      renderTabs();
-      return;
-    }
-    const era = state.gameView;
-    onGameView(kind);
-    // Abrir una grabación dispara el análisis solo. Salir de ella tira lo que
-    // se había leído: el resumen es de la grabación, no de la pantalla.
-    if (kind === 'replay' && era !== 'replay') scheduleAutoAnalyze();
-    else if (kind !== 'replay' && era === 'replay') {
-      state.summary = null;
-      state.summaryError = null;
-      state.replayPath = null;
-    }
-    renderTabs();
-  });
+  tvm.game.onView((kind, meta) => handleViewEvent(kind, meta));
+
   tvm.game.onRoomName((name, meta) => {
     const { s, active } = tabBucket(meta);
     s.gameRoomName = name || null;
-    if (active) pushPresence();
+    if (active) {
+      pushPresence();
+      // Si la sala ya tiene nombre, ya estamos adentro: el velo sobra.
+      if (name && state.stage === 'game') { hideLoading(); dismissToast(state.joiningToast); }
+    }
     renderTabs();
   });
   tvm.game.onThemed(() => {

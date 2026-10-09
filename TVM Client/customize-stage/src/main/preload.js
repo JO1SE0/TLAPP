@@ -248,6 +248,8 @@ contextBridge.exposeInMainWorld('tvm', {
   tabs: {
     /** Devuelve lo último que esa pestaña contó de sí: pantalla, sala, si juega. */
     activate: (webContentsId) => call('tabs:activate', webContentsId),
+    /** Estado actual de todas las pestañas, por id de webContents (respaldo de los avisos). */
+    snapshot: () => call('tabs:snapshot'),
     /** `'new'`, `'close'`, `'next'` o `'prev'`, desde adentro del juego. */
     onKey: (cb) => on('tabs:key', cb)
   },
