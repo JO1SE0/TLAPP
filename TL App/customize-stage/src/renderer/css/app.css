@@ -4118,3 +4118,46 @@ button, input, select, textarea { font-family: var(--font); }
 }
 html[data-animations="off"] .app .browser::before { animation: none; }
 input[type="color"].is-unset { opacity: .45; }
+
+
+/* ── Ajustes del menú: link en el medio, lista más angosta, última sala con color ── */
+
+/* El link de sala, más grande y centrado entre las pestañas y los botones. */
+.linkbar {
+  flex: 0 1 480px;
+  min-width: 220px;
+  height: 38px;
+  padding: 0 4px 0 14px;
+  gap: 10px;
+  border-radius: 9px;
+  border-color: var(--line-hi);
+}
+.linkbar__ico { width: 16px; height: 16px; color: var(--accent-text); }
+.linkbar input[type="text"] { flex: 1 1 auto; width: auto; min-width: 0; height: 28px; font-size: 13.5px; }
+.linkbar:focus-within input[type="text"] { width: auto; }
+.linkbar__go { width: 30px; height: 30px; border-radius: 7px; background: var(--accent-soft); color: var(--accent-text); }
+.linkbar__go svg { width: 16px; height: 16px; }
+@media (max-width: 1100px) { .linkbar { flex-basis: 320px; } }
+
+/* La lista de salas, más angosta: había mucho aire vacío en el medio de cada fila. */
+.browser__shell { max-width: 980px; padding: 26px 28px 28px; }
+
+/* «Volver a la última sala»: con color del club para que se vea de lejos. */
+.lastroom {
+  min-height: 46px;
+  padding: 0 16px;
+  gap: 10px;
+  border: 1px solid var(--accent);
+  border-radius: 9px;
+  background:
+    linear-gradient(90deg, rgb(var(--accent-rgb) / 34%), rgb(var(--accent-rgb) / 10%) 70%),
+    var(--bg-1);
+  color: var(--accent-text);
+  box-shadow: 0 0 0 1px rgb(var(--accent-rgb) / 18%), 0 6px 20px -10px rgb(var(--accent-rgb) / 70%);
+  font-size: 13.5px;
+  font-weight: 650;
+}
+.lastroom svg { color: var(--accent-text); }
+.lastroom b { color: #fff; font-weight: 800; font-size: 14.5px; }
+.lastroom:hover { background: linear-gradient(90deg, rgb(var(--accent-rgb) / 46%), rgb(var(--accent-rgb) / 16%) 70%), var(--bg-1); }
+.toplast { border-color: var(--accent); background: rgb(var(--accent-rgb) / 22%); }

@@ -17,7 +17,6 @@
 
 const { ipcRenderer } = require('electron');
 const ball3d = require('./ball-3d');
-const netRipple = require('./net-ripple');
 const lookfx = require('./look');
 const zoomControl = require('./game-zoom');
 const themes = require('./themes');
@@ -574,10 +573,22 @@ function applyClientStyles(doc) {
   const chatScale = clampNum(vis.chatScale, 0.7, 1.8, 1);
   const chatBg = Number(vis.chatBg);
   const chatFamily = FONT_FAMILIES[vis.chatFont];
+  /*
+   * Mismo selector que el del tema (`.chatbox-view-contents > .log …`) más un
+   * ancestro: así gana por especificidad sin depender del orden de las hojas.
+   * Antes el tamaño se pedía en % con un selector más flaco y el tema, que fija
+   * px con !important, lo pisaba: la escala no hacía nada.
+   */
+  const CHAT = '.chatbox-view .chatbox-view-contents > .log .log-contents';
   const chatCss = [
-    chatScale !== 1 ? `.chatbox-view-contents .log-contents p { font-size: ${Math.round(chatScale * 100)}% !important; }` : '',
-    chatBg >= 0 && chatBg <= 0.95 ? `.chatbox-view-contents .log-contents { background: rgba(0, 0, 0, ${chatBg.toFixed(2)}) !important; }` : '',
-    chatFamily ? `.chatbox-view-contents .log-contents p, .chatbox-view-contents .input input { font-family: ${chatFamily} !important; }` : ''
+    chatScale !== 1
+      ? `${CHAT} p { font-size: ${(15 * chatScale).toFixed(1)}px !important; }\n    ${CHAT} p.notice { font-size: ${(14 * chatScale).toFixed(1)}px !important; }\n    .chatbox-view .chatbox-view-contents > .input input[type="text"] { font-size: ${(14.5 * chatScale).toFixed(1)}px !important; }`
+      : '',
+    // Fondo propio. Con poco fondo el texto queda sobre la cancha: se refuerza la sombra.
+    chatBg >= 0 && chatBg <= 0.95
+      ? `html .chatbox-view .chatbox-view-contents.chatbox-view-contents { background: rgba(8, 12, 22, ${chatBg.toFixed(2)}) !important; }\n    ${CHAT} { background: transparent !important; }${chatBg < 0.4 ? `\n    ${CHAT} p { text-shadow: 0 0 3px #000, 0 1px 2px #000, 0 0 6px rgba(0,0,0,.9) !important; }` : ''}`
+      : '',
+    chatFamily ? `${CHAT} p, .chatbox-view .chatbox-view-contents > .input input { font-family: ${chatFamily} !important; }` : ''
   ].join('\n    ');
 
   style.textContent = `
@@ -1007,6 +1018,7 @@ function watchScore(doc) {
             // sólo el aviso a la interfaz, que sí necesita la confirmación
             // porque un marcador que sube y baja es una ilusión de la
             // extrapolación.
+            noteGoalNames(goal);
             ipcRenderer.send('game:goal', goal);
           }
         }
@@ -4421,36 +4433,11 @@ let currentStadium = null;
 let ballDrawFailed = false;
 let ball3dLogged = false;
 
-/** Medidas de la cancha para la red. Más permisivo que `pitchBounds`: no exige fondo propio. */
-function rippleBounds(stadium) {
-  const f = tracker.fields && tracker.fields.pitch;
-  if (!f || !stadium) return null;
-  const halfW = Number(stadium[f.halfW]);
-  const halfH = Number(stadium[f.halfH]);
-  if (!(halfW > 0) || !(halfH > 0)) return null;
-  return { halfW, halfH };
-}
-
-/** La red de los arcos y la medida de los palos: va aparte, sin el tamaño de la pelota. */
-function netStep(ctx, x, y, r, indice) {
-  // La red de los arcos se dibuja una vez por cuadro, junto con la pelota (disco 0).
-  if (state.config.pitch && state.config.pitch.netRipple && !(state.config.perf && state.config.perf.flatGraphics)) {
-    try {
-      const b = rippleBounds(currentStadium);
-      if (b) {
-        if (indice === 0) netRipple.draw(ctx, b.halfW, x);
-        else if (indice > 0) netRipple.notePost(x, y, r, b.halfW);
-      }
-    } catch { /* un adorno no puede romper el dibujo */ }
-  }
-}
-
 /**
  * Lo que el juego llama por cada disco sin jugador. Acá se resuelve el tamaño
  * y el grosor propios de la pelota; el dibujo en sí está en `drawBallInner`.
  */
 function drawBall(ctx, x, y, r, indice) {
-  netStep(ctx, x, y, r, indice);
   const wantSize = indice === 0 && visual.ballSize !== 1;
   if (wantSize) {
     // El trazo del círculo ya está armado con el radio de HaxBall, y un trazo
@@ -5543,14 +5530,8 @@ function installTracking(view) {
     }
     // El destello ya sabe de qué color va, sin esperar al marcador del DOM.
     if (scored) noteGoalTeam(scored);
+    goalTextArmedUntil = Date.now() + 400;
     try { goalImpact(); } catch (e) {}
-    try {
-      if (state.config.pitch && state.config.pitch.netRipple) {
-        netRipple.trigger();
-        const b = rippleBounds(currentStadium);
-        log('info', `red: gol detectado (estadio=${!!currentStadium}, medidas=${b ? b.halfW + 'x' + b.halfH : 'no'})`, 'juego');
-      }
-    } catch (e) {}
     return playGoalSound();
   };
 
@@ -5624,7 +5605,7 @@ function installTracking(view) {
    */
   let skinBroken = false;
   view.__tvmSkin = (ctx, w, h, stadium) => {
-    if (stadium !== currentStadium) { currentStadium = stadium; try { netRipple.reset(); lookfx.resetTrail(); } catch (e) {} }
+    if (stadium !== currentStadium) { currentStadium = stadium; try { lookfx.resetTrail(); } catch (e) {} }
     if (skinBroken) return;
     ownDraw++;
     try {
@@ -6872,6 +6853,70 @@ function noteGoalTeam(team) {
   lastGoal.at = Date.now();
 }
 
+/**
+ * Quién la metió y quién la dio, para escribirlo debajo del «GOL» del efecto.
+ * Llega por dos caminos —el gol del motor, ya con autor, o el marcador del DOM
+ * unos 400 ms después— y en los dos se completa el cartel que ya está en pantalla.
+ */
+const goalNames = { scorer: null, assist: null, own: false, at: 0 };
+
+function noteGoalNames(goal) {
+  if (!goal) return;
+  goalNames.scorer = goal.scorer || null;
+  goalNames.assist = goal.assist || null;
+  goalNames.own = !!goal.own;
+  goalNames.at = Date.now();
+  paintGoalNames();
+}
+
+/** Escribe los nombres en el cartel si está armado y el gol es reciente. */
+function paintGoalNames() {
+  if (!flashEl || !flashEl.isConnected) return;
+  const box = flashEl.querySelector('.tvm-gn');
+  if (!box) return;
+  const fresh = Date.now() - goalNames.at < 2500;
+  const scorer = fresh ? goalNames.scorer : null;
+  const assist = fresh && !goalNames.own ? goalNames.assist : null;
+  box.firstChild.textContent = scorer ? (goalNames.own ? `EN CONTRA · ${scorer}` : scorer) : '';
+  box.lastChild.textContent = assist ? `Asist. ${assist}` : '';
+  box.style.display = scorer || assist ? '' : 'none';
+}
+
+/*
+ * El cartel grande que dibuja HaxBall en la cancha («Rojo» arriba, «¡GOL!»
+ * abajo) sobra cuando está el efecto del club: se lo saca en el `fillText`.
+ *
+ * Son dos renglones y el de arriba («Rojo» / «Azul») es el mismo que usa el
+ * «¡GANA!», así que no se puede tirar a ciegas. El de abajo sí es sólo del gol:
+ * cuando aparece se anota la hora, y el de arriba se saltea únicamente mientras
+ * esa hora sea fresca (el renglón de arriba se dibuja ANTES, por eso también se
+ * arma una ventana corta desde el aviso del gol del motor).
+ */
+const GOAL_LINE_TOP = new Set(['Rojo', 'Azul', 'Red is', 'Blue is']);
+const GOAL_LINE_MAIN = new Set(['¡GOL!', 'Scores!']);
+let goalTextSeenAt = 0;
+let goalTextArmedUntil = 0;
+
+function goalTextReplaced() {
+  const cfg = state.config.pitch;
+  return !!(cfg && cfg.goalFlash && state.config.appearance && state.config.appearance.animations);
+}
+
+/** ¿Este `fillText` es parte del cartel de gol de HaxBall? Barato: casi siempre sale en el primer `if`. */
+function isGoalAnnounce(text) {
+  if (typeof text !== 'string' || text.length > 7) return false;
+  if (GOAL_LINE_MAIN.has(text)) {
+    if (!goalTextReplaced()) return false;
+    goalTextSeenAt = Date.now();
+    return true;
+  }
+  if (GOAL_LINE_TOP.has(text)) {
+    const now = Date.now();
+    return (now - goalTextSeenAt < 250 || now < goalTextArmedUntil) && goalTextReplaced();
+  }
+  return false;
+}
+
 function ensurePitchFxStyle(doc) {
   if (fxStyled || !doc || !doc.head) return;
   fxStyled = true;
@@ -6941,9 +6986,9 @@ function ensurePitchFxStyle(doc) {
     #tvm-goal-flash.is-on .tvm-gl { animation: tvmGoalLogo 1.1s cubic-bezier(.2,.75,.25,1) both; }
     @keyframes tvmGoalText {
       0%   { opacity: 0; transform: translate(-50%, 30%) scale(.7); letter-spacing: .5em; }
-      24%  { opacity: 1; transform: translate(-50%, 0) scale(1.08); letter-spacing: .1em; }
-      40%  { opacity: 1; transform: translate(-50%, 0) scale(1); }
-      78%  { opacity: 1; transform: translate(-50%, 0) scale(1); }
+      11%  { opacity: 1; transform: translate(-50%, 0) scale(1.08); letter-spacing: .1em; }
+      18%  { opacity: 1; transform: translate(-50%, 0) scale(1); }
+      84%  { opacity: 1; transform: translate(-50%, 0) scale(1); }
       100% { opacity: 0; transform: translate(-50%, -20%) scale(1); }
     }
     #tvm-goal-flash .tvm-gt {
@@ -6954,7 +6999,25 @@ function ensurePitchFxStyle(doc) {
       text-shadow: 0 4px 0 #0c1630, 0 0 22px rgb(208 184 120 / 55%);
       transform: translate(-50%, 0);
     }
-    #tvm-goal-flash.is-on .tvm-gt { animation: tvmGoalText 1.1s cubic-bezier(.2,.75,.25,1) both; }
+    #tvm-goal-flash.is-on .tvm-gt { animation: tvmGoalText 2.2s cubic-bezier(.2,.75,.25,1) both; }
+    /* Goleador y asistidor, debajo del GOL. */
+    #tvm-goal-flash .tvm-gn {
+      margin-top: calc(12vmin + clamp(32px, 9vmin, 92px) + 1.6vmin);
+      display: flex; flex-direction: column; align-items: center; gap: .6vmin;
+      white-space: nowrap; transform: translate(-50%, 0);
+      font-family: "Arial Black", Arial, sans-serif; text-align: center;
+    }
+    #tvm-goal-flash .tvm-gn > span:first-child {
+      font-size: clamp(18px, 4.4vmin, 44px); font-weight: 900; letter-spacing: .06em;
+      text-transform: uppercase; color: #f4f0df;
+      -webkit-text-stroke: 1.5px #0c1630; paint-order: stroke fill;
+      text-shadow: 0 3px 0 #0c1630, 0 0 16px rgb(208 184 120 / 45%);
+    }
+    #tvm-goal-flash .tvm-gn > span:last-child {
+      font-size: clamp(12px, 2.5vmin, 24px); font-weight: 700; letter-spacing: .08em;
+      color: #d0b878; text-shadow: 0 2px 0 #0c1630, 0 0 10px rgb(12 22 48 / 80%);
+    }
+    #tvm-goal-flash.is-on .tvm-gn { animation: tvmGoalText 2.2s cubic-bezier(.2,.75,.25,1) .08s both; }
     @keyframes tvmGoalSpark {
       0%   { opacity: 0; transform: translate(-50%, -50%) rotate(var(--rot)) scale(.4); }
       12%  { opacity: 1; }
@@ -7020,14 +7083,18 @@ function goalImpact() {
       crest.src = assetUrl('crest');
       const text = add('tvm-gt');
       text.textContent = 'GOL';
+      const names = add('tvm-gn');
+      names.append(doc.createElement('span'), doc.createElement('span'));
+      names.style.display = 'none';
       doc.body.append(flashEl);
     }
     flashEl.classList.remove('is-on');
     void flashEl.offsetWidth;
     flashEl.classList.add('is-on');
+    paintGoalNames();
     setTimeout(() => {
       if (flashEl) flashEl.classList.remove('is-on');
-    }, 1250);
+    }, 2400);
   }
 }
 
@@ -7573,8 +7640,10 @@ function realGoal(view, teamObj, room) {
   const doc = gameDocument();
   const seconds = S && match ? Number(match[S.time]) : NaN;
 
+  const credit = creditGoal(real, team, REAL_GOAL_GRACE_MS);
+  noteGoalNames(credit);
   ipcRenderer.send('game:goal', {
-    ...creditGoal(real, team, REAL_GOAL_GRACE_MS),
+    ...credit,
     clock: Number.isFinite(seconds) ? formatMatchSeconds(seconds) : matchClock(doc),
     score,
     replay: state.view === 'replay',
@@ -8548,6 +8617,7 @@ function installCanvasHooks(doc) {
     } else if (esTextura) {
       lastTextureMine = false;
     }
+    if (!esTextura && isGoalAnnounce(text)) return undefined;
     if (visual.names && !esTextura && ownDraw === 0) {
       return drawNameText(this, originalFillText, text, x, y, rest);
     }

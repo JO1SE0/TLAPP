@@ -2753,13 +2753,11 @@ const AVATAR_PRESETS = ['⚽', '🔥', '⭐', '💀', '👑', '🐐', '🚀', '�
 const LOOK_SWITCHES = {
   es: [
     { key: 'cleanMode', label: 'Sólo la cancha', description: 'Sin el menú ni los costados del sitio.' },
-    { key: 'animations', label: 'Animaciones', description: 'Apagalo para que todo sea instantáneo.' },
-    { key: 'goalBanner', label: 'Cartel de gol', description: 'El cartel estilo TV con autor y asistencia.', hint: 'El resumen del partido se sigue armando igual, esté puesto o no.' }
+    { key: 'animations', label: 'Animaciones', description: 'Apagalo para que todo sea instantáneo.' }
   ],
   en: [
     { key: 'cleanMode', label: 'Pitch only', description: "Hides HaxBall's site menu and side panels." },
-    { key: 'animations', label: 'Animations', description: 'Turn it off to make everything instant.' },
-    { key: 'goalBanner', label: 'Goal banner', description: 'The TV-style banner with scorer and assist.', hint: 'The match summary is still built the same, whether this is on or off.' }
+    { key: 'animations', label: 'Animations', description: 'Turn it off to make everything instant.' }
   ]
 };
 
@@ -3451,8 +3449,7 @@ function renderAvatarImage() {
  */
 function renderBallImage() {
   buildSwitches($('#ball3dSwitch'), [
-    { key: 'ball3d', label: t('ball.3d'), description: t('ball.3dHelp'), value: () => !!state.config.pitch.ball3d },
-    { key: 'netRipple', label: t('net.ripple'), description: t('net.rippleHelp'), value: () => !!state.config.pitch.netRipple }
+    { key: 'ball3d', label: t('ball.3d'), description: t('ball.3dHelp'), value: () => !!state.config.pitch.ball3d }
   ], (item, value) => patchConfig({ pitch: { [item.key]: value } }));
   const file = (state.config.vip || {}).ballImage || '';
   const face = $('#vipBallPreview');
@@ -7453,7 +7450,7 @@ function renderLookSections() {
 }
 
 /* Looks guardados: una foto de los ajustes visuales, con nombre. */
-const LOOK_PITCH_KEYS = ['ball3d', 'netRipple', 'selfRing', 'teamRings', 'goalFlash', 'goalShake', 'skin'];
+const LOOK_PITCH_KEYS = ['ball3d', 'selfRing', 'teamRings', 'goalFlash', 'goalShake', 'skin'];
 const LOOK_MAX = 12;
 
 function currentLookData() {
@@ -7824,54 +7821,15 @@ async function boot() {
     return share;
   }
 
-  let goalBannerTimer = null;
-
   tvm.game.onGoal((goal, meta) => {
     const team = goal.team === 'Red' ? 'Red' : 'Blue';
     const { s, active } = tabBucket(meta);
     s.liveGoals.push({ ...goal, team });
-    // El gol de una pestaña de atrás se anota para su resumen; el cartel es de
-    // lo que se está mirando.
+    // El gol de una pestaña de atrás se anota para su resumen. El cartel ya no
+    // existe: el efecto del gol (con goleador y asistidor) vive dentro del juego.
     if (!active) return;
-    showGoalBanner(team, goal);
     repaintStats();
   });
-
-  /**
-   * El cartel estilo TV. Se muestra igual en una partida que en un replay: es
-   * justamente donde más se quiere ver quién la mandó a guardar.
-   */
-  function showGoalBanner(team, goal) {
-    const banner = $('#tvmGoalBanner');
-    const assistWrap = $('#goalAssistWrap');
-
-    // Apagado no se dibuja, pero el gol se cuenta y entra al resumen igual: son
-    // dos cosas distintas y sólo se está sacando el cartel de la pantalla.
-    if (state.config.appearance.goalBanner === false) {
-      banner.hidden = true;
-      return;
-    }
-
-    banner.classList.toggle('goal-banner--red', team === 'Red');
-    banner.classList.toggle('goal-banner--blue', team === 'Blue');
-    $('#goalTitle').textContent = goal.own ? '¡GOL EN CONTRA!' : '¡GOL!';
-    // Sin parche del bundle no hay nombres: mejor cantar el gol del equipo que
-    // inventar un autor.
-    $('#goalScorer').textContent = goal.scorer || t(team === 'Red' ? 'stats.red' : 'stats.blue');
-
-    if (goal.assist) {
-      assistWrap.hidden = false;
-      $('#goalAssist').textContent = goal.assist;
-    } else {
-      assistWrap.hidden = true;
-    }
-
-    banner.hidden = false;
-    clearTimeout(goalBannerTimer);
-    // En un replay acelerado el cartel dura lo mismo EN PARTIDO, no en pantalla.
-    const speed = Math.max(1, Number(goal.speed) || 1);
-    goalBannerTimer = setTimeout(() => { banner.hidden = true; }, 5000 / speed);
-  }
 
   /**
    * Analiza la grabación abierta de punta a punta. El juego se queda quieto

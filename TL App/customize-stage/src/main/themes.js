@@ -940,15 +940,17 @@ ${each(FIELDS, ':focus')} {
    anuncios lo trae el host de la sala con sendAnnouncement, y pisarlo rompería
    los colores de su liga. */
 .chatbox-view-contents > .log .log-contents p {
-  font-size: 13.5px !important;
-  line-height: 1.45 !important;
+  font-size: 15px !important;
+  line-height: 1.5 !important;
+  /* Una sombra finita: lo que se lee sobre la cancha (fondo bajo) no se pierde. */
+  text-shadow: 0 1px 2px rgba(0,0,0,.85) !important;
 }
-.chatbox-view-contents > .log .log-contents > p:not(:last-child) { margin-bottom: 2px !important; }
+.chatbox-view-contents > .log .log-contents > p:not(:last-child) { margin-bottom: 3px !important; }
 /* Los avisos de la sala (entró, salió, empezó): apagados, que son contexto y
    no conversación. El verde de fábrica competía con los mensajes. */
 .chatbox-view-contents > .log .log-contents p.notice {
-  color: ${p.dim} !important;
-  font-size: 12.5px !important;
+  color: ${rgba(p.text, 0.74)} !important;
+  font-size: 14px !important;
 }
 /* Te nombraron: una marca a la izquierda y un fondo apenas, sin gritar. */
 .chatbox-view-contents > .log .log-contents p.highlight {
@@ -964,11 +966,11 @@ ${each(FIELDS, ':focus')} {
   padding-left: 8px !important;
 }
 /* El campo: 19 px de fábrica era un renglón para escribir con lupa. */
-.chatbox-view-contents > .input { height: 28px !important; }
+.chatbox-view-contents > .input { height: 32px !important; }
 .chatbox-view-contents > .input input[type="text"] {
   padding: 0 10px !important;
   border-radius: 4px !important;
-  font-size: 13.5px !important;
+  font-size: 14.5px !important;
 }
 .chatbox-view-contents > .autocompletebox {
   background: ${p.panel} !important;

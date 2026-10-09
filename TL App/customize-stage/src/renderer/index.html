@@ -132,6 +132,8 @@
           <svg data-icon viewBox="0 0 24 24"><path d="M4.5 12h14M13.2 6.4l5.8 5.6-5.8 5.6"/></svg>
         </button>
       </form>
+      <!-- Segundo resorte: deja el link en el medio de la barra. -->
+      <div class="topbar__drag"></div>
 
       <!-- Volver a la última sala, siempre a mano (aparece sólo si hay una guardada) -->
       <button class="toplast" id="topLastRoom" type="button" hidden>
@@ -265,11 +267,6 @@
       <!-- ═══ El juego (sólo visible dentro de una sala) ═══ -->
       <main class="stage" id="stage">
         <div class="stage__frame" id="stageFrame"></div>
-        <div id="tvmGoalBanner" class="goal-banner" hidden>
-          <div class="goal-banner__title" id="goalTitle">¡GOL!</div>
-          <div class="goal-banner__scorer" id="goalScorer">?</div>
-          <div class="goal-banner__assist" id="goalAssistWrap" hidden>Asistencia de <span id="goalAssist"></span></div>
-        </div>
 
         <div id="tvmStatsPanel" class="stats-panel" hidden>
           <div class="stats-panel__header">
