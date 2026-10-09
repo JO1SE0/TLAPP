@@ -1,0 +1,336 @@
+/* ══════════════════════════════════════════════════════════
+   TL App — tokens, base y fondo ambiental
+   ══════════════════════════════════════════════════════════
+   Los valores de acá son sólo el punto de partida: el tema
+   elegido los pisa desde JS (ver themes.js en el main), así
+   que la app entera cambia de color, no sólo el juego.
+   ══════════════════════════════════════════════════════════ */
+
+:root {
+  /* Pisados por el tema */
+  --accent: #8c702a;
+  --accent-text-on: #ffffff;
+
+  --bg-0: #090f1d;
+  --bg-1: #0d1930;
+  --bg-2: #142544;
+  --panel: #142544;
+  --panel-top: #1c3153;
+  --field: #0a1426;
+
+  --surface: rgba(255, 255, 255, 0.045);
+  --surface-hi: rgba(255, 255, 255, 0.08);
+  --line: rgba(255, 255, 255, 0.09);
+  --line-hi: rgba(255, 255, 255, 0.17);
+
+  /* Contraste: el gris de antes (#a49dbb / #6f6885) se perdía sobre el fondo.
+     Estos valores pasan 4.5:1 sobre --bg-0 en todos los temas oscuros. */
+  --text: #f4f0df;
+  --text-dim: #cec5a5;
+  --text-faint: #a79b70;
+
+  --team-red: #ff6b76;
+  --team-blue: #6ba8ff;
+  --shadow-strong: 0 18px 40px -24px rgba(0, 0, 0, 0.9);
+
+  /* Derivados del acento */
+  --accent-soft: rgb(var(--accent-rgb) / 20%);
+  --accent-line: rgb(var(--accent-rgb) / 42%);
+  /* Antes esto se mezclaba siempre con blanco y en el tema claro quedaba
+     ilegible. `color-contrast` no está disponible, así que se mezcla con el
+     texto del tema, que ya es el color que se lee sobre este fondo. */
+  --accent-text: var(--accent-mid);
+  /* --accent-2, --accent-mid, --accent-lift y los `*-rgb` del acento los manda
+     el proceso principal (themes.js → appVars): dependen del acento que eligió
+     el usuario y hay que mezclarlos de verdad, cosa que en Chromium 91 el CSS
+     no puede hacer solo.
+
+     --accent-2 es el otro extremo de los degradés. En los temas de dos acentos
+     (Aurora, Ocaso, Nebulosa, Amanecer) es el segundo color de verdad; en el
+     resto es el acento apagado contra el fondo, que es lo que se dibujaba acá
+     desde siempre. Por eso ninguna de estas reglas necesitó cambiar. */
+
+  /* Los `-rgb` acompañan al color para poder pedir transparencias con
+     `rgb(var(--x-rgb) / N%)`. Si se cambia un color hay que cambiar los dos. */
+  --danger: #ff5a72;
+  --danger-rgb: 255 90 114;
+  --ok: #3ddc97;
+  --warn: #ffbe5c;
+  --warn-rgb: 255 190 92;
+
+  --radius: 14px;
+  --radius-sm: 10px;
+
+  /*
+   * ═══ Escala tipográfica ═══
+   *
+   * Había quince tamaños sueltos repartidos por la hoja (9, 9.5, 10, 10.5, 11,
+   * 11.5, 12, 12.5, 13, 13.5, 14, 15, 16, 18, 20). Quince tamaños no son una
+   * jerarquía: son quince decisiones tomadas de a una, cada una a ojo, y el
+   * resultado es que nada se lee como parte de lo mismo.
+   *
+   * Son cinco pasos y cada uno tiene un trabajo:
+   *
+   *   --fs-2xs ... la micro-etiqueta en mayúscula: pestañas del índice, tags.
+   *   --fs-xs .... la letra chica: descripciones, notas, unidades.
+   *   --fs-sm .... etiquetas de control y texto secundario.
+   *   --fs-md .... el nombre de un ajuste. El cuerpo de las páginas.
+   *   --fs-lg .... título de sección.
+   *   --fs-xl .... título de página. Uno solo por pantalla.
+   *
+   * Lo de afuera del panel (el juego, el dock, el perfil) todavía usa números
+   * propios; estos tokens son para lo que se rediseñó.
+   */
+  --fs-2xs: 10px;
+  --fs-xs: 11.5px;
+  --fs-sm: 12.5px;
+  --fs-md: 13.5px;
+  --fs-lg: 16px;
+  --fs-xl: 24px;
+
+  /*
+   * ═══ Radios ═══
+   *
+   * Dos, no cinco. Uno para lo que se toca (controles, botones, filas) y otro
+   * para lo que contiene (superficies). El 99px de las píldoras se queda
+   * porque no es un radio: es «redondo del todo».
+   */
+  --r-ctl: 8px;
+  --r-surface: 12px;
+
+  /*
+   * ═══ Espaciado ═══
+   *
+   * Múltiplos de 4. Lo que separa dentro de un bloque, lo que separa un bloque
+   * de otro y lo que separa una sección de otra.
+   */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-6: 24px;
+  --sp-8: 32px;
+
+  /* Ancho del índice de secciones que va a la izquierda del panel. */
+  --pnav-w: 208px;
+
+  /*
+   * ═══ Duraciones ═══
+   *
+   * Se acortaron todas. Una transición no cuesta por existir: cuesta por cada
+   * cuadro que dura. Media pantalla animándose 0,45 s son ~30 cuadros a 60 Hz
+   * en los que el navegador tiene que volver a pintar; los mismos 0,18 s son
+   * 11. Con estos números el movimiento se sigue leyendo como movimiento y el
+   * trabajo por gesto baja a menos de la mitad.
+   *
+   * Lo que se anima también se recortó: sólo transform y opacity, que el
+   * compositor resuelve sin repintar. Ver el bloque de arriba de app.css.
+   */
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --fast: 0.1s var(--ease);
+  --mid: 0.16s var(--ease);
+  --slow: 0.22s var(--ease);
+
+  --font: "Outfit", "Segoe UI Variable Display", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --font-display: "Outfit", Bahnschrift, "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif;
+
+  --topbar-h: 48px;
+  --panel-w: 424px;
+  /* Ancho del riel de navegación. Se usa también para guardarlo dentro de una
+     sala (margen negativo de este mismo valor), así que va acá y no suelto. */
+  --rail-w: 72px;
+}
+
+/* En el tema claro los avisos de color puro se lavan sobre blanco */
+:root[data-scheme="light"] {
+  --danger: #d32a45;
+  --danger-rgb: 211 42 69;
+  --ok: #0f9f6e;
+  --warn: #b57200;
+  --warn-rgb: 181 114 0;
+}
+
+/*
+ * ═══ Interruptor global de animaciones ═══
+ *
+ * Apaga la decoración, NUNCA los indicadores de progreso. Un aro de carga
+ * congelado no es "sin animaciones": es una app colgada. Lo que lleva
+ * `data-keep-motion` queda afuera del apagón — son los cuatro lugares donde el
+ * movimiento ES la información (el aro de conectando, la barra de la pantalla
+ * de carga, la de descarga de actualizaciones y el botón esperando una tecla).
+ */
+:root[data-animations="off"] *:not([data-keep-motion]),
+:root[data-animations="off"] *:not([data-keep-motion])::before,
+:root[data-animations="off"] *:not([data-keep-motion])::after {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.001ms !important;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body { height: 100%; margin: 0; }
+
+body {
+  background: var(--bg-0);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 14px;
+  overflow: hidden;
+  user-select: none;
+  -webkit-font-smoothing: antialiased;
+}
+
+button, input, select { font: inherit; color: inherit; }
+button { cursor: pointer; border: 0; background: none; }
+h1, h2, h3, p, dl, dd { margin: 0; }
+svg { display: block; }
+
+/* Un `display` de autor le gana al atributo hidden del navegador. */
+[hidden] { display: none !important; }
+
+/* ── Fuente Outfit ──────────────────────────────────────── */
+@font-face {
+  font-family: "Outfit";
+  src: url("../fonts/outfit-400.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Outfit";
+  src: url("../fonts/outfit-600.woff2") format("woff2");
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Outfit";
+  src: url("../fonts/outfit-700.woff2") format("woff2");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+/**
+ * Muchas salas arman su nombre con caracteres de dibujo de caja (═ ━ ─ ╔).
+ * "Segoe UI" no los tiene, así que el navegador elegía cualquier fuente de
+ * respaldo y cada raya quedaba a distinta altura. Con unicode-range se fija
+ * una monoespaciada sólo para ese rango: alineadas y del mismo grosor.
+ */
+@font-face {
+  font-family: "TVM Box";
+  src: local("Cascadia Mono"), local("Consolas"), local("Lucida Console"), local("DejaVu Sans Mono");
+  unicode-range: U+2010-2015, U+2500-257F, U+2580-259F, U+25A0-25FF;
+}
+
+::selection { background: var(--accent-soft); }
+
+::-webkit-scrollbar { width: 7px; height: 7px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: var(--line-hi);
+  border: 2px solid transparent;
+  background-clip: content-box;
+  border-radius: 99px;
+}
+::-webkit-scrollbar-thumb:hover { background: var(--accent-line); background-clip: content-box; }
+
+/* ── Fondo ambiental ────────────────────────────────────── */
+.ambient {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  background: linear-gradient(180deg, var(--bg-1), var(--bg-0) 70%);
+}
+
+/* Sin `filter: blur()`.
+   Medido: con el desenfoque puesto, animar estas dos capas dejaba al proceso
+   de GPU en 2,5 núcleos completos ESTANDO QUIETO — el blur se vuelve a
+   rasterizar en cada cuadro y son capas de media pantalla. El degradé radial
+   ya sale difuso por sí solo, así que se ve prácticamente igual y no cuesta
+   nada: es un gradiente, no un filtro por píxel. */
+.blob {
+  position: absolute;
+  display: block;
+  border-radius: 50%;
+  opacity: 0.5;
+}
+/*
+ * Quietos.
+ *
+ * Medido en la máquina de Santi, la app sin estar en partida:
+ *
+ *   con las dos capas animándose ......... 370% de un núcleo (GPU 255, juego 112)
+ *   sin animarlas ........................  62%
+ *
+ * Una animación infinita a pantalla completa obliga al compositor a producir
+ * cuadros para siempre, y como los dos renderers (la app y el juego) cuelgan
+ * del mismo compositor, arrastraba también al del juego. Seis veces el consumo
+ * por un adorno que casi no se nota moverse: el degradé queda igual de lindo
+ * quieto.
+ *
+ * El aura de los temas VIP siguió girando un tiempo más y terminó igual, por la
+ * misma razón: en el fondo de la app ya no se mueve nada.
+ */
+.blob--1 {
+  width: 70vw; height: 70vw;
+  top: -30vw; left: -22vw;
+  /* Varias paradas suaves reemplazan al desenfoque: el borde se apaga solo. */
+  background: radial-gradient(circle closest-side, var(--accent) 0%, rgb(var(--accent-rgb) / 45%) 38%, transparent 72%);
+}
+.blob--2 {
+  width: 58vw; height: 58vw;
+  bottom: -26vw; right: -18vw;
+  background: radial-gradient(circle closest-side, var(--accent-2) 0%, rgb(var(--accent-2-rgb) / 45%) 40%, transparent 74%);
+  opacity: 0.4;
+}
+
+/* Sobre fondo claro los blobs quedan como manchones sucios */
+:root[data-scheme="light"] .blob { opacity: 0.18; }
+
+/* ── Aura (temas VIP) ───────────────────────────────────── *
+ *
+ * ═══ Ya no gira ═══
+ *
+ * Era la última animación infinita a pantalla completa que quedaba en el
+ * cliente, y encima con un `filter: blur()` encima. Un filtro no se compone: se
+ * recalcula píxel por píxel, y al girar sin parar obligaba al compositor a
+ * producir cuadros PARA SIEMPRE, estuvieras jugando o mirando la lista de
+ * salas. Como los dos renderers (la app y el juego) cuelgan del mismo
+ * compositor, se llevaba puestos también los cuadros de la cancha — es la razón
+ * de que apagar las animaciones se sintiera tan distinto.
+ *
+ * El cono de color queda igual, quieto: se pinta una vez y no vuelve a costar
+ * nada. El tema VIP se sigue reconociendo por el color, que es lo que se ve.
+ * Sin animación tampoco hace falta `will-change`, que reservaba una capa de
+ * composición permanente por algo que ya no se mueve.
+ *
+ * Con esto también se fue el interruptor «Fondo animado» de Aspecto: no queda
+ * ningún fondo que animar, así que era una casilla que no hacía nada. */
+.aura {
+  position: fixed;
+  inset: -30vmax;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.45;
+  background: conic-gradient(from 210deg, var(--aura-stops, transparent, transparent));
+  /* Un blur chico y una máscara radial en vez de blur(110px): el degradé cónico
+     ya trae la mezcla de color, el desenfoque grande sólo costaba GPU. */
+  filter: blur(26px) saturate(1.2);
+  -webkit-mask-image: radial-gradient(circle closest-side, #000 30%, transparent 78%);
+  mask-image: radial-gradient(circle closest-side, #000 30%, transparent 78%);
+}
+
+/* Sobre fondo claro el mismo cono se lee como una mancha de tinta y no como
+   luz: va más tenue, por la misma razón que los blobs. */
+:root[data-scheme="light"] .aura { opacity: 0.3; }
+
+/* Sin aura no hay nada que pintar: se saca del árbol de composición. */
+:root:not([data-aura="on"]) .aura,
+:root[data-stage="game"] .aura { display: none; }
+
+/* Mientras jugás, la cancha tapa el fondo entero: no hay razón para que el
+   compositor siga cargando estas capas. */
+:root[data-stage="game"] .ambient { display: none; }

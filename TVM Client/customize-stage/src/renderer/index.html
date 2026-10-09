@@ -1,0 +1,1500 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self' file:; img-src 'self' file: data:; style-src 'self' file: 'unsafe-inline'; script-src 'self' file:; connect-src 'self'" />
+  <title>TL App</title>
+  <!-- Este bloque existe para el primer cuadro: corre antes de que carguen las
+       hojas de estilo. Los colores salen del tema, que el preload deja puesto en
+       el <html> antes de que se pinte nada (ver `paintBootTheme`); el valor
+       suelto es sólo el respaldo del tema de la casa.
+
+       `background-color` y no `background`: la forma corta pisaba el degradado
+       de `.splash` en app.css —un selector de id le gana a uno de clase— y ese
+       degradado no se llegaba a ver nunca. -->
+  <style>
+    html, body { background-color: var(--bg-0, #08070c); margin: 0; padding: 0; }
+    #splash { position: fixed; inset: 0; z-index: 99999; background-color: var(--bg-0, #08070c); display: flex; flex-direction: column; align-items: center; justify-content: center; opacity: 1; transition: opacity 0.4s ease; }
+    #splash.is-out { opacity: 0; pointer-events: none; }
+  </style>
+  <link rel="stylesheet" href="css/theme.css" />
+  <link rel="stylesheet" href="css/app.css" />
+</head>
+<body>
+  <!-- ═══ Pantalla de carga ═══════════════════════════════════════
+       Va sin `hidden` y primera en el body para que entre en el primer cuadro
+       que pinta la ventana. `hideSplash()` la funde y la borra del DOM cuando
+       termina el arranque; no se esconde y se deja, porque una capa a pantalla
+       completa sigue costando aunque no se vea.
+       ═══════════════════════════════════════════════════════════ -->
+  <div class="splash" id="splash">
+    <div class="splash__inner">
+      <img src="../../assets/toda-la-lecce.png" alt="Escudo Toda la Lecce" class="splash__logo" data-keep-motion />
+      <h1 class="splash__word">TL App</h1>
+      <div class="splash__bar"><i data-keep-motion></i></div>
+      <p class="splash__status" id="splashStatus">Iniciando…</p>
+    </div>
+    <p class="splash__tip" id="splashTip"></p>
+    <span class="splash__version" id="splashVersion"></span>
+  </div>
+
+  <div class="ambient" aria-hidden="true">
+    <span class="blob blob--1"></span>
+    <span class="blob blob--2"></span>
+    <span class="aura"></span>
+  </div>
+
+  <!-- ═══ Avisos fijos ════════════════════════════════════════════
+       Fuera de `.app` a propósito: así quedan por encima del panel, de los
+       modales y de la lista, y no desaparecen al cambiar de pestaña. Son los
+       únicos carteles del cliente que no se van solos.
+
+       Van apilados y no sueltos porque los dos pueden estar a la vez —tocaste
+       un ↻ y encima salió una versión nueva—, y dos barras fijas en la misma
+       coordenada se tapan una a la otra. -->
+  <div class="notestack">
+    <div class="notebar notebar--warn" id="restartNotice" hidden>
+      <svg data-icon class="notebar__ico" viewBox="0 0 24 24"><path d="M4.3 12a7.7 7.7 0 1 0 2.4-5.5L3.4 9.6M3.2 4.6l.2 5.2 5.2-.2"/></svg>
+      <div class="notebar__text">
+        <strong data-i18n="perf.restartTitle">Hay cambios sin aplicar</strong>
+        <small data-i18n="perf.restart">Reiniciá el cliente para que se apliquen estos cambios.</small>
+      </div>
+      <div class="notebar__actions">
+        <button class="btn btn--ghost btn--sm" id="dismissRestart" data-i18n="perf.later"><svg data-icon viewBox="0 0 24 24"><path d="M6.4 6.4l11.2 11.2M17.6 6.4 6.4 17.6"/></svg>Ahora no</button>
+        <button class="btn btn--primary btn--sm" id="restartNow" data-i18n="perf.restartNow"><svg data-icon viewBox="0 0 24 24"><path d="M4.3 12a7.7 7.7 0 1 0 2.4-5.5L3.4 9.6M3.2 4.6l.2 5.2 5.2-.2"/></svg>Reiniciar ahora</button>
+      </div>
+    </div>
+
+    <!-- La versión nueva. Antes esto era un toast de cuatro segundos: se iba
+         solo y había que acordarse de ir a Ajustes → Actualizaciones. Acá se
+         descarga y se instala sin salir del cartel. -->
+    <div class="notebar notebar--info" id="updateNotice" hidden>
+      <svg data-icon class="notebar__ico" viewBox="0 0 24 24"><path d="M12 3v11M7.6 9.6 12 14l4.4-4.4M4.5 19.5h15"/></svg>
+      <div class="notebar__text">
+        <!-- Sin data-i18n: los tres textos y el botón los escribe
+             `paintUpdateNotice()`, que además depende de la fase. -->
+        <strong id="updateNoticeTitle">Hay una versión nueva</strong>
+        <small id="updateNoticeText"></small>
+      </div>
+      <div class="notebar__actions">
+        <button class="btn btn--ghost btn--sm" id="updateNoticeLater" data-i18n="perf.later"><svg data-icon viewBox="0 0 24 24"><path d="M6.4 6.4l11.2 11.2M17.6 6.4 6.4 17.6"/></svg>Ahora no</button>
+        <button class="btn btn--primary btn--sm" id="updateNoticeGo"><svg data-icon viewBox="0 0 24 24"><path d="M12 3v11M7.6 9.6 12 14l4.4-4.4M4.5 19.5h15"/></svg>Actualizar</button>
+      </div>
+      <span class="notebar__bar" id="updateNoticeBar" hidden><i id="updateNoticeFill"></i></span>
+    </div>
+  </div>
+
+  <!-- ═══ Pantalla de inicio: elegir apodo ═══ -->
+  <div class="startscreen" id="startScreen" hidden>
+    <form class="startcard" id="startForm">
+      <img src="../../assets/toda-la-lecce.png" alt="Escudo Toda la Lecce" class="startcard__logo" />
+      <h1 id="startTitle" data-i18n="start.title">Listo para entrar</h1>
+      <p id="startText" data-i18n="start.text">Elegí el apodo con el que te van a ver en la cancha.</p>
+      <label class="startcard__label" for="startNick" data-i18n="start.nick">Apodo</label>
+      <input type="text" id="startNick" maxlength="25" autocomplete="off" />
+      <button class="btn btn--primary btn--lg" type="submit" id="startGo" data-i18n="start.go"><svg data-icon viewBox="0 0 24 24"><path d="M13.4 4.2h4.4a1.5 1.5 0 0 1 1.5 1.5v12.6a1.5 1.5 0 0 1-1.5 1.5h-4.4M10.6 8.4 14.2 12l-3.6 3.6M14.2 12H4.6"/></svg>Entrar</button>
+      <button class="btn btn--ghost" type="button" id="startBack" data-i18n="start.back"><svg data-icon viewBox="0 0 24 24"><path d="M19.5 12h-14M10.8 5.6 5 12l5.8 6.4"/></svg>Volver</button>
+    </form>
+  </div>
+
+  <div class="app" id="app" data-view="play" data-stage="browser" data-fullscreen="false">
+    <div class="hotzone" aria-hidden="true"></div>
+
+    <!-- ═══ Barra superior ═══════════════════════════════════════════
+         Ya no lleva la navegación: eso se fue al riel de la izquierda. Acá
+         quedan la marca, el link de sala, amigos y quién sos — o sea lo que
+         no depende de en qué pantalla estás.
+         ═══════════════════════════════════════════════════════════ -->
+    <header class="topbar" id="topbar">
+      <div class="brand">
+        <img src="../../assets/toda-la-lecce.png" alt="Escudo Toda la Lecce" class="brand__mark" />
+        <span class="brand__name">TL App</span>
+      </div>
+
+      <!-- ═══ Pestañas de juego ═══
+           Cada una es un HaxBall aparte, con la misma identidad: una sala en
+           una y un x1 de práctica en la otra. Se dibujan desde `renderTabs`
+           en app.js; acá sólo está el lugar y el botón de abrir otra. -->
+      <div class="gametabs" id="gameTabs" role="tablist" aria-label="Pestañas de juego"></div>
+      <button class="gametabs__add" id="gameTabAdd" type="button" data-i18n-title="tabs.new" title="Nueva pestaña de juego (Alt+T)" aria-label="Nueva pestaña">
+        <svg data-icon viewBox="0 0 24 24"><path d="M12 5.5v13M5.5 12h13"/></svg>
+      </button>
+
+      <div class="topbar__drag"></div>
+
+      <!-- Link de sala: siempre disponible -->
+      <form class="linkbar" id="linkForm">
+        <svg data-icon class="linkbar__ico" viewBox="0 0 24 24"><path d="M10.4 13.6a3.7 3.7 0 0 0 5.2 0l2.6-2.6a3.7 3.7 0 0 0-5.2-5.2l-1.3 1.3M13.6 10.4a3.7 3.7 0 0 0-5.2 0l-2.6 2.6a3.7 3.7 0 0 0 5.2 5.2l1.3-1.3"/></svg>
+        <input type="text" id="linkInput" spellcheck="false" data-i18n-placeholder="topbar.link" placeholder="Pegá el link de una sala" />
+        <button class="linkbar__go" type="submit" data-i18n-title="topbar.join" title="Entrar" aria-label="Entrar">
+          <svg data-icon viewBox="0 0 24 24"><path d="M4.5 12h14M13.2 6.4l5.8 5.6-5.8 5.6"/></svg>
+        </button>
+      </form>
+
+      <!-- El dock de amigos se abre desde acá y desde F9 adentro del juego.
+           El contador es de conectados; el punto, de algo sin leer. -->
+      <button class="friendsbtn" id="btnFriends" hidden data-i18n-title="friends.toggle" title="Amigos">
+        <svg data-icon viewBox="0 0 24 24"><circle cx="9" cy="8.2" r="3.2"/><path d="M3.4 19.4a5.6 5.6 0 0 1 11.2 0M16.2 5.4a3 3 0 0 1 0 5.8M17.4 13.6a5 5 0 0 1 3.2 4.6"/></svg>
+        <span class="friendsbtn__label" data-i18n="nav.friends">Amigos</span>
+        <span class="friendsbtn__on" id="friendsOnline" hidden><i></i><b>0</b></span>
+        <span class="iconbtn__dot" id="friendsDot" hidden></span>
+      </button>
+
+      <button class="iconbtn" id="btnFullscreen" data-i18n-title="topbar.fullscreen" title="Pantalla completa (F11)">
+        <svg data-icon viewBox="0 0 24 24"><path d="M4.2 9V5.7a1.5 1.5 0 0 1 1.5-1.5H9M15 4.2h3.3a1.5 1.5 0 0 1 1.5 1.5V9M19.8 15v3.3a1.5 1.5 0 0 1-1.5 1.5H15M9 19.8H5.7a1.5 1.5 0 0 1-1.5-1.5V15"/></svg>
+      </button>
+      <button class="iconbtn topbar__toggle" id="btnTopbarToggle" type="button" data-i18n-title="topbar.hide" title="Ocultar la barra superior" aria-controls="topbar" aria-expanded="true">
+        <svg data-icon viewBox="0 0 24 24"><path d="m6 14 6-6 6 6"/></svg>
+        <span class="topbar__toggle-label" data-i18n="topbar.hide">Ocultar la barra superior</span>
+      </button>
+
+      <!-- Quién sos. Abre tu perfil. -->
+      <button class="mechip" id="btnMe" hidden aria-haspopup="true" aria-expanded="false">
+        <span class="pfp mechip__av" id="meChipAvatar">—</span>
+        <span class="mechip__n" id="meChipName">—</span>
+        <span class="vipmark mechip__vip" id="meChipVip" hidden>VIP</span>
+        <svg data-icon class="mechip__c" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>
+      </button>
+
+      <div class="wincontrols">
+        <button class="wbtn" data-win="minimize" aria-label="—"><svg viewBox="0 0 12 12"><path d="M2 6h8"/></svg></button>
+        <button class="wbtn" data-win="maximize" aria-label="□"><svg viewBox="0 0 12 12"><rect x="2.5" y="2.5" width="7" height="7" rx="1.4"/></svg></button>
+        <button class="wbtn wbtn--close" data-win="close" aria-label="✕"><svg viewBox="0 0 12 12"><path d="M3 3l6 6M9 3l-6 6"/></svg></button>
+      </div>
+    </header>
+    <button class="topbar-reveal" id="btnTopbarReveal" type="button" data-i18n-title="topbar.show" title="Mostrar la barra superior" aria-controls="topbar" aria-expanded="false" hidden>
+      <svg data-icon viewBox="0 0 24 24"><path d="m6 10 6 6 6-6"/></svg>
+      <span data-i18n="topbar.showLabel">Mostrar barra</span>
+    </button>
+
+    <!-- ═══ Tu perfil ═══
+         Cuelga de `.app` y no de la barra: la barra tiene `overflow` propio y
+         el desplegable quedaría recortado contra su borde de abajo. -->
+    <div class="memenu" id="meMenu" hidden>
+      <div class="memenu__top">
+        <span class="pfp memenu__av" id="meMenuAvatar">—</span>
+        <div class="memenu__id">
+          <b id="meMenuName">—</b>
+          <span class="memenu__state" id="meMenuState"></span>
+        </div>
+      </div>
+      <div class="memenu__stats" id="meMenuStats"></div>
+      <div class="memenu__list">
+        <!-- Atajo al perfil público. -->
+        <button class="memenu__i" data-me="perfil">
+          <svg data-icon viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.4"/><circle cx="12" cy="9.8" r="2.8"/><path d="M6.6 18.4a5.8 5.8 0 0 1 10.8 0"/></svg>
+          <span data-i18n="me.profile">Ver mi perfil</span>
+        </button>
+        <button class="memenu__i" data-me="nick">
+          <svg data-icon viewBox="0 0 24 24"><circle cx="12" cy="8.2" r="3.7"/><path d="M4.8 20c0-3.4 3.2-5.6 7.2-5.6s7.2 2.2 7.2 5.6"/></svg>
+          <span data-i18n="me.nick">Cambiar de apodo</span><small id="meMenuNick"></small>
+        </button>
+        <button class="memenu__i" data-me="aspecto">
+          <svg data-icon viewBox="0 0 24 24"><path d="M12 3.8a8.2 8.2 0 1 0 0 16.4c1.1 0 1.9-.8 1.9-1.7 0-.5-.2-.9-.5-1.2a1.6 1.6 0 0 1 1.2-2.7h1.5a4 4 0 0 0 3.9-4c0-4-3.6-6.8-8-6.8z"/></svg>
+          <span data-i18n="me.looks">Tu avatar y tus colores</span>
+        </button>
+        <button class="memenu__i" data-me="vip">
+          <svg data-icon viewBox="0 0 24 24"><path d="M6.2 3h11.6l4.2 6-10 12L2 9z"/><path d="M2 9h20"/></svg>
+          <span data-i18n="me.vip">Administrar VIP</span>
+        </button>
+        <button class="memenu__i" data-me="ajustes">
+          <svg data-icon viewBox="0 0 24 24"><path d="M4.2 7.5h7.6M16.4 7.5h3.4M4.2 16.5h3.4M12.2 16.5h7.6"/><circle cx="14.1" cy="7.5" r="2.3"/><circle cx="9.9" cy="16.5" r="2.3"/></svg>
+          <span data-i18n="me.settings">Identidades y ajustes</span>
+        </button>
+        <div class="memenu__sep" id="meMenuSep" hidden></div>
+        <button class="memenu__i memenu__i--danger" data-me="logout" id="meMenuLogout" hidden>
+          <svg data-icon viewBox="0 0 24 24"><path d="M14.5 4.5H18a1.5 1.5 0 0 1 1.5 1.5v12a1.5 1.5 0 0 1-1.5 1.5h-3.5M9.8 8.4 13.4 12l-3.6 3.6M13.4 12H3.8"/></svg>
+          <span data-i18n="me.logout">Cerrar sesión de Discord</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="shell">
+      <!-- ═══ Riel ═══════════════════════════════════════════════════
+           Navegar entre pantallas y nada más. Amigos NO va acá: no es una
+           pantalla, es algo que se consulta mientras hacés otra cosa, y
+           metido acá te obliga a irte de donde estabas.
+
+           Dentro de una sala el riel se guarda solo y deja un borde
+           sensible: los 72 px se los saca al ancho que HaxBall usa para
+           escalar la cancha. Es el mismo mecanismo que la barra de arriba
+           en pantalla completa (ver `.hotzone`).
+           ═══════════════════════════════════════════════════════════ -->
+      <!-- El borde por el que vuelve el riel dentro de una sala. Va ANTES del
+           riel a propósito: la regla que lo trae de vuelta es
+           `.railedge:hover ~ .rail`, y `~` sólo alcanza a los hermanos que
+           vienen después. Detrás quedaba escrita pero no se cumplía nunca. -->
+      <div class="railedge" id="railEdge" aria-hidden="true"><i></i></div>
+
+      <nav class="rail" id="rail">
+        <button class="railitem is-active" data-view="play">
+          <svg data-icon viewBox="0 0 24 24"><path d="M8.7 5.9v12.2l10-6.1z"/></svg><span data-i18n="nav.play">Salas</span>
+        </button>
+        <button class="railitem" data-view="replays">
+          <svg data-icon viewBox="0 0 24 24"><path d="m15 10 4.5-2.25A1 1 0 0 1 21 8.62v6.76a1 1 0 0 1-1.5.88L15 14M5 6h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2Z"/></svg><span data-i18n="nav.replays">Replays</span>
+        </button>
+        <span class="rail__sp"></span>
+        <span class="rail__hr" aria-hidden="true"></span>
+
+        <!-- La antigua sección Cuenta se conserva como origen de controles
+             reubicados en Aspecto y Ajustes. -->
+        <button class="railitem" data-view="cuenta">
+          <svg data-icon viewBox="0 0 24 24"><circle cx="12" cy="8.4" r="3.9"/><path d="M4.6 20.2c0-3.6 3.3-5.9 7.4-5.9s7.4 2.3 7.4 5.9"/></svg><span data-i18n="nav.account">Cuenta</span>
+        </button>
+        <button class="railitem" data-view="aspecto">
+          <svg data-icon viewBox="0 0 24 24"><path d="M12 3.8a8.2 8.2 0 1 0 0 16.4c1.1 0 1.9-.8 1.9-1.7 0-.5-.2-.9-.5-1.2a1.6 1.6 0 0 1 1.2-2.7h1.5a4 4 0 0 0 3.9-4c0-4-3.6-6.8-8-6.8z"/><circle class="ico-fill" cx="7.8" cy="11.2" r="1.05"/><circle class="ico-fill" cx="12" cy="8" r="1.05"/><circle class="ico-fill" cx="16.2" cy="11.2" r="1.05"/></svg><span data-i18n="nav.appearance">Aspecto</span>
+        </button>
+        <button class="railitem" data-view="rendimiento">
+          <svg data-icon viewBox="0 0 24 24"><path d="M13.2 2.8 5.4 13.4h5.3l-.9 7.8 7.8-10.6h-5.3z"/></svg><span data-i18n="nav.performance">Rendim.</span>
+        </button>
+        <button class="railitem" data-view="ajustes">
+          <svg data-icon viewBox="0 0 24 24"><path d="M4.2 7.5h7.6M16.4 7.5h3.4M4.2 16.5h3.4M12.2 16.5h7.6"/><circle cx="14.1" cy="7.5" r="2.3"/><circle cx="9.9" cy="16.5" r="2.3"/></svg><span data-i18n="nav.settings">Ajustes</span>
+        </button>
+      </nav>
+
+    <div class="body">
+      <!-- ═══ El juego (sólo visible dentro de una sala) ═══ -->
+      <main class="stage" id="stage">
+        <div class="stage__frame" id="stageFrame"></div>
+        <div id="tvmGoalBanner" class="goal-banner" hidden>
+          <div class="goal-banner__title" id="goalTitle">¡GOL!</div>
+          <div class="goal-banner__scorer" id="goalScorer">?</div>
+          <div class="goal-banner__assist" id="goalAssistWrap" hidden>Asistencia de <span id="goalAssist"></span></div>
+        </div>
+
+        <div id="tvmStatsPanel" class="stats-panel" hidden>
+          <div class="stats-panel__header">
+            <div>
+              <h2 id="statsTitle" data-i18n="stats.title">Resumen del partido</h2>
+              <p class="stats-panel__sub" id="statsSub"></p>
+            </div>
+            <button id="closeStatsPanel" class="btn btn--ghost btn--sm" data-i18n-title="friends.close" title="Cerrar" aria-label="Cerrar"><svg data-icon viewBox="0 0 24 24"><path d="M6.4 6.4l11.2 11.2M17.6 6.4 6.4 17.6"/></svg></button>
+          </div>
+
+          <div class="stats-score">
+            <span class="stats-score__team stats-score__team--red" data-i18n="stats.red">Rojo</span>
+            <span class="stats-score__n stats-score__n--red" id="scoreRed">0</span>
+            <span class="stats-score__dash">–</span>
+            <span class="stats-score__n stats-score__n--blue" id="scoreBlue">0</span>
+            <span class="stats-score__team stats-score__team--blue" data-i18n="stats.blue">Azul</span>
+          </div>
+
+          <div class="stats-panel__body">
+            <p class="stats-panel__note" id="statsNote" hidden></p>
+
+            <div class="stats-mvp" id="statsMvp" hidden>
+              <span class="stats-mvp__tag" data-i18n="stats.mvp">MVP</span>
+              <span class="stats-mvp__who" id="statsMvpName"></span>
+              <span class="stats-mvp__line" id="statsMvpLine"></span>
+            </div>
+
+            <section class="stats-block" id="statsPlayersBlock" hidden>
+              <h3 data-i18n="stats.players">Jugadores</h3>
+              <table class="stats-table">
+                <thead>
+                  <tr>
+                    <th data-i18n="stats.colPlayer">Jugador</th>
+                    <th data-i18n="stats.colGoals" data-i18n-title="stats.colGoalsFull">G</th>
+                    <th data-i18n="stats.colAssists" data-i18n-title="stats.colAssistsFull">A</th>
+                    <th data-i18n="stats.colTouches">Toques</th>
+                    <th data-i18n="stats.colPoints" data-i18n-title="stats.pointsHelp">Pts</th>
+                  </tr>
+                </thead>
+                <tbody id="statsPlayers"></tbody>
+              </table>
+              <p class="stats-block__help" data-i18n="stats.pointsHelp">Puntos: 3 por gol, 2 por asistencia, −2 en contra.</p>
+            </section>
+
+            <!-- ═══ Ficha del partido ═══
+                 Posesión, pases, distancia y remate. Los cuenta el proceso del
+                 juego —es el único que ve la cancha cuadro a cuadro— y llegan
+                 armados al terminar. -->
+            <section class="stats-block" id="statsCardBlock" hidden>
+              <h3 data-i18n="stats.card">Ficha del partido</h3>
+              <div class="possbar">
+                <span class="possbar__n possbar__n--red" id="cardPossRedN">50%</span>
+                <span class="possbar__track"><i class="possbar__red" id="cardPossRed"></i></span>
+                <span class="possbar__n possbar__n--blue" id="cardPossBlueN">50%</span>
+              </div>
+              <p class="stats-block__help" data-i18n="stats.possHelp">Posesión: desde que uno la toca hasta que la toca otro.</p>
+              <table class="stats-table">
+                <thead>
+                  <tr>
+                    <th data-i18n="stats.colPlayer">Jugador</th>
+                    <th data-i18n="stats.colPoss">Pos.</th>
+                    <th data-i18n="stats.colPasses">Pases</th>
+                    <th data-i18n="stats.colLost">Perdidas</th>
+                    <th data-i18n="stats.colRun">Corrió</th>
+                    <th data-i18n="stats.colShot">Remate</th>
+                  </tr>
+                </thead>
+                <tbody id="cardRows"></tbody>
+              </table>
+            </section>
+
+            <!-- ═══ Mapa de calor ═══
+                 Por dónde anduvo la pelota en todo el partido. Se acumula
+                 mientras jugás y llega armado al terminar, así que acá no hay
+                 nada que calcular: es una imagen. -->
+            <section class="stats-block" id="statsHeatBlock" hidden>
+              <h3 data-i18n="stats.heat">Mapa de calor</h3>
+              <!-- La imagen no va acá: la crea `paintHeatmap` cuando de verdad
+                   hay un mapa. Una etiqueta de imagen sin origen, escrita en el
+                   documento, es una imagen rota esperando que algo salga mal. -->
+              <div class="heatmap" id="statsHeatBox"></div>
+              <p class="stats-block__help" data-i18n="stats.heatHelp">Por dónde pasó la pelota durante el partido. Cuanto más caliente, más tiempo estuvo ahí.</p>
+            </section>
+
+            <section class="stats-block" id="statsGoalsBlock" hidden>
+              <!-- En una grabación cada gol es un salto: el análisis dejó
+                   anotado en qué milisegundo entró. El botón los encadena
+                   todos. En vivo no hay nada a dónde saltar, así que la cabecera
+                   se queda sin botón. -->
+              <div class="stats-block__head">
+                <h3 data-i18n="stats.goals">Goles</h3>
+                <button class="btn btn--primary btn--sm" id="statsReel" hidden data-i18n="stats.reel"><svg data-icon viewBox="0 0 24 24"><path d="M8 5.2v13.6L19 12z"/></svg>Carrete de goles</button>
+              </div>
+              <ol class="stats-goals" id="statsGoals"></ol>
+            </section>
+          </div>
+
+          <div class="stats-panel__foot">
+            <span id="statsFoot" data-i18n="stats.close">Tab para cerrar</span>
+            <button class="btn btn--ghost btn--sm" id="statsAnalyze" hidden data-i18n="stats.again"><svg data-icon viewBox="0 0 24 24"><path d="M5 19.4V11.2M12 19.4V4.8M19 19.4v-6.2"/></svg>Analizar de nuevo</button>
+          </div>
+        </div>
+
+        <div class="stage__loading" id="stageLoading">
+          <div class="stage__ring" data-keep-motion></div>
+          <img src="../../assets/toda-la-lecce.png" alt="Escudo Toda la Lecce" class="stage__logo" />
+          <p id="loadingText" data-i18n="game.loading">Cargando HaxBall…</p>
+          <p class="stage__hint" id="loadingHint" hidden data-i18n="game.stuck">Está tardando más de lo normal.</p>
+          <button class="btn btn--ghost btn--sm" id="loadingCancel" data-i18n="game.cancelConnect"><svg data-icon viewBox="0 0 24 24"><path d="M6.4 6.4l11.2 11.2M17.6 6.4 6.4 17.6"/></svg>Cancelar</button>
+        </div>
+        <div class="stage__error" id="stageError" hidden>
+          <h2 data-i18n="game.error">No se pudo cargar HaxBall</h2>
+          <p id="stageErrorText" data-i18n="game.errorText">Revisá tu conexión a internet.</p>
+          <button class="btn btn--primary" id="retryLoad" data-i18n="rooms.retry"><svg data-icon viewBox="0 0 24 24"><path d="M4.3 12a7.7 7.7 0 1 0 2.4-5.5L3.4 9.6M3.2 4.6l.2 5.2 5.2-.2"/></svg>Reintentar</button>
+          <!-- El hueco donde el main pega la verificación de Cloudflare. Queda
+               vacío a propósito: lo que se ve adentro es un BrowserView puesto
+               encima, no contenido de este documento. -->
+          <div class="verifyhost" id="verifyHost" hidden></div>
+        </div>
+      </main>
+
+      <!-- ═══ Navegador de salas ═══ -->
+      <section class="browser" id="browser">
+        <div class="browser__shell">
+          <section class="nickcard" id="nickCard" hidden>
+            <div>
+              <h2 data-i18n="nick.title">¿Cómo te llamás?</h2>
+              <p data-i18n="nick.text">Es el nombre que van a ver los demás en la cancha.</p>
+            </div>
+            <form class="nickcard__form" id="nickForm">
+              <input type="text" id="nickInput" maxlength="25" data-i18n-placeholder="nick.placeholder" placeholder="Tu nombre" />
+              <button class="btn btn--primary" type="submit" data-i18n="nick.save"><svg data-icon viewBox="0 0 24 24"><path d="M8.7 5.9v12.2l10-6.1z"/></svg>Guardar y jugar</button>
+            </form>
+          </section>
+
+          <!-- Volver a la última sala. Aparece sólo si hay a dónde volver, y
+               arriba de la lista: cuando se te cae la conexión, esto es lo
+               único que querés tocar y no tenés que buscar la sala de nuevo
+               entre doscientas. -->
+          <button class="btn btn--ghost lastroom" id="lastRoom" hidden>
+            <svg data-icon viewBox="0 0 24 24"><path d="M19.7 12a7.7 7.7 0 1 1-2.4-5.5l3.3 3.1M20.8 4.6l-.2 5.2-5.2-.2"/></svg>
+            <span data-i18n="rooms.back">Volver a la última sala</span>
+            <b id="lastRoomName"></b>
+          </button>
+
+          <div class="rtoolbar">
+            <div class="rsearch">
+              <svg data-icon viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.8"/><path d="M16.1 16.1 20.2 20.2"/></svg>
+              <input type="text" id="roomSearch" data-i18n-placeholder="rooms.search" placeholder="Buscar sala por nombre…" />
+            </div>
+            <button class="filterchip filterchip--fav" id="favToggle">
+              <span class="filterchip__star">★</span>
+              <span data-i18n="rooms.onlyFavs">Favoritos</span>
+            </button>
+            <select id="roomSort" class="sortselect">
+              <option value="distance" data-i18n="rooms.sortDistance">Más cerca</option>
+              <option value="players" data-i18n="rooms.sortPlayers">Más jugadores</option>
+              <option value="name" data-i18n="rooms.sortName">Nombre</option>
+            </select>
+            <button class="iconbtn" id="roomsRefresh" data-i18n-title="rooms.refresh" title="Actualizar">
+              <svg data-icon viewBox="0 0 24 24"><path d="M4.3 12a7.7 7.7 0 1 0 2.4-5.5L3.4 9.6M3.2 4.6l.2 5.2 5.2-.2"/></svg>
+            </button>
+            <span class="rcount" id="roomsSummary">—</span>
+          </div>
+
+          <div class="rpanel">
+            <div class="rtable__head">
+              <span data-i18n="rooms.colDist">Dist.</span>
+              <span></span>
+              <span data-i18n="rooms.colName">Nombre</span>
+              <span data-i18n="rooms.colPlayers">Jugadores</span>
+              <span></span>
+            </div>
+
+            <div class="rtable" id="roomList"></div>
+
+            <footer class="rpanel__foot">
+              <div class="rpanel__foot-sec">
+                <button class="ghostbtn" id="actChangeNick">
+                  <svg data-icon viewBox="0 0 24 24"><circle cx="12" cy="8.2" r="3.7"/><path d="M4.8 20c0-3.4 3.2-5.6 7.2-5.6s7.2 2.2 7.2 5.6"/></svg>
+                  <span data-i18n="rooms.changeNick">Cambiar nombre</span>
+                </button>
+                <button class="ghostbtn ghostbtn--auto" id="actAutoJoin" disabled>
+                  <svg data-icon viewBox="0 0 24 24"><path d="M4.3 12a7.7 7.7 0 1 0 2.4-5.5L3.4 9.6M3.2 4.6l.2 5.2 5.2-.2"/></svg>
+                  <span data-i18n="rooms.autoJoin">Auto-entrar</span>
+                </button>
+              </div>
+              <div class="rpanel__foot-pri">
+                <button class="ghostbtn" id="actCreate">
+                  <svg data-icon viewBox="0 0 24 24"><path d="M12 5.2v13.6M5.2 12h13.6"/></svg>
+                  <span data-i18n="rooms.create">Crear sala</span>
+                </button>
+                <button class="joinbtn" id="actJoin" disabled>
+                  <span data-i18n="rooms.join">Entrar</span>
+                  <svg data-icon viewBox="0 0 24 24"><path d="M4.5 12h14M13.2 6.4l5.8 5.6-5.8 5.6"/></svg>
+                </button>
+              </div>
+            </footer>
+          </div>
+        </div>
+      </section>
+
+      <!-- ═══ Crear sala ═══ -->
+      <div class="modal" id="createModal" hidden>
+        <div class="modal__card">
+          <header class="modal__head">
+            <h2 data-i18n="create.title">Crear sala</h2>
+            <button class="iconbtn" id="createClose" aria-label="✕">
+              <svg data-icon viewBox="0 0 24 24"><path d="M6.4 6.4l11.2 11.2M17.6 6.4 6.4 17.6"/></svg>
+            </button>
+          </header>
+
+          <form id="createForm" class="modal__body">
+            <div class="field">
+              <label for="createName" data-i18n="create.name">Nombre de la sala</label>
+              <input type="text" id="createName" maxlength="60" required />
+            </div>
+            <div class="field">
+              <label for="createPass" data-i18n="create.password">Contraseña (opcional)</label>
+              <input type="text" id="createPass" maxlength="40" spellcheck="false" />
+            </div>
+            <div class="field">
+              <label for="createMax" data-i18n="create.maxPlayers">Cupo máximo</label>
+              <select id="createMax"></select>
+            </div>
+            <div id="createSwitches"></div>
+            <p class="note" data-i18n="create.captcha">HaxBall te va a pedir una verificación anti-bot para crear la sala. La resolvés vos, el cliente no la toca.</p>
+            <div class="modal__actions">
+              <button type="button" class="btn btn--ghost" id="createCancel" data-i18n="create.cancel"><svg data-icon viewBox="0 0 24 24"><path d="M6.4 6.4l11.2 11.2M17.6 6.4 6.4 17.6"/></svg>Cancelar</button>
+              <button type="submit" class="btn btn--primary" data-i18n="create.submit"><svg data-icon viewBox="0 0 24 24"><path d="M12 5.2v13.6M5.2 12h13.6"/></svg>Crear sala</button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- ═══ Pedir un texto (renombrar, nombrar un tema, pegar una clave) ═══
+           Electron no implementa window.prompt: devolvía siempre null y el
+           botón «Renombrar» de los replays no hacía nada. -->
+      <div class="modal" id="askModal" hidden>
+        <div class="modal__card modal__card--sm">
+          <header class="modal__head">
+            <h2 id="askTitle">—</h2>
+            <button class="iconbtn" id="askClose" aria-label="✕">
+              <svg data-icon viewBox="0 0 24 24"><path d="M6.4 6.4l11.2 11.2M17.6 6.4 6.4 17.6"/></svg>
+            </button>
+          </header>
+          <form id="askForm" class="modal__body">
+            <div class="field">
+              <label for="askInput" id="askLabel">—</label>
+              <input type="text" id="askInput" autocomplete="off" spellcheck="false" />
+              <p class="note" id="askHint" hidden></p>
+            </div>
+            <div class="modal__actions">
+              <button type="button" class="btn btn--ghost" id="askCancel" data-i18n="create.cancel"><svg data-icon viewBox="0 0 24 24"><path d="M6.4 6.4l11.2 11.2M17.6 6.4 6.4 17.6"/></svg>Cancelar</button>
+              <button type="submit" class="btn btn--primary" id="askOk" data-i18n="ask.ok"><svg data-icon viewBox="0 0 24 24"><path d="M5 12.6 9.7 17.3 19 7.6"/></svg>Guardar</button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- ═══ Editor de temas ═══ -->
+      <div class="modal" id="themeModal" hidden>
+        <div class="modal__card">
+          <header class="modal__head">
+            <h2 data-i18n="look.customTitle">Tu propio tema</h2>
+            <button class="iconbtn" id="themeClose" aria-label="✕">
+              <svg data-icon viewBox="0 0 24 24"><path d="M6.4 6.4l11.2 11.2M17.6 6.4 6.4 17.6"/></svg>
+            </button>
+          </header>
+          <form id="themeForm" class="modal__body">
+            <div class="field">
+              <label for="themeName" data-i18n="look.customName">Nombre</label>
+              <input type="text" id="themeName" maxlength="24" required />
+            </div>
+
+            <div class="themeedit">
+              <label class="themeedit__row">
+                <span data-i18n="look.customBg">Fondo</span>
+                <input type="color" id="themeBg" class="colorinput" />
+              </label>
+              <label class="themeedit__row">
+                <span data-i18n="look.customText">Texto</span>
+                <input type="color" id="themeText" class="colorinput" />
+              </label>
+              <label class="themeedit__row">
+                <span data-i18n="look.customAccent">Acento</span>
+                <input type="color" id="themeAccent" class="colorinput" />
+              </label>
+            </div>
+
+            <div id="themeDarkSwitch"></div>
+
+            <div class="themepreview" id="themePreview">
+              <div class="themepreview__bar"></div>
+              <div class="themepreview__body">
+                <strong data-i18n="look.customPreview">Así se va a ver</strong>
+                <small data-i18n="look.customPreviewText">Texto secundario, listas y notas.</small>
+                <span class="themepreview__btn" data-i18n="rooms.join">Entrar</span>
+              </div>
+            </div>
+
+            <div class="modal__actions">
+              <button type="button" class="btn btn--danger btn--sm" id="themeDelete" hidden data-i18n="look.customDelete"><svg data-icon viewBox="0 0 24 24"><path d="M4.5 7h15M9.8 7V5.4A1.4 1.4 0 0 1 11.2 4h1.6a1.4 1.4 0 0 1 1.4 1.4V7M6.6 7l.8 12.1a1.5 1.5 0 0 0 1.5 1.4h6.2a1.5 1.5 0 0 0 1.5-1.4L17.4 7"/></svg>Borrar</button>
+              <button type="button" class="btn btn--ghost" id="themeCancel" data-i18n="create.cancel"><svg data-icon viewBox="0 0 24 24"><path d="M6.4 6.4l11.2 11.2M17.6 6.4 6.4 17.6"/></svg>Cancelar</button>
+              <button type="submit" class="btn btn--primary" data-i18n="look.customSave"><svg data-icon viewBox="0 0 24 24"><path d="M5 12.6 9.7 17.3 19 7.6"/></svg>Guardar tema</button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- ═══ YouTube Music ═══════════════════════════════════════════
+           Acá NO está el reproductor: está el HUECO donde va.
+
+           YouTube Music corre en una vista que pega el proceso principal sobre
+           la ventana, no en un elemento de este documento (el porqué, medido,
+           está en src/main/ytmusic.js). Lo único que hace esta pantalla es
+           reservarle el lugar y decirle dónde: `#musicFrame` es un rectángulo
+           vacío y su medida es lo que viaja al main.
+           ═══════════════════════════════════════════════════════════ -->
+      <main class="mstage" id="mstage" hidden>
+        <header class="mstage__bar">
+          <div class="mstage__id">
+            <svg data-icon viewBox="0 0 24 24"><path d="M9.2 18V6.4l10-1.8v11.1"/><ellipse cx="6.7" cy="18" rx="2.5" ry="2.2"/><ellipse cx="16.7" cy="15.7" rx="2.5" ry="2.2"/></svg>
+            <b>YouTube Music</b>
+            <span class="mstage__who" id="musicWho"></span>
+          </div>
+          <div class="mstage__acts">
+            <button class="btn btn--ghost btn--sm" id="musicHome" data-i18n="music.home"><svg data-icon viewBox="0 0 24 24"><path d="M4.4 10.6 12 4.4l7.6 6.2v8a1.2 1.2 0 0 1-1.2 1.2H5.6a1.2 1.2 0 0 1-1.2-1.2z"/></svg>Inicio</button>
+            <button class="btn btn--ghost btn--sm" id="musicReload" data-i18n="music.reload"><svg data-icon viewBox="0 0 24 24"><path d="M19.7 12a7.7 7.7 0 1 1-2.4-5.5l3.3 3.1M20.8 4.6l-.2 5.2-5.2-.2"/></svg>Recargar</button>
+            <button class="btn btn--ghost btn--sm" id="musicHudSettings" data-i18n="music.hudSettings"><svg data-icon viewBox="0 0 24 24"><path d="M4.2 7.5h7.6M16.4 7.5h3.4M4.2 16.5h3.4M12.2 16.5h7.6"/><circle cx="14.1" cy="7.5" r="2.3"/><circle cx="9.9" cy="16.5" r="2.3"/></svg>Cartel</button>
+            <button class="btn btn--primary btn--sm" id="musicLogin" data-i18n="music.login" data-i18n-title="music.loginWhy" title="Se abre una ventana de Google. Es una sola vez: la sesión queda guardada."><svg data-icon viewBox="0 0 24 24"><path d="M14.4 15.6v2.2a1.6 1.6 0 0 1-1.6 1.6H6.2a1.6 1.6 0 0 1-1.6-1.6V6.2a1.6 1.6 0 0 1 1.6-1.6h6.6a1.6 1.6 0 0 1 1.6 1.6v2.2M9.6 12h9.8M15.9 8.6 19.4 12l-3.5 3.4"/></svg>Iniciar sesión</button>
+            <button class="btn btn--ghost btn--sm" id="musicLogout" hidden data-i18n="music.logout"><svg data-icon viewBox="0 0 24 24"><path d="M14.4 15.6v2.2a1.6 1.6 0 0 1-1.6 1.6H6.2a1.6 1.6 0 0 1-1.6-1.6V6.2a1.6 1.6 0 0 1 1.6-1.6h6.6a1.6 1.6 0 0 1 1.6 1.6v2.2M19.4 12H9.6M13.1 8.6 9.6 12l3.5 3.4"/></svg>Cerrar sesión</button>
+          </div>
+        </header>
+
+        <!-- El hueco. Vacío a propósito: es una medida, no un contenedor. -->
+        <div class="mstage__frame" id="musicFrame"></div>
+
+        <!-- Apagada: la única pantalla que se ve hasta que alguien la prenda. -->
+        <div class="mstage__off" id="musicOff" hidden>
+          <div class="mstage__card">
+            <svg data-icon viewBox="0 0 24 24"><path d="M9.2 18V6.4l10-1.8v11.1"/><ellipse cx="6.7" cy="18" rx="2.5" ry="2.2"/><ellipse cx="16.7" cy="15.7" rx="2.5" ry="2.2"/></svg>
+            <h2 data-i18n="music.offTitle">Escuchá música mientras jugás</h2>
+            <p data-i18n="music.offText">Abre YouTube Music adentro del cliente. Entrás con tu cuenta de Google, elegís qué suena y queda un cartel sobre la cancha para pasar de tema sin salir de la partida.</p>
+            <button class="btn btn--primary" id="musicEnable" data-i18n="music.enable"><svg data-icon viewBox="0 0 24 24"><path d="M8.7 5.9v12.2l10-6.1z"/></svg>Activar</button>
+            <p class="note" data-i18n="music.offNote">Apagada no se abre nada: ni el reproductor, ni la sesión, ni el cartel.</p>
+            <!-- Lo del navegador propio es la primera pregunta que hace todo el
+                 mundo, así que se contesta antes de que la hagan. -->
+            <p class="note" data-i18n="music.loginWhy">La sesión de Google se inicia en una ventana aparte del cliente, con la dirección a la vista en el título. No se puede usar la de tu navegador: una web se abre con cookies, y las de Chrome no salen de Chrome. Es una sola vez — queda guardada hasta que cierres sesión.</p>
+          </div>
+        </div>
+      </main>
+
+      <!-- ═══ Panel ═══════════════════════════════════════════════════
+           Rendimiento, Aspecto, Replays y Ajustes no son pantallas aparte:
+           se abren como una tarjeta centrada por encima de lo que haya
+           detrás (la cancha o la lista de salas), que sigue viva.
+           ═══════════════════════════════════════════════════════════ -->
+      <div class="panel" id="panel" data-nav="on" hidden>
+        <div class="panel__scrim" id="panelScrim"></div>
+        <div class="panel__card" role="dialog" aria-modal="true">
+          <button class="panel__close" id="panelClose" data-i18n-title="panel.close" title="Cerrar" aria-label="Cerrar">
+            <svg data-icon viewBox="0 0 24 24"><path d="M6.4 6.4l11.2 11.2M17.6 6.4 6.4 17.6"/></svg>
+          </button>
+
+          <!-- ═══ El cuerpo, en dos columnas ═══════════════════════════
+               Índice de secciones y buscador a la izquierda; la página a la
+               derecha. El índice lo arma `buildPanelNav` leyendo los
+               `[data-sec]` de la página activa, así que agregar una sección
+               es agregar un `<section class="sec" data-sec="…">` y nada más.
+               ═══════════════════════════════════════════════════════ -->
+          <div class="panel__body">
+            <aside class="pnav" id="panelNav">
+              <div class="pnav__search">
+                <svg data-icon viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.8"/><path d="M16.1 16.1 20.2 20.2"/></svg>
+                <input type="text" id="settingsSearch" spellcheck="false" data-i18n-placeholder="panel.search" placeholder="Buscar un ajuste…" />
+                <button class="pnav__clear" id="settingsSearchClear" hidden data-i18n-title="panel.searchClear" title="Limpiar" aria-label="Limpiar">
+                  <svg data-icon viewBox="0 0 24 24"><path d="M6.4 6.4l11.2 11.2M17.6 6.4 6.4 17.6"/></svg>
+                </button>
+              </div>
+              <nav class="pnav__list" id="panelNavList"></nav>
+            </aside>
+
+            <div class="panel__pages">
+
+      <!-- ═══════════════════════════════════════════════════════════════
+           RENDIMIENTO
+           ═══════════════════════════════════════════════════════════════ -->
+      <section class="page" data-page="rendimiento">
+        <div class="page__inner">
+          <header class="pagehead">
+            <h1 data-i18n="perf.title">Rendimiento</h1>
+            <p data-i18n="perf.subtitle">Lo marcado con ↻ pide reiniciar el cliente.</p>
+          </header>
+
+          <!-- ═══ Perfiles ═══
+               Vuelven los paquetes que se habían sacado, pero diciendo qué
+               tocan y dejando todo lo que tocan visible acá abajo. El detalle
+               del porqué está en el bloque `.presets` de app.css. -->
+          <section class="sec sec--feature" data-sec="perfil">
+            <header class="sec__head">
+              <h2 class="sec__title" data-i18n="perf.profile">Perfil</h2>
+              <span class="tag tag--accent" id="perfPresetState">—</span>
+            </header>
+            <p class="sec__desc" data-i18n="perf.profileHelp">Un punto de partida. Todo lo que cambia se puede tocar acá abajo, uno por uno.</p>
+            <div class="sec__body">
+              <div class="row row--block">
+                <div class="row__ctl"><div class="presets" id="perfPresets"></div></div>
+              </div>
+            </div>
+          </section>
+
+          <section class="sec" data-sec="graficos">
+            <header class="sec__head"><h2 class="sec__title" data-i18n="perf.graphics">Gráficos</h2></header>
+            <div class="sec__body">
+              <div class="rows" id="gameVideo"></div>
+              <div class="rows" id="perfFpsCap"></div>
+              <div class="rows" id="perfGpu"></div>
+            </div>
+          </section>
+
+          <section class="sec" data-sec="red">
+            <header class="sec__head"><h2 class="sec__title" data-i18n="perf.net">Red</h2></header>
+            <div class="sec__body" id="gameNet"></div>
+          </section>
+
+          <section class="sec" data-sec="teclas">
+            <header class="sec__head">
+              <h2 class="sec__title" data-i18n="keys.title">Controles</h2>
+              <button class="btn btn--ghost btn--sm" id="keysReset" data-i18n="keys.reset"><svg data-icon viewBox="0 0 24 24"><path d="M19.7 12a7.7 7.7 0 1 1-2.4-5.5l3.3 3.1M20.8 4.6l-.2 5.2-5.2-.2"/></svg>Restablecer</button>
+            </header>
+            <p class="sec__desc" data-i18n="keys.help">Más de una tecla por acción: tocá «+» y apretá la que quieras.</p>
+            <div class="sec__body">
+              <div class="row row--block">
+                <div class="row__ctl"><div class="keylist" id="keyList"></div></div>
+              </div>
+              <div class="rows" id="summaryKeyField"></div>
+            </div>
+          </section>
+
+          <!-- ═══ Avanzado ═══
+               Banderas de Chromium: casi todas piden reinicio, ninguna se ve al
+               instante y ya vienen puestas como corresponde. Plegadas por
+               defecto — el que las busca sabe que están. -->
+          <details class="adv" data-sec="avanzado" data-sec-label="group.advanced">
+            <summary>
+              <svg data-icon class="adv__chev" viewBox="0 0 24 24"><path d="M9.5 6.4 15 12l-5.5 5.6"/></svg>
+              <span data-i18n="group.advanced">Avanzado</span>
+            </summary>
+            <div class="adv__body">
+              <section class="sec">
+                <header class="sec__head"><h2 class="sec__title" data-i18n="perf.latency">Latencia</h2></header>
+                <div class="sec__body" id="perfLatency"></div>
+              </section>
+              <section class="sec">
+                <header class="sec__head"><h2 class="sec__title" data-i18n="perf.system">Sistema</h2></header>
+                <div class="sec__body" id="perfSystem"></div>
+              </section>
+            </div>
+          </details>
+
+          <!-- El aviso de reinicio no vive acá: es una barra fija arriba de la
+               ventana (ver #restartNotice al principio del documento). -->
+        </div>
+      </section>
+
+      <!-- ═══════════════════════════════════════════════════════════════
+           ASPECTO
+           ═══════════════════════════════════════════════════════════════ -->
+      <section class="page" data-page="aspecto">
+        <div class="page__inner">
+          <header class="pagehead">
+            <h1 data-i18n="look.title">Aspecto</h1>
+            <p data-i18n="look.subtitle">El tema pinta el cliente entero y también las pantallas de HaxBall.</p>
+          </header>
+
+          <section class="sec sec--feature" data-sec="tema">
+            <header class="sec__head">
+              <h2 class="sec__title" data-i18n="look.theme">Tema</h2>
+              <button class="btn btn--ghost btn--sm" id="themeCreate" data-i18n="look.customNew"><svg data-icon viewBox="0 0 24 24"><path d="M12 5.2v13.6M5.2 12h13.6"/></svg>Crear tema</button>
+            </header>
+            <div class="sec__body">
+              <div class="row row--block">
+                <div class="row__ctl"><div class="themes" id="themes"></div></div>
+              </div>
+              <div class="rows" id="lookSwitches"></div>
+            </div>
+          </section>
+
+          <section class="sec" data-sec="acento">
+            <header class="sec__head"><h2 class="sec__title" data-i18n="look.accent">Color de acento</h2></header>
+            <p class="sec__desc" data-i18n="look.accentHint">Se usa en los temas que no traen color propio.</p>
+            <div class="sec__body">
+              <div class="row row--block">
+                <div class="row__ctl"><div class="swatches" id="swatches"></div></div>
+              </div>
+            </div>
+          </section>
+
+          <!-- ═══ La cancha ═══
+               Lo que el cliente dibuja sobre el campo, por debajo de los
+               discos. Ninguna de estas ayudas adivina nada; el porqué está en
+               `pitch` de `store.js`. -->
+          <section class="sec" data-sec="cancha">
+            <header class="sec__head">
+              <h2 class="sec__title"><span data-i18n="pitch.section">La cancha</span><i class="hint" tabindex="0" data-hint="skin.help" aria-label="Más información">i</i></h2>
+              <span class="tag" data-i18n="skin.tag">Sólo lo ves vos</span>
+            </header>
+            <div class="sec__body">
+              <div class="rows" id="pitchSkin"></div>
+              <div class="rows" id="pitchSwitches"></div>
+              <div class="rows" id="pitchMirror"></div>
+            </div>
+          </section>
+
+          <section class="sec" data-sec="replays">
+            <header class="sec__head"><h2 class="sec__title" data-i18n="pitch.replays">En los replays</h2></header>
+            <p class="sec__desc" data-i18n="pitch.replaysHelp">En una grabación no hay a quién sacarle ventaja: las mismas ayudas van sin límite.</p>
+            <div class="sec__body">
+              <div class="rows" id="pitchReplaySwitches"></div>
+              <div class="row" id="pitchTrailField">
+                <div class="row__text">
+                  <span class="row__label" data-i18n="pitch.trailLength">Largo de la estela<i class="hint" tabindex="0" data-hint="pitch.trailLengthHelp" aria-label="Más información">i</i></span>
+                </div>
+                <div class="row__ctl">
+                  <input type="range" id="pitchTrailMs" min="120" max="1200" step="1" />
+                  <b class="row__val" id="pitchTrailMsValue">320 ms</b>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- ═══ En partida ═══
+               Lo que sólo se ve con la cancha delante: el chat, la botonera
+               flotante y el cartel de teclas. -->
+          <section class="sec" data-sec="partida">
+            <header class="sec__head"><h2 class="sec__title" data-i18n="group.inGame">En partida</h2></header>
+            <div class="sec__body">
+              <div class="rows" id="gameChat"></div>
+              <div class="row">
+                <div class="row__text">
+                  <span class="row__label" data-i18n="look.hudScale">Tamaño de los botones<i class="hint" tabindex="0" data-hint="look.hudHint" aria-label="Más información">i</i></span>
+                </div>
+                <div class="row__ctl">
+                  <input type="range" id="hudScale" min="0.8" max="1.4" step="0.01" />
+                  <b class="row__val" id="hudScaleValue">100%</b>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- ═══ Cartel de teclas ═══
+               Muestra direcciones, no letras: se enciende con cualquier tecla
+               atada a esa acción. Lo dibuja game-preload.js. Pide el rol, así
+               que va marcado con `data-vip-perk` / `data-vip-locked`: los
+               enciende y apaga `paintVipGates` con el resto de los beneficios. -->
+          <section class="sec" data-sec="teclashud">
+            <header class="sec__head">
+              <h2 class="sec__title"><span data-i18n="keys.hudTitle">Cartel de teclas</span></h2>
+              <span class="vipmark">VIP</span>
+            </header>
+            <p class="sec__desc" data-i18n="keys.hudHint">Sólo lo ves vos. Tocá «Acomodar» y arrastralo a donde quieras.</p>
+            <p class="tray note" data-vip-locked hidden data-i18n="vip.needRole">Hace falta el rol VIP en el server de Thrivium.</p>
+            <div class="sec__body" data-vip-perk hidden>
+              <div class="rows" id="keysHudSwitches"></div>
+              <div class="row">
+                <div class="row__text"><span class="row__label" data-i18n="keys.hudColor">Color</span></div>
+                <div class="row__ctl">
+                  <input type="color" id="keysHudColor" />
+                  <button class="btn btn--ghost btn--sm" id="keysHudReset" data-i18n="keys.hudTheme"><svg data-icon viewBox="0 0 24 24"><path d="M12 3.6c3.4 4.1 5.4 6.8 5.4 9.1a5.4 5.4 0 0 1-10.8 0c0-2.3 2-5 5.4-9.1z"/></svg>Color del tema</button>
+                </div>
+              </div>
+              <div class="row">
+                <div class="row__text"><span class="row__label" data-i18n="keys.hudSize">Tamaño</span></div>
+                <div class="row__ctl">
+                  <input type="range" id="keysHudSize" min="0.7" max="1.6" step="0.01" />
+                  <b class="row__val" id="keysHudSizeValue">100%</b>
+                </div>
+              </div>
+              <div class="row">
+                <div class="row__text"><span class="row__label" data-i18n="keys.hudPlace">Dónde va</span></div>
+                <div class="row__ctl">
+                  <button class="btn btn--ghost btn--sm" id="keysHudMove" data-i18n="keys.hudMove"><svg data-icon viewBox="0 0 24 24"><path d="M12 4.2v15.6M4.2 12h15.6M12 4.2 9.9 6.4M12 4.2l2.1 2.2M12 19.8l-2.1-2.2M12 19.8l2.1-2.2M4.2 12l2.2-2.1M4.2 12l2.2 2.1M19.8 12l-2.2-2.1M19.8 12l-2.2 2.1"/></svg>Acomodar en pantalla</button>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section class="sec" data-sec="overlay" hidden>
+            <header class="sec__head"><h2 class="sec__title" data-i18n="look.overlay">Overlay en partida</h2></header>
+            <p class="sec__desc" data-i18n="look.overlayHint">Dentro del juego, F8 lo muestra u oculta.</p>
+            <div class="sec__body">
+              <div class="rows" id="overlaySwitches"></div>
+              <div class="row">
+                <div class="row__text"><span class="row__label" data-i18n="look.position">Posición</span></div>
+                <div class="row__ctl">
+                  <select id="overlayPos">
+                    <option value="top-left" data-i18n="look.posTopLeft">Arriba izquierda</option>
+                    <option value="top-right" data-i18n="look.posTopRight">Arriba derecha</option>
+                    <option value="bottom-left" data-i18n="look.posBottomLeft">Abajo izquierda</option>
+                    <option value="bottom-right" data-i18n="look.posBottomRight">Abajo derecha</option>
+                  </select>
+                </div>
+              </div>
+              <div class="row">
+                <div class="row__text"><span class="row__label" data-i18n="look.opacity">Opacidad</span></div>
+                <div class="row__ctl">
+                  <input type="range" id="overlayOpacity" min="0.3" max="1" step="0.01" />
+                  <b class="row__val" id="overlayOpacityValue">85%</b>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- ═══ Cartel de música ═══
+               Qué está sonando y los tres botones, flotando sobre la cancha.
+               El reproductor en sí vive en la pestaña Música. -->
+          <section class="sec" data-sec="musica" id="musicHudCard" hidden>
+            <header class="sec__head">
+              <h2 class="sec__title" data-i18n="music.hudTitle">Cartel de música</h2>
+              <button class="btn btn--ghost btn--sm" id="musicHudOpen" data-i18n="music.openTab"><svg data-icon viewBox="0 0 24 24"><path d="M9.2 18V6.4l10-1.8v11.1"/><ellipse cx="6.7" cy="18" rx="2.5" ry="2.2"/><ellipse cx="16.7" cy="15.7" rx="2.5" ry="2.2"/></svg>Abrir Música</button>
+            </header>
+            <p class="sec__desc" data-i18n="music.hudHelp">Sobre la cancha, con lo que suena y los botones. Sólo lo ves vos; en el juego, F7.</p>
+            <div class="sec__body">
+              <div class="rows" id="musicSwitches"></div>
+              <div class="row">
+                <div class="row__text"><span class="row__label" data-i18n="music.hudSize">Tamaño</span></div>
+                <div class="row__ctl">
+                  <input type="range" id="musicHudSize" min="0.7" max="1.6" step="0.01" />
+                  <b class="row__val" id="musicHudSizeValue">100%</b>
+                </div>
+              </div>
+              <div class="row">
+                <div class="row__text"><span class="row__label" data-i18n="keys.hudPlace">Dónde va</span></div>
+                <div class="row__ctl">
+                  <button class="btn btn--ghost btn--sm" id="musicHudMove" data-i18n="music.hudMove"><svg data-icon viewBox="0 0 24 24"><path d="M12 4.2v15.6M4.2 12h15.6M12 4.2 9.9 6.4M12 4.2l2.1 2.2M12 19.8l-2.1-2.2M12 19.8l2.1-2.2M4.2 12l2.2-2.1M4.2 12l2.2 2.1M19.8 12l-2.2-2.1M19.8 12l-2.2 2.1"/></svg>Acomodar en pantalla</button>
+                </div>
+              </div>
+            </div>
+          </section>
+        </div>
+      </section>
+
+      <!-- ═══════════════════════════════════════════════════════════════
+           CUENTA
+           ═══════════════════════════════════════════════════════════════
+           Quién sos: acá adentro y afuera. Todo esto vivía repartido entre
+           «Ajustes» —donde la carrera, los rivales y el perfil no son ajustes
+           de nada— y «Aspecto» —donde los sonidos de gol competían con el
+           tema del cliente. Se llama «Cuenta» y no «Perfil» porque «Ver mi
+           perfil» ya es otra cosa: la ficha pública del sitio, que se abre
+           encima de todo (ver `openProfile`).
+           ═══════════════════════════════════════════════════════════════ -->
+      <section class="page" id="accountPage" data-page="cuenta">
+        <div class="page__inner">
+          <header class="pagehead">
+            <h1 data-i18n="account.title">Cuenta</h1>
+            <p data-i18n="account.subtitle">Quién sos en las salas y qué ven los demás de vos.</p>
+          </header>
+
+          <!-- ═══ Tu jugador ═══
+               El nombre y la bandera son lo que ve una sala; el avatar es lo
+               que se dibuja sobre tu disco. -->
+          <section class="sec" data-sec="jugador">
+            <header class="sec__head"><h2 class="sec__title" data-i18n="group.yourPlayer">Tu jugador</h2></header>
+            <div class="sec__body">
+              <div class="row">
+                <div class="row__text">
+                  <span class="row__label" data-i18n="settings.name">Tu nombre</span>
+                  <span class="row__desc" data-i18n="settings.nameHint">Se guarda en HaxBall.</span>
+                </div>
+                <div class="row__ctl">
+                  <input type="text" id="nickname" maxlength="25" data-i18n-placeholder="nick.placeholder" placeholder="Tu nombre" />
+                </div>
+              </div>
+
+              <div class="row">
+                <div class="row__text">
+                  <span class="row__label" data-i18n="flag.title">Tu bandera<i class="hint" tabindex="0" data-hint="flag.help" aria-label="Más información">i</i></span>
+                </div>
+                <div class="row__ctl flagrow">
+                  <span class="flagrow__flag" id="countryFlag"></span>
+                  <select id="countrySelect"></select>
+                </div>
+              </div>
+
+              <div class="row">
+                <div class="row__text">
+                  <span class="row__label" data-i18n="avatar.static">Avatar<i class="hint" tabindex="0" data-hint="avatar.help" aria-label="Más información">i</i></span>
+                </div>
+                <div class="row__ctl">
+                  <div class="avatarpreview" id="avatarPreview">—</div>
+                  <input type="text" id="avatarStatic" maxlength="2" spellcheck="false" placeholder="⚽" />
+                </div>
+              </div>
+
+              <div class="row row--block">
+                <div class="row__ctl"><div class="emojirow" id="avatarPresets"></div></div>
+              </div>
+
+              <!-- La imagen sobre el disco no pide rol: la dibuja tu propia
+                   máquina sobre tu propio disco y no sale de tu pantalla. Lo
+                   que sí pide rol es que se MUEVA. -->
+              <div class="row">
+                <div class="row__text">
+                  <span class="row__label" data-i18n="avatar.image">Avatar con imagen</span>
+                  <span class="row__desc" id="avatarImageNote" hidden></span>
+                </div>
+                <div class="row__ctl assetrow">
+                  <span class="assetrow__preview" id="vipAvatarPreview"></span>
+                  <button class="btn btn--ghost btn--sm" id="vipPickAvatar" data-i18n="vip.choose"><svg data-icon viewBox="0 0 24 24"><path d="M3.6 7.4A1.9 1.9 0 0 1 5.5 5.5h3.2l1.9 2.4h7.9a1.9 1.9 0 0 1 1.9 1.9v7.3a1.9 1.9 0 0 1-1.9 1.9H5.5a1.9 1.9 0 0 1-1.9-1.9z"/></svg>Elegir…</button>
+                  <button class="btn btn--ghost btn--sm" id="vipClearAvatar" data-i18n="vip.clear"><svg data-icon viewBox="0 0 24 24"><path d="M6.4 6.4l11.2 11.2M17.6 6.4 6.4 17.6"/></svg>Quitar</button>
+                </div>
+              </div>
+
+              <!-- La pelota, con las mismas reglas que el avatar. -->
+              <div class="row">
+                <div class="row__text">
+                  <span class="row__label" data-i18n="ball.image">Pelota con imagen</span>
+                  <span class="row__desc" id="ballImageNote" hidden></span>
+                </div>
+                <div class="row__ctl assetrow">
+                  <span class="assetrow__preview" id="vipBallPreview"></span>
+                  <button class="btn btn--ghost btn--sm" id="vipPickBall" data-i18n="vip.choose"><svg data-icon viewBox="0 0 24 24"><path d="M3.6 7.4A1.9 1.9 0 0 1 5.5 5.5h3.2l1.9 2.4h7.9a1.9 1.9 0 0 1 1.9 1.9v7.3a1.9 1.9 0 0 1-1.9 1.9H5.5a1.9 1.9 0 0 1-1.9-1.9z"/></svg>Elegir…</button>
+                  <button class="btn btn--ghost btn--sm" id="vipClearBall" data-i18n="vip.clear"><svg data-icon viewBox="0 0 24 24"><path d="M6.4 6.4l11.2 11.2M17.6 6.4 6.4 17.6"/></svg>Quitar</button>
+                </div>
+              </div>
+
+              <div class="rows" id="ball3dSwitch"></div>
+              <div class="rows" id="avatarSwitch"></div>
+
+              <div class="row" id="avatarFramesField">
+                <div class="row__text">
+                  <span class="row__label" data-i18n="avatar.frames">Cuadros de la animación<i class="hint" tabindex="0" data-hint="avatar.framesHelp" aria-label="Más información">i</i></span>
+                </div>
+                <div class="row__ctl">
+                  <input type="text" id="avatarFrames" maxlength="40" spellcheck="false" placeholder="⚽🔥⭐" />
+                </div>
+              </div>
+
+              <div class="row" id="avatarSpeedField">
+                <div class="row__text">
+                  <span class="row__label" data-i18n="avatar.speed">Velocidad<i class="hint" tabindex="0" data-hint="avatar.speedHelp" aria-label="Más información">i</i></span>
+                </div>
+                <div class="row__ctl">
+                  <input type="range" id="avatarSpeed" min="500" max="2500" step="1" />
+                  <b class="row__val" id="avatarSpeedValue">500 ms</b>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- ═══ VIP ═══ -->
+          <section class="sec vipsec" data-sec="vip" id="vipCard">
+            <header class="sec__head">
+              <h2 class="sec__title"><span class="vipmark">VIP</span> <span data-i18n="vip.title">Beneficios</span></h2>
+              <div class="rowactions" id="vipActions"></div>
+            </header>
+            <p class="sec__desc" id="vipStatus"></p>
+            <p class="note" data-i18n="account.settingsInfo">Los ajustes y las identidades de HaxBall se guardan solo en esta PC. TL App no inicia sesión ni sincroniza cuentas de Discord.</p>
+
+            <!-- Sin el rol, esto dice QUÉ se destraba, que es lo único que
+                 tiene sentido mostrar ahí. -->
+            <ul class="viplocked" id="vipLocked" data-vip-locked hidden>
+              <li data-i18n="vip.perkAvatar">Avatar animado con GIF</li>
+              <li data-i18n="vip.perkBall">Pelota animada con GIF</li>
+              <li data-i18n="vip.perkHit">Sonido propio al patear</li>
+              <li data-i18n="vip.perkLooks">Degradados y fuentes en la lista de jugadores</li>
+              <li data-i18n="vip.perkGoal">Tu propio sonido de gol</li>
+              <li data-i18n="vip.perkDuoThemes">Cuatro temas de dos colores</li>
+              <li data-i18n="vip.perkThemes">Temas hechos por vos</li>
+              <li data-i18n="vip.perkKeys">Cartel de teclas sobre la cancha</li>
+            </ul>
+
+            <div class="sec__body" id="vipPerks" data-vip-perk hidden>
+              <div class="row">
+                <div class="row__text"><span class="row__label" data-i18n="vip.goalSound">Sonido de gol</span></div>
+                <div class="row__ctl assetrow">
+                  <span class="assetrow__name" id="vipGoalName">—</span>
+                  <button class="btn btn--ghost btn--sm" id="vipPickGoal" data-i18n="vip.choose"><svg data-icon viewBox="0 0 24 24"><path d="M3.6 7.4A1.9 1.9 0 0 1 5.5 5.5h3.2l1.9 2.4h7.9a1.9 1.9 0 0 1 1.9 1.9v7.3a1.9 1.9 0 0 1-1.9 1.9H5.5a1.9 1.9 0 0 1-1.9-1.9z"/></svg>Elegir…</button>
+                  <button class="btn btn--ghost btn--sm" id="vipClearGoal" data-i18n="vip.clear"><svg data-icon viewBox="0 0 24 24"><path d="M6.4 6.4l11.2 11.2M17.6 6.4 6.4 17.6"/></svg>Quitar</button>
+                </div>
+              </div>
+              <div class="row">
+                <div class="row__text"><span class="row__label" data-i18n="vip.volume">Volumen</span></div>
+                <div class="row__ctl">
+                  <input type="range" id="vipGoalVolume" min="0" max="1" step="0.01" />
+                  <b class="row__val" id="vipGoalVolumeValue">70%</b>
+                </div>
+              </div>
+
+              <div class="row">
+                <div class="row__text">
+                  <span class="row__label" data-i18n="vip.hitSound">Sonido al patear<i class="hint" tabindex="0" data-hint="vip.hitSoundHelp" aria-label="Más información">i</i></span>
+                </div>
+                <div class="row__ctl assetrow">
+                  <span class="assetrow__name" id="vipHitName">—</span>
+                  <button class="btn btn--ghost btn--sm" id="vipPickHit" data-i18n="vip.choose"><svg data-icon viewBox="0 0 24 24"><path d="M3.6 7.4A1.9 1.9 0 0 1 5.5 5.5h3.2l1.9 2.4h7.9a1.9 1.9 0 0 1 1.9 1.9v7.3a1.9 1.9 0 0 1-1.9 1.9H5.5a1.9 1.9 0 0 1-1.9-1.9z"/></svg>Elegir…</button>
+                  <button class="btn btn--ghost btn--sm" id="vipClearHit" data-i18n="vip.clear"><svg data-icon viewBox="0 0 24 24"><path d="M6.4 6.4l11.2 11.2M17.6 6.4 6.4 17.6"/></svg>Quitar</button>
+                </div>
+              </div>
+              <div class="row">
+                <div class="row__text"><span class="row__label" data-i18n="vip.volume">Volumen</span></div>
+                <div class="row__ctl">
+                  <input type="range" id="vipHitVolume" min="0" max="1" step="0.01" />
+                  <b class="row__val" id="vipHitVolumeValue">70%</b>
+                </div>
+              </div>
+
+              <!-- Lo único VIP que no dibuja tu máquina sino la de los demás.
+                   La muestra es una fila igual a la del juego: bandera,
+                   nombre, insignias y ping. -->
+              <div class="row row--block">
+                <div class="row__text">
+                  <span class="row__label" data-i18n="vip.looks">Cómo te ven en la lista<i class="hint" tabindex="0" data-hint="vip.looksHint" aria-label="Más información">i</i></span>
+                </div>
+                <div class="row__ctl">
+                  <div class="looksdemo" id="vipLookPreview">
+                    <span class="looksdemo__flag"></span>
+                    <span class="looksdemo__name" id="vipLookName">TuNombre</span>
+                    <span class="looksdemo__marks">
+                      <img class="looksdemo__logo" src="../../assets/toda-la-lecce.png" alt="" />
+                      <!-- El mismo dibujo que inyecta el juego (VIP_GEM_SVG en room-ui.js):
+                           si se cambia acá, hay que cambiarlo allá. -->
+                      <svg class="looksdemo__gem" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4 2 9h7.5z" fill="#95e6fc"/><path d="M7 4h10l-2.5 5h-5z" fill="#dcfaff"/><path d="M17 4l5 5h-7.5z" fill="#62ccf2"/><path d="M2 9h7.5L12 21z" fill="#3dbdf3"/><path d="M9.5 9h5L12 21z" fill="#1c9fd9"/><path d="M14.5 9H22L12 21z" fill="#0a7fb9"/><path d="M7 4h10l5 5-10 12L2 9z" fill="none" stroke="#062a3e" stroke-width="1.4" stroke-linejoin="round"/></svg>
+                    </span>
+                    <span class="looksdemo__ping">12</span>
+                  </div>
+                </div>
+                <div class="row__ctl"><div class="gradients" id="vipGradients"></div></div>
+              </div>
+              <div class="row">
+                <div class="row__text"><span class="row__label" data-i18n="vip.looksFont">Fuente</span></div>
+                <div class="row__ctl">
+                  <select id="vipLookFont">
+                    <option value="default" data-i18n="vip.fontDefault">La del juego</option>
+                    <option value="outfit">Outfit</option>
+                    <option value="mono" data-i18n="vip.fontMono">Monoespaciada</option>
+                    <option value="serif" data-i18n="vip.fontSerif">Con serifa</option>
+                    <option value="round">Comic</option>
+                    <option value="impact">Impact</option>
+                  </select>
+                  <button class="btn btn--ghost btn--sm" id="vipLookClear" data-i18n="vip.clear"><svg data-icon viewBox="0 0 24 24"><path d="M6.4 6.4l11.2 11.2M17.6 6.4 6.4 17.6"/></svg>Quitar</button>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- ═══ Identidades de HaxBall ═══ -->
+          <section class="sec" data-sec="identidades">
+            <header class="sec__head">
+              <h2 class="sec__title"><span data-i18n="auth.title">Identidades de HaxBall</span><i class="hint" tabindex="0" data-hint="auth.help" aria-label="Más información">i</i></h2>
+              <div class="rowactions">
+                <button class="btn btn--ghost btn--sm" id="authAdd" data-i18n="auth.add"><svg data-icon viewBox="0 0 24 24"><circle cx="8.6" cy="14.4" r="3.8"/><path d="M11.3 11.7 19.4 3.6M16.6 6.4l2.2 2.2M14.4 8.6l2.2 2.2"/></svg>Pegar una clave</button>
+                <button class="btn btn--primary btn--sm" id="authSave" data-i18n="auth.saveCurrent"><svg data-icon viewBox="0 0 24 24"><path d="M5 12.6 9.7 17.3 19 7.6"/></svg>Guardar la actual</button>
+              </div>
+            </header>
+            <div class="sec__body">
+              <div class="row row--block">
+                <div class="row__ctl"><div class="authlist" id="authList"></div></div>
+              </div>
+            </div>
+            <p class="tray note note--warn" data-i18n="auth.warning">Se guardan en texto plano en tu PC y no se exportan. Tratalas como contraseñas.</p>
+          </section>
+
+          <section class="sec" data-sec="discord">
+            <header class="sec__head">
+              <h2 class="sec__title">Discord</h2>
+              <span class="statusline" id="discordStatus">—</span>
+            </header>
+            <div class="sec__body" id="discordSwitches"></div>
+          </section>
+
+        </div>
+      </section>
+
+      <!-- ═══════════════════════════════════════════════════════════════
+           REPLAYS
+           ═══════════════════════════════════════════════════════════════ -->
+      <section class="page" data-page="replays">
+        <div class="page__inner">
+          <header class="pagehead pagehead--row">
+            <div>
+              <span class="eyebrow" data-i18n="replays.eyebrow">Biblioteca</span>
+              <h1 data-i18n="replays.title">Replays</h1>
+              <p id="replayFolder">—</p>
+            </div>
+            <div class="rowactions">
+              <button class="btn btn--ghost btn--sm" id="replayOpenFolder" data-i18n="replays.openFolder"><svg data-icon viewBox="0 0 24 24"><path d="M3.6 7.4A1.9 1.9 0 0 1 5.5 5.5h3.2l1.9 2.4h7.9a1.9 1.9 0 0 1 1.9 1.9v7.3a1.9 1.9 0 0 1-1.9 1.9H5.5a1.9 1.9 0 0 1-1.9-1.9z"/></svg>Abrir carpeta</button>
+              <button class="btn btn--ghost btn--sm" id="replayChoose" data-i18n="replays.changeFolder"><svg data-icon viewBox="0 0 24 24"><path d="M4.5 19.5h3.2L18.3 8.9a1.6 1.6 0 0 0 0-2.3l-.9-.9a1.6 1.6 0 0 0-2.3 0L4.5 16.3z"/></svg>Cambiar carpeta</button>
+              <button class="btn btn--ghost btn--sm" id="replayRefresh" data-i18n="replays.refresh"><svg data-icon viewBox="0 0 24 24"><path d="M4.3 12a7.7 7.7 0 1 0 2.4-5.5L3.4 9.6M3.2 4.6l.2 5.2 5.2-.2"/></svg>Actualizar</button>
+            </div>
+          </header>
+
+          <div class="searchbar">
+            <svg data-icon viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.8"/><path d="M16.1 16.1 20.2 20.2"/></svg>
+            <input type="text" id="replaySearch" data-i18n-placeholder="replays.search" placeholder="Buscar por nombre…" />
+          </div>
+
+          <div class="replaylist" id="replayList"></div>
+        </div>
+      </section>
+
+      <!-- ═══════════════════════════════════════════════════════════════
+           AJUSTES
+           ═══════════════════════════════════════════════════════════════
+           El programa, no la cuenta: idioma, ventana, audio, arranque,
+           versión y actualizaciones.
+           ═══════════════════════════════════════════════════════════════ -->
+      <section class="page" data-page="ajustes">
+        <div class="page__inner">
+          <header class="pagehead">
+            <h1 data-i18n="settings.title">Ajustes</h1>
+            <p data-i18n="settings.subtitle">El cliente: cómo arranca, cómo suena y cómo se actualiza.</p>
+          </header>
+
+          <section class="sec" data-sec="cliente">
+            <header class="sec__head"><h2 class="sec__title" data-i18n="settings.client">Cliente</h2></header>
+            <div class="sec__body">
+              <div class="row">
+                <div class="row__text">
+                  <span class="row__label" data-i18n="settings.language">Idioma<i class="hint" tabindex="0" data-hint="settings.languageHelp" aria-label="Más información">i</i></span>
+                </div>
+                <div class="row__ctl">
+                  <select id="langSelect">
+                    <option value="es">Español</option>
+                    <option value="en">English</option>
+                  </select>
+                </div>
+              </div>
+              <!-- La lista la arma `syncResolutionOptions` con lo que de verdad
+                   entra en el monitor donde está la ventana. Va vacía en el
+                   HTML a propósito: escrita acá, cualquier cosa que quedara
+                   suelta sería una opción que no se puede cumplir. -->
+              <div class="row">
+                <div class="row__text">
+                  <span class="row__label" data-i18n="settings.resolution">Resolución del juego</span>
+                  <span class="row__desc" id="resMaxNote"></span>
+                </div>
+                <div class="row__ctl">
+                  <select id="resSelect"></select>
+                </div>
+              </div>
+              <div class="row" id="resCustomWrap" hidden>
+                <div class="row__text">
+                  <span class="row__label" data-i18n="settings.resSize">Tamaño</span>
+                  <span class="row__desc" id="resCustomNote"></span>
+                </div>
+                <div class="row__ctl">
+                  <input type="number" id="resCustomW" class="numbox" data-i18n-placeholder="settings.resW" placeholder="Ancho" min="640" />
+                  <span class="row__val">×</span>
+                  <input type="number" id="resCustomH" class="numbox" data-i18n-placeholder="settings.resH" placeholder="Alto" min="480" />
+                  <button class="btn btn--ghost btn--sm" id="resCustomApply" data-i18n="settings.apply"><svg data-icon viewBox="0 0 24 24"><path d="M5 12.6 9.7 17.3 19 7.6"/></svg>Aplicar</button>
+                </div>
+              </div>
+              <div class="rows" id="systemSwitches"></div>
+            </div>
+          </section>
+
+          <!-- ═══ Audio ═══
+               Lo que suena mientras jugás y lo que te interrumpe cuando no. -->
+          <section class="sec" data-sec="audio">
+            <header class="sec__head"><h2 class="sec__title" data-i18n="group.audio">Audio</h2></header>
+            <div class="sec__body">
+              <div class="rows" id="gameSound"></div>
+              <div class="rows" id="notifySwitches"></div>
+              <div class="row">
+                <div class="row__text">
+                  <span class="row__label" data-i18n="notify.volume">Volumen del aviso</span>
+                  <span class="row__desc" data-i18n="notify.hint">Se prueba solo al mover la barra.</span>
+                </div>
+                <div class="row__ctl">
+                  <input type="range" id="notifyVolume" min="0" max="1" step="0.01" />
+                  <b class="row__val" id="notifyVolumeValue">50%</b>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- ═══ Actualizaciones (bucket de Cloudflare R2) ═══ -->
+          <section class="sec" data-sec="actualizaciones">
+            <header class="sec__head">
+              <h2 class="sec__title" data-i18n="settings.updates">Actualizaciones</h2>
+              <span class="statusline" id="updateStatus">—</span>
+            </header>
+            <div class="sec__body">
+              <div class="rows" id="updateSwitches"></div>
+
+              <div class="progress" id="updateProgress" hidden>
+                <div class="progress__bar"><i id="updateProgressFill" data-keep-motion></i></div>
+                <span class="progress__text" id="updateProgressText">0%</span>
+              </div>
+
+              <p class="note" id="updateNotes" hidden></p>
+
+              <div class="rowactions">
+                <button class="btn btn--ghost btn--sm" id="updateCheck" data-i18n="settings.checkNow"><svg data-icon viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.8"/><path d="M16.1 16.1 20.2 20.2"/></svg>Buscar ahora</button>
+                <button class="btn btn--primary btn--sm" id="updateDownload" data-i18n="settings.download" hidden><svg data-icon viewBox="0 0 24 24"><path d="M12 3v11M7.6 9.6 12 14l4.4-4.4M4.5 19.5h15"/></svg>Descargar</button>
+                <button class="btn btn--primary btn--sm" id="updateInstall" data-i18n="settings.install" hidden><svg data-icon viewBox="0 0 24 24"><path d="M12 3.2v9.3M8.2 9 12 12.8 15.8 9M4.8 15.4v3.1a1.5 1.5 0 0 0 1.5 1.5h11.4a1.5 1.5 0 0 0 1.5-1.5v-3.1"/></svg>Instalar y reiniciar</button>
+              </div>
+            </div>
+          </section>
+
+          <section class="sec" data-sec="config">
+            <header class="sec__head"><h2 class="sec__title" data-i18n="settings.config">Configuración</h2></header>
+            <div class="sec__body">
+              <div class="row row--block">
+                <div class="row__ctl">
+                  <button class="btn btn--ghost btn--sm" id="cfgExport" data-i18n="settings.export"><svg data-icon viewBox="0 0 24 24"><path d="M12 20.2V9.2M7.6 13.6 12 9.2l4.4 4.4M4.5 4.5h15"/></svg>Exportar config</button>
+                  <button class="btn btn--ghost btn--sm" id="cfgImport" data-i18n="settings.import"><svg data-icon viewBox="0 0 24 24"><path d="M12 3v11M7.6 9.6 12 14l4.4-4.4M4.5 19.5h15"/></svg>Importar</button>
+                  <button class="btn btn--danger btn--sm" id="cfgReset" data-i18n="settings.reset"><svg data-icon viewBox="0 0 24 24"><path d="M19.7 12a7.7 7.7 0 1 1-2.4-5.5l3.3 3.1M20.8 4.6l-.2 5.2-5.2-.2"/></svg>Restablecer</button>
+                </div>
+              </div>
+              <dl class="deflist" id="aboutList"></dl>
+            </div>
+          </section>
+        </div>
+      </section>
+
+            </div><!-- /.panel__pages -->
+          </div><!-- /.panel__body -->
+        </div><!-- /.panel__card -->
+      </div><!-- /.panel -->
+    </div><!-- /.body -->
+    </div><!-- /.shell -->
+  </div>
+
+  <!-- ═══ Amigos ═══════════════════════════════════════════════════
+       Va afuera de `.app` y fijo al borde derecho: se dibuja ENCIMA del juego
+       sin tocarlo, porque el juego vive en un <webview> y esto no. Por eso
+       tampoco lleva desenfoque de fondo: el desenfoque lo dibujaría el mismo
+       proceso de GPU que está sacando la cancha a mil cuadros.
+       ═══════════════════════════════════════════════════════════ -->
+  <aside class="fdock" id="friendsDock" hidden>
+    <header class="fdock__head">
+      <button class="fdock__back" id="dockBack" hidden data-i18n-title="friends.back" title="Volver" aria-label="Volver">
+        <svg data-icon viewBox="0 0 24 24"><path d="M14.5 6.4 9 12l5.5 5.6"/></svg>
+      </button>
+      <h2 id="dockTitle" data-i18n="friends.title">Amigos</h2>
+      <span class="statusline" id="dockCount"></span>
+      <button class="fdock__close" id="dockClose" data-i18n-title="friends.close" title="Cerrar (Esc)" aria-label="Cerrar">
+        <svg data-icon viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg>
+      </button>
+    </header>
+
+    <div class="fdock__locked" id="dockLocked" hidden>
+      <p class="note" data-i18n="friends.lockedText">Los amigos van con tu cuenta, así que hace falta iniciar sesión con Discord.</p>
+    </div>
+
+    <!-- ═══ Vista lista ═══
+         Tres zonas fijas, de arriba abajo: vos, la lista y el buscador. La del
+         medio es la única que scrollea; las otras dos no se mueven nunca, que es
+         lo que hace que el panel se lea como una sola pieza y no como una pila
+         de bloques sueltos.
+
+         Antes el formulario de agregar iba en el MEDIO, entre tu fila y las
+         solicitudes: partía la lista en dos y empujaba a los amigos hacia abajo
+         cada vez que aparecía una solicitud. -->
+    <div class="fdock__view" id="dockListView" hidden>
+      <!-- Vos: la cabecera del panel, no una fila más de la lista. Es de donde
+           se abre tu perfil mientras jugás, sin volver a los ajustes. -->
+      <button class="fme" id="dockMe" type="button">
+        <span class="pfp pfp--md" id="dockMeFace">—</span>
+        <span class="fme__id">
+          <b id="dockMeName">—</b>
+          <span class="fme__level" id="dockMeLevel"></span>
+        </span>
+        <svg data-icon class="fme__go" viewBox="0 0 24 24"><path d="M9.5 6.4 15 12l-5.5 5.6"/></svg>
+      </button>
+
+      <div class="fdock__scroll">
+        <!-- Cada grupo se esconde entero cuando no tiene a nadie: un título
+             «Solicitudes» sobre la nada es peor que no tener título. -->
+        <section class="fgroup" id="friendReqGroup" hidden>
+          <h3 class="fgroup__title">
+            <span data-i18n="friends.requests">Solicitudes</span><b id="friendReqCount"></b>
+          </h3>
+          <div class="fgroup__reqs" id="friendReqList"></div>
+        </section>
+
+        <section class="fgroup" id="friendOnGroup" hidden>
+          <h3 class="fgroup__title">
+            <span data-i18n="friends.onlineGroup">En línea</span><b id="friendOnCount"></b>
+          </h3>
+          <div class="fgroup__rows" id="friendList"></div>
+        </section>
+
+        <section class="fgroup fgroup--off" id="friendOffGroup" hidden>
+          <h3 class="fgroup__title">
+            <span data-i18n="friends.offlineGroup">Desconectados</span><b id="friendOffCount"></b>
+          </h3>
+          <div class="fgroup__rows" id="friendListOff"></div>
+        </section>
+
+        <div id="friendEmpty"></div>
+      </div>
+
+      <!-- Tu código, arriba del campo de agregar: primero se copia el propio y
+           se lo manda, después se pega el del otro. En ese orden se usa. -->
+      <div class="fcode" id="friendCodeBox" hidden>
+        <span class="fcode__label" data-i18n="friends.myCode">Tu código</span>
+        <button class="fcode__value" id="friendCodeValue" data-i18n-title="friends.copyCode" title="Copiar">—</button>
+        <button class="iconbtn iconbtn--sm" id="friendCodeNew" data-i18n-title="friends.newCode" title="Cambiar el código">
+          <svg data-icon viewBox="0 0 24 24"><path d="M19.7 12a7.7 7.7 0 1 1-2.4-5.5l3.3 3.1M20.8 4.6l-.2 5.2-5.2-.2"/></svg>
+        </button>
+      </div>
+
+      <form class="fdock__add" id="friendAddForm">
+        <input type="text" id="friendAddName" maxlength="40" data-i18n-placeholder="friends.addPlaceholder" placeholder="Código o nombre de Discord" />
+        <button class="btn btn--primary btn--sm" type="submit" data-i18n="friends.add"><svg data-icon viewBox="0 0 24 24"><circle cx="10" cy="8.2" r="3.7"/><path d="M3.4 20c0-3.4 2.9-5.6 6.6-5.6M17.5 13.5v6M14.5 16.5h6"/></svg>Agregar</button>
+      </form>
+    </div>
+
+    <!-- Vista chat: la misma columna, no una ventana aparte -->
+    <div class="fdock__view fdock__view--chat" id="dockChatView" hidden>
+      <!-- Quién es, y recién debajo qué se puede hacer con él.
+           La misma pieza que una fila de la lista —foto con el punto de estado,
+           nombre, y dónde está— y por eso se lee igual. El nombre vive acá y no
+           en el título del panel: arriba entraba media docena de letras y el
+           resto era «…», y encima quedaba al lado de la cuenta de conectados de
+           la LISTA, que en una conversación no significa nada. -->
+      <div class="fdock__chatbar">
+        <span class="pfp" id="chatFace">—</span>
+        <span class="friend__body">
+          <b id="chatName">—</b>
+          <span class="friend__where" id="chatWhere"></span>
+        </span>
+      </div>
+      <div class="fdock__chatacts">
+        <button class="btn btn--ghost btn--sm" id="chatProfile" data-i18n="profile.open">
+          <svg data-icon viewBox="0 0 24 24"><circle cx="12" cy="8.2" r="3.7"/><path d="M4.8 20c0-3.4 3.2-5.6 7.2-5.6s7.2 2.2 7.2 5.6"/></svg>Perfil</button>
+        <button class="btn btn--ghost btn--sm" id="chatInvite" hidden data-i18n="friends.inviteShort" title="Invitar a mi sala">
+          <svg data-icon viewBox="0 0 24 24"><circle cx="10" cy="8.2" r="3.7"/><path d="M3.4 20c0-3.4 2.9-5.6 6.6-5.6M17.5 13.5v6M14.5 16.5h6"/></svg>Invitar</button>
+        <!-- Empujado al otro extremo: borrar a alguien no va al lado de
+             escribirle, es la acción que no se toca sin querer. -->
+        <button class="btn btn--danger btn--sm" id="chatRemove" data-i18n="friends.remove">
+          <svg data-icon viewBox="0 0 24 24"><path d="M4.5 7h15M9.8 7V5.4A1.4 1.4 0 0 1 11.2 4h1.6a1.4 1.4 0 0 1 1.4 1.4V7M6.6 7l.8 12.1a1.5 1.5 0 0 0 1.5 1.4h6.2a1.5 1.5 0 0 0 1.5-1.4L17.4 7"/></svg>Borrar</button>
+      </div>
+      <div class="chat__log" id="chatLog"></div>
+      <form class="chat__form" id="chatForm">
+        <input type="text" id="chatText" maxlength="300" data-i18n-placeholder="friends.write" placeholder="Escribí un mensaje…" />
+        <button class="btn btn--primary btn--sm" type="submit" data-i18n="friends.send"><svg data-icon viewBox="0 0 24 24"><path d="M20.5 3.5 10.2 13.8M20.5 3.5l-6.3 17-3.9-8.7-8.8-3.9z"/></svg>Enviar</button>
+      </form>
+    </div>
+  </aside>
+
+  <!-- ═══ Perfil ═══════════════════════════════════════════════════
+       El tuyo y el de un amigo, en la misma tarjeta: lo único que cambia es que
+       lo tuyo se edita y lo de él se mira. Va afuera de `.app` y por encima del
+       dock, porque se abre DESDE el dock — y el dock se abre jugando.
+       ═══════════════════════════════════════════════════════════ -->
+  <div class="modal profile" id="profileModal" hidden>
+    <div class="modal__card profile__card">
+      <header class="profile__top">
+        <span class="pfp pfp--lg" id="profileFace">—</span>
+        <div class="profile__id">
+          <b id="profileName">—</b>
+          <span class="friend__where" id="profileWhere"></span>
+        </div>
+        <button class="fdock__close" id="profileClose" data-i18n-title="friends.close" title="Cerrar (Esc)" aria-label="Cerrar">
+          <svg data-icon viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg>
+        </button>
+      </header>
+
+      <div class="modal__body">
+        <div class="profile__level">
+          <span class="profile__levelno"><span data-i18n="stats.level">Nivel</span> <b id="profileLevel">1</b></span>
+          <div class="xpbar"><i id="profileXpFill" data-keep-motion></i></div>
+          <span class="playercard__xptext" id="profileXp">0 / 100 XP</span>
+        </div>
+
+        <!-- La bio de un amigo se lee; la tuya se escribe. Nunca las dos. -->
+        <p class="profile__bio" id="profileBio" hidden></p>
+        <form class="field profile__bioform" id="profileBioForm" hidden>
+          <label for="profileBioText" data-i18n="profile.bio">Sobre vos</label>
+          <textarea id="profileBioText" rows="2" maxlength="140" data-i18n-placeholder="profile.bioPlaceholder" placeholder="Una línea sobre vos. Se ve también en tu perfil de thriviumhax.com."></textarea>
+          <div class="profile__bioactions">
+            <span class="note" id="profileBioLeft">140</span>
+            <button class="btn btn--primary btn--sm" type="submit" data-i18n="profile.save"><svg data-icon viewBox="0 0 24 24"><path d="M5 12.6 9.7 17.3 19 7.6"/></svg>Guardar</button>
+          </div>
+        </form>
+
+        <!-- Con su título, para que los números se lean como un bloque y no como
+             la continuación de la bio. -->
+        <section class="profile__block">
+          <h4 class="profile__label" data-i18n="profile.statsLabel">Estadísticas</h4>
+          <dl class="deflist statgrid" id="profileStats"></dl>
+          <p class="note" id="profileNoStats" hidden data-i18n="profile.noStats">Todavía no jugó ningún partido con el cliente.</p>
+        </section>
+
+        <!-- Personalización: es el mismo cosmético que se elige en Ajustes, no
+             una copia — los dos escriben en la misma config. -->
+        <div class="field profile__look" id="profileLookWrap" hidden>
+          <label data-i18n="vip.looks">Cómo te ven en la lista de jugadores</label>
+          <div class="looksdemo" id="profileLookPreview">
+            <span class="looksdemo__flag"></span>
+            <span class="looksdemo__name" id="profileLookName">TuNombre</span>
+            <span class="looksdemo__marks">
+              <img class="looksdemo__logo" src="../../assets/toda-la-lecce.png" alt="" />
+              <svg class="looksdemo__gem" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4 2 9h7.5z" fill="#95e6fc"/><path d="M7 4h10l-2.5 5h-5z" fill="#dcfaff"/><path d="M17 4l5 5h-7.5z" fill="#62ccf2"/><path d="M2 9h7.5L12 21z" fill="#3dbdf3"/><path d="M9.5 9h5L12 21z" fill="#1c9fd9"/><path d="M14.5 9H22L12 21z" fill="#0a7fb9"/><path d="M7 4h10l5 5-10 12L2 9z" fill="none" stroke="#062a3e" stroke-width="1.4" stroke-linejoin="round"/></svg>
+            </span>
+            <span class="looksdemo__ping">12</span>
+          </div>
+
+          <div id="profileLookEdit" hidden>
+            <p class="looksline" data-i18n="vip.looksGradients">Elegí un degradado</p>
+            <div class="gradients" id="profileGradients"></div>
+            <div class="looksrow">
+              <label class="looksrow__item looksrow__item--wide">
+                <span data-i18n="vip.looksFont">Fuente</span>
+                <select id="profileLookFont">
+                  <option value="default" data-i18n="vip.fontDefault">La del juego</option>
+                  <option value="outfit">Outfit</option>
+                  <option value="mono" data-i18n="vip.fontMono">Monoespaciada</option>
+                  <option value="serif" data-i18n="vip.fontSerif">Con serifa</option>
+                  <option value="round">Comic</option>
+                  <option value="impact">Impact</option>
+                </select>
+              </label>
+              <button class="btn btn--ghost btn--sm" type="button" id="profileLookClear" data-i18n="vip.clear"><svg data-icon viewBox="0 0 24 24"><path d="M6.4 6.4l11.2 11.2M17.6 6.4 6.4 17.6"/></svg>Quitar</button>
+            </div>
+          </div>
+          <p class="note" id="profileLookLocked" hidden data-i18n="profile.looksVip">Los degradados y la fuente son un beneficio VIP del server de Thrivium.</p>
+        </div>
+
+        <div class="modal__actions" id="profileActions"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="toasts" id="toasts"></div>
+
+  <script src="js/i18n.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

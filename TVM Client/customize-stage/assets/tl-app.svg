@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
+  <defs>
+    <linearGradient id="shield" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#1c3153"/>
+      <stop offset="1" stop-color="#09101f"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#f1d77a"/>
+      <stop offset="1" stop-color="#b18b36"/>
+    </linearGradient>
+  </defs>
+  <path d="M128 8 234 44v77c0 57-37 99-106 127C59 220 22 178 22 121V44Z" fill="#070c16" stroke="url(#gold)" stroke-width="8" stroke-linejoin="round"/>
+  <path d="M128 22 220 53v67c0 48-30 84-92 111-62-27-92-63-92-111V53Z" fill="url(#shield)"/>
+  <path d="M49 77h158v9H49Z" fill="#f2d22e"/>
+  <path d="M49 91h158v9H49Z" fill="#c8293e"/>
+  <path d="M128 39c-18 0-33 15-33 33h18c0-8 7-15 15-15s15 7 15 15h18c0-18-15-33-33-33Z" fill="url(#gold)" opacity=".9"/>
+  <text x="128" y="162" fill="#f2dda0" font-family="Georgia,serif" font-size="62" font-weight="700" text-anchor="middle" letter-spacing="-5">TL</text>
+  <path d="M75 177h106" stroke="url(#gold)" stroke-width="3" stroke-linecap="round"/>
+  <text x="128" y="205" fill="#f5f0df" font-family="Segoe UI,Arial,sans-serif" font-size="20" font-weight="700" text-anchor="middle" letter-spacing="3">APP</text>
+</svg>

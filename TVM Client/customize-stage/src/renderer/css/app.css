@@ -1,0 +1,3992 @@
+/* ══════════════════════════════════════════════════════════
+   TL App — componentes
+   ══════════════════════════════════════════════════════════
+   Nada de blancos ni negros literales para superficies: todo
+   sale de los tokens, porque el tema puede ser claro.
+   ══════════════════════════════════════════════════════════
+
+   ═══ Qué se anima y qué no ═══
+
+   Santi reportó que apagando las animaciones en Aspecto el cliente entero se
+   sentía mucho más fluido. Tenía razón, así que se pasó tijera. La regla que
+   quedó, y que conviene respetar al agregar cosas nuevas:
+
+   1. HOVER: nunca mueve nada. Un `translateY(-2px)` con transición obliga al
+      navegador a promover el elemento a capa propia y repintarlo mientras dura,
+      y en una grilla de tarjetas eso pasa cada vez que el mouse cruza por
+      encima. El cambio de borde y de fondo ya se entiende, y es instantáneo.
+
+   2. PRESIÓN (`:active`): el `transform: scale()` se queda, la transición se
+      va. Un botón que se hunde en el momento exacto del clic se siente mejor
+      que uno que tarda 150 ms, y además no cuesta ni un cuadro de animación.
+
+   3. TRANSICIONES: sólo sobre `transform` y `opacity`, que el compositor
+      resuelve sin repintar. Se sacaron todas las de `border-color`,
+      `box-shadow` y `background`: son propiedades de pintura, o sea repintar el
+      elemento entero en cada uno de los cuadros que dure.
+
+   4. ENTRADAS: nada que contenga una página o una tarjeta grande se anima al
+      aparecer. Ya estaba medido para `.panel__card` (ver su bloque más abajo):
+      animarle la opacidad costaba el doble de pintura y cuatro veces el
+      rasterizado. Lo mismo valía para `.modal__card` y `.startcard`, así que se
+      fueron también. Los velos de fondo sí se funden: son color plano y el
+      compositor los mezcla gratis.
+
+   5. LO QUE SE QUEDA: la pastilla de la barra, la perilla de los interruptores,
+      los velos, y los indicadores de progreso (el aro de conectando, la barra
+      de la pantalla de carga, la de descargas). Todo lo que sobrevivió o es
+      transform/opacity puro, o es la única forma de saber que algo está
+      pasando.
+   ══════════════════════════════════════════════════════════ */
+
+.app {
+  position: relative;
+  z-index: 1;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Iconos ─────────────────────────────────────────────── *
+ * Un solo sistema para todos: rejilla de 24, sin relleno, trazo de 1.6 y
+ * puntas redondeadas. Antes cada icono era un path relleno dibujado por
+ * separado, con distinto peso óptico, y juntos en la barra se veían disparejos.
+ * El grosor no escala con el tamaño (vector-effect) para que un icono de 14 px
+ * y uno de 17 px se vean del mismo peso. */
+svg[data-icon] {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  overflow: visible;
+}
+/* Los pocos trazos que sí van rellenos (puntos, el disco del play). */
+svg[data-icon] .ico-fill { fill: currentColor; stroke: none; }
+
+/* ── Barra superior ─────────────────────────────────────── */
+.hotzone {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  height: 6px;
+  z-index: 20;
+  pointer-events: none;
+}
+.app[data-fullscreen="true"] .hotzone { pointer-events: auto; }
+
+.topbar {
+  position: relative;
+  z-index: 15;
+  height: var(--topbar-h);
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-left: 12px;
+  border-bottom: 1px solid var(--line);
+  background: linear-gradient(180deg, var(--panel-top), var(--bg-1));
+  transition: transform var(--mid), opacity var(--mid);
+}
+.topbar::after {
+  position: absolute;
+  right: 0;
+  bottom: -1px;
+  left: 0;
+  height: 2px;
+  background: linear-gradient(90deg, var(--accent) 0 76%, #f2d22e 76% 88%, #c8293e 88%);
+  content: "";
+  pointer-events: none;
+}
+
+/* En pantalla completa la barra se esconde y vuelve al acercar el mouse */
+.app[data-fullscreen="true"] .topbar {
+  position: fixed;
+  /*
+   * Arranca DESPUÉS del riel, no en 0.
+   *
+   * En pantalla completa la barra deja el flujo y pasa a flotar, y el riel se
+   * queda donde estaba: con `left: 0` los dos ocupaban los mismos 72 px de la
+   * izquierda. El riel gana por z-index (45 contra 15), así que lo que se veía
+   * era el riel comiéndose la marca y el principio de la barra.
+   *
+   * Dentro de una sala esto no pasa —el riel se guarda solo contra el borde,
+   * ver `.railedge`— y ahí la barra sí puede ocupar todo el ancho.
+   */
+  top: 0; left: var(--rail-w); right: 0;
+  transform: translateY(-100%);
+  opacity: 0;
+}
+.app[data-fullscreen="true"][data-stage="game"] .topbar { left: 0; }
+/* La zona sensible acompaña a la barra: apoyar el mouse sobre el riel no tiene
+   por qué desplegar algo que va a aparecer al lado. */
+.app[data-fullscreen="true"] .hotzone { left: var(--rail-w); }
+.app[data-fullscreen="true"][data-stage="game"] .hotzone { left: 0; }
+.app[data-fullscreen="true"] .hotzone:hover ~ .topbar,
+.app[data-fullscreen="true"] .topbar:hover {
+  transform: none;
+  opacity: 1;
+}
+.app[data-fullscreen="true"] .wincontrols { display: none; }
+
+.topbar__drag { flex: 1; height: 100%; -webkit-app-region: drag; }
+
+/* ── Pestañas de juego ──────────────────────────────────── *
+ * Van pegadas a la marca, como en un navegador. Son pocas (`MAX_GAME_TABS`) y
+ * de ancho acotado: la barra también tiene que dejar lugar al link de sala. */
+.gametabs {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  height: 100%;
+  min-width: 0;
+  max-width: 44%;
+  margin-left: 6px;
+  -webkit-app-region: no-drag;
+}
+.gametab {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  height: 30px;
+  min-width: 0;
+  max-width: 180px;
+  padding: 0 4px 0 10px;
+  border-radius: 9px;
+  border: 1px solid transparent;
+  color: var(--text-dim);
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: default;
+}
+.gametab:hover { background: var(--surface-hi); color: var(--text); }
+.gametab.is-active { background: var(--accent-soft); border-color: var(--accent-line); color: var(--accent-text); }
+/* El punto dice en qué anda: gris en la lista, acento en una sala, verde jugando. */
+.gametab__dot {
+  width: 7px; height: 7px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: var(--text-faint);
+}
+.gametab[data-state="room"] .gametab__dot { background: var(--accent); }
+.gametab[data-state="game"] .gametab__dot { background: #3ddc84; box-shadow: 0 0 6px rgba(61, 220, 132, .55); }
+.gametab[data-state="connecting"] .gametab__dot { background: var(--accent); animation: tabPulse 1s ease-in-out infinite alternate; }
+@keyframes tabPulse { from { opacity: .35; } to { opacity: 1; } }
+.gametab__label { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.gametab__x {
+  width: 20px; height: 20px;
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  border-radius: 6px;
+  color: inherit;
+  opacity: .55;
+}
+.gametab__x svg { width: 11px; height: 11px; }
+.gametab__x:hover { opacity: 1; background: var(--surface-hi); }
+/* La única que hay no se cierra: sin el botón, en vez de con uno que no hace nada. */
+.gametabs[data-count="1"] .gametab__x { display: none; }
+.gametabs[data-count="1"] .gametab { padding-right: 11px; }
+.gametabs__add {
+  width: 26px; height: 26px;
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  margin-left: 2px;
+  border-radius: 7px;
+  color: var(--text-faint);
+  -webkit-app-region: no-drag;
+}
+.gametabs__add svg { width: 14px; height: 14px; }
+.gametabs__add:hover { background: var(--surface-hi); color: var(--text); }
+.gametabs__add[disabled] { opacity: .35; pointer-events: none; }
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  height: 100%;
+  padding: 0 2px;
+  -webkit-app-region: drag;
+}
+.brand__mark {
+  width: 30px;
+  height: 30px;
+  padding: 2px;
+  border: 1px solid var(--accent-line);
+  border-radius: 9px;
+  background: var(--bg-0);
+  object-fit: contain;
+  display: block;
+}
+.brand__name {
+  font-size: 13.5px;
+  font-weight: 700;
+  letter-spacing: 0.035em;
+  white-space: nowrap;
+}
+
+.topbar__sep {
+  width: 1px;
+  height: 20px;
+  background: linear-gradient(180deg, transparent, var(--line-hi), transparent);
+  -webkit-app-region: drag;
+}
+
+/* ── Riel de navegación ─────────────────────────────────── *
+ *
+ * Era una botonera horizontal en la barra de arriba, con una pastilla que se
+ * deslizaba al activo. Se fue al costado por dos motivos: la barra tenía que
+ * hacer de marca, navegación, buscador y controles de ventana todo junto, y la
+ * pantalla es más ancha que alta — 72 px de costado sobran, 44 px de alto no.
+ *
+ * Con la pastilla se fue también su animación. No es una pérdida: se movía sólo
+ * con `transform` justamente porque animar el ancho costaba 278 ms y ~370
+ * maquetados por cada dos cambios de pestaña. Pintar el fondo del ítem activo
+ * son dos elementos repintados y ningún maquetado.
+ *
+ * El grupo de abajo (aspecto, rendimiento, ajustes) es lo que se toca de vez en
+ * cuando; arriba queda lo que se usa para jugar.
+ */
+.rail {
+  position: relative;
+  z-index: 45;
+  flex: 0 0 auto;
+  width: var(--rail-w);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 9px 0 16px;
+  border-right: 1px solid var(--line);
+  background: linear-gradient(180deg, rgb(var(--accent-rgb) / 9%), transparent 28%), var(--panel);
+  /* `transform` y no `margin-left`: mover un margen hace maquetar la ventana en
+     cada cuadro de la animación, y el riel se esconde justo cuando el proceso
+     está dibujando la cancha. Se puede porque en la partida el riel está montado
+     ENCIMA del juego y fuera del flujo (ver abajo), así que correrlo no mueve
+     nada más. */
+  transition: transform 0.18s var(--ease);
+}
+.rail__sp { flex: 1; }
+.rail__hr { width: 34px; height: 2px; background: linear-gradient(90deg, #f2d22e 0 62%, #c8293e 62%); margin: 6px 0; flex: 0 0 auto; }
+
+/* Ni el color ni el fondo se funden: entran y salen secos. Lo único que se
+   anima es la presión, que es un gesto y no un cambio de estado. */
+.railitem {
+  flex: 0 0 auto;
+  width: 56px;
+  height: 50px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  border-radius: 11px;
+  border: 1px solid transparent;
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: var(--text-faint);
+  white-space: nowrap;
+  transition: transform 0.12s var(--ease);
+}
+.railitem svg { width: 19px; height: 19px; }
+.railitem:hover { background: var(--surface); color: var(--text-dim); }
+.railitem:active { transform: scale(0.94); }
+.railitem.is-active {
+  background: var(--accent-soft);
+  border-color: var(--accent-line);
+  color: var(--accent-text);
+  box-shadow: inset 2px 0 0 var(--accent);
+}
+
+/*
+ * Dentro de una sala el riel se guarda y deja un borde sensible, igual que la
+ * barra de arriba en pantalla completa (ver `.hotzone`). El webview ocupa todo
+ * `.body`, así que esos 72 px se los saca al ancho que HaxBall tiene para
+ * escalar la cancha: fijo no se gana nada y se pierde cancha.
+ */
+/*
+ * 24 px y no 8: el ancho es zona sensible, no dibujo — lo que se ve sigue
+ * siendo la marquita de 3 px de abajo, así que esto no cambia el aspecto.
+ *
+ * Con 8 px sólo se acertaba tirando el mouse contra el borde de la pantalla, y
+ * eso únicamente funciona si la ventana llega al borde. Centrada —que es como
+ * queda cualquier resolución más chica que la pantalla— el borde sensible cae
+ * en medio del escritorio y hay que apuntarle a una banda de 8 px.
+ */
+.railedge {
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 24px;
+  z-index: 44;
+  display: none;
+  align-items: center;
+  pointer-events: none;
+}
+.railedge i {
+  width: 3px; height: 52px;
+  border-radius: 0 3px 3px 0;
+  background: var(--accent);
+  box-shadow: 0 0 14px var(--accent);
+  opacity: 0.7;
+}
+/* Montado ENCIMA del juego y no empujándolo: mover el webview obligaría a
+   redimensionar la cancha en cada cuadro de la animación. */
+.app[data-stage="game"] .rail {
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  /* -100% es su propio ancho, o sea lo mismo que el margen negativo de antes. */
+  transform: translateX(-100%);
+}
+.app[data-stage="game"] .railedge { display: flex; pointer-events: auto; }
+/* Vuelve mientras el mouse esté en el borde o encima del propio riel. */
+.app[data-stage="game"] .railedge:hover ~ .rail,
+.app[data-stage="game"] .rail:hover { transform: translateX(0); }
+
+/*
+ * ── Menos en la pestaña Música, donde el riel se queda ─────────────────────
+ *
+ * El riel se guarda estando en una sala porque ahí abajo hay cancha y esos 72 px
+ * son cancha. En Música no hay cancha: hay un reproductor, y encima uno que NO
+ * es HTML sino una vista que el proceso principal pega sobre la ventana.
+ *
+ * Eso último es lo que obliga a esto. Un riel que aparece al pasar el mouse
+ * aparecería DEBAJO de la vista, o sea que no aparecería: quedaba el menú de
+ * YouTube Music tapando el del cliente y sin forma de cambiar de pestaña salvo
+ * con Escape. Acá el riel vuelve al flujo, le come sus 72 px al hueco, y la
+ * vista se pega al lado en vez de encima.
+ */
+.app[data-stage="game"][data-view="musica"] .rail {
+  position: relative;
+  left: auto; top: auto; bottom: auto;
+  transform: none;
+}
+.app[data-stage="game"][data-view="musica"] .railedge { display: none; }
+
+/* ── Amigos y perfil en la barra ─────────────────────────── */
+.friendsbtn {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 33px;
+  padding: 0 14px 0 11px;
+  border-radius: 9px;
+  border: 1px solid transparent;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--text-dim);
+  white-space: nowrap;
+  -webkit-app-region: no-drag;
+}
+.friendsbtn svg { width: 17px; height: 17px; flex: 0 0 auto; }
+.friendsbtn:hover { background: var(--surface-hi); color: var(--text); }
+.friendsbtn.is-on { background: var(--accent-soft); border-color: var(--accent-line); color: var(--accent-text); }
+.friendsbtn__on {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-faint);
+}
+.friendsbtn__on i { width: 6px; height: 6px; border-radius: 50%; background: var(--ok); }
+.friendsbtn[hidden] { display: none; }
+/* El punto rojo es «hay algo sin leer», no la cantidad de amigos: el número de
+   conectados ya está al lado y un globito con un número quería decir las dos
+   cosas a la vez. */
+.friendsbtn .iconbtn__dot {
+  position: absolute;
+  top: 4px; right: 4px;
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--danger);
+  border: 2px solid var(--panel-top);
+}
+
+.mechip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 34px;
+  padding: 0 9px 0 5px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  color: var(--text);
+  -webkit-app-region: no-drag;
+}
+.mechip:hover { background: var(--surface-hi); }
+.mechip[hidden] { display: none; }
+.mechip.is-on { background: var(--surface-hi); border-color: var(--line-hi); }
+/* Sobre `.pfp`, que es el avatar redondo que ya usa el resto de la app: acá
+   sólo cambia el tamaño. */
+.mechip__av { width: 25px; height: 25px; font-size: 11px; }
+.mechip__n { font-size: 12.5px; font-weight: 500; max-width: 130px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mechip__vip { flex: 0 0 auto; }
+.mechip__c { width: 12px; height: 12px; color: var(--text-faint); flex: 0 0 auto; }
+
+/* ── Tu perfil ──────────────────────────────────────────── */
+.memenu {
+  position: absolute;
+  top: calc(var(--topbar-h) + 6px);
+  right: 112px;
+  z-index: 1400;
+  width: 292px;
+  border-radius: 13px;
+  border: 1px solid var(--line-hi);
+  background: var(--panel);
+  box-shadow: 0 26px 60px -18px rgba(0, 0, 0, 0.8);
+  overflow: hidden;
+  animation: tvmMeIn 0.13s var(--ease);
+}
+.memenu[hidden] { display: none !important; }
+@keyframes tvmMeIn { from { transform: translateY(-6px); opacity: 0; } to { transform: none; opacity: 1; } }
+.memenu__top {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  background: var(--panel-top);
+}
+.memenu__av { width: 48px; height: 48px; font-size: 19px; }
+.memenu__id { min-width: 0; }
+.memenu__id b { display: block; font-family: var(--font-display); font-size: 16px; font-weight: 700; letter-spacing: -0.02em; }
+.memenu__state { display: flex; align-items: center; gap: 7px; margin-top: 5px; font-size: 11.5px; color: var(--text-dim); }
+.memenu__state .ok { display: inline-flex; align-items: center; gap: 5px; color: var(--ok); font-weight: 500; }
+.memenu__state .ok i { width: 6px; height: 6px; border-radius: 50%; background: var(--ok); }
+/* Cuánto queda de VIP. El punto va en el CSS y no en el texto: así no se cuela
+   en las traducciones ni queda colgado cuando no hay nada que mostrar. */
+.memenu__until { color: var(--text-faint); }
+.memenu__until::before { content: "·"; margin-right: 6px; }
+.memenu__stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: var(--line); }
+.memenu__stats:empty { display: none; }
+.memenu__c { background: var(--panel); padding: 11px 12px; }
+.memenu__c b { display: block; font-family: var(--font-display); font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.memenu__c span { display: block; font-size: 10px; color: var(--text-faint); margin-top: 4px; letter-spacing: 0.04em; }
+.memenu__list { padding: 6px; }
+.memenu__i {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  height: 34px;
+  padding: 0 10px;
+  border-radius: 8px;
+  color: var(--text-dim);
+  font-size: 13px;
+  text-align: left;
+}
+.memenu__i svg { width: 16px; height: 16px; flex: 0 0 auto; }
+.memenu__i span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.memenu__i small { font-size: 10.5px; color: var(--text-faint); flex: 0 0 auto; }
+.memenu__i:hover { background: var(--surface-hi); color: var(--text); }
+.memenu__i--danger { color: var(--danger); }
+.memenu__i--danger:hover { background: rgb(var(--danger-rgb) / 12%); color: var(--danger); }
+.memenu__sep { height: 1px; background: var(--line); margin: 5px 8px; }
+
+.iconbtn {
+  width: 32px; height: 32px;
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  border-radius: 9px;
+  color: var(--text-dim);
+  -webkit-app-region: no-drag;
+}
+.iconbtn svg { width: 17px; height: 17px; }
+.iconbtn:hover { background: var(--surface-hi); color: var(--text); }
+.iconbtn:active { transform: scale(0.93); }
+/* Al lado de un campo de una línea, los 32 px hacen bulto. */
+.iconbtn--sm { width: 26px; height: 26px; border-radius: 7px; }
+.iconbtn--sm svg { width: 14px; height: 14px; }
+
+.wincontrols { display: flex; -webkit-app-region: no-drag; }
+.wbtn {
+  width: 44px; height: var(--topbar-h);
+  display: grid; place-items: center;
+  color: var(--text-dim);
+}
+.wbtn svg { width: 12px; height: 12px; fill: none; stroke: currentColor; stroke-width: 1.35; stroke-linecap: round; }
+.wbtn:hover { background: var(--surface-hi); color: var(--text); }
+.wbtn--close:hover { background: #e23c50; color: #fff; }
+
+/* ── Cuerpo ─────────────────────────────────────────────── */
+/* El riel y el contenido, uno al lado del otro. `.body` queda igual que antes
+   —position:relative con hijos absolutos— así que la cancha, la lista y el
+   panel no se enteran de que ahora arrancan 72 px más a la derecha. */
+.shell { position: relative; flex: 1; min-height: 0; display: flex; }
+.body { position: relative; flex: 1; min-width: 0; min-height: 0; }
+
+/* ── El juego ───────────────────────────────────────────── */
+/* `contain: strict` le dice a Chromium que nada de fuera afecta al contenido
+   de .stage y viceversa: abrir un panel encima no provoca reflow ni repaint
+   acá dentro. `will-change: transform` + translateZ promueven la capa al
+   compositor de GPU por separado, así que el juego se compone aparte. */
+.stage { position: absolute; inset: 0; background: #000; contain: strict; will-change: transform; transform: translateZ(0); }
+.stage__frame { position: absolute; inset: 0; }
+.stage__frame webview { width: 100%; height: 100%; border: 0; display: flex; background: #000; }
+
+/*
+ * Las pestañas de juego que están ATRÁS.
+ *
+ * Un `<webview>` no se puede mover de lugar en el DOM ni esconder con
+ * `display: none` sin que Chromium lo dé por invisible: ahí deja de pedir
+ * cuadros y le baja los temporizadores a uno por segundo, que es lo que le pasa
+ * a una pestaña de fondo en Chrome — y una sala de HaxBall así se queda a
+ * medio sincronizar. Medido en Electron 13: con `display: none`,
+ * `visibility: hidden`, fuera de pantalla o con `transform: scale(0)` el
+ * invitado se para; con `opacity: 0` o con 1×1 px sigue andando.
+ *
+ * Así que las de atrás se quedan en su lugar, de un píxel e invisibles. El
+ * juego sigue corriendo —la sala, la conexión— pero dibuja un canvas de 1×1, o
+ * sea nada, y el preload además le baja el ritmo a diez cuadros
+ * (`BACKGROUND_FPS`). `visibility: visible` va explícito porque `.stage` se
+ * esconde entero fuera de una sala (más abajo) y eso las alcanzaría.
+ */
+.stage__frame webview.is-bg {
+  position: absolute;
+  left: 0; top: 0;
+  width: 1px; height: 1px;
+  opacity: 0;
+  pointer-events: none;
+  visibility: visible;
+}
+
+/* El juego sólo se ve dentro de una sala. Fuera de ella sigue vivo pero no se
+   pinta: así no gasta GPU detrás de una pantalla opaca.
+   Ya no depende de la pestaña: los paneles se abren ENCIMA y la partida tiene
+   que seguir viéndose atrás. */
+.stage { visibility: hidden; }
+.app[data-stage="game"] .stage { visibility: visible; }
+
+/* ── YouTube Music ──────────────────────────────────────── *
+ *
+ * Acá NO hay reproductor: hay un hueco.
+ *
+ * YouTube Music corre en una vista que el proceso principal pega sobre la
+ * ventana (`BrowserView`), no en un elemento de este documento. El porqué está
+ * en `src/main/ytmusic.js`, y es medido: el mismo `<webview>` que le funciona al
+ * juego, acá recibía 0×0 por dentro y la pestaña se veía vacía.
+ *
+ * Así que lo único que hace este CSS es reservar el lugar. `#musicFrame` es un
+ * rectángulo vacío cuyo `getBoundingClientRect()` la interfaz le manda al
+ * proceso principal (ver `musicBounds` en app.js); la vista se pega justo ahí y
+ * se va lejos cuando no corresponde verla.
+ *
+ * `visibility` y no `display` para esconder la pantalla: el hueco tiene que
+ * seguir maquetado para poder medirlo. Y va por encima de `.stage` (z-index 30)
+ * y por debajo del panel (40), que es el orden en el que se tapan las cosas.  */
+.mstage {
+  --mbar: 50px;
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  background: var(--bg-1);
+  visibility: hidden;
+  contain: layout style;
+  display: none;
+}
+.sec#musicHudCard[hidden], .sec[data-sec="overlay"][hidden] { display: none !important; }
+.app[data-view="musica"] .mstage { visibility: visible; }
+
+.mstage__bar {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: var(--mbar);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 14px;
+  border-bottom: 1px solid var(--line);
+  background: linear-gradient(180deg, var(--panel-top), var(--bg-1));
+}
+.mstage__id { display: flex; align-items: center; gap: 9px; min-width: 0; }
+.mstage__id svg { width: 18px; height: 18px; flex: none; color: var(--accent); }
+.mstage__id b { font-family: var(--font-display); font-size: 14px; font-weight: 600; }
+.mstage__who { font-size: 12px; color: var(--text-faint); white-space: nowrap; }
+.mstage__acts {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+/* Apagada no hay nada que hacer con la sesión ni con la página. */
+.mstage[data-on="false"] .mstage__acts { display: none; }
+
+/*
+ * El hueco. Está vacío a propósito: es una medida, no un contenedor. El fondo
+ * es el mismo negro que usa YouTube Music, para que no se vea un salto de color
+ * en el instante entre que se pega la vista y que la página pinta.
+ */
+.mstage__frame {
+  position: absolute;
+  top: var(--mbar); left: 0; right: 0; bottom: 0;
+  background: #0b0b0f;
+}
+.mstage__frame[hidden] { display: none; }
+
+.mstage__off {
+  position: absolute;
+  top: var(--mbar); left: 0; right: 0; bottom: 0;
+  display: grid;
+  place-items: center;
+  padding: 30px;
+  overflow-y: auto;
+}
+.mstage__card {
+  max-width: 430px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  text-align: center;
+}
+.mstage__card svg { width: 34px; height: 34px; color: var(--accent); }
+.mstage__card h2 { font-family: var(--font-display); font-size: 20px; font-weight: 700; }
+.mstage__card p { color: var(--text-dim); font-size: 13px; line-height: 1.6; }
+.mstage__card .note { font-size: 11.5px; }
+
+/* Para salir de la sala está el botón «Leave» que trae la propia sala de
+   HaxBall, arriba a la derecha. El cliente tenía uno encima que recargaba el
+   juego por su cuenta y dejaba la interfaz peleada con el estado real. */
+
+.stage__loading,
+.stage__error {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  text-align: center;
+  padding: 30px;
+  background: radial-gradient(90% 70% at 50% 45%, var(--accent-soft), transparent 70%), var(--bg-1);
+  transition: opacity var(--slow), visibility var(--slow);
+}
+/* Al ocultarse hay que PARAR las animaciones, no sólo dejar de verlas: el aro
+   y el logo seguían latiendo detrás del juego, repintando en cada cuadro por
+   algo que nadie mira. */
+.stage__loading.is-hidden { opacity: 0; visibility: hidden; }
+.stage__loading.is-hidden .stage__ring { animation-play-state: paused; }
+/* Y además siempre que la cancha no esté a la vista: `visibility: hidden` deja
+   de pintarla pero no frena la animación, y el aro seguía latiendo detrás de la
+   lista de salas si el juego nunca terminaba de avisar que estaba listo. */
+.app[data-stage="browser"] .stage__ring { animation-play-state: paused; }
+/* Con la ventana en segundo plano tampoco hay nadie mirando. Es la única
+   animación infinita que le queda a la interfaz, así que vale frenarla: si el
+   juego tarda en conectar, dejaba al compositor produciendo cuadros mientras la
+   persona estaba en otra ventana. */
+:root[data-focus="off"] .stage__ring { animation-play-state: paused; }
+.stage__loading p { color: var(--text-dim); font-size: 13.5px; }
+/* El aviso de "esto está tardando" y el botón de cancelar van por encima del
+   aro, que es `position: absolute` y les comería los clics. */
+.stage__hint { max-width: 380px; opacity: .8; }
+
+/* El hueco de la verificación de Cloudflare. No tiene contenido propio: sólo
+   reserva el lugar y le da la forma al BrowserView que el main pega encima. */
+.verifyhost {
+  width: 100%;
+  max-width: 420px;
+  height: 300px;
+  margin: 16px auto 0;
+  border-radius: 12px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, .04);
+}
+#loadingCancel { position: relative; z-index: 1; }
+/* El logo va quieto: flotarlo obligaba a rasterizar su sombra difusa en cada
+   cuadro. El aro de al lado ya da la sensación de que algo está pasando y sólo
+   anima transform y opacidad, que no cuestan pintura. */
+.stage__logo { width: 84px; filter: drop-shadow(0 0 24px var(--accent-soft)); }
+
+.stage__ring {
+  position: absolute;
+  width: 300px; height: 300px;
+  border-radius: 50%;
+  border: 1px solid var(--accent-line);
+  animation: ringPulse 4s ease-out infinite;
+}
+@keyframes ringPulse {
+  0%   { transform: scale(0.7); opacity: 0.5; }
+  100% { transform: scale(1.3); opacity: 0; }
+}
+
+.stage__error h2 { font-family: var(--font-display); font-size: 20px; }
+.stage__error p { color: var(--text-dim); font-size: 13px; }
+
+/* ── Barra de link de sala ──────────────────────────────── */
+.linkbar {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  height: 30px;
+  padding: 0 3px 0 10px;
+  border-radius: 9px;
+  border: 1px solid var(--line);
+  background: var(--field);
+  -webkit-app-region: no-drag;
+}
+.linkbar:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+.linkbar__ico { width: 13px; height: 13px; color: var(--text-faint); flex: 0 0 auto; }
+
+/* El selector lleva [type="text"] a propósito: la regla global de inputs está
+   más abajo en el archivo y, con la misma especificidad, ganaba ella — el
+   input quedaba de 36 px con borde propio dentro de una barra de 30 px y
+   sobresalía como un rectángulo encima. */
+.linkbar input[type="text"] {
+  width: 168px;
+  height: 22px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  outline: none;
+  box-shadow: none;
+  font-size: 12px;
+  user-select: text;
+  /* El campo se ensancha al enfocarlo, pero SIN animar: animar `width` obliga a
+     rehacer el maquetado del documento en cada cuadro mientras dura, que es
+     exactamente el problema que tenía la pastilla de la barra. Acá pasa sólo al
+     hacer clic en el campo, pero el costo es el mismo y el ensanchado se
+     entiende igual de golpe. */
+}
+.linkbar input[type="text"]:focus { border: 0; box-shadow: none; }
+.linkbar:focus-within input[type="text"] { width: 240px; }
+.linkbar__go {
+  width: 24px; height: 24px;
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  border-radius: 7px;
+  color: var(--text-faint);
+}
+.linkbar__go svg { width: 14px; height: 14px; }
+.linkbar:focus-within .linkbar__go,
+.linkbar__go:hover { color: var(--accent-text-on); background: var(--accent); }
+
+/* ── Navegador de salas ─────────────────────────────────── */
+.browser {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  display: none;
+  /* Sin fondo propio: el de la app lo pinta `.ambient`, que es donde vive el
+     aura de los temas VIP. Con un degradé opaco acá encima, esa animación
+     quedaba tapada y los temas no se distinguían en nada. */
+  background: none;
+  contain: strict;
+}
+/* No scrollea: la lista scrollea adentro del panel y la botonera queda
+   siempre a la vista. */
+.app[data-stage="browser"] .browser { display: block; overflow: hidden; }
+
+/* ── Panel ──────────────────────────────────────────────── *
+ * Rendimiento, Aspecto, Replays y Ajustes se abren acá adentro, encima de lo
+ * que haya detrás. Antes eran pantallas completas que tapaban el juego: al
+ * volver, la partida había seguido sin vos y no se veía nada de lo que pasó. */
+.panel {
+  position: absolute;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 22px;
+  contain: layout style;
+  will-change: opacity;
+}
+/* El panel oculto no debería componer animaciones descendientes. Chromium ya
+   lo ignora por el `display: none` del `[hidden]`, pero es un safety-net
+   explícito — mismo patrón que `.stage__loading.is-hidden .stage__ring`. */
+.panel[hidden] * { animation-play-state: paused !important; }
+
+/*
+ * ═══ Por qué la tarjeta del panel NO tiene animación de entrada ═══
+ *
+ * Tenía una: aparecía subiendo, con opacidad de 0 a 1 en 180 ms. Era la causa
+ * del tirón al pasar de Salas a cualquier pestaña.
+ *
+ * Trazado el navegador de verdad (Tracing de Chromium) sobre una apertura:
+ *
+ *   con la transición de la tarjeta .... pintura 60,2 ms · rasterizado 28,8 ms
+ *   sin ella ........................... pintura 26,6 ms · rasterizado  6,4 ms
+ *
+ * Una opacidad que se anima sobre una caja de 1000 px con dentro toda una
+ * página —tarjetas, degradés, controles— no se puede componer: el navegador
+ * tiene que volver a pintarla entera en cada cuadro mientras dura. Costaba el
+ * doble de pintura y cuatro veces el rasterizado, y todo eso caía junto en el
+ * mismo momento en el que la ventana tenía que dibujar.
+ *
+ * Se probaron además, con el mismo método, otras cuatro sospechas: sacar todas
+ * las sombras (26,8), sacar los degradés de fondo (26,5), dejar el panel
+ * siempre maquetado (26,9) y esconder la lista y el fondo de atrás (25,7).
+ * Ninguna cambió nada. Era la transición y nada más que la transición.
+ *
+ * Queda el fundido del velo, que sí es gratis: es un color plano, el navegador
+ * lo compone sin repintar nada. Alcanza para que se entienda que se abrió algo
+ * encima, que era todo lo que aportaba la animación de la tarjeta.
+ */
+.panel__scrim {
+  position: absolute;
+  inset: 0;
+  background: rgba(4, 3, 8, 0.62);
+  opacity: 0;
+  transition: opacity 0.16s var(--ease);
+}
+.panel.is-open .panel__scrim { opacity: 1; }
+
+.panel__card {
+  position: relative;
+  width: 100%;
+  max-width: 1000px;
+  /*
+   * Alto fijo y no «lo que ocupe el contenido». Con el buscador escrito el
+   * contenido se achica a dos filas, y con `max-height` sola la tarjeta se
+   * encogía con él: escribías una letra y la ventana del panel pegaba un salto
+   * de mil píxeles. Además el índice de la izquierda es una columna: tiene que
+   * llegar abajo aunque a la derecha haya poco.
+   */
+  height: 100%;
+  max-height: 100%;
+  display: flex;
+  flex-direction: column;
+  border-radius: 20px;
+  border: 1px solid var(--line-hi);
+  background:
+    radial-gradient(120% 60% at 50% 0%, rgb(var(--accent-rgb) / 13%), transparent 62%),
+    linear-gradient(168deg, var(--bg-2), var(--bg-0) 72%);
+  box-shadow: 0 24px 48px -28px rgba(0, 0, 0, 0.95), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+  contain: layout style paint;
+}
+
+.panel__close {
+  position: absolute;
+  top: 14px; right: 14px;
+  z-index: 2;
+  width: 32px; height: 32px;
+  display: grid;
+  place-items: center;
+  border-radius: 9px;
+  color: var(--text-dim);
+  background: var(--surface);
+  border: 1px solid var(--line);
+}
+.panel__close svg { width: 15px; height: 15px; }
+.panel__close:hover { background: var(--surface-hi); color: var(--text); }
+.panel__close:active { transform: scale(0.93); }
+
+/*
+ * Cada página vive dentro de la tarjeta y scrollea sola.
+ *
+ * `will-change: scroll-position` es lo que hace que scrollear sea fluido. Sin
+ * eso, el navegador no le daba capa propia al contenedor y en cada cuadro de
+ * scroll volvía a rasterizar toda la pila —la página, la tarjeta, el velo, la
+ * lista de salas y el fondo de atrás—, que es una barbaridad de píxeles por
+ * cuadro.
+ *
+ * Trazado sobre bajar 900 px de un tirón:
+ *
+ *                        rasterizado        total
+ *   Rendimiento  antes ....... 337 ms ....... 540 ms
+ *                después .....   6 ms ....... 181 ms
+ *   Aspecto      antes ....... 709 ms ....... 999 ms
+ *                después .....  10 ms ....... 225 ms
+ *   Ajustes      antes ....... 199 ms ....... 375 ms
+ *                después .....   5 ms ....... 126 ms
+ *
+ * Se probaron también `contain: paint` (no cambia nada), `will-change` en la
+ * tarjeta del panel (mejora a medias) y `transform: translateZ(0)` (funciona
+ * igual de bien). Se eligió `scroll-position` porque es exactamente lo que
+ * está pasando —este elemento va a cambiar su scroll— y porque, a diferencia
+ * de las que usan transform, no crea un contexto de apilamiento y por lo tanto
+ * no puede alterar el orden de nada.
+ */
+.page {
+  display: none;
+  min-height: 0;
+  overflow-y: auto;
+  will-change: scroll-position;
+}
+.page.is-active { display: block; }
+
+/*
+ * ══════════════════════════════════════════════════════════
+ * El panel, en dos columnas
+ * ══════════════════════════════════════════════════════════
+ *
+ * Antes cada pestaña era un scroll único de doce a veinte tarjetas, sin más
+ * puntos de referencia que unas etiquetas de grupo que pasaban de largo. Con
+ * sesenta controles repartidos en cuatro pestañas, encontrar uno era
+ * scrollear y leer.
+ *
+ * Ahora la tarjeta del panel se parte: a la izquierda el índice de secciones
+ * de la pestaña abierta —con el buscador arriba—, a la derecha el contenido.
+ * El índice se arma solo, en JS, leyendo los `[data-sec]` de la página activa
+ * (ver `buildPanelNav` en app.js): no hay una lista escrita dos veces que se
+ * pueda desincronizar del HTML.
+ *
+ * Replays no tiene secciones —es una lista con su propio buscador—, así que
+ * ahí el índice no se dibuja y el contenido se queda con todo el ancho.
+ * ══════════════════════════════════════════════════════════
+ */
+.panel__body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: stretch;
+}
+
+.pnav {
+  flex: 0 0 var(--pnav-w);
+  width: var(--pnav-w);
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  padding: var(--sp-6) var(--sp-3) var(--sp-4) var(--sp-4);
+  border-right: 1px solid var(--line);
+  /* Apenas más oscuro que el contenido: lo suficiente para que se lea como
+     otra zona, no tanto como para que parezca otra ventana. */
+  background: rgb(0 0 0 / 16%);
+}
+.panel[data-nav="off"] .pnav { display: none; }
+
+.pnav__search {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  height: 32px;
+  padding: 0 var(--sp-2) 0 10px;
+  border-radius: var(--r-ctl);
+  border: 1px solid var(--line-hi);
+  background: var(--field);
+}
+.pnav__search:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.pnav__search svg { width: 14px; height: 14px; flex: none; color: var(--text-faint); }
+/*
+ * El selector va con `[type="text"]` a propósito, y no como `.pnav__search
+ * input`.
+ *
+ * La regla general de los campos —`input[type="text"], select { … }`, más
+ * abajo en esta misma hoja— pesa exactamente lo mismo que una clase más un
+ * tipo, así que con las dos empatadas ganaba la que está escrita después: la
+ * general. El campo del buscador se quedaba con SU caja (borde, fondo, alto de
+ * 36 px y radio propios) dibujada adentro de la caja del contenedor, y se veían
+ * las dos, una desbordando a la otra por la derecha.
+ *
+ * Con el `[type="text"]` esto pesa una pizca más y gana sin depender del orden.
+ * Es el mismo patrón que ya usaba `.searchbar` de Replays, que por eso nunca
+ * tuvo el problema.
+ */
+.pnav__search input[type="text"] {
+  flex: 1;
+  min-width: 0;
+  height: 22px;
+  border: 0;
+  border-radius: 0;
+  padding: 0;
+  background: none;
+  box-shadow: none;
+  color: var(--text);
+  font: inherit;
+  font-size: var(--fs-sm);
+  outline: none;
+  user-select: text;
+}
+.pnav__search input[type="text"]:focus { border: 0; box-shadow: none; }
+/* La cruz aparece sólo cuando hay algo escrito: un botón de limpiar sobre un
+   campo vacío no limpia nada. */
+.pnav__clear {
+  flex: none;
+  width: 18px; height: 18px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  color: var(--text-faint);
+  background: var(--surface-hi);
+}
+.pnav__clear svg { width: 10px; height: 10px; }
+.pnav__clear:hover { color: var(--text); }
+
+.pnav__list {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  overflow-y: auto;
+  min-height: 0;
+}
+.pnav__i {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: 7px 10px;
+  border-radius: var(--r-ctl);
+  font-size: var(--fs-sm);
+  font-weight: 500;
+  color: var(--text-dim);
+  text-align: left;
+  /* Sólo el color: mover o escalar una fila de un índice mientras se scrollea
+     el panel de al lado es pintura por cuadro a cambio de nada. */
+  transition: color var(--fast), background-color var(--fast);
+}
+.pnav__i:hover { color: var(--text); background: var(--surface); }
+.pnav__i.is-on {
+  color: var(--accent-text);
+  background: var(--accent-soft);
+  font-weight: 600;
+}
+.pnav__n {
+  margin-left: auto;
+  font-size: var(--fs-2xs);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-faint);
+}
+.pnav__i.is-on .pnav__n { color: var(--accent-text); }
+/* El nombre de la pestaña, cuando el buscador trae resultados de varias. */
+.pnav__group {
+  padding: 10px 10px 3px;
+  font-size: var(--fs-2xs);
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+.pnav__group:first-child { padding-top: 0; }
+/* Sin resultados en el buscador: la sección se queda escrita pero apagada, en
+   vez de desaparecer y hacer saltar la lista entera. */
+.pnav__i.is-empty { opacity: 0.32; pointer-events: none; }
+
+.panel__pages {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.page__inner {
+  max-width: 660px;
+  margin: 0 auto;
+  padding: var(--sp-6) var(--sp-8) 56px;
+  display: flex;
+  flex-direction: column;
+}
+/* Replays no lleva índice: sin la columna de la izquierda, 660 px de lista
+   dejarían medio panel vacío. */
+.panel[data-nav="off"] .page__inner { max-width: 900px; gap: var(--sp-4); }
+/*
+ * Acá vivía una entrada en cascada: cada tarjeta de la página aparecía sola,
+ * con opacidad y desplazamiento. Quince cosas animándose a la vez encima del
+ * velo y del fondo, todas repintándose en cada cuadro justo mientras el panel
+ * se abría.
+ *
+ * No quedó nada en su lugar: la página aparece y ya. Lo único que se mueve al
+ * abrir es el velo, que es un color plano y no cuesta pintura (el porqué está
+ * explicado a fondo en el bloque de .panel__card).
+ */
+
+/* ── Cabecera de página ─────────────────────────────────── */
+.pagehead { display: flex; flex-direction: column; gap: var(--sp-1); margin-bottom: var(--sp-6); }
+.pagehead--row { flex-direction: row; align-items: flex-end; justify-content: space-between; gap: var(--sp-6); flex-wrap: wrap; }
+.pagehead h1 {
+  font-family: var(--font-display);
+  font-size: var(--fs-xl);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+.pagehead p { color: var(--text-faint); font-size: var(--fs-sm); }
+
+/*
+ * El «eyebrow» —la palabrita en mayúsculas y en el acento arriba del título—
+ * se sacó de las páginas de ajustes: repetía el nombre de la pestaña que ya
+ * está marcada en el riel, y era uno de los seis lugares donde aparecía el
+ * acento en la misma pantalla. Queda para Replays, donde sí dice algo que el
+ * riel no dice.
+ */
+.eyebrow {
+  display: block;
+  font-size: var(--fs-2xs);
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+/*
+ * ══════════════════════════════════════════════════════════
+ * Secciones
+ * ══════════════════════════════════════════════════════════
+ *
+ * Antes cada grupo de ajustes era una tarjeta: borde, degradé, sombra y radio
+ * propios, y adentro otra caja por cada campo. Tres cajas de profundidad para
+ * mostrar un interruptor.
+ *
+ * Una sección ahora no es una caja: es un título, una línea de contexto si
+ * hace falta, y una lista de filas separadas por un pelo de 1 px. Lo que
+ * separa una sección de otra es el aire —32 px—, no un marco.
+ *
+ * Queda UNA caja por página, `.sec--feature`, para lo que la página viene a
+ * ofrecer: el tema en Aspecto, la carrera en Cuenta. Es el único lugar de la
+ * página donde aparece el acento como fondo.
+ * ══════════════════════════════════════════════════════════
+ */
+.sec {
+  /* Al saltar desde el índice, el título no queda pegado al borde de arriba. */
+  scroll-margin-top: var(--sp-4);
+}
+/*
+ * Lo que el buscador deja afuera. Es una clase y no el atributo `hidden` a
+ * propósito: `hidden` ya lo usa la app para cosas que no tienen nada que ver
+ * (la sección de rivales sin datos, el largo de la estela con la estela
+ * apagada), y si el filtro lo pisara, al limpiar la búsqueda las destaparía
+ * todas. El porqué largo está en `filterPage`, en app.js.
+ */
+.is-filtered { display: none !important; }
+.page__empty { margin-top: var(--sp-6); }
+.sec + .sec { margin-top: var(--sp-8); }
+
+.sec__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  flex-wrap: wrap;
+  margin-bottom: var(--sp-2);
+}
+.sec__title {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  font-family: var(--font-display);
+  font-size: var(--fs-lg);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+.sec__desc {
+  font-size: var(--fs-xs);
+  color: var(--text-faint);
+  line-height: 1.5;
+  max-width: 62ch;
+  margin: -2px 0 var(--sp-3);
+}
+.sec__body { display: flex; flex-direction: column; }
+.sec__body > .rowactions { margin-top: var(--sp-3); }
+
+.sec--feature {
+  padding: var(--sp-6);
+  border-radius: var(--r-surface);
+  border: 1px solid var(--accent-line);
+  /* Radial y no lineal: el acento se concentra arriba a la izquierda, donde
+     está el título, y se apaga antes de llegar a los controles. */
+  background:
+    radial-gradient(120% 100% at 8% 0%, rgb(var(--accent-rgb) / 16%), transparent 64%),
+    var(--surface);
+}
+.sec--feature .row + .row { box-shadow: inset 0 1px 0 var(--line-hi); }
+
+/* Un bloque que se apoya sobre el fondo sin llegar a ser una tarjeta: se usa
+   para lo que es un aparte dentro de una sección (un aviso, un estado vacío,
+   la lista de beneficios). */
+.tray {
+  padding: var(--sp-3) var(--sp-4);
+  border-radius: var(--r-surface);
+  background: var(--surface);
+  border: 1px solid var(--line);
+}
+.tray + .tray { margin-top: var(--sp-2); }
+
+/*
+ * ══════════════════════════════════════════════════════════
+ * La fila de ajuste
+ * ══════════════════════════════════════════════════════════
+ *
+ * Un solo componente para todo lo que se toca: nombre a la izquierda, control
+ * a la derecha, y una línea de descripción abajo del nombre SÓLO cuando dice
+ * algo que el nombre no dice. Lo que necesita más de una línea de explicación
+ * no la lleva puesta: se guarda en el `ⓘ` de al lado del nombre.
+ *
+ * Antes esto eran tres formas distintas de lo mismo —`.switchrow` para los
+ * interruptores, `.field` para los selectores y las barras, `.looksrow` para
+ * lo que iba en fila— y cada una decidía por su cuenta dónde poner la etiqueta
+ * y de qué tamaño.
+ * ══════════════════════════════════════════════════════════
+ */
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-4);
+  min-height: 44px;
+  padding: var(--sp-2) 10px;
+  margin: 0 -10px;
+  border-radius: var(--r-ctl);
+}
+/* El hover pinta la fila entera; la línea de arriba tiene que seguir viéndose
+   igual, así que se dibuja con `inset` y no con `border-top`, que el fondo
+   pintado taparía a medias contra los bordes redondeados. */
+.row + .row { box-shadow: inset 0 1px 0 var(--line); }
+.row:hover { background: var(--surface); }
+
+.row__text { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.row__label {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-1);
+  font-size: var(--fs-md);
+  font-weight: 600;
+  color: var(--text);
+}
+.row__desc { font-size: var(--fs-xs); color: var(--text-faint); line-height: 1.45; }
+/* El aviso de «pide reinicio» que llevan las banderas del motor. */
+.row__desc em { font-style: normal; color: var(--warn); }
+
+.row__ctl {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--sp-2);
+}
+.row__ctl > select,
+.row__ctl > input[type="text"] { min-width: 176px; }
+.row__ctl > input[type="range"] { width: 156px; }
+/* El número que acompaña a una barra: ancho fijo y cifras de igual ancho, para
+   que la barra no se corra un pixel cada vez que pasa de 99% a 100%. */
+.row__val {
+  min-width: 48px;
+  text-align: right;
+  font-size: var(--fs-sm);
+  font-variant-numeric: tabular-nums;
+  color: var(--accent-text);
+}
+
+/* Fila cuyo control no entra al costado —una grilla de temas, una lista de
+   teclas, un editor entero—: el control baja abajo y ocupa todo el ancho. */
+.row--block { flex-direction: column; align-items: stretch; gap: var(--sp-3); }
+.row--block .row__ctl { justify-content: flex-start; flex-wrap: wrap; width: 100%; }
+.row--block .row__ctl > select,
+.row--block .row__ctl > input[type="text"] { flex: 1; }
+/*
+ * Lo que no es un control sino una grilla —los temas, los colores, las teclas,
+ * las identidades— ocupa el renglón entero. Sin esto se lo trataba como a un
+ * botón más de la fila: se encogía a su ancho mínimo y la grilla de temas, que
+ * pide columnas de 180 px, terminaba dibujando UNA sola columna en un panel de
+ * 620 px de ancho.
+ */
+.row--block .row__ctl > .themes,
+.row--block .row__ctl > .swatches,
+.row--block .row__ctl > .gradients,
+.row--block .row__ctl > .emojirow,
+.row--block .row__ctl > .keylist,
+.row--block .row__ctl > .authlist,
+.row--block .row__ctl > .rivals,
+.row--block .row__ctl > .presets,
+.row--block .row__ctl > .looksdemo { flex: 1 1 100%; min-width: 0; }
+.row--block:hover { background: none; }
+
+/* Una fila que es sólo texto: un aviso en medio de una lista de filas. */
+.row--text { min-height: 0; }
+.row--text:hover { background: none; }
+
+/*
+ * Los `<div>` que sólo existen para que el JS tenga dónde colgar sus filas
+ * (`#gameVideo`, `#pitchSwitches`, `#updateSwitches`…). Sin esto la primera
+ * fila de cada uno no es hermana de la última del anterior, y `.row + .row`
+ * —que es lo que dibuja la línea de 1 px entre filas— se saltea justo los
+ * lugares donde cambia de grupo.
+ */
+.rows { display: contents; }
+
+.rowgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: var(--sp-3) var(--sp-4); width: 100%; }
+
+/*
+ * ══════════════════════════════════════════════════════════
+ * El `ⓘ`
+ * ══════════════════════════════════════════════════════════
+ *
+ * Acá es donde fue a parar el texto largo. La regla que separa una cosa de la
+ * otra: si NO leerlo te hace tocar mal el ajuste, va en la fila; si sólo
+ * explica por qué existe o cómo funciona por dentro, va acá.
+ *
+ * El globo no se dibuja adentro de la fila: la página tiene `overflow-y: auto`
+ * y la tarjeta del panel `overflow: hidden`, así que un globo hijo se cortaría
+ * contra los dos. Hay uno solo, fijo, colgado del documento, que se posiciona
+ * en JS (ver `showHint` en app.js).
+ * ══════════════════════════════════════════════════════════
+ */
+.hint {
+  flex: none;
+  width: 15px; height: 15px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  border: 1px solid var(--line-hi);
+  color: var(--text-faint);
+  font-size: var(--fs-2xs);
+  font-weight: 800;
+  font-style: normal;
+  line-height: 1;
+  cursor: help;
+  transition: color var(--fast), border-color var(--fast);
+}
+.hint:hover, .hint:focus-visible { color: var(--accent-text); border-color: var(--accent); }
+
+.hinttip {
+  position: fixed;
+  z-index: 90;
+  max-width: 300px;
+  padding: 9px 11px;
+  border-radius: var(--r-ctl);
+  border: 1px solid var(--line-hi);
+  background: var(--bg-2);
+  box-shadow: 0 16px 32px -18px rgba(0, 0, 0, 0.95);
+  font-size: var(--fs-xs);
+  line-height: 1.5;
+  color: var(--text-dim);
+  pointer-events: none;
+}
+
+/*
+ * ══════════════════════════════════════════════════════════
+ * Perfiles de rendimiento
+ * ══════════════════════════════════════════════════════════
+ *
+ * Acá vivieron dos botones —«Modo competitivo» y «PC de baja gama»— que se
+ * sacaron por un motivo bueno: cambiaban diez cosas de una y después nadie
+ * sabía de dónde había salido su configuración.
+ *
+ * Vuelven contestando eso. Cada perfil dice EXACTAMENTE qué toca antes de que
+ * lo toques, los interruptores que cambia siguen todos visibles y editables
+ * acá mismo, y en cuanto movés uno solo el estado pasa a «Personalizado»: el
+ * perfil no se queda cobrándose un cambio que ya no hizo.
+ * ══════════════════════════════════════════════════════════
+ */
+.presets { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--sp-2); width: 100%; }
+.presetbtn {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  padding: var(--sp-3);
+  border-radius: var(--r-ctl);
+  border: 1px solid var(--line);
+  background: var(--surface);
+  text-align: left;
+  transition: border-color var(--fast), background-color var(--fast);
+}
+.presetbtn:hover { border-color: var(--line-hi); background: var(--surface-hi); }
+.presetbtn.is-on { border-color: var(--accent); background: var(--accent-soft); }
+.presetbtn b { font-size: var(--fs-md); font-weight: 700; }
+.presetbtn.is-on b { color: var(--accent-text); }
+.presetbtn small { font-size: var(--fs-xs); color: var(--text-faint); line-height: 1.4; }
+
+/*
+ * ═══ «Avanzado» ═══
+ *
+ * Las banderas de Chromium: se tocan una vez, piden reinicio y la mitad no se
+ * notan. Van plegadas, con `<details>` nativo —no hay JS detrás de esto: el
+ * panel ya tiene bastante que repintar como para agregarle un manejador más.
+ */
+.adv { margin-top: var(--sp-8); }
+.adv > summary {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: 7px 10px;
+  margin: 0 -10px;
+  border-radius: var(--r-ctl);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--text-dim);
+  list-style: none;
+  cursor: pointer;
+}
+.adv > summary::-webkit-details-marker { display: none; }
+.adv > summary:hover { color: var(--text); background: var(--surface); }
+.adv__chev {
+  width: 12px; height: 12px;
+  flex: none;
+  transition: transform var(--mid);
+}
+.adv[open] .adv__chev { transform: rotate(90deg); }
+.adv__body { margin-top: var(--sp-4); }
+.adv__body > .sec + .sec { margin-top: var(--sp-6); }
+/* El nombre de la bandera va en monoespaciada: es lo que la separa de un ajuste
+   normal del cliente y avisa que se está tocando el motor. */
+.adv .row__label {
+  font-family: "Cascadia Mono", Consolas, "Lucida Console", monospace;
+  font-size: var(--fs-sm);
+  letter-spacing: -0.01em;
+}
+
+.tag {
+  padding: 3px 8px;
+  border-radius: 99px;
+  font-size: var(--fs-2xs);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  background: var(--surface-hi);
+  border: 1px solid var(--line);
+}
+/* El acento en una etiqueta se guarda para cuando la etiqueta ES el estado. */
+.tag--accent { color: var(--accent-text); background: var(--accent-soft); border-color: var(--accent-line); }
+
+.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: var(--sp-4); align-items: start; }
+.stack { display: flex; flex-direction: column; gap: var(--sp-3); }
+
+/* ── Campos ─────────────────────────────────────────────── */
+/*
+ * `.field` sobrevive porque lo usan pantallas que no se rediseñaron —crear
+ * sala, el perfil, el dock de amigos—, pero ya no se usa dentro del panel de
+ * ajustes: ahí todo es `.row`.
+ */
+.field { display: flex; flex-direction: column; gap: var(--sp-2); }
+.field > label { font-size: var(--fs-sm); color: var(--text-dim); display: flex; justify-content: space-between; gap: 10px; }
+.field > label b { color: var(--accent-text); font-variant-numeric: tabular-nums; }
+.field + .field { margin-top: var(--sp-3); }
+.grid2 > .field + .field { margin-top: 0; }
+
+.note { font-size: var(--fs-xs); color: var(--text-faint); line-height: 1.5; }
+.note--warn { color: var(--warn); }
+
+input[type="text"], select {
+  height: 36px;
+  padding: 0 12px;
+  border-radius: 10px;
+  border: 1px solid var(--line-hi);
+  background: var(--field);
+  color: var(--text);
+  outline: none;
+  user-select: text;
+}
+input[type="text"]:focus, select:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+input::placeholder { color: var(--text-faint); }
+select {
+  appearance: none;
+  cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='rgba(243,240,251,0.5)' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-position: right 10px center;
+  background-size: 14px;
+  background-repeat: no-repeat;
+  padding-right: 30px;
+}
+select option { background: var(--bg-2); color: var(--text); }
+
+input[type="range"] {
+  appearance: none;
+  height: 5px;
+  border-radius: 99px;
+  background: linear-gradient(90deg, var(--accent) var(--fill, 50%), var(--surface-hi) var(--fill, 50%));
+  outline: none;
+}
+input[type="range"]::-webkit-slider-thumb {
+  appearance: none;
+  width: 15px; height: 15px;
+  border-radius: 50%;
+  background: var(--text);
+  border: 3px solid var(--accent);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+}
+/* Sin transición: crece en el momento en que el mouse entra, no 150 ms después. */
+input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.15); }
+
+/* ── Selector de bandera ────────────────────────────────── */
+.flagrow { display: flex; align-items: center; gap: 10px; }
+.flagrow select { flex: 1; min-width: 0; }
+/* Cada bandera del sprite de HaxBall mide 16×11 exactos. Con cualquier otro
+   tamaño el `background-position` cae corrido y se ve un pedazo de la de al
+   lado; para agrandarla hay que escalar la caja entera, no estirarla. */
+.flagrow__flag {
+  flex: 0 0 auto;
+  width: 16px; height: 11px;
+  border-radius: 2px;
+  background-image: var(--flag-sprite);
+  background-repeat: no-repeat;
+  box-shadow: 0 0 0 1px var(--line-hi);
+  transform: scale(1.5);
+  transform-origin: left center;
+  image-rendering: crisp-edges;
+  /* La escala no ocupa lugar en el layout: se compensa con el margen. */
+  margin-right: 8px;
+}
+/* Sin sprite todavía, o bandera automática: se muestra el código o un globo. */
+.flagrow__flag--text {
+  display: grid;
+  place-items: center;
+  width: auto;
+  min-width: 24px;
+  height: 17px;
+  background: none;
+  box-shadow: none;
+  transform: none;
+  margin-right: 0;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-faint);
+}
+
+/* ── VIP ────────────────────────────────────────────────── */
+/* Con el rol puesto, la sección se enciende: es lo único de la página que
+   cambia de aspecto según el estado de la cuenta. Sin el rol se queda como
+   cualquier otra sección, que es lo que es. */
+.vipsec.is-on {
+  padding: var(--sp-4);
+  margin: 0 calc(var(--sp-4) * -1);
+  border-radius: var(--r-surface);
+  border: 1px solid rgb(var(--accent-rgb) / 34%);
+  background: linear-gradient(150deg, rgb(var(--accent-rgb) / 10%), transparent 62%);
+}
+.vipmark {
+  display: inline-block;
+  padding: 2px 7px;
+  margin-right: 6px;
+  border-radius: 6px;
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  vertical-align: 2px;
+  color: #0b0713;
+  background: linear-gradient(135deg, #ffd700 0%, #ffa500 100%);
+  box-shadow: 0 2px 8px rgba(255, 215, 0, 0.3);
+}
+
+/* Lo que se destraba con el rol, cuando todavía no lo tenés. Dos columnas en
+   cuanto entran: en una sola quedaba una tira larga y flaca en una tarjeta
+   ancha, que es justo lo que se veía raro. */
+/* Los beneficios son cuatro cosas distintas una debajo de la otra —avatar,
+   sonido, cómo te ven y el cartel de teclas— y venían pegadas entre sí con la
+   misma separación que hay ENTRE los controles de cada una. Todo junto se leía
+   como una lista larga de campos sueltos en vez de cuatro bloques. */
+.viplocked {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 8px 14px;
+  margin-top: 12px;
+  list-style: none;
+}
+.viplocked li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  color: var(--text-dim);
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+}
+/* El candado va en un ::before y no en el texto: así no entra en las
+   traducciones ni se puede seleccionar y copiar junto con la frase. */
+.viplocked li::before {
+  content: '🔒';
+  font-size: 11px;
+  opacity: 0.65;
+  flex: 0 0 auto;
+}
+
+/* El alto lo fija la muestra del avatar (38 px). Se lo pone también acá para que
+   la fila del sonido de gol —que es sólo texto y botones— mida lo mismo: en la
+   tarjeta VIP las dos van una al lado de la otra, y sin esto los «Elegir…» de
+   una columna quedaban ocho píxeles más abajo que los de la otra. */
+.assetrow { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; min-height: 38px; }
+.assetrow__preview {
+  display: grid;
+  place-items: center;
+  width: 38px; height: 38px;
+  flex: 0 0 auto;
+  border-radius: 9px;
+  border: 1px solid var(--line-hi);
+  background: var(--field);
+  color: var(--text-faint);
+  font-size: 12px;
+  overflow: hidden;
+}
+.assetrow__preview img { width: 100%; height: 100%; object-fit: cover; }
+.assetrow__name {
+  flex: 1;
+  min-width: 0;
+  font-size: 12px;
+  color: var(--text-dim);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Tarjetas de tema VIP */
+.themecard.is-vip { border-color: rgb(var(--accent-rgb) / 32%); }
+.themecard__vip {
+  position: absolute;
+  top: 8px; right: 8px;
+  padding: 2px 6px;
+  border-radius: 99px;
+  font-size: 8.5px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  color: var(--accent-text-on);
+  background: linear-gradient(140deg, var(--accent), var(--accent-2));
+}
+.themecard.is-locked { opacity: 0.72; }
+.themecard.is-locked .themecard__vip { background: var(--surface-hi); color: var(--text-dim); }
+
+/*
+ * El mismo cono de color que usa el fondo del tema, en chico.
+ *
+ * Iba girando y con `filter: blur(14px)`. Son tres tarjetas VIP, o sea tres
+ * degradados desenfocados que el navegador tenía que volver a rasterizar en
+ * CADA cuadro mientras la pestaña Aspecto estuviera abierta — un desenfoque no
+ * se puede componer, se recalcula píxel por píxel. Era el goteo de FPS
+ * constante de esa pantalla, por un adorno de 74 px de alto.
+ *
+ * Queda el mismo cono, quieto y sin desenfoque: se pinta una vez y no vuelve a
+ * costar nada. El aura de verdad, la que se mueve, sigue estando donde se
+ * disfruta — de fondo de la app cuando el tema está puesto.
+ */
+.themecard__preview.has-aura { position: relative; }
+.themecard__preview.has-aura::before {
+  content: "";
+  position: absolute;
+  inset: -30%;
+  background: conic-gradient(from 210deg, var(--card-aura));
+  opacity: 0.5;
+}
+.themecard__preview.has-aura > * { position: relative; z-index: 1; }
+
+/* ── Controles del juego ────────────────────────────────── */
+.keylist { display: flex; flex-direction: column; gap: 2px; }
+.keyrow {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 8px 10px;
+  margin: 0 -10px;
+  border-radius: var(--radius-sm);
+}
+.keyrow:hover { background: var(--surface); }
+.keyrow__name { flex: 0 0 96px; font-size: 13px; font-weight: 600; }
+.keyrow__chips { display: flex; flex-wrap: wrap; gap: 6px; }
+
+.keychip {
+  height: 26px;
+  min-width: 30px;
+  padding: 0 9px;
+  border-radius: 7px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text);
+  background: var(--surface-hi);
+  border: 1px solid var(--line-hi);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+.keychip:active:not(:disabled) { transform: scale(0.95); }
+/* Quitar la última tecla de una acción te dejaría sin poder moverte. */
+.keychip:disabled { opacity: 0.75; cursor: default; }
+.keychip:not(:disabled):hover {
+  color: var(--danger);
+  background: rgb(var(--danger-rgb) / 16%);
+  border-color: rgb(var(--danger-rgb) / 42%);
+}
+
+.keyadd {
+  height: 26px;
+  min-width: 30px;
+  padding: 0 9px;
+  border-radius: 7px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-faint);
+  border: 1px dashed var(--line-hi);
+}
+.keyadd:hover { color: var(--accent-text); border-color: var(--accent-line); }
+.keyadd.is-capturing {
+  color: var(--accent-text);
+  background: var(--accent-soft);
+  border-style: solid;
+  border-color: var(--accent);
+  animation: keyPulse 1.1s ease-in-out infinite;
+}
+@keyframes keyPulse { 50% { opacity: 0.55; } }
+
+/* ── Casilla numérica (valor exacto junto a una barra) ──── */
+.numbox__wrap {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  color: var(--accent-text);
+}
+.numbox {
+  width: 62px;
+  height: 24px;
+  padding: 0 6px;
+  border-radius: 7px;
+  border: 1px solid var(--line-hi);
+  background: rgba(0, 0, 0, 0.32);
+  color: var(--accent-text);
+  font-size: 12.5px;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  outline: none;
+  user-select: text;
+}
+.numbox:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+/* Las flechitas de Chromium roban ancho y quedan feas sobre fondo oscuro. */
+.numbox::-webkit-inner-spin-button,
+.numbox::-webkit-outer-spin-button { appearance: none; margin: 0; }
+.numbox__unit { font-size: 11px; color: var(--text-faint); }
+
+.rowactions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.statusline { font-size: 12px; color: var(--text-dim); }
+.statusline.is-ok { color: var(--ok); }
+.statusline.is-err { color: var(--danger); }
+
+.deflist { display: grid; gap: 7px; }
+.deflist > div { display: flex; align-items: baseline; justify-content: space-between; gap: 14px; font-size: 12.5px; }
+.deflist dt { color: var(--text-faint); white-space: nowrap; }
+.deflist dd {
+  color: var(--text);
+  text-align: right;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  user-select: text;
+}
+
+/* ── Amigos: el dock ────────────────────────────────────── *
+ * Una columna pegada al borde derecho, encima de todo — incluido el juego, que
+ * vive en un <webview> y no se entera.
+ *
+ * Sin `backdrop-filter`: desenfocar el fondo de un panel de 320 px sobre una
+ * cancha a mil cuadros lo dibuja el mismo proceso de GPU que está sacando la
+ * cancha. Fondo sólido y el juego sigue igual de fluido. */
+.fdock {
+  position: fixed;
+  top: var(--topbar-h, 54px);
+  right: 0;
+  bottom: 0;
+  z-index: 1200;
+  width: 320px;
+  max-width: 92vw;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-2);
+  border-left: 1px solid var(--line);
+  box-shadow: -18px 0 40px -24px rgba(0,0,0,0.9);
+  animation: tvmDockIn 0.16s var(--ease, ease);
+}
+.fdock[hidden] { display: none !important; }
+/* En pantalla completa la barra de arriba se esconde: el dock se estira hasta
+   arriba de todo o quedaría un hueco por una barra que no está. */
+.app[data-fullscreen="true"] ~ .fdock,
+.fdock.is-full { top: 0; }
+@keyframes tvmDockIn { from { transform: translateX(16px); opacity: 0; } to { transform: none; opacity: 1; } }
+
+.fdock__head { display: flex; align-items: center; gap: 8px; padding: 12px 12px 12px 14px; border-bottom: 1px solid var(--line); }
+.fdock__head h2 { font-size: 14.5px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fdock__head .statusline { margin-left: auto; font-size: 11.5px; }
+.fdock__back, .fdock__close {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-dim);
+  cursor: pointer;
+}
+.fdock__back:hover, .fdock__close:hover { background: var(--surface); color: var(--text); }
+.fdock__back svg, .fdock__close svg { width: 16px; height: 16px; }
+.fdock__back[hidden] { display: none; }
+.fdock__close { margin-left: auto; }
+.fdock__head .statusline + .fdock__close { margin-left: 0; }
+
+.fdock__locked { padding: 16px 14px; display: grid; gap: 12px; justify-items: start; }
+.fdock__locked .note { margin: 0; }
+
+/* Las dos vistas ocupan el mismo lugar: lista y conversación, nunca las dos. */
+.fdock__view { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.fdock__view[hidden] { display: none; }
+
+/* ── El panel de amigos, de arriba abajo ────────────────── *
+ * Vos arriba, la lista en el medio y el buscador abajo. Sólo scrollea el medio:
+ * las otras dos zonas quedan quietas, que es lo que hace que el panel se lea
+ * como una pieza sola. `--fpad` es el margen lateral de TODO lo que hay adentro
+ * —cabecera, títulos de grupo, filas, buscador—; con un solo número, las fotos
+ * de las filas y la tuya caen en la misma columna, que era lo que antes no
+ * pasaba (14 px arriba contra 10 px en la lista, y los círculos escalonados). */
+.fdock { --fpad: 12px; }
+
+/* ── Vos ────────────────────────────────────────────────── */
+.fme {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 12px var(--fpad);
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  background: var(--surface);
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.fme:hover { background: var(--surface-hi); }
+.fme__id { display: grid; gap: 1px; min-width: 0; flex: 1; }
+.fme__id b {
+  font-family: var(--font-display);
+  font-size: 14.5px;
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.fme__level { font-size: 11.5px; color: var(--accent-text); }
+/* La flecha dice que esto se abre. Sin ella, una tarjeta con tu cara y tu nivel
+   se lee como un encabezado y nadie descubre que además es un botón. */
+.fme__go { flex: none; width: 15px; height: 15px; color: var(--text-faint); }
+.fme:hover .fme__go { color: var(--text-dim); }
+
+/* ── La lista ───────────────────────────────────────────── */
+.fdock__scroll { flex: 1; min-height: 0; overflow-y: auto; padding: 6px 0 10px; }
+
+/* Un grupo por estado —solicitudes, en línea, desconectados—, cada uno con su
+   título y su cuenta, como en Steam. Sin esto la columna era una tira de filas
+   sin cortes en la que un amigo conectado y uno que no se veían igual. */
+.fgroup + .fgroup { margin-top: 4px; }
+.fgroup[hidden] { display: none; }
+.fgroup__title {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 8px var(--fpad) 6px;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+.fgroup__title b { font-weight: 700; color: var(--text-dim); }
+.fgroup__rows { display: grid; gap: 1px; padding: 0 6px; }
+.fgroup__reqs { display: grid; gap: 10px; padding: 2px var(--fpad) 6px; }
+/* Dos solicitudes seguidas, sin nada en el medio, se leen como una sola con
+   cuatro botones. */
+.fgroup__reqs .friendreq + .friendreq { padding-top: 10px; border-top: 1px solid var(--line); }
+/* Los desconectados son la lista de referencia, no la de acción: bajan de peso
+   enteros —foto incluida— y vuelven al normal al pasarles por encima. */
+.fgroup--off .friend { opacity: 0.55; }
+.fgroup--off .friend:hover { opacity: 1; }
+
+/* `align-items: center` y no el `stretch` de fábrica: el botón chico trae
+   altura propia (31 px) y contra un input de 36 se apoyaría arriba. */
+.fdock__add {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px var(--fpad);
+  border-top: 1px solid var(--line);
+  background: var(--bg-2);
+}
+.fdock__add input { flex: 1; min-width: 0; }
+
+/* ── La conversación ────────────────────────────────────── *
+ * Quién es arriba y qué se puede hacer debajo, en dos renglones: con «Perfil»
+ * son tres botones, y en una columna de 320 px compartir la línea con el «En
+ * tal sala» dejaba a los tres partidos en filas distintas y al nombre de la
+ * sala cortado a la mitad. */
+.fdock__chatbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px var(--fpad) 8px;
+  min-width: 0;
+}
+/* El bloque de nombre + dónde está se come el ancho que sobra, que es lo que le
+   deja al nombre largo recortarse con «…» en vez de empujar la foto. */
+.fdock__chatbar .friend__body { flex: 1; }
+/*
+ * Los tres botones entran en los 320 px del dock, pero entran justos, y no hay
+ * ningún ancho garantizado: el dock se achica con la ventana (`max-width: 92vw`)
+ * y cada idioma trae sus propias palabras. Sin `wrap`, lo que no entra no se
+ * acomoda: se sale de la caja y se pierde contra el borde derecho — y el que se
+ * perdía era «Borrar», que es el último. Envolviendo, en el peor caso baja a un
+ * segundo renglón; recortado no queda nunca.
+ */
+.fdock__chatacts {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 0 var(--fpad) 10px;
+  border-bottom: 1px solid var(--line);
+}
+/* Borrar no va pegado a las acciones que uno sí quiere tocar. */
+.fdock__chatacts .btn--danger { margin-left: auto; }
+
+/* ── La foto de perfil ──────────────────────────────────── *
+ * Un círculo con la inicial adentro, y la foto de Discord encima cuando llega.
+ * Se dibuja siempre en ese orden a propósito: la imagen la baja el proceso
+ * principal (la CSP de esta ventana no deja pedirlas de afuera), así que puede
+ * tardar un momento o no llegar nunca, y el hueco no puede quedar vacío. */
+/* El círculo lo recorta la FOTO y no el hueco (`.pfp img`, más abajo). Con
+   `overflow: hidden` acá, el punto de conectado —que se apoya en el borde de
+   abajo a la derecha, donde un círculo ya no tiene superficie— quedaba cortado
+   por la mitad y se veía como una medialuna verde. */
+.pfp {
+  position: relative;
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--accent-text);
+  background: var(--accent-soft);
+  box-shadow: inset 0 0 0 1px var(--accent-line);
+  user-select: none;
+}
+.pfp img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
+/* Con foto no hace falta ni el fondo de acento ni el borde: taparían la imagen
+   por los cuatro lados de un círculo de 32 px. */
+.pfp.is-photo { background: var(--surface); box-shadow: inset 0 0 0 1px var(--line); }
+
+/* El estado va ENCIMA de la foto: en una columna de 320 px, cada píxel de ancho
+   que se lleva un puntito al lado es una letra menos del nombre. */
+.pfp__dot {
+  position: absolute;
+  right: 0; bottom: 0;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: rgb(var(--text-rgb) / 30%);
+  box-shadow: 0 0 0 2px var(--bg-2);
+}
+.pfp__dot.is-on { background: #4ade80; box-shadow: 0 0 0 2px var(--bg-2), 0 0 6px rgb(74 222 128 / 55%); }
+
+.pfp--md { width: 40px; height: 40px; font-size: 16px; }
+.pfp--lg { width: 56px; height: 56px; font-size: 22px; }
+
+.friendreq { display: grid; gap: 8px; font-size: 12.5px; }
+.friendreq__who { display: flex; align-items: center; gap: 8px; min-width: 0; }
+/* En dos líneas, como las filas de la lista: si fuera una sola, un nombre de
+   Discord largo se come el «te quiere agregar» y la fila deja de decir nada. */
+.friendreq__who > span { display: grid; min-width: 0; }
+/* El nombre vuelve al color normal: ahora cuelga del `span` que envuelve la
+   línea, y si no se lo dice se lleva el gris del texto de al lado. */
+.friendreq b { color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.friendreq span { color: var(--text-faint); }
+/* Los botones a la derecha y sangrados hasta la foto: alineados con el nombre y
+   no con el borde del panel, que es lo que los dejaba flotando sueltos. */
+.friendreq .rowactions { justify-content: flex-end; gap: 6px; }
+
+.friend {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  /* 6 px, que sumados a los 6 de `.fgroup__rows` dan los mismos `--fpad` que la
+     cabecera: así todas las fotos del panel caen en la misma columna. */
+  padding: 8px 6px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.friend:hover { background: var(--surface); }
+.friend.is-on { background: var(--accent-soft); box-shadow: inset 0 0 0 1px var(--accent-line); }
+.friend__body { display: grid; gap: 1px; min-width: 0; }
+.friend__body b { font-size: 13.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* El mismo rombo de contorno y el mismo celeste que en la sala.
+   `display: inline-block` porque theme.css pone `svg { display: block }` para
+   los iconos sueltos, y éste va DENTRO del nombre: en bloque se bajaba solo a la
+   línea de abajo. Y `vertical-align` para que se apoye a la altura del texto en
+   vez de la línea base. */
+.friend__gem { display: inline-block; width: 13px; height: 13px; margin-left: 5px; vertical-align: -2px; filter: drop-shadow(0 1px 1px rgba(0,0,0,0.45)); }
+.friend__where { font-size: 11.5px; color: var(--text-faint); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.chat__log { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 6px; overflow-y: auto; padding: 12px 14px; }
+.chat__form { display: flex; align-items: center; gap: 8px; padding: 12px 14px; border-top: 1px solid var(--line); }
+.chat__form input { flex: 1; min-width: 0; }
+/* Los tuyos a la derecha y con el acento: es la única señal que hace falta para
+   saber quién dijo qué en una charla de dos. */
+/* La hora va al lado del texto, no debajo.
+ *
+ * Antes la burbuja era una grilla de dos filas, así que «che entrás?» ocupaba
+ * dos renglones —uno de texto y otro con la hora sola— y una charla de seis
+ * mensajes cortos llenaba la columna entera. Con flex y `wrap`, la hora se queda
+ * en la misma línea cuando entra y se cae al final de la última cuando no. */
+.msg {
+  align-self: flex-start;
+  max-width: 86%;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: flex-end;
+  gap: 0 8px;
+  padding: 6px 11px;
+  border-radius: 12px;
+  background: var(--surface);
+}
+.msg--mine { align-self: flex-end; background: linear-gradient(180deg, rgb(var(--accent-rgb) / 30%), rgb(var(--accent-rgb) / 16%)); box-shadow: inset 0 0 0 1px var(--accent-line); }
+.msg__text { flex: 1 1 auto; min-width: 0; font-size: 13.5px; line-height: 1.5; word-break: break-word; }
+.msg__at { flex: none; display: inline-flex; align-items: center; gap: 4px; font-size: 10.5px; color: var(--text-faint); }
+
+/* ── El estado de un mensaje tuyo ────────────────────────── *
+ * Uno gris enviado, dos grises entregado, dos azules leído. El azul es el
+ * único color de la app que no sale del tema: es la convención que ya trae
+ * aprendida cualquiera que use un mensajero, y teñirlo del acento la rompe. */
+.tick { display: inline-flex; align-items: center; color: var(--text-faint); }
+.tick svg { width: 15px; height: 11px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+.tick.is-read { color: #54b0ff; }
+.tick--failed {
+  width: 13px; height: 13px;
+  justify-content: center;
+  border-radius: 50%;
+  border: 1.5px solid var(--danger);
+  color: var(--danger);
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+/* El punto del botón: hay una solicitud o un mensaje sin leer. */
+.iconbtn { position: relative; }
+.iconbtn__dot { position: absolute; top: 6px; right: 6px; width: 7px; height: 7px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 2px var(--bg-1); }
+.iconbtn__dot[hidden] { display: none; }
+
+.toast__btn {
+  margin-left: 12px;
+  padding: 3px 10px;
+  border: 0;
+  border-radius: 7px;
+  background: rgb(var(--text-rgb) / 16%);
+  color: inherit;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.toast__btn:hover { background: rgb(var(--text-rgb) / 26%); }
+
+
+/* ── Cosméticos que ven los demás ───────────────────────── */
+.looksrow { display: flex; align-items: flex-end; gap: 14px; flex-wrap: wrap; }
+.looksrow__item { display: grid; gap: 5px; font-size: 11.5px; color: var(--text-faint); }
+.looksrow__item b { color: var(--accent-text); font-variant-numeric: tabular-nums; }
+.looksrow__item--wide { min-width: 180px; flex: 1; }
+/* El rango se estira con su columna; el resto de los controles conservan su
+   ancho propio. Sin esto, un `<select>` de 200 px y un slider de 180 dejaban la
+   fila con dos alturas y dos anchos que no se corresponden con nada. */
+.looksrow__item--wide > input[type="range"], .looksrow__item--wide > select { width: 100%; }
+/* Los controles de una fila no miden todos lo mismo de alto —un `select` son 36
+   px y un rango la mitad—, así que alineando sólo por abajo las etiquetas
+   quedaban escalonadas.
+
+   Antes esto se arreglaba estirando los items y separando etiqueta y control a
+   los extremos (`align-content: space-between`). Las etiquetas sí quedaban en
+   línea, pero los controles se apoyaban todos en el BORDE DE ABAJO: al lado de
+   un selector de color de 36 px, la barra del tamaño —que son 5— caía contra su
+   base y se veía torcida respecto del cuadradito.
+
+   Ahora la fila del control mide 36 px en todos y lo que hay adentro va
+   centrado: los altos son idénticos sin estirar nada, así que las etiquetas
+   siguen en línea y los controles quedan a la misma altura de verdad.
+
+   El alto del rango NO se toca: dibuja su barra con el alto del elemento, así
+   que subírselo a 36 px lo convierte en un bloque de color. */
+.looksrow { align-items: flex-end; }
+.looksrow__item { grid-template-rows: auto 36px; align-items: center; }
+/* Los botones sueltos de la fila no se estiran: se apoyan abajo, a la altura de
+   los campos que acompañan. */
+.looksrow > .btn { align-self: flex-end; }
+
+/* El selector de color es el único control de la app que el navegador dibuja
+   entero: sin esto entra con su aspecto de fábrica —borde gris y 44 px de
+   ancho— al lado de campos de 36 px de alto con borde propio. */
+input[type="color"] {
+  width: 46px;
+  height: 36px;
+  padding: 3px;
+  border-radius: 10px;
+  border: 1px solid var(--line-hi);
+  background: var(--field);
+  cursor: pointer;
+}
+input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
+input[type="color"]::-webkit-color-swatch { border: 0; border-radius: 6px; }
+
+/* La muestra copia la fila de la lista del juego —bandera, nombre, insignias y
+   ping— para que lo que se ve acá sea lo que ven los demás. */
+.looksdemo {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 10px 0 12px;
+  padding: 5px 7px;
+  border-radius: 7px;
+  background: var(--field);
+  font-size: 14px;
+  line-height: 20px;
+}
+/* El aura la pone `paintLooks` en línea, con el color elegido. Acá queda lo que
+   no depende del color — y el fondo oscuro fijo, que no es capricho: el aura se
+   dibuja para la lista de HaxBall, que es oscura, y sobre un tema claro del
+   cliente esta muestra no se parecería a lo que ve el de al lado. */
+.looksdemo.is-on {
+  /* La misma fila que dibuja el juego (ver `.tvm-peer-row` en room-ui.js): el
+     color llega por variables desde `paintLooks`, sobre el fondo de la lista. */
+  padding-left: 11px;
+  background: var(--tvm-vip-bg), #1a2125;
+  box-shadow: var(--tvm-vip-edge);
+  border-radius: 8px;
+}
+.looksdemo.is-on:hover { background: var(--tvm-vip-bg-hi), #1a2125; }
+.looksdemo.is-on .looksdemo__name {
+  font-weight: 700;
+  letter-spacing: .01em;
+  background-image: var(--tvm-vip-name);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.looksdemo__flag { flex: none; width: 16px; height: 11px; border-radius: 2px; background: rgb(var(--text-rgb) / 22%); }
+.looksdemo__name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.looksdemo__marks { flex: none; display: inline-flex; align-items: center; gap: 5px; }
+/* El escudo TL App conserva su contorno limpio también en tamaños pequeños. */
+.looksdemo__logo {
+  width: 16px; height: 16px; object-fit: contain;
+  filter: drop-shadow(0 1px 1px rgba(0,0,0,0.55));
+}
+/* La piedra rellena, con sus propios colores: igual que VIP_GEM_SVG. */
+.looksdemo__gem {
+  width: 16px; height: 16px; flex: none;
+  filter: drop-shadow(0 1px 1px rgba(0,0,0,0.5));
+}
+.looksdemo__ping { flex: none; min-width: 26px; text-align: right; font-variant-numeric: tabular-nums; opacity: 0.75; }
+
+.looksline { margin: 0 0 7px; font-size: 11.5px; color: var(--text-faint); }
+/* Cuatro por fila: entran los ocho en dos filas parejas en vez de dejar uno
+   solo colgando, y así cada muestra es lo bastante ancha para que se vea el
+   degradado y no un color. */
+.gradients { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 14px; }
+.gradients__item {
+  height: 28px;
+  border: 0;
+  border-radius: 7px;
+  cursor: pointer;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.22), inset 0 0 0 1px rgba(255,255,255,0.12);
+  transition: transform var(--fast), box-shadow var(--fast);
+}
+.gradients__item:hover { transform: translateY(-1px); }
+/* El elegido lleva un anillo del acento, separado por un halo del fondo para
+   que se note sobre cualquier degradado. */
+.gradients__item.is-on {
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.3),
+    0 0 0 2px var(--bg-2),
+    0 0 0 4px var(--accent);
+}
+
+/* ── Tarjeta de jugador y estadísticas ──────────────────── *
+ * La grilla usa el mismo `deflist` de siempre, pero en columnas: son ocho
+ * números cortos y en una sola columna la tarjeta quedaba larguísima. */
+.statslock {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.statslock .note { margin: 0; flex: 1 1 260px; }
+
+.playercard {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  margin-bottom: 14px;
+  border-radius: 14px;
+  border: 1px solid var(--accent-line);
+  background: linear-gradient(120deg, rgb(var(--accent-rgb) / 22%), rgb(var(--accent-rgb) / 5%));
+}
+/* Es un `.pfp` más grande y con el acento lleno. El recorte redondo de la foto
+   lo pone `.pfp img`, no esto. */
+.playercard__face {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--accent-text-on);
+  font-size: 20px;
+  font-weight: 700;
+}
+.playercard__id { display: grid; gap: 2px; min-width: 0; }
+.playercard__id b { font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.playercard__level { font-size: 12px; color: var(--text-dim); }
+.playercard__level b { font-size: 12px; color: var(--accent-text); }
+/* El progreso se va al fondo. Con tope: sin él se comía media tarjeta. */
+.playercard__xp { flex: 1 1 140px; max-width: 220px; margin-left: auto; display: grid; gap: 5px; justify-items: end; }
+.playercard__xptext { font-size: 11px; color: var(--text-faint); font-variant-numeric: tabular-nums; }
+.xpbar { width: 100%; height: 6px; border-radius: 999px; background: rgb(var(--text-rgb) / 12%); overflow: hidden; }
+/* Se anima `transform` y no `width`: animar el ancho hace maquetar en cada
+   cuadro. La barra va SIEMPRE al 100% y se encoge con `scaleX`, que el
+   compositor resuelve solo. El redondeo se lo queda la pista de atrás
+   (`.xpbar` tiene `overflow: hidden`), así que escalar no deforma ninguna
+   punta. Quien la mueve escribe `--fill` — ver `paintXp` en app.js. */
+.xpbar > i {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: var(--accent);
+  transform: scaleX(var(--fill, 0));
+  transform-origin: left center;
+  transition: transform var(--slow);
+}
+
+.statgrid { grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); column-gap: 22px; }
+
+/* ── Barra de posesión de la ficha ───────────────────────────────── *
+ * Una sola barra partida en dos y no dos barras: la posesión es un reparto,
+ * y dos barras sueltas obligan a sumar mentalmente para ver quién tuvo más. */
+.possbar { display: flex; align-items: center; gap: 10px; }
+.possbar__track {
+  flex: 1;
+  height: 8px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: var(--team-blue);
+}
+.possbar__red { display: block; height: 100%; background: var(--team-red); }
+.possbar__n { font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.possbar__n--red { color: var(--team-red); }
+.possbar__n--blue { color: var(--team-blue); }
+.stats-table tr.is-red td:first-child { color: var(--team-red); }
+.stats-table tr.is-blue td:first-child { color: var(--team-blue); }
+
+/* ── Mapa de calor del resumen ───────────────────────────────────── *
+ * La imagen llega diminuta —un píxel por celda de cancha— y se agranda acá.
+ * El suavizado del navegador es lo que la convierte en manchas: sin él serían
+ * cuadraditos. La proporción se la pone `paintHeatmap` desde las medidas de la
+ * cancha, no del PNG. */
+.heatmap {
+  border-radius: var(--radius);
+  border: 1px solid var(--line);
+  background: var(--field);
+  overflow: hidden;
+}
+.heatmap img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+/* El botón necesita aire de los dos lados. Pegado a la última fila de números
+   —a los mismos 7 px que separan una fila de otra— se lee como una celda más de
+   la grilla, y pegado a la nota de abajo, como su título. */
+#statsContent .rowactions { margin: 18px 0 14px; }
+
+/* ── Botones ────────────────────────────────────────────── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  height: 36px;
+  padding: 0 16px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+/* El dibujo de adelante. Un pelo más chico que la letra —15 contra 13 px de
+   texto— para que acompañe y no encabece: un icono a la misma altura que la
+   mayúscula se lee como el sujeto del botón y la palabra como una aclaración.
+   El `flex: none` es para que no lo aplaste un texto largo. */
+.btn svg[data-icon] { width: 15px; height: 15px; flex: none; opacity: 0.9; }
+.btn--sm svg[data-icon] { width: 14px; height: 14px; }
+/* Se hunde en el instante del clic y vuelve en el instante en que soltás. */
+.btn:active { transform: scale(0.97); }
+.btn:disabled { opacity: 0.45; pointer-events: none; }
+.btn--sm { height: 31px; padding: 0 12px; font-size: 12.5px; border-radius: 9px; }
+
+.btn--primary {
+  color: var(--accent-text-on);
+  background: linear-gradient(140deg, var(--accent-lift), var(--accent) 55%, var(--accent-2));
+  box-shadow: 0 8px 26px -10px var(--accent), inset 0 1px 0 rgba(255, 255, 255, 0.22);
+}
+.btn--primary:hover { box-shadow: 0 12px 32px -8px var(--accent); }
+
+.btn--ghost { color: var(--text); background: var(--surface); border: 1px solid var(--line-hi); }
+.btn--ghost:hover { background: var(--surface-hi); border-color: var(--accent-line); }
+
+.btn--danger {
+  color: var(--danger);
+  background: rgb(var(--danger-rgb) / 12%);
+  border: 1px solid rgb(var(--danger-rgb) / 30%);
+}
+.btn--danger:hover { background: rgb(var(--danger-rgb) / 20%); }
+
+/* ── Switches ───────────────────────────────────────────── */
+/*
+ * `.switchrow` se fue: el interruptor ya no trae su propia fila. Lo dibuja
+ * `.row`, que es la misma fila que usan los selectores, las barras y todo lo
+ * demás del panel (ver el bloque de «La fila de ajuste»).
+ */
+.switch {
+  position: relative;
+  flex: 0 0 auto;
+  width: 40px; height: 23px;
+  border-radius: 99px;
+  background: var(--surface-hi);
+  border: 1px solid var(--line-hi);
+  /* Se sacó `box-shadow` de la transición: animar una sombra obliga a repintar
+     el elemento en cada cuadro. El cambio de fondo y borde ya da el feedback. */
+  transition: background var(--mid), border-color var(--mid);
+}
+.switch::after {
+  content: "";
+  position: absolute;
+  top: 2px; left: 2px;
+  width: 17px; height: 17px;
+  border-radius: 50%;
+  background: var(--text-dim);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+  transition: transform 0.24s cubic-bezier(0.34, 1.56, 0.64, 1), background var(--mid);
+}
+.switch.is-on {
+  background: linear-gradient(120deg, var(--accent), var(--accent-2));
+  border-color: var(--accent);
+  box-shadow: 0 0 14px -2px var(--accent);
+}
+.switch.is-on::after { transform: translateX(17px); background: var(--accent-text-on); }
+
+/* ── Temas ──────────────────────────────────────────────── */
+/*
+ * Tres columnas y no dos. Con la muestra de 86 px de alto, diez temas ocupaban
+ * dos pantallas de scroll antes de que apareciera el segundo ajuste de la
+ * página. La muestra sigue diciendo lo mismo —fondo, texto, acento— con
+ * bastante menos alto.
+ */
+.themes { display: grid; grid-template-columns: repeat(auto-fit, minmax(148px, 1fr)); gap: 10px; }
+.themecard {
+  position: relative;
+  padding: 10px;
+  border-radius: var(--r-surface);
+  border: 1px solid var(--line);
+  background: var(--surface);
+  text-align: left;
+  transition: transform 0.12s var(--ease);
+}
+.themecard:hover { border-color: var(--line-hi); background: var(--surface-hi); }
+.themecard:active { transform: scale(0.97); }
+.themecard.is-on {
+  border: 2px solid var(--accent);
+  background: rgb(var(--accent-rgb) / 12%);
+  box-shadow: 0 8px 24px -6px var(--accent-soft), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+}
+.themecard__preview {
+  height: 58px;
+  border-radius: var(--r-ctl);
+  margin-bottom: 9px;
+  border: 1px solid var(--line-hi);
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  overflow: hidden;
+  position: relative;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+.themecard__bar { height: 5px; border-radius: 3px; background: var(--sw-line, rgba(255,255,255,.18)); }
+.themecard__bar:nth-child(2) { width: 68%; }
+.themecard__bar:nth-child(3) { width: 42%; }
+.themecard__btn {
+  margin-top: auto;
+  height: 12px;
+  width: 55%;
+  border-radius: 6px;
+  background: var(--sw-accent, #fff);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+.themecard strong { display: block; font-family: var(--font-display); font-size: var(--fs-sm); font-weight: 700; color: var(--text); }
+.themecard small { display: block; font-size: var(--fs-2xs); color: var(--text-faint); line-height: 1.35; margin-top: 2px; }
+.themecard__edit {
+  position: absolute;
+  top: 8px; right: 8px;
+  width: 24px; height: 24px;
+  display: grid;
+  place-items: center;
+  border-radius: 7px;
+  font-size: 12px;
+  color: var(--text);
+  background: rgb(var(--bg-0-rgb) / 75%);
+  border: 1px solid var(--line-hi);
+  opacity: 0;
+  transition: opacity var(--fast);
+}
+.themecard:hover .themecard__edit { opacity: 1; }
+
+.themeedit { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; }
+.themeedit__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--line);
+  background: var(--surface);
+  font-size: 12.5px;
+  color: var(--text-dim);
+  cursor: pointer;
+}
+
+.themepreview {
+  border-radius: var(--radius);
+  border: 1px solid var(--line-hi);
+  overflow: hidden;
+  background: var(--pv-bg, var(--bg-0));
+  color: var(--pv-text, var(--text));
+}
+.themepreview__bar { height: 26px; background: var(--pv-panel, var(--panel-top)); border-bottom: 1px solid var(--pv-line, var(--line)); }
+.themepreview__body { padding: 14px; display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
+.themepreview__body strong { font-size: 14px; font-family: var(--font-display); }
+.themepreview__body small { font-size: 11.5px; color: var(--pv-dim, var(--text-dim)); }
+.themepreview__btn {
+  margin-top: 6px;
+  padding: 6px 14px;
+  border-radius: 9px;
+  font-size: 12px;
+  font-weight: 700;
+  background: var(--pv-accent, var(--accent));
+  color: var(--pv-accent-text, #fff);
+}
+
+/* ── Swatches ───────────────────────────────────────────── */
+.swatches { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.swatch {
+  width: 32px; height: 32px;
+  border-radius: 10px;
+  border: 2px solid transparent;
+  box-shadow: inset 0 0 0 1px var(--line-hi);
+}
+/* Un círculo de color no tiene borde ni fondo que cambiar, así que acá el
+   movimiento es la única señal posible. Queda, pero seco y sin desplazamiento:
+   32 px que escalan en el acto no cuestan nada. */
+.swatch:hover { transform: scale(1.1); }
+.swatch.is-on {
+  border-color: var(--text);
+  box-shadow: inset 0 0 0 2px var(--bg-0), 0 0 0 2px var(--accent);
+}
+
+#roomsRefresh svg.is-spinning {
+  animation: spin360 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+@keyframes spin360 {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+.colorinput {
+  width: 44px; height: 32px;
+  padding: 0;
+  border: 1px solid var(--line-hi);
+  border-radius: 9px;
+  background: transparent;
+  cursor: pointer;
+}
+.colorinput::-webkit-color-swatch-wrapper { padding: 3px; }
+.colorinput::-webkit-color-swatch { border: 0; border-radius: 6px; }
+
+/* ── Avatar ─────────────────────────────────────────────── */
+.avatarpreview {
+  flex: 0 0 auto;
+  width: 56px; height: 56px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  font-size: 24px;
+  line-height: 1;
+  color: var(--text);
+  background: radial-gradient(circle at 35% 30%, var(--surface-hi), var(--field));
+  border: 1px solid var(--accent-line);
+  font-family: "Segoe UI Emoji", "Segoe UI Symbol", var(--font);
+}
+.avatarpreview.is-empty { color: var(--text-faint); font-size: 15px; }
+
+.emojirow { display: flex; flex-wrap: wrap; gap: 6px; }
+.emojibtn {
+  width: 32px; height: 32px;
+  display: grid;
+  place-items: center;
+  border-radius: 9px;
+  font-size: 16px;
+  line-height: 1;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  font-family: "Segoe UI Emoji", "Segoe UI Symbol", var(--font);
+}
+.emojibtn:hover { border-color: var(--accent-line); background: var(--surface-hi); }
+
+/* ── Identidades ────────────────────────────────────────── */
+.authlist { display: grid; gap: 8px; }
+.authrow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 14px;
+  border-radius: var(--radius);
+  border: 1px solid var(--line);
+  background: var(--surface);
+}
+.authrow:hover { border-color: var(--line-hi); background: var(--surface-hi); }
+.authrow.is-active { border-color: var(--accent); background: var(--accent-soft); }
+.authrow__body { flex: 1; min-width: 0; }
+.authrow__name { font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+.authrow__meta { font-size: 11px; color: var(--text-faint); margin-top: 2px; font-variant-numeric: tabular-nums; }
+.authrow__actions { display: flex; gap: 6px; flex: 0 0 auto; flex-wrap: wrap; justify-content: flex-end; }
+.badge {
+  padding: 2px 8px;
+  border-radius: 99px;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--accent-text);
+  background: var(--accent-soft);
+  border: 1px solid var(--accent-line);
+}
+
+/* ── Aviso ──────────────────────────────────────────────── *
+ * `.callout` vivía acá y tenía un solo uso: el cartel de «reiniciá el cliente».
+ * Ese cartel se fue a `.notebar`, fijo arriba de la ventana, así que la clase
+ * quedó sin nadie que la usara. */
+
+/* ── Buscador y replays ─────────────────────────────────── */
+.searchbar {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  height: 40px;
+  padding: 0 14px;
+  border-radius: 12px;
+  border: 1px solid var(--line-hi);
+  background: var(--field);
+}
+.searchbar:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.searchbar svg { width: 15px; height: 15px; color: var(--text-faint); flex: 0 0 auto; }
+.searchbar input[type="text"] {
+  flex: 1;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  outline: none;
+  box-shadow: none;
+  user-select: text;
+}
+.searchbar input[type="text"]:focus { border: 0; box-shadow: none; }
+
+.replaylist { display: grid; gap: 8px; }
+.replay {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 14px;
+  border-radius: var(--radius);
+  border: 1px solid var(--line);
+  background: var(--surface);
+}
+.replay:hover { background: var(--surface-hi); border-color: var(--accent-line); }
+.replay__body { flex: 1; min-width: 0; }
+.replay__name { font-size: 13px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.replay__meta { font-size: 11px; color: var(--text-faint); margin-top: 2px; }
+/* Lo que pasó adentro de la grabación, si ya se analizó. En el color del acento
+   porque es lo único de la fila que no sale del sistema de archivos. */
+.replay__digest { font-size: 11px; font-weight: 600; color: var(--accent-text); margin-top: 3px; }
+.replay__actions { display: flex; gap: 6px; flex: 0 0 auto; }
+/* Antes esto era opacity:0 y las acciones sólo existían al pasar el mouse: no
+   había forma de saber que estaban. Ahora se atenúan, pero se ven. */
+.replay__more { display: flex; gap: 6px; opacity: 0.55; }
+.replay:hover .replay__more { opacity: 1; }
+
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 54px 24px;
+  border-radius: var(--radius);
+  border: 1px dashed var(--line-hi);
+  background: radial-gradient(circle at 50% 50%, rgb(var(--accent-rgb) / 4%), transparent 70%);
+  text-align: center;
+  color: var(--text-faint);
+}
+.empty strong {
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text);
+}
+.empty p {
+  font-size: 12.5px;
+  line-height: 1.5;
+  max-width: 420px;
+  color: var(--text-dim);
+}
+
+/* ══════════════════════════════════════════════════════════
+   Navegador de salas — interfaz propia del cliente
+   ══════════════════════════════════════════════════════════ */
+.browser__shell {
+  max-width: 960px;
+  height: 100%;
+  margin: 0 auto;
+  padding: 22px 28px 26px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* ── Barra de herramientas ──────────────────────────────── */
+.rtoolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.rsearch {
+  flex: 1;
+  min-width: 180px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  height: 34px;
+  padding: 0 13px;
+  border-radius: 9px;
+  border: 1px solid var(--line);
+  background: var(--field);
+}
+.rsearch:focus-within { border-color: var(--accent-line); }
+.rsearch svg { width: 14px; height: 14px; color: var(--text-faint); flex: 0 0 auto; }
+.rsearch input[type="text"] {
+  flex: 1;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  outline: none;
+  box-shadow: none;
+  font-size: 12.5px;
+  user-select: text;
+}
+.rsearch input[type="text"]:focus { border: 0; box-shadow: none; }
+
+.filterchip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 34px;
+  padding: 0 13px;
+  border-radius: 9px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-dim);
+  background: transparent;
+  border: 1px solid var(--line);
+  white-space: nowrap;
+}
+.filterchip:hover { color: var(--text); background: var(--surface); }
+.filterchip.is-on {
+  color: var(--warn);
+  background: rgb(var(--warn-rgb) / 13%);
+  border-color: rgb(var(--warn-rgb) / 40%);
+}
+.filterchip__star { font-size: 13px; color: var(--warn); opacity: 0.6; }
+.filterchip.is-on .filterchip__star { opacity: 1; }
+
+.rcount {
+  margin-left: auto;
+  font-size: 11.5px;
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.sortselect {
+  height: 34px;
+  padding: 0 30px 0 12px;
+  border-radius: 9px;
+  font-size: 12px;
+  font-weight: 600;
+  background-color: transparent;
+  border-color: var(--line);
+}
+
+/* ── Panel de la lista ──────────────────────────────────── */
+.rpanel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border-radius: 16px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  overflow: hidden;
+}
+
+/* Encabezado y filas comparten la misma grilla */
+.rtable__head, .rrow {
+  display: grid;
+  grid-template-columns: 60px 22px 1fr 92px 20px;
+  align-items: center;
+  gap: 12px;
+  padding: 0 18px;
+}
+
+.rtable__head {
+  height: 30px;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  border-bottom: 1px solid var(--line);
+}
+.rtable__head span:last-child { text-align: right; }
+
+.rtable {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 4px 0;
+  /*
+   * Sin esto la lista se scrollea sola hacia abajo y no hay forma de pararla.
+   *
+   * Es el anclaje de scroll de Chromium: elige un elemento visible como ancla y,
+   * cuando algo de arriba cambia de alto, corrige el scroll para que el ancla no
+   * se mueva. Acá el bloque de arriba cambia de alto en CADA cuadro de scroll —
+   * es justamente cómo funciona el dibujado por ventana—, así que el navegador
+   * corregía, la corrección disparaba otro evento de scroll, ése redibujaba y
+   * volvía a corregir. Un empujoncito con la rueda y la lista se iba sola.
+   */
+  overflow-anchor: none;
+}
+/*
+ * La lista trae más de mil salas y sólo entran unas veinte en pantalla, así que
+ * se dibujan sólo ésas (ver paintRoomWindow en app.js). Estos dos bloques
+ * vacíos ocupan el lugar de las que quedaron arriba y abajo, para que la barra
+ * de scroll mida lo que tiene que medir.
+ *
+ * Antes se creaban las mil filas de verdad —seis mil nodos— y se dejaba que
+ * `content-visibility` salteara las que no se veían. Existir igual costaba:
+ * memoria, y una revisión de visibilidad por fila en cada cuadro de scroll. Era
+ * de ahí que venían los tirones al bajar por la lista.
+ */
+.rtable__pad { height: 0; }
+
+.rrow {
+  position: relative;
+  height: 32px;
+  cursor: default;
+}
+/* Riel de acento a la izquierda, en vez del clásico fondo entero */
+.rrow::before {
+  content: "";
+  position: absolute;
+  left: 0; top: 3px; bottom: 3px;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background: var(--accent);
+  opacity: 0;
+}
+.rrow:hover { background: rgb(var(--accent-rgb) / 6%); }
+.rrow:hover::before { opacity: 0.6; }
+.rrow.is-selected { background: rgb(var(--accent-rgb) / 16%); }
+.rrow.is-selected::before { opacity: 1; }
+
+.rrow__dist {
+  font-size: 11px;
+  color: var(--text-faint);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Bandera real: sprite de HaxBall, 16×11 por país */
+.rrow__flag {
+  width: 16px; height: 11px;
+  border-radius: 2px;
+  background-image: var(--flag-sprite);
+  background-repeat: no-repeat;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.45);
+}
+.rrow__flag--text {
+  width: auto; height: auto;
+  background: none;
+  box-shadow: none;
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--text-faint);
+}
+
+.rrow__name {
+  font-size: 12.5px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  /* "TVM Box" va primero pero sólo aplica a los caracteres de raya (tiene
+     unicode-range), y "Segoe UI Emoji" antes que Symbol para que ⚪🔵 salgan
+     en color y no en la versión monocroma, que además tiene otra métrica. */
+  font-family: "TVM Box", "Segoe UI", "Segoe UI Emoji", "Segoe UI Symbol", "Cambria Math", system-ui, sans-serif;
+  line-height: 1.2;
+  font-variant-emoji: emoji;
+}
+.rrow__lock { color: var(--warn); font-size: 10px; }
+/* El nombre es lo único que cede: así el candado y el sello de patrocinada
+   quedan siempre a la vista, por largo que sea. */
+.rrow__label { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+
+.rrow__players {
+  text-align: center;
+  font-size: 11.5px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-dim);
+  padding: 1px 7px;
+  border-radius: 6px;
+  background: var(--surface);
+  justify-self: end;
+}
+.rrow.is-full .rrow__players {
+  color: var(--danger);
+  background: rgb(var(--danger-rgb) / 12%);
+  border: 1px solid rgb(var(--danger-rgb) / 25%);
+}
+.rrow.is-almost-full .rrow__players {
+  color: var(--warn);
+  background: rgb(var(--warn-rgb) / 12%);
+  border: 1px solid rgb(var(--warn-rgb) / 25%);
+}
+.rrow.is-open-room .rrow__players {
+  color: var(--ok);
+  background: rgba(61, 220, 151, 0.12);
+  border: 1px solid rgba(61, 220, 151, 0.25);
+}
+.rrow.is-empty { opacity: 0.7; }
+
+/* ── Salas patrocinadas ─────────────────────────────────── */
+.rrow.is-sponsored {
+  background: rgb(var(--accent-rgb) / 7%);
+}
+.rrow.is-sponsored::before { opacity: 0.8; }
+.rrow.is-sponsored:hover { background: rgb(var(--accent-rgb) / 12%); }
+.rrow.is-sponsored.is-selected { background: rgb(var(--accent-rgb) / 18%); }
+/* Una patrocinada vacía no se atenúa: si no, el separador casi no se lee. */
+.rrow.is-sponsored.is-empty { opacity: 1; }
+
+.rrow__badge {
+  flex: 0 0 auto;
+  padding: 1px 6px;
+  border-radius: 99px;
+  font-size: 8.5px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--accent-text);
+  background: var(--accent-soft);
+  border: 1px solid var(--accent-line);
+}
+
+/* Amigos tuyos en esa sala. En verde y no en el acento: el acento ya lo usan la
+   patrocinada y la fila marcada, y esto tiene que separarse de las dos. */
+.rrow__friends {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 1px 7px;
+  border-radius: 99px;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--ok);
+  background: rgb(61 220 151 / 12%);
+  border: 1px solid rgb(61 220 151 / 34%);
+}
+.rrow__friends::before {
+  content: "";
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  background: var(--ok);
+}
+
+/* ── Barra de progreso (descarga de actualizaciones) ────── */
+.progress { display: flex; align-items: center; gap: 10px; }
+.progress__bar {
+  flex: 1;
+  height: 6px;
+  border-radius: 99px;
+  background: var(--surface-hi);
+  overflow: hidden;
+}
+/* La barra se llena escalándola, no cambiándole el ancho: mientras baja una
+   actualización esto se actualiza sin parar, y animar `width` haría maquetar
+   el documento entero en cada paso. Se ve igual — con 99px de radio, las
+   puntas quedan redondeadas de las dos formas. */
+.progress__bar i {
+  display: block;
+  height: 100%;
+  width: 100%;
+  border-radius: 99px;
+  background: linear-gradient(90deg, var(--accent), var(--accent-text));
+  transform-origin: left center;
+  transform: scaleX(0);
+  transition: transform var(--fast);
+}
+/* Sin content-length no hay porcentaje: la barra se mueve sola para que se vea
+   que algo está pasando. Acá el ancho es fijo y lo que se anima es el
+   desplazamiento, así que no cuesta maquetado. */
+.progress__bar i.is-indeterminate {
+  width: 35%;
+  transform: none;
+  animation: progressSlide 1.1s ease-in-out infinite;
+}
+@keyframes progressSlide {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(320%); }
+}
+.progress__text {
+  font-size: 11.5px;
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+  min-width: 82px;
+  text-align: right;
+}
+
+.rpanel__foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 14px;
+  border-top: 1px solid var(--line);
+  background: rgb(var(--bg-0-rgb) / 45%);
+}
+.rpanel__foot-sec,
+.rpanel__foot-pri {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ghostbtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 32px;
+  padding: 0 11px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-dim);
+}
+.ghostbtn svg { width: 14px; height: 14px; opacity: 0.85; }
+.ghostbtn:hover { color: var(--text); background: var(--surface-hi); }
+
+/* «Entrar» es la acción principal: se separa y pesa más */
+.joinbtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 34px;
+  margin-left: auto;
+  padding: 0 20px;
+  border-radius: 9px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--accent-text-on);
+  background: linear-gradient(140deg, var(--accent-lift), var(--accent) 60%, var(--accent-2));
+  box-shadow: 0 6px 20px -6px var(--accent), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+}
+.joinbtn svg { width: 14px; height: 14px; }
+/* `filter: brightness()` forzaba rasterización; `opacity` se compone gratis. */
+.joinbtn:hover:not(:disabled) { opacity: 0.88; }
+.joinbtn:active:not(:disabled) { transform: scale(0.97); }
+.joinbtn:disabled {
+  background: var(--surface);
+  color: var(--text-faint);
+  box-shadow: none;
+  cursor: default;
+}
+
+/* ── Pedido de nombre ───────────────────────────────────── */
+.nickcard {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 22px;
+  flex-wrap: wrap;
+  padding: 16px 20px;
+  border-radius: 14px;
+  border: 1px solid var(--accent-line);
+  background: linear-gradient(135deg, rgb(var(--accent-rgb) / 18%), var(--surface));
+}
+.nickcard h2 { font-family: var(--font-display); font-size: 17px; font-weight: 700; }
+.nickcard p { color: var(--text-dim); font-size: 12.5px; margin-top: 3px; }
+.nickcard__form { display: flex; gap: 8px; }
+.nickcard__form input { width: 220px; }
+
+/* ── Modal ──────────────────────────────────────────────── */
+.modal {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgb(var(--bg-0-rgb) / 72%);
+  animation: fadeIn 0.2s var(--ease) both;
+  contain: layout style;
+}
+@keyframes fadeIn { from { opacity: 0; } }
+
+/*
+ * La tarjeta aparece y ya: sin entrada.
+ *
+ * Tenía un `modalIn` de 280 ms que le animaba opacidad, desplazamiento y
+ * escala. Es exactamente lo que se le sacó a `.panel__card` después de medirlo
+ * con el Tracing de Chromium —el doble de pintura y cuatro veces el rasterizado
+ * mientras dura—, y por la misma razón: una caja con formulario, campos y
+ * degradés adentro no se puede componer, hay que repintarla entera en cada
+ * cuadro. Encima la escala vuelve a rasterizar todo el texto en cada paso.
+ *
+ * El velo de atrás sí se funde (ver `.modal`): es color plano y alcanza para
+ * que se entienda que se abrió algo encima.
+ */
+.modal__card {
+  width: 100%;
+  max-width: 460px;
+  max-height: calc(100vh - 60px);
+  overflow-y: auto;
+  border-radius: 18px;
+  border: 1px solid var(--line-hi);
+  background: linear-gradient(165deg, var(--panel-top), var(--bg-1));
+  box-shadow: 0 24px 48px -28px rgba(0, 0, 0, 0.95), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  contain: layout style paint;
+}
+.modal__card--sm { max-width: 380px; }
+
+.modal__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 18px 12px;
+  border-bottom: 1px solid var(--line);
+}
+.modal__head h2 { font-family: var(--font-display); font-size: 18px; font-weight: 700; }
+
+.modal__body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 14px 18px 18px;
+}
+.modal__actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 4px; flex-wrap: wrap; }
+.modal__actions .btn--danger { margin-right: auto; }
+.modal__actions:empty { display: none; }
+
+/* ── Perfil ─────────────────────────────────────────────── *
+ * El mismo modal para el tuyo y para el de un amigo. Se abre DESDE el dock, y el
+ * dock se abre jugando: por eso tiene que quedar por encima de él (1200) y no en
+ * el z-index de los modales del panel (80). */
+.profile { z-index: 1300; }
+.profile__card { max-width: 440px; }
+
+.profile__top {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 18px 18px 14px;
+  border-bottom: 1px solid var(--line);
+  /* El mismo lavado de acento que la tarjeta de jugador: es la misma cosa vista
+     en grande. */
+  background: linear-gradient(120deg, rgb(var(--accent-rgb) / 20%), transparent 70%);
+}
+.profile__id { display: grid; gap: 3px; min-width: 0; }
+.profile__id b { font-family: var(--font-display); font-size: 18px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.profile__top .fdock__close { margin-left: auto; align-self: flex-start; }
+
+.profile__level { display: flex; align-items: center; gap: 10px; }
+.profile__levelno { flex: none; font-size: 12.5px; color: var(--text-dim); }
+.profile__levelno b { color: var(--accent-text); }
+/* La barra se queda con lo que sobra; el texto de XP no se parte. */
+.profile__level .xpbar { flex: 1; }
+.profile__level .playercard__xptext { flex: none; }
+
+/* Un bloque del cuerpo: su título arriba y el contenido pegado abajo. El aire
+   entre bloques lo pone el `gap` de `.modal__body`, no márgenes sueltos. */
+.profile__block { display: grid; gap: 8px; }
+.profile__label {
+  margin: 0;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+/* Los números en DOS columnas fijas.
+ *
+ * `.statgrid` usa `auto-fit` con un mínimo de 190 px, que en la página de
+ * Ajustes está bien porque la tarjeta es ancha. Acá el ancho útil son 402 px y
+ * dos columnas piden 190+22+190 = 402: justo en el límite, así que cualquier
+ * cambio de un píxel en el padding o el borde tiraba las seis filas a una sola
+ * columna larguísima. El ancho de esta tarjeta lo conocemos: se dice y listo. */
+.profile__card .statgrid { grid-template-columns: 1fr 1fr; column-gap: 18px; row-gap: 0; }
+/* Una línea por fila: seis pares nombre/número sin nada que los separe se leen
+   como un párrafo de cifras. */
+.profile__card .statgrid > div { padding: 6px 0; border-bottom: 1px solid var(--line); }
+
+/* La bio, como una cita: barra de acento a la izquierda en vez de un rectángulo
+   gris, que es lo único de la tarjeta que la persona escribió. */
+.profile__bio {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-dim);
+  padding: 2px 0 2px 12px;
+  border-left: 2px solid var(--accent-line);
+  word-break: break-word;
+}
+/* Es el primer `textarea` de la app: la regla global de campos sólo alcanza a
+   `input[type=text]` y `select`, así que sin esto sale con el aspecto de fábrica
+   del navegador —fondo blanco y monoespaciada— en medio del panel oscuro. */
+.profile__bioform textarea {
+  width: 100%;
+  padding: 9px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--line-hi);
+  background: var(--field);
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  line-height: 1.5;
+  outline: none;
+  resize: none;
+  user-select: text;
+}
+.profile__bioform textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.profile__bioactions { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 8px; }
+.profile__bioactions .note { margin: 0; font-variant-numeric: tabular-nums; }
+
+/* Los degradados se aprietan a cuatro por fila igual que en Ajustes, pero acá la
+   tarjeta es más angosta: se los deja respirar con un poco menos de alto. */
+.profile__look .gradients { margin-bottom: 10px; }
+
+/* ══════════════════════════════════════════════════════════
+   Pantalla de inicio
+   ══════════════════════════════════════════════════════════ */
+.startscreen {
+  position: fixed;
+  inset: 0;
+  z-index: 95;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background:
+    radial-gradient(90% 60% at 50% 35%, rgb(var(--accent-rgb) / 15%), transparent 70%),
+    var(--bg-0);
+  animation: fadeIn 0.25s var(--ease) both;
+}
+
+.startcard {
+  width: 100%;
+  max-width: 360px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 30px 28px 26px;
+  border-radius: 20px;
+  border: 1px solid var(--line-hi);
+  background: linear-gradient(168deg, var(--panel-top), var(--bg-1));
+  box-shadow: 0 24px 48px -28px rgba(0, 0, 0, 0.95), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  text-align: center;
+}
+.startcard__logo {
+  width: 58px;
+  margin: 0 auto 4px;
+  filter: drop-shadow(0 0 18px var(--accent-soft));
+}
+.startcard h1 { font-family: var(--font-display); font-size: 21px; font-weight: 700; }
+.startcard p { font-size: 12.5px; color: var(--text-dim); line-height: 1.5; }
+.startcard__label {
+  margin-top: 10px;
+  text-align: left;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+.startcard input { text-align: center; font-size: 14px; height: 42px; }
+.startcard .btn { width: 100%; }
+.startcard .btn--lg { height: 44px; margin-top: 6px; }
+
+/* ── Favoritos y auto-entrar ────────────────────────────── */
+/* Sin transición: esta estrellita se repite en cada una de las filas visibles
+   de una lista que scrollea. Es el peor lugar posible para dejar una. */
+.rrow__fav {
+  width: 20px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--text-faint);
+  opacity: 0;
+}
+.rrow:hover .rrow__fav { opacity: 0.75; }
+.rrow__fav:hover { transform: scale(1.2); color: var(--warn); }
+.rrow__fav.is-on { opacity: 1; color: var(--warn); }
+
+.ghostbtn--auto.is-on { color: var(--accent-text); background: var(--accent-soft); }
+.ghostbtn:disabled { opacity: 0.4; pointer-events: none; }
+
+/* ── Toasts ─────────────────────────────────────────────── *
+ *
+ * Arriba a la izquierda, y no abajo a la derecha como estaban.
+ *
+ * Ese rincón es el peor de la ventana: ahí abajo está la barra de acciones de
+ * la lista de salas, y sobre todo ahí vive el dock de amigos, que es fijo al
+ * borde derecho y tiene z-index 1200 contra los 90 de esto — o sea que el aviso
+ * de «mensaje de Fulano» aparecía JUSTO detrás del panel del que venía. Arriba a
+ * la izquierda no hay nada: la botonera flotante de la partida está a la
+ * derecha, los carteles fijos van centrados y el juego arranca más abajo.
+ *
+ * El z-index sube por encima del dock y del perfil por el mismo motivo: un aviso
+ * que no se ve no es un aviso. Se queda igual debajo de nada, porque es lo
+ * último que se dibuja.
+ *
+ * ── Y por qué no se le podía apretar el botón ──────────────────────────────
+ *
+ * La caja no recibe el puntero (si no, una franja invisible se comería los
+ * clics del cliente entero), pero faltaba devolvérselo a los toasts: el clic
+ * atravesaba el «Abrir» del aviso de mensaje y llegaba a lo que hubiera atrás.
+ * El botón estaba dibujado y no servía para nada. */
+.toasts {
+  position: fixed;
+  /* Cuelgan del borde izquierdo, y ese borde ahora es el riel: sin correrlos
+     los avisos salían justo encima de los botones de navegación. */
+  left: calc(var(--rail-w) + 20px);
+  top: calc(var(--topbar-h) + 12px);
+  z-index: 1400;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-start;
+  pointer-events: none;
+}
+/* El aviso sí, la columna vacía que lo sostiene no. */
+.toasts > * { pointer-events: auto; }
+/* En pantalla completa la barra de arriba no está: el hueco que le dejaban
+   sobraba. Lo mismo que hace `.fdock`. */
+.app[data-fullscreen="true"] ~ .toasts { top: 12px; }
+/* Dentro de una sala el riel se guarda: el borde vuelve a ser el de la ventana.
+   Va por el atributo de <html> —que `setStage` también escribe— y no por un
+   hermano de `.app`: la pila de avisos fijos vive ANTES en el documento y `~`
+   sólo alcanza a los que vienen después. */
+:root[data-stage="game"] .toasts { left: 20px; }
+
+/* ── Y cuando el riel vuelve ───────────────────────────────────────────────
+   Guardado, los avisos cuelgan del borde de la ventana. Pero el riel vuelve al
+   pasar el mouse por el borde izquierdo, y ahí caía JUSTO abajo de los avisos:
+   72 px de botones de navegación tapados por un cartel que además se come el
+   clic (`.toasts > *` recibe el puntero). Aparecía sólo con un aviso en
+   pantalla, que es cuando uno no está mirando el riel — y el riel dejaba de
+   responder sin motivo visible.
+
+   El aviso se corre lo que mide el riel, con la misma duración que tarda el riel
+   en entrar, así que los dos se mueven juntos y ninguno pisa al otro.
+
+   Es `transform` y no `left`: esto pasa con la cancha corriendo al lado, y
+   animar `left` es un maquetado por cuadro. El desplazamiento lo hace el
+   compositor y no toca el hilo principal. Los avisos ya entran con un
+   `translateX` propio (ver `toastIn`), pero ése va en cada `.toast` y éste en la
+   columna que los sostiene: no se pisan.
+
+   Quién escribe `data-rail` es `watchRail()` en app.js — el hover vive dentro de
+   `.app` y sin `:has()` (Chromium 91) no hay forma de subirlo hasta acá. */
+:root[data-stage="game"] .toasts { transition: transform 0.18s var(--ease); }
+:root[data-stage="game"][data-rail="out"] .toasts { transform: translateX(var(--rail-w)); }
+.toast {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: 330px;
+  padding: 11px 15px;
+  border-radius: 12px;
+  font-size: 12.5px;
+  color: var(--text);
+  border: 1px solid var(--line-hi);
+  background: linear-gradient(150deg, var(--panel-top), var(--bg-1));
+  box-shadow: 0 16px 40px -16px rgba(0, 0, 0, 0.95), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  /* Se acortó y perdió el `scale`, que volvía a rasterizar el texto en cada
+     cuadro. Entra y sale desplazándose, que es transform puro. */
+  animation: toastIn 0.18s var(--ease) both;
+}
+.toast.is-out { animation: toastOut 0.16s var(--ease) both; }
+.toast::before {
+  content: "";
+  width: 4px;
+  align-self: stretch;
+  border-radius: 99px;
+  background: var(--accent);
+}
+.toast.is-ok::before { background: var(--ok); }
+.toast.is-err::before { background: var(--danger); }
+
+/* Entran y salen POR LA IZQUIERDA, que es el borde del que ahora cuelgan: con el
+   desplazamiento viejo parecían venir de la mitad de la pantalla. */
+@keyframes toastIn { from { opacity: 0; transform: translateX(-26px); } }
+@keyframes toastOut { to { opacity: 0; transform: translateX(-26px); } }
+
+/* ══════════════════════════════════════════════════════════
+   Avisos fijos (reinicio, versión nueva)
+   ══════════════════════════════════════════════════════════
+   El de reinicio antes era un `.callout` al fondo de la página Rendimiento:
+   adentro del panel, debajo de los controles y fuera de la vista salvo que
+   scrollearas hasta abajo. Nadie lo veía, así que la gente tocaba tres
+   interruptores marcados con ↻ y seguía jugando sin que ninguno estuviera
+   aplicado.
+
+   Ahora son barras fijas arriba de todo, encima del panel y de los modales. No
+   se van solas, no se cierran al cambiar de pestaña y no tienen temporizador:
+   siguen ahí hasta que actúes o las descartes a propósito.
+
+   Van en una PILA y no cada una fija por su cuenta porque las dos pueden estar
+   al mismo tiempo, y dos `position: fixed` en la misma coordenada se tapan.
+   ══════════════════════════════════════════════════════════ */
+.notestack {
+  position: fixed;
+  top: calc(var(--topbar-h) + 12px);
+  /* Centrado sobre el CONTENIDO, no sobre la ventana: con el riel puesto,
+     centrar en 50% deja la barra visiblemente corrida hacia la izquierda. */
+  left: calc(50% + var(--rail-w) / 2);
+  transform: translateX(-50%);
+  z-index: 88;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  max-width: calc(100vw - var(--rail-w) - 40px);
+  /* La pila es tan ancha como haga falta para centrar, pero vacía no puede
+     comerse los clics de lo que hay abajo: el puntero lo reciben las barras. */
+  pointer-events: none;
+}
+.notestack > * { pointer-events: auto; }
+/* Sin riel a la vista, vuelve al centro de la ventana. */
+:root[data-stage="game"] .notestack { left: 50%; max-width: calc(100vw - 40px); }
+
+.notebar {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  max-width: 100%;
+  padding: 10px 10px 10px 15px;
+  border-radius: 13px;
+  border: 1px solid var(--line);
+  background: linear-gradient(150deg, var(--panel-top), var(--bg-1));
+  box-shadow: 0 18px 44px -18px rgba(0, 0, 0, 0.95);
+  /* La barra de progreso se apoya en el borde de abajo: sin esto se sale del
+     radio y queda una línea recta bajo una caja redondeada. */
+  overflow: hidden;
+  /* Una sola entrada corta, sobre una barra chica y con transform/opacity
+     nada más. Es un cartel que aparece de golpe en el medio de la pantalla:
+     sin nada que lo introduzca se lee como un salto. */
+  animation: noteIn 0.18s var(--ease) both;
+}
+@keyframes noteIn { from { opacity: 0; transform: translateY(-10px); } }
+
+.notebar--warn { border-color: rgb(var(--warn-rgb) / 45%); }
+.notebar--warn .notebar__ico { color: var(--warn); }
+.notebar--info { border-color: var(--accent-line); }
+.notebar--info .notebar__ico { color: var(--accent); }
+
+.notebar__ico {
+  flex: 0 0 auto;
+  width: 17px; height: 17px;
+}
+.notebar__text { font-size: 12.5px; line-height: 1.45; }
+.notebar__text strong { display: block; font-size: 13px; font-weight: 600; }
+.notebar__text small { display: block; color: var(--text-faint); font-size: 11.5px; margin-top: 1px; }
+.notebar__actions { display: flex; align-items: center; gap: 6px; flex: 0 0 auto; }
+
+/* La descarga se ve en el cartel mismo: una línea al ras del borde de abajo,
+   para no meterle una segunda fila a una barra que mide 50 px de alto. */
+.notebar__bar {
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  height: 2px;
+  background: var(--line);
+}
+.notebar__bar i {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  /* Escala en vez de ancho: ver el comentario de .progress__bar. */
+  transform-origin: left;
+  transform: scaleX(0);
+  transition: transform 0.2s linear;
+}
+
+/* ══════════════════════════════════════════════════════════
+   Pantalla de carga
+   ══════════════════════════════════════════════════════════
+   Es lo primero que se pinta: va sin `hidden` en el HTML a propósito, para que
+   esté en el primer cuadro que dibuja la ventana y no haya un parpadeo entre
+   que aparece la app y termina de arrancar.
+
+   Cuando el arranque termina, `hideSplash` la funde y la SACA DEL DOM. No
+   alcanza con esconderla: una capa a pantalla completa sigue pesando en el
+   compositor y la barra de progreso seguiría animándose para siempre detrás de
+   la interfaz.
+   ══════════════════════════════════════════════════════════ */
+.splash {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  /* Los colores salen del tema, igual que el resto del cliente. El valor de
+     respaldo es el tema de la casa: lo usa el primer cuadro si por lo que sea
+     las variables no llegaron (ver `paintBootTheme` en el preload). */
+  background-color: var(--bg-0, #08070c);
+  background-image: radial-gradient(85% 60% at 50% 40%, rgb(var(--accent-rgb, 123 63 228) / 22%), var(--bg-0, #08070c) 85%);
+  -webkit-app-region: drag;
+  transition: opacity 0.4s var(--ease);
+}
+.splash.is-out { opacity: 0; pointer-events: none; }
+
+.splash__inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+}
+
+.splash__logo {
+  height: 80px;
+  width: auto;
+  object-fit: contain;
+  filter: drop-shadow(0 0 24px rgb(var(--accent-rgb) / 60%));
+  animation: splashBreathe 2.6s ease-in-out infinite;
+}
+@keyframes splashBreathe {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.06); }
+}
+
+.splash__word {
+  font-family: var(--font-display);
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  margin-right: -0.16em;
+  color: var(--text, #ffffff);
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.6);
+}
+
+.splash__bar {
+  width: 240px;
+  height: 4px;
+  border-radius: 99px;
+  background: rgb(255 255 255 / 10%);
+  overflow: hidden;
+  box-shadow: 0 0 12px var(--accent-soft);
+}
+.splash__bar i {
+  display: block;
+  width: 45%;
+  height: 100%;
+  border-radius: 99px;
+  background: linear-gradient(90deg, transparent, var(--accent, #7b3fe4), var(--text, #ffffff));
+  animation: splashSlide 1.25s ease-in-out infinite;
+}
+@keyframes splashSlide {
+  0%   { transform: translateX(-110%); }
+  100% { transform: translateX(348%); }
+}
+
+.splash__status {
+  font-size: 12.5px;
+  color: var(--text-dim, #c0b8d6);
+  min-height: 16px;
+}
+
+/* Abajo de todo, como el «¿Sabías que…?» de Discord. */
+.splash__tip {
+  position: absolute;
+  left: 50%;
+  bottom: 38px;
+  transform: translateX(-50%);
+  max-width: 480px;
+  padding: 8px 16px;
+  border-radius: 99px;
+  background: var(--surface, rgba(255, 255, 255, 0.05));
+  border: 1px solid var(--line, rgba(255, 255, 255, 0.08));
+  text-align: center;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-dim, #c0b8d6);
+}
+.splash__tip b {
+  /* `--accent-mid` es el acento ya mezclado hacia el color del texto: es el
+     que se lee igual de bien en un tema oscuro que en uno claro, donde el
+     acento crudo se pierde contra el fondo. */
+  color: var(--accent-mid, #a879ff);
+  font-weight: 700;
+}
+
+.splash__version {
+  position: absolute;
+  right: 16px;
+  bottom: 14px;
+  font-size: 10.5px;
+  letter-spacing: 0.08em;
+  color: var(--text-faint);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── El código de amigo ──────────────────────────────────────────
+   El código en monoespaciada y con las letras separadas: se lee de a un
+   carácter para dictarlo o copiarlo a mano, no como una palabra. */
+.fcode {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-top: 1px solid var(--line);
+}
+.fcode__label { font-size: 11px; color: var(--text-faint); }
+.fcode__value {
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 5px 9px;
+  color: var(--text);
+  font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+  font-size: 12.5px;
+  letter-spacing: 0.12em;
+  cursor: pointer;
+}
+.fcode__value:hover { background: var(--surface-hi); border-color: var(--line-hi); }
+
+/* ── Con quién jugaste ───────────────────────────────────────────
+   Tres columnas y no una tabla: el apodo manda, el historial es el dato que
+   se busca y lo demás acompaña. La del medio va a ancho fijo para que los
+   números queden en columna y se puedan comparar de un vistazo. */
+.rivals { display: grid; gap: 2px; }
+.rival {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 150px minmax(0, 1fr);
+  gap: 10px;
+  align-items: baseline;
+  padding: 7px 8px;
+  border-radius: 8px;
+  font-size: 12.5px;
+}
+.rival:nth-child(odd) { background: var(--surface); }
+.rival b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rival__record { color: var(--text-dim); font-variant-numeric: tabular-nums; }
+.rival__extra { color: var(--text-faint); font-variant-numeric: tabular-nums; }
+
+@media (max-width: 720px) {
+  /* En angosto las tres columnas se aplastan: pasan a dos líneas. */
+  .rival { grid-template-columns: minmax(0, 1fr) auto; }
+  .rival__extra { grid-column: 1 / -1; }
+}
+
+/* El nombre va DEBAJO del cuadradito y no al lado: dos selectores de color en
+   fila con su etiqueta a la derecha se leen como cuatro cosas sueltas. */
+.skincolor {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+/* Dentro de una fila del panel va en línea: apilado le sumaba dos renglones de
+   alto a una fila que ya tiene su etiqueta a la izquierda. */
+.row__ctl .skincolor {
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--text-dim);
+  cursor: pointer;
+}
+
+/* ── Volver a la última sala ─────────────────────────────────────
+   El nombre de la sala es lo que se busca con la vista, así que va con el
+   color del texto y el resto atenuado — al revés de lo que saldría solo. */
+.lastroom {
+  width: 100%;
+  justify-content: flex-start;
+  gap: 8px;
+  margin-bottom: 12px;
+  color: var(--text-dim);
+}
+.lastroom b {
+  color: var(--text);
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.goal-banner { position: absolute; top: 10%; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.8); color: white; padding: 20px 40px; border-radius: 12px; text-align: center; z-index: 1000; font-family: Outfit, sans-serif; box-shadow: 0 10px 30px rgba(0,0,0,0.5); border: 2px solid var(--accent); pointer-events: none; animation: tvmGoalPop 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+.goal-banner__title { font-size: 24px; font-weight: 800; color: var(--accent); letter-spacing: 2px; }
+.goal-banner__scorer { font-size: 32px; font-weight: 700; margin: 10px 0; }
+.goal-banner__assist { font-size: 18px; opacity: 0.8; }
+/* El borde canta de qué equipo fue el gol; se pone por clase y no por estilo
+   en línea para que el tema pueda pisarlo. */
+.goal-banner--red { border-color: #E53E3E; }
+.goal-banner--red .goal-banner__title { color: #FC8181; }
+.goal-banner--blue { border-color: #3182CE; }
+.goal-banner--blue .goal-banner__title { color: #63B3ED; }
+/*
+ * Ojo con los nombres de las animaciones: son GLOBALES.
+ *
+ * Estas dos se llamaban `popIn` y `fadeIn`, y `fadeIn` ya existía más arriba
+ * (L1621) para los modales y la pantalla de inicio. La de acá la pisaba, y como
+ * lleva `translate(-50%, …)` adentro —que estos dos carteles necesitan porque
+ * están centrados con `left: 50%`— todo lo que usaba `fadeIn` con
+ * `animation-fill-mode: both` quedaba corrido media pantalla PARA SIEMPRE: la
+ * pantalla de «elegí un nombre para entrar» y todos los modales del cliente.
+ *
+ * Por eso van con prefijo. Cualquier animación nueva de un componente, también.
+ */
+@keyframes tvmGoalPop { from { transform: translate(-50%, -20px) scale(0.9); opacity: 0; } to { transform: translateX(-50%) scale(1); opacity: 1; } }
+
+/* ── Resumen del partido ─────────────────────────────────────────────────────
+ *
+ * Un panel y no dos columnas de goles: el marcador arriba, quién fue la figura,
+ * la tabla de todos y recién después la lista de goles. Se lee de arriba abajo y
+ * cada dato aparece una sola vez.
+ *
+ * El alto está limitado y el que scrollea es el cuerpo: en una grabación con
+ * cuatro partidos la lista de goles es larga, y el marcador tiene que quedar
+ * puesto donde está. */
+.stats-panel { position: absolute; top: 7%; left: 50%; transform: translateX(-50%); background: rgba(20,20,25,0.96); color: white; border-radius: 16px; width: 640px; max-width: 92%; max-height: 86%; z-index: 1001; font-family: Outfit, sans-serif; box-shadow: 0 20px 50px rgba(0,0,0,0.8); border: 1px solid rgba(255,255,255,0.1); backdrop-filter: blur(10px); display: flex; flex-direction: column; overflow: hidden; animation: tvmStatsIn 0.3s ease; }
+.stats-panel[hidden] { display: none !important; }
+.stats-panel__header { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; padding: 18px 24px 14px; background: rgba(0,0,0,0.3); border-bottom: 1px solid rgba(255,255,255,0.05); }
+.stats-panel__header h2 { margin: 0; font-size: 21px; font-weight: 700; color: var(--accent); }
+.stats-panel__sub { margin: 4px 0 0; font-size: 12.5px; opacity: 0.6; }
+
+.stats-score { display: flex; align-items: center; justify-content: center; gap: 14px; padding: 14px 24px; background: rgba(0,0,0,0.18); border-bottom: 1px solid rgba(255,255,255,0.05); }
+.stats-score__team { font-size: 11.5px; letter-spacing: 0.09em; text-transform: uppercase; opacity: 0.75; }
+.stats-score__n { font-size: 34px; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; }
+.stats-score__dash { font-size: 22px; opacity: 0.3; }
+.stats-score__team--red, .stats-score__n--red { color: #FC8181; }
+.stats-score__team--blue, .stats-score__n--blue { color: #63B3ED; }
+
+.stats-panel__body { display: flex; flex-direction: column; gap: 18px; padding: 18px 24px; overflow-y: auto; }
+.stats-panel__note { margin: 0; padding: 10px 12px; border-radius: 10px; background: rgba(255,255,255,0.04); font-size: 12.5px; line-height: 1.5; opacity: 0.7; }
+.stats-panel__note.is-warn { color: #FBBF24; opacity: 0.95; }
+.stats-panel__note.is-bad { color: #FC8181; opacity: 0.95; }
+
+.stats-mvp { display: flex; align-items: baseline; gap: 10px; padding: 12px 14px; border-radius: 12px; background: linear-gradient(90deg, rgb(var(--accent-rgb) / 26%), rgb(var(--accent-rgb) / 6%)); border: 1px solid var(--accent-line); }
+.stats-mvp__tag { font-size: 11px; font-weight: 800; letter-spacing: 0.12em; color: var(--accent); }
+.stats-mvp__who { font-size: 18px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.stats-mvp__line { margin-left: auto; font-size: 12px; opacity: 0.6; white-space: nowrap; }
+
+.stats-block h3 { margin: 0 0 8px; font-size: 12px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; opacity: 0.5; }
+.stats-block__help { margin: 8px 0 0; font-size: 11.5px; opacity: 0.4; }
+/* Título y botón en el mismo renglón. El `h3` ya trae su margen de abajo, así
+   que el margen lo pone él y no la fila: si lo pusiera la fila, el bloque sin
+   botón quedaría con dos. */
+.stats-block__head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.stats-block__head h3 { margin-bottom: 0; }
+.stats-block__head + .stats-goals { margin-top: 8px; }
+
+/* `table-layout: fixed` y no automático: los números llevan ancho propio y la
+   columna del nombre se queda con lo que sobra, así un nick de 25 caracteres se
+   corta con puntitos en vez de empujar las columnas fuera del panel. */
+.stats-table { width: 100%; table-layout: fixed; border-collapse: collapse; font-size: 14px; }
+.stats-table th { font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; opacity: 0.45; text-align: right; padding: 0 0 6px; }
+.stats-table td { padding: 7px 0; border-top: 1px solid rgba(255,255,255,0.06); text-align: right; font-variant-numeric: tabular-nums; }
+.stats-table th:first-child, .stats-table td:first-child { text-align: left; }
+.stats-table th:not(:first-child), .stats-table td:not(:first-child) { width: 62px; padding-left: 12px; }
+.stats-table tr:first-child td { font-weight: 600; }
+/* El flex va adentro de la celda y no en la celda misma: un `td` con
+   `display: flex` deja de ser celda y se lleva puesto el ancho de la tabla. */
+.stats-table__who { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.stats-table__name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.stats-table__own { flex: none; font-size: 11px; color: #FBBF24; opacity: 0.85; white-space: nowrap; }
+
+.team-dot { flex: none; width: 8px; height: 8px; border-radius: 50%; background: rgba(255,255,255,0.25); }
+.team-dot--red { background: #E53E3E; }
+.team-dot--blue { background: #3182CE; }
+
+.stats-goals { list-style: none; margin: 0; padding: 0; }
+.stats-goals__match { margin: 12px 0 4px; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; opacity: 0.4; }
+.stats-goals__match:first-child { margin-top: 0; }
+.stats-goal { display: flex; align-items: baseline; gap: 10px; padding: 7px 0 7px 10px; border-top: 1px solid rgba(255,255,255,0.06); border-left: 2px solid transparent; font-size: 14px; }
+.stats-goal--red { border-left-color: #E53E3E; }
+.stats-goal--blue { border-left-color: #3182CE; }
+.stats-goal__clock { font-size: 12px; opacity: 0.45; font-variant-numeric: tabular-nums; }
+.stats-goal__who { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.stats-goal__who.is-faint { font-weight: 400; opacity: 0.5; }
+.stats-goal__own { font-size: 11px; color: #FBBF24; white-space: nowrap; }
+.stats-goal__assist { font-size: 12px; opacity: 0.55; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* El marcador siempre pegado a la derecha, en la misma columna en todos. */
+.stats-goal__score { margin-left: auto; font-size: 12.5px; opacity: 0.7; font-variant-numeric: tabular-nums; }
+
+/* En una grabación cada gol es un salto a esa jugada. El renglón se ensancha
+   hacia los costados con el relleno negativo para que el resaltado abrace el
+   texto y no aparezca pegado al borde del panel. */
+.stats-goal.is-seekable { cursor: pointer; border-radius: 0 8px 8px 0; padding-right: 8px; transition: background 0.12s ease; }
+.stats-goal.is-seekable:hover { background: rgb(var(--accent-rgb) / 14%); }
+.stats-goal.is-seekable:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+
+.stats-panel__foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 24px 14px; border-top: 1px solid rgba(255,255,255,0.05); font-size: 12px; }
+/* La opacidad va en el texto y no en el pie: si no, se apaga también el botón. */
+.stats-panel__foot > span { opacity: 0.5; }
+
+/* ── Rediseño de interfaz ───────────────────────────────── *
+ * Lenguaje visual de cancha: navegación abierta, superficies
+ * más sobrias y controles de ventana integrados al encabezado.
+ * Los colores siguen usando los tokens para respetar temas.
+ */
+:root {
+  --topbar-h: 56px;
+  --rail-w: 196px;
+  --radius: 10px;
+  --radius-sm: 7px;
+  --r-ctl: 6px;
+  --r-surface: 9px;
+}
+
+.topbar__toggle { position: relative; }
+.topbar__toggle-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.topbar {
+  gap: 9px;
+  padding: 0 12px 0 16px;
+  background: var(--bg-0);
+  border-bottom-color: var(--line-hi);
+  box-shadow: 0 5px 18px rgb(0 0 0 / 16%);
+}
+.topbar::after {
+  top: 0;
+  right: auto;
+  bottom: 0;
+  width: 4px;
+  height: auto;
+  background: var(--accent);
+}
+.brand { gap: 10px; }
+.brand__mark { width: 32px; height: 32px; }
+.brand__name { font-size: 15px; font-weight: 750; letter-spacing: .025em; }
+.gametabs { margin-left: 12px; gap: 5px; }
+.gametab {
+  height: 34px;
+  max-width: 200px;
+  padding: 0 10px;
+  border-color: var(--line);
+  background: var(--surface);
+  border-radius: 7px;
+}
+.gametab.is-active {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+}
+.gametabs__add { width: 32px; height: 32px; border: 1px dashed var(--line-hi); }
+.linkbar { border-radius: 7px; }
+.iconbtn, .friendsbtn, .mechip { border-radius: 7px; }
+.topbar__toggle { color: var(--text-dim); }
+.topbar__toggle:hover { color: var(--accent-text); background: var(--accent-soft); }
+.topbar-reveal {
+  position: fixed;
+  top: 7px;
+  right: 8px;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 32px;
+  padding: 0 13px;
+  border: 1px solid var(--accent-line);
+  border-radius: 0 0 9px 9px;
+  background: var(--bg-2);
+  color: var(--text);
+  box-shadow: 0 7px 18px rgb(0 0 0 / 35%);
+  font-size: 11px;
+  font-weight: 700;
+  -webkit-app-region: no-drag;
+}
+.topbar-reveal[hidden] { display: none !important; }
+.topbar-reveal svg { width: 15px; height: 15px; color: var(--accent-text); }
+.topbar-reveal:hover { background: var(--panel-top); }
+
+.rail {
+  align-items: stretch;
+  gap: 5px;
+  padding: 18px 12px 16px;
+  border-right-color: var(--line-hi);
+  background: var(--bg-0);
+}
+.rail__hr {
+  width: 100%;
+  height: 1px;
+  margin: 8px 0;
+  background: var(--line-hi);
+}
+.railitem {
+  position: relative;
+  width: 100%;
+  height: 44px;
+  flex-direction: row;
+  justify-content: flex-start;
+  gap: 12px;
+  padding: 0 13px;
+  border-radius: 7px;
+  font-size: 12px;
+  font-weight: 650;
+}
+.railitem svg { width: 18px; height: 18px; }
+.railitem.is-active {
+  border-color: var(--accent-line);
+  box-shadow: inset 3px 0 0 var(--accent);
+  color: var(--text);
+}
+.railitem:hover { color: var(--text); background: var(--surface-hi); }
+.rail__hr { flex: 0 0 1px; }
+
+.browser { background: var(--bg-0); }
+.browser__shell { max-width: 1240px; padding: 30px 36px; gap: 16px; }
+.rtoolbar { gap: 10px; }
+.rsearch, .filterchip, .sortselect { min-height: 40px; border-radius: 7px; }
+.rsearch { padding: 0 14px; }
+.rpanel {
+  border-radius: 9px;
+  border-color: var(--line-hi);
+  background: var(--bg-1);
+}
+.rtable__head {
+  height: 38px;
+  background: var(--bg-2);
+  color: var(--text-faint);
+}
+.rrow {
+  border-bottom: 1px solid var(--line);
+}
+.rrow:hover { background: var(--surface-hi); }
+.rrow.is-selected { background: var(--accent-soft); }
+.replay {
+  border-radius: 8px;
+  border-color: var(--line);
+  background: var(--surface);
+}
+.replay:hover {
+  border-color: var(--accent-line);
+  background: var(--surface-hi);
+}
+.panel { padding: 18px; }
+.panel__card {
+  max-width: 1160px;
+  border-radius: 12px;
+  border-color: var(--line-hi);
+  background: var(--bg-1);
+  box-shadow: 0 24px 64px rgb(0 0 0 / 45%);
+}
+.panel__close { border-radius: 7px; }
+.pnav { background: var(--bg-0); }
+.pnav__item, .pnav__link { border-radius: 6px; }
+.pagehead h1 { letter-spacing: -.025em; }
+.sec, .panel__section, .panel__card .card {
+  border-radius: 9px;
+}
+button, input, select, textarea { font-family: var(--font); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.app[data-topbar-collapsed="true"] .topbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  transform: translateY(-100%);
+  opacity: 0;
+  pointer-events: none;
+}
+.app[data-fullscreen="true"][data-topbar-collapsed="true"] .topbar:hover,
+.app[data-fullscreen="true"][data-topbar-collapsed="true"] .hotzone:hover ~ .topbar {
+  transform: translateY(-100%);
+  opacity: 0;
+}
+.app[data-fullscreen="true"][data-topbar-collapsed="true"] .hotzone { pointer-events: none; }
+
+@media (max-width: 820px) {
+  :root { --rail-w: 64px; }
+  .rail { align-items: center; padding: 12px 5px; }
+  .railitem {
+    width: 50px;
+    height: 48px;
+    flex-direction: column;
+    gap: 4px;
+    padding: 3px 0;
+    font-size: 9px;
+  }
+  .railitem.is-active { box-shadow: inset 0 -3px 0 var(--accent); }
+  .rail__hr { width: 34px; }
+  .browser__shell { padding: 20px 16px; }
+  .brand__name { display: none; }
+}
+
+/* ── Edición para el club: sin redes sociales ni historial personal ── */
+#rail [data-view="cuenta"],
+#accountPage,
+#btnFriends,
+#btnMe,
+#meMenu,
+#friendsDock,
+#profileModal {
+  display: none !important;
+}
+@keyframes tvmStatsIn { from { opacity: 0; transform: translate(-50%, 10px); } to { opacity: 1; transform: translate(-50%, 0); } }
