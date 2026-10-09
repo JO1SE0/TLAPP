@@ -4406,13 +4406,27 @@ function ballFrameIndex() {
 
 /** El estadio de la sala actual, capturado cuando el juego dibuja la cancha. */
 let currentStadium = null;
+let rippleLogged = false;
+
+/** Medidas de la cancha para la red. Más permisivo que `pitchBounds`: no exige fondo propio. */
+function rippleBounds(stadium) {
+  const f = tracker.fields && tracker.fields.pitch;
+  if (!f || !stadium) return null;
+  const halfW = Number(stadium[f.halfW]);
+  const halfH = Number(stadium[f.halfH]);
+  if (!(halfW > 0) || !(halfH > 0)) return null;
+  return { halfW, halfH };
+}
 
 function drawBall(ctx, x, y, r, indice) {
   // La red ondulante se dibuja una vez por cuadro, con la pelota (disco 0).
   if (indice === 0 && state.config.pitch && state.config.pitch.netRipple && !(state.config.perf && state.config.perf.flatGraphics)) {
     try {
-      const b = pitchBounds(currentStadium);
-      if (b && netRipple.active(x, b.halfW)) netRipple.draw(ctx, b.halfW, b.halfH);
+      const b = rippleBounds(currentStadium);
+      if (b && netRipple.active(x, b.halfW)) {
+        if (!rippleLogged) { rippleLogged = true; log('info', `red: dibujando (media cancha ${b.halfW}x${b.halfH})`, 'juego'); }
+        netRipple.draw(ctx, b.halfW, b.halfH);
+      }
     } catch { /* un adorno no puede romper el dibujo */ }
   }
   /*
@@ -5478,7 +5492,14 @@ function installTracking(view) {
     // El destello ya sabe de qué color va, sin esperar al marcador del DOM.
     if (scored) noteGoalTeam(scored);
     try { goalImpact(); } catch (e) {}
-    try { if (state.config.pitch && state.config.pitch.netRipple) netRipple.trigger(); } catch (e) {}
+    try {
+      if (state.config.pitch && state.config.pitch.netRipple) {
+        rippleLogged = false;
+        netRipple.trigger();
+        const b = rippleBounds(currentStadium);
+        log('info', `red: gol detectado (estadio=${!!currentStadium}, medidas=${b ? b.halfW + 'x' + b.halfH : 'no'})`, 'juego');
+      }
+    } catch (e) {}
     return playGoalSound();
   };
 
