@@ -66,24 +66,42 @@ jobs:
           New-Item -ItemType Directory -Force electron-rt | Out-Null
           Push-Location electron-rt
           npm init -y | Out-Null
-          npm install --no-save electron@$env:ELECTRON_VERSION
+          npm install --no-save "electron@$($env:ELECTRON_VERSION)" rcedit@3.0.1
           Pop-Location
           New-Item -ItemType Directory -Force "build\runtime" | Out-Null
           Copy-Item "electron-rt\node_modules\electron\dist\*" "build\runtime" -Recurse -Force
           Rename-Item "build\runtime\electron.exe" "TL App.exe"
           Remove-Item "build\runtime\resources\default_app.asar" -ErrorAction SilentlyContinue
+          # El instalador lista la licencia de Electron con este nombre.
+          Copy-Item "build\runtime\LICENSE" "build\runtime\LICENSE.electron.txt" -ErrorAction SilentlyContinue
           Copy-Item "TL App\resources\elevate.exe" "build\runtime\resources\elevate.exe"
           Copy-Item "TL App\toda-la-lecce.ico" "build\runtime\toda-la-lecce.ico"
           npx --yes @electron/asar pack build\app "build\runtime\resources\app.asar"
+
+      - name: Ícono y datos del ejecutable
+        shell: pwsh
+        continue-on-error: true   # es cosmético: si falla, el instalador sale igual
+        run: |
+          $v = "${{ steps.ver.outputs.version }}"
+          $env:TL_EXE = (Resolve-Path "build\runtime\TL App.exe").Path
+          $env:TL_ICO = (Resolve-Path "TL App\toda-la-lecce.ico").Path
+          $env:TL_VER = $v
+          Push-Location electron-rt
+          node -e "const rcedit=require('rcedit');rcedit(process.env.TL_EXE,{icon:process.env.TL_ICO,'file-version':process.env.TL_VER,'product-version':process.env.TL_VER,'version-string':{ProductName:'TL App',FileDescription:'TL App',CompanyName:'Toda la Lecce',InternalName:'TL App',OriginalFilename:'TL App.exe'}}).then(()=>console.log('exe listo')).catch(e=>{console.error(e);process.exit(1)})"
+          Pop-Location
 
       - name: Instalador (Inno Setup)
         shell: pwsh
         run: |
           choco install innosetup -y --no-progress
-          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          $iscc = @("${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe", "${env:ProgramFiles}\Inno Setup 6\ISCC.exe") | Where-Object { Test-Path $_ } | Select-Object -First 1
+          if (-not $iscc) { throw "No se encontró ISCC.exe (Inno Setup)" }
           $root = (Resolve-Path build\runtime).Path
-          & $iscc "/DAppVersion=${{ steps.ver.outputs.version }}" "/DClientRoot=$root" "/Odist" "TL App\customize-stage\installer.iss"
+          New-Item -ItemType Directory -Force dist | Out-Null
+          $out = (Resolve-Path dist).Path
+          & $iscc "/DAppVersion=${{ steps.ver.outputs.version }}" "/DClientRoot=$root" "/O$out" "TL App\customize-stage\installer.iss"
           if ($LASTEXITCODE -ne 0) { throw "ISCC falló ($LASTEXITCODE)" }
+          Get-ChildItem dist
 
       - name: Feed de actualización
         shell: pwsh
