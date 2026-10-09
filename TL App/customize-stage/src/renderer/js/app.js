@@ -7316,7 +7316,6 @@ async function boot() {
   tvm.config.onChange((next) => {
     applyConfig(next);
   });
-  tvm.config.onRestored(() => renderAll());
   tvm.game.onSettingsChanged((patch) => {
     const groups = new Set(state.schema.game.filter(s => Object.hasOwnProperty.call(patch, s.id)).map(s => s.group));
     if (groups.has('chat')) renderAspect();
