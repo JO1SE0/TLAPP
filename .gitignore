@@ -5,3 +5,6 @@ TVM Client/*.exe.*
 # Copias de respaldo del empaquetado (no van en el repo)
 TVM Client/resources/app.asar.before-*
 TVM Client/resources/app.asar.original
+TVM Client/resources/app.asar.respaldo
+TVM Client/resources/app/
+node_modules/
