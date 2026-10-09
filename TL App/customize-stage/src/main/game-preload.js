@@ -18,6 +18,7 @@
 const { ipcRenderer } = require('electron');
 const ball3d = require('./ball-3d');
 const netRipple = require('./net-ripple');
+const lookfx = require('./look');
 const zoomControl = require('./game-zoom');
 const themes = require('./themes');
 const roomUi = require('./room-ui');
@@ -568,6 +569,16 @@ function applyClientStyles(doc) {
 
   const p = currentPalette();
   const hideChat = !!state.config.appearance.hideChat;
+  // Estilo del chat, sólo en esta pantalla. Vacío = como viene el juego.
+  const vis = state.config.visual || {};
+  const chatScale = clampNum(vis.chatScale, 0.7, 1.8, 1);
+  const chatBg = Number(vis.chatBg);
+  const chatFamily = FONT_FAMILIES[vis.chatFont];
+  const chatCss = [
+    chatScale !== 1 ? `.chatbox-view-contents .log-contents p { font-size: ${Math.round(chatScale * 100)}% !important; }` : '',
+    chatBg >= 0 && chatBg <= 0.95 ? `.chatbox-view-contents .log-contents { background: rgba(0, 0, 0, ${chatBg.toFixed(2)}) !important; }` : '',
+    chatFamily ? `.chatbox-view-contents .log-contents p, .chatbox-view-contents .input input { font-family: ${chatFamily} !important; }` : ''
+  ].join('\n    ');
 
   style.textContent = `
     .tvm-link {
@@ -727,6 +738,7 @@ function applyClientStyles(doc) {
     ${roomUi.css(p, { animations: state.config.appearance.animations !== false })}
 
     ${hideChat ? '.game-view .chatbox-view, .room-view .chatbox-view { display: none !important; }' : ''}
+    ${chatCss}
   `;
 }
 
@@ -4447,15 +4459,17 @@ function drawBall(ctx, x, y, r, indice) {
     ctx.beginPath();
     ctx.arc(x, y, r, 0, 2 * Math.PI, false);
   }
+  // Palos con color propio: el relleno que sigue lo hace el juego con este color.
+  if (indice > 0 && visual.postColor) ctx.fillStyle = visual.postColor;
   let handled = false;
   try {
     handled = drawBallInner(ctx, x, y, r, indice);
   } finally {
     // Lo que sigue en el juego es el `stroke()` de este mismo disco.
-    if (indice === 0 && visual.lines) {
-      pend.on = true; pend.kind = 'ball'; pend.k = 1; pend.x = x; pend.y = y;
+    if (indice === 0 && (visual.lines || visual.ballOutline)) {
+      pend.on = true; pend.kind = 'ball'; pend.k = 1; pend.x = x; pend.y = y; pend.r = r;
     } else if (indice > 0 && visual.lines) {
-      pend.on = true; pend.kind = 'post'; pend.k = 1; pend.x = x; pend.y = y;
+      pend.on = true; pend.kind = 'post'; pend.k = 1; pend.x = x; pend.y = y; pend.r = r;
     }
   }
   return handled;
@@ -5610,7 +5624,7 @@ function installTracking(view) {
    */
   let skinBroken = false;
   view.__tvmSkin = (ctx, w, h, stadium) => {
-    if (stadium !== currentStadium) { currentStadium = stadium; try { netRipple.reset(); } catch (e) {} }
+    if (stadium !== currentStadium) { currentStadium = stadium; try { netRipple.reset(); lookfx.resetTrail(); } catch (e) {} }
     if (skinBroken) return;
     ownDraw++;
     try {
@@ -5710,15 +5724,23 @@ function skinPitch(ctx, w, h, stadium) {
    * dejaba la cancha oscura y rayada: apagaba el color y nada más. Los valores
    * se guardan igual, para que volver a prenderlo te devuelva lo que tenías.
    */
-  if (skin.mode !== 'theme' && skin.mode !== 'custom') return;
+  const modeOn = skin.mode === 'theme' || skin.mode === 'custom';
+  const tex = lookfx.textureSpec(visual.texture);
+  if (!modeOn && !tex && !visual.crest) return;
 
-  const field = pitchSkinColor();
-  const outside = pitchOutsideColor(field);
-  const brightness = clampNum(skin.brightness, -0.6, 0.6, 0);
-  const stripes = Math.round(clampNum(skin.stripes, 0, 24, 0));
-  if (!field && !outside && !brightness && !stripes) return;
+  let field = modeOn ? pitchSkinColor() : null;
+  let outside = modeOn ? pitchOutsideColor(field) : null;
+  const brightness = modeOn ? clampNum(skin.brightness, -0.6, 0.6, 0) : 0;
+  const stripes = modeOn ? Math.round(clampNum(skin.stripes, 0, 24, 0)) : 0;
+  let strength = clampNum(skin.strength, 0, 1, 0.8);
+  // Un acabado sin color propio de cancha trae el suyo.
+  if (tex && !modeOn) {
+    field = tex.tint;
+    outside = tex.tint;
+    strength = tex.strength;
+  }
+  if (!field && !outside && !brightness && !stripes && !tex && !visual.crest) return;
 
-  const strength = clampNum(skin.strength, 0, 1, 0.8);
   /*
    * El contexto llega con la transformación de mundo puesta: es la que usó el
    * juego para dibujar, y la única forma de saber dónde cae la cancha adentro de
@@ -5742,6 +5764,25 @@ function skinPitch(ctx, w, h, stadium) {
 
   if (stripes && bounds) paintStripes(ctx, w, h, world, bounds, stripes);
 
+  if (tex) {
+    ctx.save();
+    try {
+      if (bounds) {
+        ctx.setTransform(world);
+        ctx.beginPath();
+        roundedRect(ctx, -bounds.halfW, -bounds.halfH, 2 * bounds.halfW, 2 * bounds.halfH, bounds.corner);
+        ctx.clip();
+      }
+      lookfx.paintTexture(ctx, world, worldView(world, w, h), tex.tile);
+    } finally {
+      ctx.restore();
+    }
+  }
+
+  if (visual.crest) {
+    lookfx.paintCrest(ctx, world, bounds, crestImage(ctx), visual.crestOpacity, visual.crestSize);
+  }
+
   /*
    * Oscurecer o aclarar va último y sobre todo, con `multiply` y `screen`, que
    * son las dos que respetan lo que hay debajo: multiplicar por un gris apaga
@@ -5758,6 +5799,23 @@ function skinPitch(ctx, w, h, stadium) {
     ctx.fillStyle = `rgb(${gray},${gray},${gray})`;
     ctx.fillRect(0, 0, w, h);
   }
+}
+
+/**
+ * El escudo del club para la marca de agua. Se carga una vez; cuando llega, se
+ * le tira el cache al estadio para que se dibuje.
+ */
+let crestImg = null;
+function crestImage(ctx) {
+  if (crestImg) return crestImg;
+  const doc = ctx && ctx.canvas && ctx.canvas.ownerDocument;
+  const view = doc && doc.defaultView;
+  if (!view) return null;
+  const img = new view.Image();
+  img.onload = () => flushStadiumCache(view);
+  img.src = assetUrl('crest');
+  crestImg = img;
+  return img;
 }
 
 /**
@@ -5910,7 +5968,7 @@ function roundedRect(ctx, x, y, w, h, r) {
 function pitchSkinPrint() {
   const skin = (state.config.pitch && state.config.pitch.skin) || {};
   const field = pitchSkinColor();
-  return `${skin.mode}|${field}|${pitchOutsideColor(field)}|${skin.strength}|${skin.brightness}|${skin.stripes}|${visual.pitchLine}|${flatGraphicsEnabled}`;
+  return `${skin.mode}|${field}|${pitchOutsideColor(field)}|${skin.strength}|${skin.brightness}|${skin.stripes}|${visual.pitchLine}|${flatGraphicsEnabled}|${visual.texture}|${visual.crest}|${visual.crestOpacity}|${visual.crestSize}|${visual.lineColor}`;
 }
 
 /** Le tira el cache al estadio para que se vuelva a dibujar con el color nuevo. */
@@ -6037,7 +6095,8 @@ function paintPitch(ctx, renderer, zoom) {
   const wantSelf = cfg.selfRing;
   const wantTouch = replay && cfg.replayLastTouch;
   const wantHeat = replay && cfg.replayHeatmap;
-  if (!wantTrail && !wantTeams && !wantSelf && !wantTouch && !wantHeat) return;
+  const wantSelfTrail = visual.selfTrail && !replay;
+  if (!wantTrail && !wantTeams && !wantSelf && !wantTouch && !wantHeat && !wantSelfTrail) return;
 
   const f = tracker.fields;
   if (!f) return;
@@ -6055,8 +6114,8 @@ function paintPitch(ctx, renderer, zoom) {
     if (doc) paintHeat(ctx, doc);
   }
   if (wantTrail) paintTrail(ctx, cfg, px);
-  if (wantTeams || wantSelf || wantTouch) {
-    paintRings(ctx, renderer, f, px, { self: wantSelf, teams: wantTeams, touch: wantTouch });
+  if (wantTeams || wantSelf || wantTouch || wantSelfTrail) {
+    paintRings(ctx, renderer, f, px, { self: wantSelf, teams: wantTeams, touch: wantTouch, selfTrail: wantSelfTrail });
   }
 }
 
@@ -6144,6 +6203,7 @@ function paintRings(ctx, renderer, f, px, want) {
   // El trazo entra limpio pase lo que pase: el punteado del modo daltónico se
   // devuelve solo, pero esto cubre que el juego haya dejado uno puesto.
   ctx.setLineDash(EMPTY_DASH);
+  const ahora = performance.now();
 
   for (let i = 0; i < players.length; i++) {
     const p = players[i];
@@ -6195,7 +6255,14 @@ function paintRings(ctx, renderer, f, px, want) {
       ctx.stroke();
     }
 
-    if (want.self && esMio) {
+    if (want.selfTrail && esMio) {
+      lookfx.noteTrail(at.x, at.y, ahora);
+      lookfx.drawTrail(ctx, visual.selfTrailColor || pitchAccent(), r, ahora);
+    }
+
+    if (want.self && esMio && lookfx.drawRing(ctx, visual.ringStyle, visual.ringColor || pitchAccent(), at.x, at.y, r, px)) {
+      // El aro con forma propia ya se dibujó.
+    } else if (want.self && esMio) {
       /*
        * Dos trazos y no uno: el de afuera es oscuro y el de adentro es el
        * acento. Con un solo aro del color del tema, sobre una cancha clara o
@@ -6210,7 +6277,7 @@ function paintRings(ctx, renderer, f, px, want) {
 
       ctx.beginPath();
       ctx.lineWidth = 2.6 * px;
-      ctx.strokeStyle = pitchAccent();
+      ctx.strokeStyle = visual.ringColor || pitchAccent();
       ctx.arc(at.x, at.y, r + 4.5 * px, 0, TAU);
       ctx.stroke();
     }
@@ -8060,7 +8127,26 @@ let flatGraphicsEnabled = false;
  * guardan acá, ya acotados, por la misma razón que la bandera de arriba: se
  * consultan en cada trazo.
  */
-const visual = { pitchLine: 1, discLine: 1, ballLine: 1, ballSize: 1, discSize: 1, lines: false, sizes: false };
+const visual = {
+  pitchLine: 1, discLine: 1, ballLine: 1, ballSize: 1, discSize: 1, lines: false, sizes: false,
+  texture: 'none', crest: false, crestOpacity: 0.18, crestSize: 0.45,
+  lineColor: '', postColor: '', discOutline: '', ballOutline: '',
+  discStyle: 'default', ringStyle: 'default', ringColor: '',
+  selfTrail: false, selfTrailColor: '',
+  nameScale: 1, nameColor: '', nameOutline: false, nameFont: 'default',
+  /** Hay algo que hacerle a las fichas o a la pelota en el `stroke()`. */
+  discFx: false,
+  /** Hay algo que hacerle al texto de los nombres. */
+  names: false
+};
+
+const FONT_FAMILIES = {
+  outfit: 'Outfit, system-ui, sans-serif',
+  mono: 'Consolas, "Courier New", monospace',
+  serif: 'Georgia, "Times New Roman", serif',
+  round: '"Comic Sans MS", "Comic Neue", cursive',
+  impact: 'Impact, "Arial Black", sans-serif'
+};
 
 function syncCanvasHotFlags() {
   flatGraphicsEnabled = !!(state.config && state.config.perf && state.config.perf.flatGraphics);
@@ -8072,6 +8158,26 @@ function syncCanvasHotFlags() {
   visual.discSize = clampNum(cfg.discSize, 0.5, 2, 1);
   visual.lines = visual.pitchLine !== 1 || visual.discLine !== 1 || visual.ballLine !== 1;
   visual.sizes = visual.ballSize !== 1 || visual.discSize !== 1;
+
+  visual.texture = lookfx.textureSpec(cfg.texture) ? cfg.texture : 'none';
+  visual.crest = !!cfg.crest;
+  visual.crestOpacity = clampNum(cfg.crestOpacity, 0.02, 0.9, 0.18);
+  visual.crestSize = clampNum(cfg.crestSize, 0.15, 1.2, 0.45);
+  visual.lineColor = lookfx.safeColor(cfg.lineColor);
+  visual.postColor = lookfx.safeColor(cfg.postColor);
+  visual.discOutline = lookfx.safeColor(cfg.discOutline);
+  visual.ballOutline = lookfx.safeColor(cfg.ballOutline);
+  visual.discStyle = ['sphere', 'glass', 'neon', 'metal'].includes(cfg.discStyle) ? cfg.discStyle : 'default';
+  visual.ringStyle = ['double', 'dashed', 'crown'].includes(cfg.ringStyle) ? cfg.ringStyle : 'default';
+  visual.ringColor = lookfx.safeColor(cfg.ringColor);
+  visual.selfTrail = !!cfg.selfTrail;
+  visual.selfTrailColor = lookfx.safeColor(cfg.selfTrailColor);
+  visual.nameScale = clampNum(cfg.nameScale, 0.6, 2, 1);
+  visual.nameColor = lookfx.safeColor(cfg.nameColor);
+  visual.nameOutline = !!cfg.nameOutline;
+  visual.nameFont = FONT_FAMILIES[cfg.nameFont] ? cfg.nameFont : 'default';
+  visual.discFx = visual.discStyle !== 'default' || !!visual.discOutline || !!visual.ballOutline;
+  visual.names = visual.nameScale !== 1 || !!visual.nameColor || visual.nameOutline || visual.nameFont !== 'default';
 }
 
 function flatOn() {
@@ -8086,6 +8192,37 @@ function flatOn() {
  */
 const flatPatterns = new WeakMap();
 
+/**
+ * El texto de los nombres sobre las fichas, con el tamaño, color, contorno y
+ * fuente que eligió el jugador. Sólo se llega acá con algo cambiado.
+ */
+function drawNameText(ctx, original, text, x, y, rest) {
+  const font = ctx.font;
+  const fill = ctx.fillStyle;
+  const m = /^(.*?)(\d+(?:\.\d+)?)px\s+(.*)$/.exec(font);
+  if (m) {
+    const family = visual.nameFont !== 'default' ? FONT_FAMILIES[visual.nameFont] : m[3];
+    ctx.font = `${m[1]}${(Number(m[2]) * visual.nameScale).toFixed(1)}px ${family}`;
+  }
+  try {
+    if (visual.nameOutline) {
+      const prevStroke = ctx.strokeStyle;
+      const prevWidth = ctx.lineWidth;
+      ctx.strokeStyle = 'rgba(0,0,0,0.85)';
+      ctx.lineWidth = 3;
+      ctx.lineJoin = 'round';
+      ctx.strokeText(text, x, y);
+      ctx.strokeStyle = prevStroke;
+      ctx.lineWidth = prevWidth;
+    }
+    if (visual.nameColor) ctx.fillStyle = visual.nameColor;
+    return original.call(ctx, text, x, y, ...rest);
+  } finally {
+    ctx.font = font;
+    ctx.fillStyle = fill;
+  }
+}
+
 /** Texturas de jugador (canvas de 64×64): lo que distingue a una ficha de la cancha. */
 const playerPatterns = new WeakSet();
 
@@ -8093,7 +8230,7 @@ const playerPatterns = new WeakSet();
  * Lo que está esperando su `stroke()`: el disco que se acaba de armar y cómo
  * deshacer su agrandado. `kind`: `disc` (ficha) · `ball` · `post` (palos).
  */
-const pend = { on: false, kind: '', k: 1, x: 0, y: 0 };
+const pend = { on: false, kind: '', k: 1, x: 0, y: 0, r: 0 };
 
 /** > 0 mientras dibuja el propio cliente (ayudas, color de cancha): no se toca. */
 let ownDraw = 0;
@@ -8260,21 +8397,37 @@ function installCanvasHooks(doc) {
   const origStroke = proto.stroke;
   const baseStroke = function (args) {
     if (!flatOn()) {
-      // Grosor propio. «Gráficos planos» manda sobre esto: si está puesto, no se toca.
-      if (!visual.lines || ownDraw > 0) return origStroke.apply(this, args);
+      // Grosor y colores propios. «Gráficos planos» manda sobre esto.
+      if (!(visual.lines || visual.discFx || visual.lineColor) || ownDraw > 0) return origStroke.apply(this, args);
       let mul = 1;
+      let color = '';
+      let overlay = false;
       if (pend.on) {
-        mul = pend.kind === 'ball' ? visual.ballLine : pend.kind === 'disc' ? visual.discLine : visual.pitchLine;
+        if (pend.kind === 'ball') {
+          mul = visual.ballLine;
+          color = visual.ballOutline;
+        } else if (pend.kind === 'disc') {
+          mul = visual.discLine;
+          color = visual.discOutline;
+          overlay = visual.discStyle !== 'default';
+        } else {
+          mul = visual.pitchLine;
+        }
       } else if (Math.abs(this.lineWidth - 3) < 0.01) {
         mul = visual.pitchLine; // las líneas de la cancha las dibuja HaxBall a 3
+        if (visual.lineColor && lookfx.isLightLine(this.strokeStyle)) color = visual.lineColor;
       }
-      if (mul === 1) return origStroke.apply(this, args);
-      const prev = this.lineWidth;
-      this.lineWidth = prev * mul;
+      if (overlay) lookfx.discOverlay(this, visual.discStyle, pend.x, pend.y, pend.r);
+      if (mul === 1 && !color) return origStroke.apply(this, args);
+      const prevWidth = this.lineWidth;
+      const prevStyle = color ? this.strokeStyle : null;
+      this.lineWidth = prevWidth * mul;
+      if (color) this.strokeStyle = color;
       try {
         return origStroke.apply(this, args);
       } finally {
-        this.lineWidth = prev;
+        this.lineWidth = prevWidth;
+        if (color) this.strokeStyle = prevStyle;
       }
     }
 
@@ -8319,13 +8472,14 @@ function installCanvasHooks(doc) {
    */
   const origArc = proto.arc;
   proto.arc = function (x, y, r, a0, a1, ccw) {
-    if ((visual.sizes || visual.lines) && ownDraw === 0 && playerPatterns.has(this.fillStyle)) {
+    if ((visual.sizes || visual.lines || visual.discFx) && ownDraw === 0 && playerPatterns.has(this.fillStyle)) {
       const k = visual.discSize;
       pend.on = true;
       pend.kind = 'disc';
       pend.k = k;
       pend.x = x;
       pend.y = y;
+      pend.r = r;
       if (k !== 1) {
         this.translate(x, y);
         this.scale(k, k);
@@ -8388,6 +8542,9 @@ function installCanvasHooks(doc) {
       } catch {}
     } else if (esTextura) {
       lastTextureMine = false;
+    }
+    if (visual.names && !esTextura && ownDraw === 0) {
+      return drawNameText(this, originalFillText, text, x, y, rest);
     }
     return originalFillText.call(this, text, x, y, ...rest);
   };

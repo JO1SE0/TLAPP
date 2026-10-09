@@ -373,7 +373,45 @@ const DEFAULTS = {
     discLine: 1,
     ballLine: 1,
     ballSize: 1,
-    discSize: 1
+    discSize: 1,
+    /** Acabado de la cancha: `none` · `wood` · `ice` · `sand` · `concrete` · `night`. */
+    texture: 'none',
+    /** Escudo del club como marca de agua en el círculo del medio. */
+    crest: false,
+    crestOpacity: 0.18,
+    crestSize: 0.45,
+    /** Color de las líneas claras de la cancha y de los palos. Vacío = como viene. */
+    lineColor: '',
+    postColor: '',
+    /** Contorno de las fichas y de la pelota. Vacío = como viene. */
+    discOutline: '',
+    ballOutline: '',
+    /** Aspecto de las fichas: `default` · `sphere` · `glass` · `neon` · `metal`. */
+    discStyle: 'default',
+    /** Tu aro: `default` · `double` · `dashed` · `crown`. Color vacío = el acento. */
+    ringStyle: 'default',
+    ringColor: '',
+    /** Cola de color detrás de tu ficha. */
+    selfTrail: false,
+    selfTrailColor: '',
+    /** Nombres sobre las fichas. Vacío/1 = como vienen. */
+    nameScale: 1,
+    nameColor: '',
+    nameOutline: false,
+    nameFont: 'default',
+    /** Chat del juego. `chatBg` -1 = como viene. */
+    chatScale: 1,
+    chatBg: -1,
+    chatFont: 'default',
+    /** Fondo de los menús: `none` · `club` · `aurora` · `grid`. */
+    menuBg: 'none'
+  },
+  /**
+   * Looks guardados con nombre: un conjunto de ajustes visuales que se aplica
+   * de un clic. `saved`: [{ name, data }].
+   */
+  looks: {
+    saved: []
   },
   pitch: {
     ball3d: false,

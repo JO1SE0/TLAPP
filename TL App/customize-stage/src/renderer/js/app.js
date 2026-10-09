@@ -7302,14 +7302,219 @@ function renderVisual() {
   $('#visualFlatNote').hidden = !(state.config.perf && state.config.perf.flatGraphics);
 }
 
-$('#visualReset').addEventListener('click', () => {
-  patchConfig({ visual: { pitchLine: 1, discLine: 1, ballLine: 1, ballSize: 1, discSize: 1 } });
+$('#visualReset').addEventListener('click', async () => {
+  await patchConfig({ visual: { pitchLine: 1, discLine: 1, ballLine: 1, ballSize: 1, discSize: 1 } });
+  renderVisual();
 });
+
+/* ── Personalización visual ─────────────────────────────────────────────────
+ * Todo vive en `config.visual` y sólo se ve en esta pantalla. Cada fila se arma
+ * desde una tabla: agregar un ajuste es agregar una línea.
+ */
+/** Guarda y vuelve a pintar: estas filas dependen unas de otras. */
+async function lookPatch(patch) {
+  const next = await patchConfig(patch);
+  renderLook();
+  return next;
+}
+
+const FONT_OPTIONS = [
+  ['default', 'look.font.default'], ['outfit', 'look.font.outfit'], ['mono', 'look.font.mono'],
+  ['serif', 'look.font.serif'], ['round', 'look.font.round'], ['impact', 'look.font.impact']
+];
+
+const LOOK_SECTIONS = {
+  lookPitch: [
+    { key: 'texture', type: 'select', label: 'look.texture', options: [['none', 'look.opt.none'], ['wood', 'look.tex.wood'], ['ice', 'look.tex.ice'], ['sand', 'look.tex.sand'], ['concrete', 'look.tex.concrete'], ['night', 'look.tex.night']] },
+    { key: 'crest', type: 'switch', label: 'look.crest', desc: 'look.crestHelp' },
+    { key: 'crestOpacity', type: 'range', label: 'look.crestOpacity', min: 0.05, max: 0.6, step: 0.01, showIf: (v) => v.crest },
+    { key: 'crestSize', type: 'range', label: 'look.crestSize', min: 0.2, max: 1, step: 0.01, showIf: (v) => v.crest },
+    { key: 'lineColor', type: 'color', label: 'look.lineColor', desc: 'look.lineColorHelp' },
+    { key: 'postColor', type: 'color', label: 'look.postColor' }
+  ],
+  lookDiscs: [
+    { key: 'discStyle', type: 'select', label: 'look.discStyle', options: [['default', 'look.opt.none'], ['sphere', 'look.ds.sphere'], ['glass', 'look.ds.glass'], ['neon', 'look.ds.neon'], ['metal', 'look.ds.metal']] },
+    { key: 'discOutline', type: 'color', label: 'look.discOutline' },
+    { key: 'ballOutline', type: 'color', label: 'look.ballOutline' },
+    { key: 'ringStyle', type: 'select', label: 'look.ringStyle', desc: 'look.ringHelp', options: [['default', 'look.opt.simple'], ['double', 'look.ring.double'], ['dashed', 'look.ring.dashed'], ['crown', 'look.ring.crown']] },
+    { key: 'ringColor', type: 'color', label: 'look.ringColor' },
+    { key: 'selfTrail', type: 'switch', label: 'look.selfTrail', desc: 'look.selfTrailHelp' },
+    { key: 'selfTrailColor', type: 'color', label: 'look.selfTrailColor', showIf: (v) => v.selfTrail }
+  ],
+  lookNames: [
+    { key: 'nameScale', type: 'range', label: 'look.nameScale', min: 0.6, max: 2, step: 0.05 },
+    { key: 'nameColor', type: 'color', label: 'look.nameColor' },
+    { key: 'nameOutline', type: 'switch', label: 'look.nameOutline' },
+    { key: 'nameFont', type: 'select', label: 'look.nameFont', options: FONT_OPTIONS }
+  ],
+  lookChat: [
+    { key: 'chatScale', type: 'range', label: 'look.chatScale', min: 0.7, max: 1.8, step: 0.05 },
+    { key: 'chatBg', type: 'range', label: 'look.chatBg', min: 0, max: 0.9, step: 0.05, original: -1 },
+    { key: 'chatFont', type: 'select', label: 'look.chatFont', options: FONT_OPTIONS }
+  ],
+  lookMenu: [
+    { key: 'menuBg', type: 'select', label: 'look.menuBg', options: [['none', 'look.opt.none'], ['club', 'look.menu.club'], ['aurora', 'look.menu.aurora'], ['grid', 'look.menu.grid']] }
+  ]
+};
+
+const LOOK_DEFAULTS = {
+  texture: 'none', crest: false, crestOpacity: 0.18, crestSize: 0.45, lineColor: '', postColor: '',
+  discStyle: 'default', discOutline: '', ballOutline: '', ringStyle: 'default', ringColor: '',
+  selfTrail: false, selfTrailColor: '', nameScale: 1, nameColor: '', nameOutline: false, nameFont: 'default',
+  chatScale: 1, chatBg: -1, chatFont: 'default', menuBg: 'none'
+};
+
+function lookValue(key) {
+  const v = state.config.visual || {};
+  return v[key] === undefined ? LOOK_DEFAULTS[key] : v[key];
+}
+
+function lookRow(item) {
+  const value = lookValue(item.key);
+  let control;
+  if (item.type === 'switch') {
+    const toggle = document.createElement('button');
+    toggle.className = 'switch' + (value ? ' is-on' : '');
+    toggle.type = 'button';
+    toggle.setAttribute('role', 'switch');
+    toggle.setAttribute('aria-checked', String(!!value));
+    toggle.addEventListener('click', () => lookPatch({ visual: { [item.key]: !lookValue(item.key) } }));
+    return settingRow({ label: t(item.label), description: item.desc ? t(item.desc) : '', control: toggle });
+  }
+  if (item.type === 'select') {
+    control = document.createElement('select');
+    for (const [val, label] of item.options) {
+      const o = document.createElement('option');
+      o.value = val;
+      o.textContent = t(label);
+      control.append(o);
+    }
+    control.value = value;
+    control.addEventListener('change', () => lookPatch({ visual: { [item.key]: control.value } }));
+    return settingRow({ label: t(item.label), description: item.desc ? t(item.desc) : '', control });
+  }
+  if (item.type === 'color') {
+    const input = document.createElement('input');
+    input.type = 'color';
+    input.value = value || '#888888';
+    input.classList.toggle('is-unset', !value);
+    input.addEventListener('change', () => lookPatch({ visual: { [item.key]: input.value } }));
+    const clear = document.createElement('button');
+    clear.className = 'btn btn--ghost btn--sm';
+    clear.type = 'button';
+    clear.textContent = value ? t('look.remove') : t('look.original');
+    clear.disabled = !value;
+    clear.addEventListener('click', () => lookPatch({ visual: { [item.key]: '' } }));
+    return settingRow({ label: t(item.label), description: item.desc ? t(item.desc) : '', control: [input, clear] });
+  }
+  // range
+  const input = document.createElement('input');
+  input.type = 'range';
+  input.min = item.min;
+  input.max = item.max;
+  input.step = item.step;
+  const unset = item.original !== undefined && value === item.original;
+  input.value = unset ? item.min : value;
+  const out = document.createElement('b');
+  out.className = 'row__val';
+  out.textContent = unset ? t('look.original') : `${Math.round(Number(value) * 100)}%`;
+  syncRangeFill(input);
+  input.addEventListener('input', () => {
+    syncRangeFill(input);
+    out.textContent = `${Math.round(Number(input.value) * 100)}%`;
+  });
+  input.addEventListener('change', () => lookPatch({ visual: { [item.key]: Number(input.value) } }));
+  const nodes = [input, out];
+  if (item.original !== undefined) {
+    const reset = document.createElement('button');
+    reset.className = 'btn btn--ghost btn--sm';
+    reset.type = 'button';
+    reset.textContent = t('look.original');
+    reset.disabled = unset;
+    reset.addEventListener('click', () => lookPatch({ visual: { [item.key]: item.original } }));
+    nodes.push(reset);
+  }
+  return settingRow({ label: t(item.label), description: item.desc ? t(item.desc) : '', control: nodes });
+}
+
+function renderLookSections() {
+  const values = state.config.visual || {};
+  for (const [hostId, items] of Object.entries(LOOK_SECTIONS)) {
+    const host = $(`#${hostId}`);
+    if (!host) continue;
+    host.replaceChildren();
+    for (const item of items) {
+      if (item.showIf && !item.showIf({ ...LOOK_DEFAULTS, ...values })) continue;
+      host.append(lookRow(item));
+    }
+  }
+  const app = $('#app');
+  if (app) app.dataset.menubg = lookValue('menuBg') || 'none';
+}
+
+/* Looks guardados: una foto de los ajustes visuales, con nombre. */
+const LOOK_PITCH_KEYS = ['ball3d', 'netRipple', 'selfRing', 'teamRings', 'goalFlash', 'goalShake', 'skin'];
+const LOOK_MAX = 12;
+
+function currentLookData() {
+  const cfg = state.config;
+  const pitch = {};
+  for (const key of LOOK_PITCH_KEYS) if (cfg.pitch && cfg.pitch[key] !== undefined) pitch[key] = JSON.parse(JSON.stringify(cfg.pitch[key]));
+  return { visual: { ...(cfg.visual || {}) }, pitch };
+}
+
+function renderLooks() {
+  const host = $('#lookList');
+  if (!host) return;
+  host.replaceChildren();
+  const saved = ((state.config.looks || {}).saved) || [];
+  if (!saved.length) {
+    const empty = document.createElement('p');
+    empty.className = 'sec__desc';
+    empty.textContent = t('looks.empty');
+    host.append(empty);
+    return;
+  }
+  for (const entry of saved) {
+    const apply = document.createElement('button');
+    apply.className = 'btn btn--ghost btn--sm';
+    apply.type = 'button';
+    apply.textContent = t('looks.apply');
+    apply.addEventListener('click', async () => {
+      await lookPatch(JSON.parse(JSON.stringify(entry.data || {})));
+      toast(t('looks.applied', { name: entry.name }));
+    });
+    const del = document.createElement('button');
+    del.className = 'btn btn--ghost btn--sm';
+    del.type = 'button';
+    del.textContent = t('looks.delete');
+    del.addEventListener('click', () => lookPatch({ looks: { saved: saved.filter((x) => x.name !== entry.name) } }));
+    host.append(settingRow({ label: entry.name, control: [apply, del] }));
+  }
+}
+
+$('#lookSave').addEventListener('click', async () => {
+  const input = $('#lookName');
+  const name = input.value.trim().slice(0, 24);
+  if (!name) { toast(t('looks.needName'), 'err'); return; }
+  const saved = (((state.config.looks || {}).saved) || []).filter((x) => x.name !== name);
+  if (saved.length >= LOOK_MAX) { toast(t('looks.full', { max: LOOK_MAX }), 'err'); return; }
+  saved.push({ name, data: currentLookData() });
+  await lookPatch({ looks: { saved } });
+  input.value = '';
+  toast(t('looks.saved', { name }));
+});
+
+function renderLook() {
+  renderLookSections();
+  renderLooks();
+}
 
 function renderAll() {
   window.i18n.applyStatic();
   renderPerf();
   renderVisual();
+  renderLook();
   renderAspect();
   renderSettings();
   renderDiscord();

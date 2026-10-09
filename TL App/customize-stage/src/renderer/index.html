@@ -798,6 +798,24 @@
                Lo que el cliente dibuja sobre el campo, por debajo de los
                discos. Ninguna de estas ayudas adivina nada; el porqué está en
                `pitch` de `store.js`. -->
+          <!-- ═══ Looks guardados ═══ -->
+          <section class="sec" data-sec="looks">
+            <header class="sec__head">
+              <h2 class="sec__title" data-i18n="looks.title">Looks guardados</h2>
+            </header>
+            <p class="sec__desc" data-i18n="looks.desc">Guardá cómo se ve todo (cancha, fichas, nombres, chat y fondo) con un nombre y volvé a él de un clic.</p>
+            <div class="sec__body">
+              <div class="row">
+                <div class="row__text"><span class="row__label" data-i18n="looks.name">Nombre del look</span></div>
+                <div class="row__ctl">
+                  <input type="text" id="lookName" maxlength="24" data-i18n-placeholder="looks.placeholder" placeholder="Ej: Torneo" />
+                  <button class="btn btn--ghost btn--sm" id="lookSave" data-i18n="looks.save">Guardar el actual</button>
+                </div>
+              </div>
+              <div class="rows" id="lookList"></div>
+            </div>
+          </section>
+
           <section class="sec" data-sec="cancha">
             <header class="sec__head">
               <h2 class="sec__title"><span data-i18n="pitch.section">La cancha</span><i class="hint" tabindex="0" data-hint="skin.help" aria-label="Más información">i</i></h2>
@@ -807,6 +825,56 @@
               <div class="rows" id="pitchSkin"></div>
               <div class="rows" id="pitchSwitches"></div>
               <div class="rows" id="pitchMirror"></div>
+            </div>
+          </section>
+
+          <section class="sec" data-sec="acabado">
+            <header class="sec__head">
+              <h2 class="sec__title" data-i18n="look.pitch.title">Acabado de la cancha</h2>
+              <span class="tag" data-i18n="skin.tag">Sólo lo ves vos</span>
+            </header>
+            <div class="sec__body">
+              <div class="rows" id="lookPitch"></div>
+            </div>
+          </section>
+
+          <section class="sec" data-sec="fichaslook">
+            <header class="sec__head">
+              <h2 class="sec__title" data-i18n="look.discs.title">Fichas y aro</h2>
+              <span class="tag" data-i18n="skin.tag">Sólo lo ves vos</span>
+            </header>
+            <div class="sec__body">
+              <div class="rows" id="lookDiscs"></div>
+            </div>
+          </section>
+
+          <section class="sec" data-sec="nombres">
+            <header class="sec__head">
+              <h2 class="sec__title" data-i18n="look.names.title">Nombres</h2>
+              <span class="tag" data-i18n="skin.tag">Sólo lo ves vos</span>
+            </header>
+            <div class="sec__body">
+              <div class="rows" id="lookNames"></div>
+            </div>
+          </section>
+
+          <section class="sec" data-sec="chatlook">
+            <header class="sec__head">
+              <h2 class="sec__title" data-i18n="look.chat.title">Chat del juego</h2>
+              <span class="tag" data-i18n="skin.tag">Sólo lo ves vos</span>
+            </header>
+            <div class="sec__body">
+              <div class="rows" id="lookChat"></div>
+            </div>
+          </section>
+
+          <section class="sec" data-sec="menubg">
+            <header class="sec__head">
+              <h2 class="sec__title" data-i18n="look.menu.title">Fondo del menú</h2>
+              <span class="tag" data-i18n="skin.tag">Sólo lo ves vos</span>
+            </header>
+            <div class="sec__body">
+              <div class="rows" id="lookMenu"></div>
             </div>
           </section>
 
