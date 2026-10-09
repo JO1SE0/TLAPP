@@ -31,6 +31,35 @@ const GAME_PRELOAD = path.join(__dirname, 'game-preload.js');
 
 if (process.platform === 'win32') app.setAppUserModelId('TodaLaLecce.TLApp');
 
+/*
+ * La carpeta de datos se llamaba «TVM Client» y ahora el nombre del producto es
+ * «TL App». Para que nadie pierda ajustes, identidades ni sesión, la primera vez
+ * se copia lo viejo a la carpeta nueva (sin los caches de Chromium, que se
+ * regeneran solos). La vieja no se toca: se puede borrar a mano cuando se quiera.
+ */
+(function migrarDatos() {
+  try {
+    const nueva = app.getPath('userData');
+    const vieja = path.join(path.dirname(nueva), 'TVM Client');
+    if (vieja === nueva || !fs.existsSync(vieja)) return;
+    if (fs.existsSync(path.join(nueva, 'config.json'))) return;
+    const saltear = new Set(['Cache', 'Code Cache', 'GPUCache', 'Crashpad', 'DawnCache', 'ShaderCache', 'GrShaderCache', 'game-patch']);
+    const copiar = (de, a) => {
+      fs.mkdirSync(a, { recursive: true });
+      for (const e of fs.readdirSync(de, { withFileTypes: true })) {
+        if (saltear.has(e.name) || e.name === 'lockfile' || e.name.startsWith('Singleton')) continue;
+        const o = path.join(de, e.name);
+        const d = path.join(a, e.name);
+        try {
+          if (e.isDirectory()) copiar(o, d);
+          else if (e.isFile()) fs.copyFileSync(o, d);
+        } catch (_) { /* un archivo en uso no frena el resto */ }
+      }
+    };
+    copiar(vieja, nueva);
+  } catch (_) { /* si falla, arranca limpio: no vale tirar la app por esto */ }
+})();
+
 /* ------------------------------------------------------------------ *
  * Red de seguridad del proceso principal
  * ------------------------------------------------------------------ *

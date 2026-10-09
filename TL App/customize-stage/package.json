@@ -1,6 +1,6 @@
 {
   "name": "TVM-client",
-  "productName": "TVM Client",
+  "productName": "TL App",
   "version": "1.0.41",
   "description": "TL App — cliente de escritorio de HaxBall del equipo Toda la Lecce",
   "main": "src/main/main.js",
