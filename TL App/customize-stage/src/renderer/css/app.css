@@ -3681,6 +3681,16 @@ input[type="color"]::-webkit-color-swatch { border: 0; border-radius: 6px; }
   -webkit-app-region: no-drag;
 }
 .toplast[hidden] { display: none; }
+.toplast { max-width: 280px; }
+.toplast__label { flex: 0 0 auto; opacity: .8; font-weight: 600; }
+.toplast__name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--text);
+  font-weight: 700;
+}
+.toplast__name[hidden] { display: none; }
 .toplast:hover { background: rgb(var(--accent-rgb) / 30%); }
 .toplast svg { width: 14px; height: 14px; }
 .lastroom {

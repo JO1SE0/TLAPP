@@ -286,6 +286,9 @@ const STRINGS = {
     'tip.theme': 'El tema que elijas pinta el cliente entero y también las pantallas de HaxBall.',
 
     'vip.title': 'Personalización',
+    'ball.section': 'La pelota',
+    'sounds.section': 'Sonidos propios',
+    'looks.section': 'En la lista de jugadores',
     'vip.clubAccess': 'Los beneficios locales están habilitados para todos en esta PC. El servidor puede seguir controlando los cosméticos que se comparten.',
     'vip.daysLeft': 'Te quedan {days} días (hasta el {when}).',
     'vip.lastDay': 'Te queda menos de un día (hasta el {when}).',
@@ -519,14 +522,14 @@ const STRINGS = {
     'profile.noStats': 'Todavía no jugó ningún partido con el cliente.',
     'profile.looksVip': '',
 
-    'vip.looks': 'Cómo te ven en la lista',
+    'vip.looks': 'Cómo se ve tu nombre',
     'vip.looksGradients': 'Elegí un degradado',
     'vip.looksFont': 'Fuente',
     'vip.looksYou': 'TuNombre',
     'vip.fontDefault': 'La del juego',
     'vip.fontMono': 'Monoespaciada',
     'vip.fontSerif': 'Con serifa',
-    'vip.looksHint': 'Sólo lo ven los que también tengan el cliente y estén en tu sala.',
+    'vip.looksHint': 'Se ve en tu propia fila de la lista de jugadores, sólo en tu pantalla.',
 
     'stats.level': 'Nivel',
     'stats.streak': '{days} días seguidos',
@@ -865,6 +868,9 @@ const STRINGS = {
     'tip.theme': 'The theme you pick paints the whole client and HaxBall’s own screens too.',
 
     'vip.title': 'Customization',
+    'ball.section': 'The ball',
+    'sounds.section': 'Your own sounds',
+    'looks.section': 'In the player list',
     'vip.clubAccess': 'Local perks are enabled for everyone on this PC. The server may still control cosmetics shared with other players.',
     'vip.daysLeft': '{days} days left (until {when}).',
     'vip.lastDay': 'Less than a day left (until {when}).',
@@ -1092,14 +1098,14 @@ const STRINGS = {
     'profile.noStats': 'Has not played a match with the client yet.',
     'profile.looksVip': '',
 
-    'vip.looks': 'How others see you in the list',
+    'vip.looks': 'How your name looks',
     'vip.looksGradients': 'Pick a gradient',
     'vip.looksFont': 'Font',
     'vip.looksYou': 'YourName',
     'vip.fontDefault': 'The game one',
     'vip.fontMono': 'Monospaced',
     'vip.fontSerif': 'Serif',
-    'vip.looksHint': 'Only people who also have the client and are in your room see this.',
+    'vip.looksHint': 'Shown on your own row of the player list, on your screen only.',
 
     'stats.level': 'Level',
     'stats.streak': '{days} days in a row',

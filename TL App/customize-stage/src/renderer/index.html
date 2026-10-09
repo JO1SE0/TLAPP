@@ -136,7 +136,8 @@
       <!-- Volver a la última sala, siempre a mano (aparece sólo si hay una guardada) -->
       <button class="toplast" id="topLastRoom" type="button" hidden>
         <svg data-icon viewBox="0 0 24 24"><path d="M19.7 12a7.7 7.7 0 1 1-2.4-5.5l3.3 3.1M20.8 4.6l-.2 5.2-5.2-.2"/></svg>
-        <span data-i18n="rooms.backShort">Última sala</span>
+        <span class="toplast__label" data-i18n="rooms.backShort">Última sala</span>
+        <b class="toplast__name" id="topLastRoomName" hidden></b>
       </button>
 
       <!-- El dock de amigos se abre desde acá y desde F9 adentro del juego.
@@ -822,17 +823,14 @@
 
           <!-- ═══ Cartel de teclas ═══
                Muestra direcciones, no letras: se enciende con cualquier tecla
-               atada a esa acción. Lo dibuja game-preload.js. Pide el rol, así
-               que va marcado con `data-vip-perk` / `data-vip-locked`: los
-               enciende y apaga `paintVipGates` con el resto de los beneficios. -->
+               atada a esa acción. Lo dibuja game-preload.js. Lo dibuja el juego sólo en tu pantalla. -->
           <section class="sec" data-sec="teclashud">
             <header class="sec__head">
               <h2 class="sec__title"><span data-i18n="keys.hudTitle">Cartel de teclas</span></h2>
               
             </header>
             <p class="sec__desc" data-i18n="keys.hudHint">Sólo lo ves vos. Tocá «Acomodar» y arrastralo a donde quieras.</p>
-            <p class="tray note" data-vip-locked hidden data-i18n="vip.needRole"></p>
-            <div class="sec__body" data-vip-perk hidden>
+            <div class="sec__body">
               <div class="rows" id="keysHudSwitches"></div>
               <div class="row">
                 <div class="row__text"><span class="row__label" data-i18n="keys.hudColor">Color</span></div>
@@ -984,20 +982,6 @@
                 </div>
               </div>
 
-              <!-- La pelota, con las mismas reglas que el avatar. -->
-              <div class="row">
-                <div class="row__text">
-                  <span class="row__label" data-i18n="ball.image">Pelota con imagen</span>
-                  <span class="row__desc" id="ballImageNote" hidden></span>
-                </div>
-                <div class="row__ctl assetrow">
-                  <span class="assetrow__preview" id="vipBallPreview"></span>
-                  <button class="btn btn--ghost btn--sm" id="vipPickBall" data-i18n="vip.choose"><svg data-icon viewBox="0 0 24 24"><path d="M3.6 7.4A1.9 1.9 0 0 1 5.5 5.5h3.2l1.9 2.4h7.9a1.9 1.9 0 0 1 1.9 1.9v7.3a1.9 1.9 0 0 1-1.9 1.9H5.5a1.9 1.9 0 0 1-1.9-1.9z"/></svg>Elegir…</button>
-                  <button class="btn btn--ghost btn--sm" id="vipClearBall" data-i18n="vip.clear"><svg data-icon viewBox="0 0 24 24"><path d="M6.4 6.4l11.2 11.2M17.6 6.4 6.4 17.6"/></svg>Quitar</button>
-                </div>
-              </div>
-
-              <div class="rows" id="ball3dSwitch"></div>
               <div class="rows" id="avatarSwitch"></div>
 
               <div class="row" id="avatarFramesField">
@@ -1021,29 +1005,38 @@
             </div>
           </section>
 
-          <!-- ═══ VIP ═══ -->
-          <section class="sec vipsec" data-sec="vip" id="vipCard">
+          <!-- ═══ La pelota ═══
+               La imagen, el efecto 3D y la red de los arcos: todo lo que se
+               dibuja sobre la pelota y los arcos, sólo en tu pantalla. -->
+          <section class="sec" data-sec="pelota">
             <header class="sec__head">
-              <h2 class="sec__title"><span data-i18n="vip.title">Beneficios</span></h2>
-              <div class="rowactions" id="vipActions"></div>
+              <h2 class="sec__title" data-i18n="ball.section">La pelota</h2>
+              <span class="tag" data-i18n="skin.tag">Sólo lo ves vos</span>
             </header>
-            <p class="sec__desc" id="vipStatus"></p>
-            <p class="note" data-i18n="account.settingsInfo">Los ajustes y las identidades de HaxBall se guardan solo en esta PC. TL App no inicia sesión ni sincroniza cuentas de Discord.</p>
+            <div class="sec__body">
+              <div class="row">
+                <div class="row__text">
+                  <span class="row__label" data-i18n="ball.image">Pelota con imagen</span>
+                  <span class="row__desc" id="ballImageNote" hidden></span>
+                </div>
+                <div class="row__ctl assetrow">
+                  <span class="assetrow__preview" id="vipBallPreview"></span>
+                  <button class="btn btn--ghost btn--sm" id="vipPickBall" data-i18n="vip.choose"><svg data-icon viewBox="0 0 24 24"><path d="M3.6 7.4A1.9 1.9 0 0 1 5.5 5.5h3.2l1.9 2.4h7.9a1.9 1.9 0 0 1 1.9 1.9v7.3a1.9 1.9 0 0 1-1.9 1.9H5.5a1.9 1.9 0 0 1-1.9-1.9z"/></svg>Elegir…</button>
+                  <button class="btn btn--ghost btn--sm" id="vipClearBall" data-i18n="vip.clear"><svg data-icon viewBox="0 0 24 24"><path d="M6.4 6.4l11.2 11.2M17.6 6.4 6.4 17.6"/></svg>Quitar</button>
+                </div>
+              </div>
 
-            <!-- Sin el rol, esto dice QUÉ se destraba, que es lo único que
-                 tiene sentido mostrar ahí. -->
-            <ul class="viplocked" id="vipLocked" data-vip-locked hidden>
-              <li data-i18n="vip.perkAvatar">Avatar animado con GIF</li>
-              <li data-i18n="vip.perkBall">Pelota animada con GIF</li>
-              <li data-i18n="vip.perkHit">Sonido propio al patear</li>
-              <li data-i18n="vip.perkLooks">Degradados y fuentes en la lista de jugadores</li>
-              <li data-i18n="vip.perkGoal">Tu propio sonido de gol</li>
-              <li data-i18n="vip.perkDuoThemes">Cuatro temas de dos colores</li>
-              <li data-i18n="vip.perkThemes">Temas hechos por vos</li>
-              <li data-i18n="vip.perkKeys">Cartel de teclas sobre la cancha</li>
-            </ul>
+              <div class="rows" id="ball3dSwitch"></div>
+            </div>
+          </section>
 
-            <div class="sec__body" id="vipPerks" data-vip-perk hidden>
+          <!-- ═══ Sonidos ═══ -->
+          <section class="sec" data-sec="sonidos" id="soundsCard">
+            <header class="sec__head">
+              <h2 class="sec__title" data-i18n="sounds.section">Sonidos propios</h2>
+              <span class="tag" data-i18n="skin.tag">Sólo lo ves vos</span>
+            </header>
+            <div class="sec__body">
               <div class="row">
                 <div class="row__text"><span class="row__label" data-i18n="vip.goalSound">Sonido de gol</span></div>
                 <div class="row__ctl assetrow">
@@ -1077,7 +1070,15 @@
                   <b class="row__val" id="vipHitVolumeValue">70%</b>
                 </div>
               </div>
+            </div>
+          </section>
 
+          <!-- ═══ Cómo te ven en la lista ═══ -->
+          <section class="sec" data-sec="lista" id="vipCard">
+            <header class="sec__head">
+              <h2 class="sec__title" data-i18n="looks.section">En la lista de jugadores</h2>
+            </header>
+            <div class="sec__body">
               <!-- Lo único VIP que no dibuja tu máquina sino la de los demás.
                    La muestra es una fila igual a la del juego: bandera,
                    nombre, insignias y ping. -->
@@ -1126,6 +1127,7 @@
                 <button class="btn btn--primary btn--sm" id="authSave" data-i18n="auth.saveCurrent"><svg data-icon viewBox="0 0 24 24"><path d="M5 12.6 9.7 17.3 19 7.6"/></svg>Guardar la actual</button>
               </div>
             </header>
+            <p class="note" data-i18n="account.settingsInfo">Los ajustes y las identidades de HaxBall se guardan solo en esta PC. TL App no inicia sesión ni sincroniza cuentas de Discord.</p>
             <div class="sec__body">
               <div class="row row--block">
                 <div class="row__ctl"><div class="authlist" id="authList"></div></div>

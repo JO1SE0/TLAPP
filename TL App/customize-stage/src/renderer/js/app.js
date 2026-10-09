@@ -11,16 +11,29 @@ const isEn = () => window.i18n.language === 'en';
 const appearancePage = $('.page[data-page="aspecto"] .page__inner');
 const settingsPage = $('.page[data-page="ajustes"] .page__inner');
 if (!appearancePage || !settingsPage) throw new Error('No se encontraron las páginas para reubicar los ajustes de Cuenta.');
-for (const selector of ['[data-sec="jugador"]', '#vipCard']) {
-  const section = $(`.page[data-page="cuenta"] ${selector}`);
-  if (!section) throw new Error(`Falta la sección de cuenta ${selector}.`);
-  appearancePage.append(section);
-}
-for (const selector of ['[data-sec="identidades"]', '[data-sec="discord"]']) {
-  const section = $(`.page[data-page="cuenta"] ${selector}`);
-  if (!section) throw new Error(`Falta la sección de cuenta ${selector}.`);
-  settingsPage.append(section);
-}
+/*
+ * Orden final de las páginas. Las secciones de Cuenta no tienen página propia:
+ * se reparten acá, y el orden va de lo que más se toca a lo que menos.
+ *
+ *   Aspecto:  tema · acento · tu jugador · la pelota · la cancha · replays ·
+ *             en partida · cartel de teclas · overlay · música · sonidos ·
+ *             lista de jugadores
+ *   Ajustes:  cliente · audio · identidades · discord · actualizaciones ·
+ *             configuración
+ */
+const accountSection = (sel) => {
+  const section = $(`.page[data-page="cuenta"] ${sel}`);
+  if (!section) throw new Error(`Falta la sección de cuenta ${sel}.`);
+  return section;
+};
+const pitchSection = $('[data-sec="cancha"]', appearancePage);
+if (!pitchSection) throw new Error('Falta la sección de la cancha.');
+pitchSection.before(accountSection('[data-sec="jugador"]'), accountSection('[data-sec="pelota"]'));
+appearancePage.append(accountSection('[data-sec="sonidos"]'), accountSection('#vipCard'));
+
+const settingsUpdates = $('[data-sec="actualizaciones"]', settingsPage);
+if (!settingsUpdates) throw new Error('Falta la sección de actualizaciones.');
+settingsUpdates.before(accountSection('[data-sec="identidades"]'), accountSection('[data-sec="discord"]'));
 
 const state = {
   config: null,
@@ -1768,6 +1781,11 @@ function paintLastRoom(last) {
   if (top) {
     top.hidden = !last || !last.token;
     top.title = last && last.name ? last.name : '';
+    const nameEl = $('#topLastRoomName');
+    if (nameEl) {
+      nameEl.textContent = last && last.name ? last.name : '';
+      nameEl.hidden = !(last && last.name);
+    }
   }
   if (!last || !last.token) return;
   // Sin nombre igual se ofrece: el token alcanza para volver, y decir «la
@@ -2771,13 +2789,13 @@ const PITCH_SWITCHES = {
   es: [
     { key: 'selfRing', label: 'Marcar tu disco', description: 'Un aro de tu color sobre tu disco.', hint: 'En un 4v4 es lo que te ahorra tener que buscarte.' },
     { key: 'teamRings', label: 'Modo daltónico', description: 'Un aro por equipo, lleno o punteado.', hint: 'Se distinguen por la forma y no por el color, así que sirve con cualquier color que le ponga la sala.' },
-    { key: 'goalFlash', label: 'Destello en el gol', description: 'Un resplandor del color del que convirtió.', hint: 'Entra desde los bordes de la pantalla.' },
+    { key: 'goalFlash', label: 'Efecto de gol', description: 'Onda dorada, escudo y chispas con los colores del club.', hint: 'Dura poco más de un segundo y no tapa la cancha.' },
     { key: 'goalShake', label: 'Sacudón en el gol', description: 'La cancha pega un golpe.', hint: 'No mueve la cámara del juego ni te cambia lo que podés ver.' }
   ],
   en: [
     { key: 'selfRing', label: 'Mark your disc', description: 'A ring in your colour on your disc.', hint: 'In a 4v4 it saves you from hunting for yourself.' },
     { key: 'teamRings', label: 'Colourblind mode', description: 'One ring per team, solid or dashed.', hint: 'They are told apart by shape and not by colour, so it works with whatever colours the room picks.' },
-    { key: 'goalFlash', label: 'Goal flash', description: 'A glow in the scoring team colour.', hint: 'It comes in from the edges of the screen.' },
+    { key: 'goalFlash', label: 'Goal effect', description: 'Golden shockwave, crest and sparks in the club colours.', hint: 'It lasts just over a second and does not cover the pitch.' },
     { key: 'goalShake', label: 'Goal shake', description: 'The pitch takes a hit.', hint: 'It does not move the game camera or change what you can see.' }
   ]
 };
@@ -3597,33 +3615,7 @@ function vipRemainingShort(profile) {
 }
 
 function renderVip() {
-  const actions = $('#vipActions');
-  actions.replaceChildren();
-  $('#vipStatus').textContent = t('vip.clubAccess');
-  paintVipGates(true);
   renderVipAssets();
-}
-
-/**
- * Enciende y apaga TODO lo que pide el rol, esté donde esté.
- *
- * Antes los beneficios eran un solo cajón —`#vipPerks`— dentro de una sola
- * tarjeta, así que el estado del rol se resolvía escondiendo ese cajón. Con el
- * cartel de teclas mudado a Aspecto (que es donde vive lo que se dibuja sobre
- * la cancha) y los sonidos en Cuenta, ya son dos lugares en dos páginas
- * distintas, y va a haber más.
- *
- * Por eso el candado dejó de ser un id y pasó a ser una marca: `data-vip-perk`
- * es lo que se ve CON el rol y `data-vip-locked` lo que se ve SIN él. Agregar
- * un beneficio en otra página es ponerle el atributo y nada más.
- */
-function paintVipGates(active) {
-  for (const el of $$('[data-vip-perk]')) el.hidden = !active;
-  for (const el of $$('[data-vip-locked]')) el.hidden = active;
-  $('#vipCard').classList.toggle('is-on', active);
-  // El índice del panel no lista secciones vacías, y con o sin rol cambia qué
-  // se ve: hay que volver a armarlo.
-  if (typeof buildPanelNav === 'function' && NAV_PAGES.includes(state.view)) buildPanelNav();
 }
 
 /* ── Cómo te ven los demás ──────────────────────────────────────────────────

@@ -6783,47 +6783,77 @@ function ensurePitchFxStyle(doc) {
       100% { transform: translate3d(0,0,0); }
     }
     .tvm-shake { animation: tvmGoalShake 0.42s cubic-bezier(0.36, 0.07, 0.19, 0.97); }
-    @keyframes tvmGoalFlash {
-      0%   { opacity: 0; }
-      14%  { opacity: 1; }
-      100% { opacity: 0; }
-    }
+    /* Gol: onda dorada, escudo, chispas y un borde azul marino. Todo con
+       transform y opacity, y sólo mientras dura (la clase is-on). */
     #tvm-goal-flash {
       position: fixed; inset: 0; z-index: 2147481500;
-      pointer-events: none; opacity: 0;
-      display: grid; place-items: center;
+      pointer-events: none; opacity: 0; overflow: hidden;
       contain: layout style paint;
     }
-    #tvm-goal-flash.is-on { animation: tvmGoalFlash 0.6s ease-out; }
+    #tvm-goal-flash.is-on { opacity: 1; }
+    #tvm-goal-flash > * { position: absolute; left: 50%; top: 50%; opacity: 0; }
+    @keyframes tvmGoalVeil {
+      0%   { opacity: 0; }
+      12%  { opacity: 1; }
+      100% { opacity: 0; }
+    }
+    #tvm-goal-flash .tvm-gv {
+      left: 0; top: 0; width: 100%; height: 100%;
+      background:
+        radial-gradient(circle at 50% 50%, transparent 38%, rgb(12 22 48 / 62%) 100%),
+        radial-gradient(circle at 50% 50%, transparent 55%, rgb(208 184 120 / 30%) 100%);
+    }
+    #tvm-goal-flash.is-on .tvm-gv { animation: tvmGoalVeil 1.15s ease-out both; }
+    @keyframes tvmGoalRing {
+      0%   { opacity: 0; transform: scale(.2); }
+      10%  { opacity: .95; }
+      100% { opacity: 0; transform: scale(2.6); }
+    }
+    #tvm-goal-flash .tvm-gr {
+      width: 30vmin; height: 30vmin; margin: -15vmin 0 0 -15vmin;
+      border-radius: 50%; border: 3px solid #d0b878;
+      box-shadow: 0 0 26px rgb(208 184 120 / 60%), inset 0 0 26px rgb(208 184 120 / 35%);
+    }
+    #tvm-goal-flash.is-on .tvm-gr { animation: tvmGoalRing .95s cubic-bezier(.15,.7,.3,1) both; }
+    #tvm-goal-flash.is-on .tvm-gr + .tvm-gr { animation-delay: .14s; border-color: #f4f0df; }
     @keyframes tvmGoalLogo {
-      0%   { opacity: 0; transform: scale(.55) rotate(-12deg); }
-      22%  { opacity: 1; transform: scale(1.08) rotate(3deg); }
-      42%  { opacity: .92; transform: scale(1) rotate(0); }
-      100% { opacity: 0; transform: scale(1.2) rotate(4deg); }
+      0%   { opacity: 0; transform: scale(.4) rotate(-10deg); }
+      20%  { opacity: 1; transform: scale(1.12) rotate(2deg); }
+      38%  { opacity: 1; transform: scale(1) rotate(0); }
+      78%  { opacity: 1; transform: scale(1) rotate(0); }
+      100% { opacity: 0; transform: scale(1.15) rotate(3deg); }
     }
-    #tvm-goal-flash img {
-      width: clamp(112px, 22vmin, 256px); height: auto;
-      filter: drop-shadow(0 0 16px rgb(255 255 255 / 75%)) drop-shadow(0 0 44px ${rgbaOf(goalFlashColor(), 0.9)});
-      opacity: 0;
+    #tvm-goal-flash .tvm-gl {
+      width: clamp(104px, 21vmin, 240px); height: auto;
+      margin: calc(clamp(104px, 21vmin, 240px) / -2 - 4vmin) 0 0 calc(clamp(104px, 21vmin, 240px) / -2);
+      filter: drop-shadow(0 0 14px rgb(208 184 120 / 85%)) drop-shadow(0 0 40px rgb(32 56 96 / 90%));
     }
-    #tvm-goal-flash.is-on img { animation: tvmGoalLogo 0.72s cubic-bezier(.2,.75,.25,1) both; }
+    #tvm-goal-flash.is-on .tvm-gl { animation: tvmGoalLogo 1.1s cubic-bezier(.2,.75,.25,1) both; }
+    @keyframes tvmGoalText {
+      0%   { opacity: 0; transform: translate(-50%, 30%) scale(.7); letter-spacing: .5em; }
+      24%  { opacity: 1; transform: translate(-50%, 0) scale(1.08); letter-spacing: .1em; }
+      40%  { opacity: 1; transform: translate(-50%, 0) scale(1); }
+      78%  { opacity: 1; transform: translate(-50%, 0) scale(1); }
+      100% { opacity: 0; transform: translate(-50%, -20%) scale(1); }
+    }
+    #tvm-goal-flash .tvm-gt {
+      margin-top: 12vmin;
+      font: 900 clamp(32px, 9vmin, 92px)/1 Impact, "Arial Black", sans-serif;
+      letter-spacing: .1em; white-space: nowrap;
+      color: #e9d49a; -webkit-text-stroke: 2px #0c1630; paint-order: stroke fill;
+      text-shadow: 0 4px 0 #0c1630, 0 0 22px rgb(208 184 120 / 55%);
+      transform: translate(-50%, 0);
+    }
+    #tvm-goal-flash.is-on .tvm-gt { animation: tvmGoalText 1.1s cubic-bezier(.2,.75,.25,1) both; }
+    @keyframes tvmGoalSpark {
+      0%   { opacity: 0; transform: translate(-50%, -50%) rotate(var(--rot)) scale(.4); }
+      12%  { opacity: 1; }
+      100% { opacity: 0; transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) rotate(calc(var(--rot) + 150deg)) scale(1); }
+    }
+    #tvm-goal-flash .tvm-gp { width: 1vmin; height: 2.4vmin; border-radius: 2px; }
+    #tvm-goal-flash.is-on .tvm-gp { animation: tvmGoalSpark .95s cubic-bezier(.1,.7,.3,1) both; }
   `;
   doc.head.append(style);
-}
-
-/**
- * El color del destello.
- *
- * El del equipo que convirtió si el marcador ya lo dijo hace poco; si no, el
- * acento del cliente. Nunca se adivina el equipo: un destello rojo por un gol
- * azul es peor que un destello neutro.
- */
-function goalFlashColor() {
-  if (lastGoal.team && Date.now() - lastGoal.at < 600) {
-    if (lastGoal.team === 'Red') return '#ff6b76';
-    if (lastGoal.team === 'Blue') return '#6ba8ff';
-  }
-  return pitchAccent();
 }
 
 function goalImpact() {
@@ -6854,22 +6884,40 @@ function goalImpact() {
       flashEl = doc.createElement('div');
       flashEl.id = 'tvm-goal-flash';
       flashEl.setAttribute('aria-hidden', 'true');
-      const crest = doc.createElement('img');
+      const add = (cls, tag = 'div') => {
+        const el = doc.createElement(tag);
+        el.className = cls;
+        flashEl.append(el);
+        return el;
+      };
+      add('tvm-gv');
+      add('tvm-gr');
+      add('tvm-gr');
+      // Chispas: se reparten una sola vez y salen en abanico cada gol.
+      const palette = ['#d0b878', '#f4f0df', '#3a5a9a', '#e9d49a'];
+      const n = 18;
+      for (let i = 0; i < n; i++) {
+        const spark = add('tvm-gp');
+        const angle = (i / n) * Math.PI * 2 + (i % 2 ? 0.12 : -0.12);
+        const dist = 20 + (i % 3) * 7;
+        spark.style.background = palette[i % palette.length];
+        spark.style.setProperty('--dx', `${(Math.cos(angle) * dist).toFixed(1)}vmin`);
+        spark.style.setProperty('--dy', `${(Math.sin(angle) * dist).toFixed(1)}vmin`);
+        spark.style.setProperty('--rot', `${Math.round(angle * 57.3)}deg`);
+      }
+      const crest = add('tvm-gl', 'img');
       crest.alt = '';
       crest.src = assetUrl('crest');
-      flashEl.append(crest);
+      const text = add('tvm-gt');
+      text.textContent = 'GOL';
       doc.body.append(flashEl);
     }
-    /* Un anillo desde los bordes y no un velo parejo: un velo tapa la cancha
-       justo cuando querés ver el gol. */
-    flashEl.style.background =
-      `radial-gradient(circle at 50% 50%, transparent 42%, ${rgbaOf(goalFlashColor(), 0.42)} 100%)`;
     flashEl.classList.remove('is-on');
     void flashEl.offsetWidth;
     flashEl.classList.add('is-on');
     setTimeout(() => {
       if (flashEl) flashEl.classList.remove('is-on');
-    }, 640);
+    }, 1250);
   }
 }
 
