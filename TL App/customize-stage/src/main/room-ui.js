@@ -178,7 +178,7 @@ function css(p, opts = {}) {
   const danger = light ? '#c8283a' : DANGER;
 
   return `
-/* ═══ TVM Client · lo que el cliente agrega a la sala ═══ */
+/* ═══ TL App · lo que el cliente agrega a la sala ═══ */
 
 /* ── El que habla, en el color de su equipo ───────────────────────
    El nick lo separa el cliente (ver tagSpeaker): HaxBall escribe cada mensaje

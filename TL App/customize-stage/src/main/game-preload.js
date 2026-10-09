@@ -17,6 +17,7 @@
 
 const { ipcRenderer } = require('electron');
 const ball3d = require('./ball-3d');
+const netRipple = require('./net-ripple');
 const zoomControl = require('./game-zoom');
 const themes = require('./themes');
 const roomUi = require('./room-ui');
@@ -4403,7 +4404,17 @@ function ballFrameIndex() {
   return ballDelays.length - 1;
 }
 
+/** El estadio de la sala actual, capturado cuando el juego dibuja la cancha. */
+let currentStadium = null;
+
 function drawBall(ctx, x, y, r, indice) {
+  // La red ondulante se dibuja una vez por cuadro, con la pelota (disco 0).
+  if (indice === 0 && state.config.pitch && state.config.pitch.netRipple && !(state.config.perf && state.config.perf.flatGraphics)) {
+    try {
+      const b = pitchBounds(currentStadium);
+      if (b && netRipple.active(x, b.halfW)) netRipple.draw(ctx, b.halfW, b.halfH);
+    } catch { /* un adorno no puede romper el dibujo */ }
+  }
   /*
    * Sólo el disco 0. Los PALOS DEL ARCO también son discos sin jugador y
    * entraban por acá, así que salían con la imagen puesta igual que la pelota.
@@ -5467,6 +5478,7 @@ function installTracking(view) {
     // El destello ya sabe de qué color va, sin esperar al marcador del DOM.
     if (scored) noteGoalTeam(scored);
     try { goalImpact(); } catch (e) {}
+    try { if (state.config.pitch && state.config.pitch.netRipple) netRipple.trigger(); } catch (e) {}
     return playGoalSound();
   };
 
@@ -5537,6 +5549,7 @@ function installTracking(view) {
    */
   let skinBroken = false;
   view.__tvmSkin = (ctx, w, h, stadium) => {
+    currentStadium = stadium;
     if (skinBroken) return;
     try {
       skinPitch(ctx, w, h, stadium);

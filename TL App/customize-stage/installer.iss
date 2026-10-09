@@ -1,17 +1,23 @@
-#define ClientRoot AddBackslash(SourcePath) + ".."
-#define AppVersion "1.0.41"
+; ClientRoot y AppVersion se pueden pasar por linea de comandos (/DClientRoot=... /DAppVersion=...);
+; asi los arma .github/workflows/release.yml sin editar este archivo.
+#ifndef ClientRoot
+  #define ClientRoot AddBackslash(SourcePath) + ".."
+#endif
+#ifndef AppVersion
+  #define AppVersion "1.0.41"
+#endif
 
 [Setup]
 AppId={{A9682B83-0486-49E7-BF4D-03FA8D1C3E5D}
-AppName=Toda la Lechita
+AppName=TL App
 AppVersion={#AppVersion}
-AppPublisher=Club Toda la Lechita
-DefaultDirName={localappdata}\Programs\Toda la Lechita
-DefaultGroupName=Toda la Lechita
+AppPublisher=Toda la Lecce
+DefaultDirName={localappdata}\Programs\TL App
+DefaultGroupName=TL App
 DisableProgramGroupPage=yes
 PrivilegesRequired=lowest
 OutputDir={#ClientRoot}
-OutputBaseFilename=TodaLaLechita-Setup-{#AppVersion}
+OutputBaseFilename=TL-App-Setup-{#AppVersion}
 SetupIconFile={#ClientRoot}\toda-la-lecce.ico
 UninstallDisplayIcon={app}\TL App.exe
 Compression=lzma2/ultra64
@@ -39,6 +45,7 @@ Source: "{#ClientRoot}\resources.pak"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#ClientRoot}\snapshot_blob.bin"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#ClientRoot}\v8_context_snapshot.bin"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#ClientRoot}\vk_swiftshader.dll"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#ClientRoot}\vulkan-1.dll"; DestDir: "{app}"; Flags: ignoreversion skipifsourcedoesntexist
 Source: "{#ClientRoot}\vk_swiftshader_icd.json"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#ClientRoot}\locales\*"; DestDir: "{app}\locales"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "{#ClientRoot}\swiftshader\*"; DestDir: "{app}\swiftshader"; Flags: ignoreversion recursesubdirs createallsubdirs
@@ -50,4 +57,4 @@ Name: "{autoprograms}\TL App"; Filename: "{app}\TL App.exe"; WorkingDir: "{app}"
 Name: "{autodesktop}\TL App"; Filename: "{app}\TL App.exe"; WorkingDir: "{app}"; IconFilename: "{app}\TL App.exe"; Tasks: desktopicon
 
 [Run]
-Filename: "{app}\TL App.exe"; Description: "Iniciar Toda la Lechita"; Flags: nowait postinstall skipifsilent
+Filename: "{app}\TL App.exe"; Description: "Iniciar TL App"; Flags: nowait postinstall skipifsilent

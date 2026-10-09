@@ -364,6 +364,8 @@ const DEFAULTS = {
    */
   pitch: {
     ball3d: false,
+    /** Red del arco que ondula unos instantes después de un gol (sólo visual). */
+    netRipple: false,
     /**
      * El color de la cancha. Ver el bloque grande de `skinPitch` en
      * game-preload.js para cómo se pinta sin tapar las líneas.

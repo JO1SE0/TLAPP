@@ -1763,6 +1763,12 @@ function paintLastRoom(last) {
   if (!button) return;
   state.lastRoom = last || null;
   button.hidden = !last || !last.token;
+  // El mismo atajo, en la barra de arriba: se ve desde cualquier pantalla.
+  const top = $('#topLastRoom');
+  if (top) {
+    top.hidden = !last || !last.token;
+    top.title = last && last.name ? last.name : '';
+  }
   if (!last || !last.token) return;
   // Sin nombre igual se ofrece: el token alcanza para volver, y decir «la
   // última sala» a secas es mejor que esconder el botón.
@@ -1774,6 +1780,9 @@ async function refreshLastRoom() {
 }
 
 $('#lastRoom').addEventListener('click', () => {
+  if (state.lastRoom && state.lastRoom.token) joinRoom(state.lastRoom.token);
+});
+$('#topLastRoom').addEventListener('click', () => {
   if (state.lastRoom && state.lastRoom.token) joinRoom(state.lastRoom.token);
 });
 
@@ -3423,9 +3432,10 @@ function renderAvatarImage() {
  * que lo único que hay para avisar es lo del GIF y el rol.
  */
 function renderBallImage() {
-  buildSwitches($('#ball3dSwitch'), [{ key: 'ball3d', label: t('ball.3d'),
-    description: t('ball.3dHelp'), value: () => !!state.config.pitch.ball3d
-  }], (_item, value) => patchConfig({ pitch: { ball3d: value } }));
+  buildSwitches($('#ball3dSwitch'), [
+    { key: 'ball3d', label: t('ball.3d'), description: t('ball.3dHelp'), value: () => !!state.config.pitch.ball3d },
+    { key: 'netRipple', label: t('net.ripple'), description: t('net.rippleHelp'), value: () => !!state.config.pitch.netRipple }
+  ], (item, value) => patchConfig({ pitch: { [item.key]: value } }));
   const file = (state.config.vip || {}).ballImage || '';
   const face = $('#vipBallPreview');
   face.replaceChildren();

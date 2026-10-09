@@ -1,0 +1,102 @@
+# Publica una versión de TL App: compila el instalador y sube el instalador y
+# `updates.json` a un Release de GitHub. Los clientes se actualizan solos porque
+# consultan releases/latest/download/updates.json (ver src/main/updater.js).
+#
+# Cómo se usa:
+#   git tag v1.0.42
+#   git push origin v1.0.42
+# o desde la pestaña Actions → "Publicar versión" → Run workflow (poné la versión).
+
+name: Publicar versión
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Versión a publicar (X.Y.Z, sin la v)'
+        required: true
+
+permissions:
+  contents: write
+
+env:
+  # Tiene que ser la MISMA versión de Electron que usabas hasta ahora
+  # (Ajustes → Acerca de muestra la de tu instalación). El cliente depende de
+  # Electron 13 a propósito: ver comentario de applyBootFlags en main.js.
+  ELECTRON_VERSION: '13.6.9'
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      - name: Versión
+        id: ver
+        shell: pwsh
+        run: |
+          $v = if ("${{ github.event_name }}" -eq "workflow_dispatch") { "${{ github.event.inputs.version }}" } else { "${{ github.ref_name }}".TrimStart('v') }
+          if ($v -notmatch '^\d+\.\d+\.\d+$') { throw "La versión '$v' no tiene el formato X.Y.Z" }
+          "version=$v" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+
+      - name: Armar la app (código fuente + dependencias)
+        shell: pwsh
+        run: |
+          $v = "${{ steps.ver.outputs.version }}"
+          New-Item -ItemType Directory -Force build\app | Out-Null
+          robocopy "TL App\customize-stage" build\app /MIR /XD .git tools node_modules /NFL /NDL /NJH /NJS | Out-Null
+          if ($LASTEXITCODE -ge 8) { throw "robocopy falló ($LASTEXITCODE)" }
+          # app.getVersion() sale de package.json y es lo que compara el actualizador.
+          node -e "const fs=require('fs');const p=JSON.parse(fs.readFileSync('build/app/package.json','utf8'));p.version='$v';fs.writeFileSync('build/app/package.json',JSON.stringify(p,null,2))"
+          Push-Location build\app
+          npm install --omit=dev --ignore-scripts
+          Pop-Location
+
+      - name: Runtime de Electron
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force electron-rt | Out-Null
+          Push-Location electron-rt
+          npm init -y | Out-Null
+          npm install --no-save electron@$env:ELECTRON_VERSION
+          Pop-Location
+          New-Item -ItemType Directory -Force "build\runtime" | Out-Null
+          Copy-Item "electron-rt\node_modules\electron\dist\*" "build\runtime" -Recurse -Force
+          Rename-Item "build\runtime\electron.exe" "TL App.exe"
+          Remove-Item "build\runtime\resources\default_app.asar" -ErrorAction SilentlyContinue
+          Copy-Item "TL App\resources\elevate.exe" "build\runtime\resources\elevate.exe"
+          Copy-Item "TL App\toda-la-lecce.ico" "build\runtime\toda-la-lecce.ico"
+          npx --yes @electron/asar pack build\app "build\runtime\resources\app.asar"
+
+      - name: Instalador (Inno Setup)
+        shell: pwsh
+        run: |
+          choco install innosetup -y --no-progress
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          $root = (Resolve-Path build\runtime).Path
+          & $iscc "/DAppVersion=${{ steps.ver.outputs.version }}" "/DClientRoot=$root" "/Odist" "TL App\customize-stage\installer.iss"
+          if ($LASTEXITCODE -ne 0) { throw "ISCC falló ($LASTEXITCODE)" }
+
+      - name: Feed de actualización
+        shell: pwsh
+        run: |
+          $v = "${{ steps.ver.outputs.version }}"
+          node "TL App\customize-stage\tools\make-update-feed.js" "dist\TL-App-Setup-$v.exe" $v "TL App $v"
+
+      - name: Publicar el Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.ver.outputs.version }}
+          name: TL App ${{ steps.ver.outputs.version }}
+          generate_release_notes: true
+          files: |
+            dist/TL-App-Setup-${{ steps.ver.outputs.version }}.exe
+            dist/updates.json

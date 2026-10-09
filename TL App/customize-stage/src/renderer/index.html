@@ -133,6 +133,12 @@
         </button>
       </form>
 
+      <!-- Volver a la última sala, siempre a mano (aparece sólo si hay una guardada) -->
+      <button class="toplast" id="topLastRoom" type="button" hidden>
+        <svg data-icon viewBox="0 0 24 24"><path d="M19.7 12a7.7 7.7 0 1 1-2.4-5.5l3.3 3.1M20.8 4.6l-.2 5.2-5.2-.2"/></svg>
+        <span data-i18n="rooms.backShort">Última sala</span>
+      </button>
+
       <!-- El dock de amigos se abre desde acá y desde F9 adentro del juego.
            El contador es de conectados; el punto, de algo sin leer. -->
       <button class="friendsbtn" id="btnFriends" hidden data-i18n-title="friends.toggle" title="Amigos">

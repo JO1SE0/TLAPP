@@ -1,10 +1,10 @@
-# Ejecutables y copias de respaldo de TVM Client
-TVM Client/*.exe
-TVM Client/*.exe.*
+# Ejecutables y copias de respaldo de TL App
+TL App/*.exe
+TL App/*.exe.*
 
 # Copias de respaldo del empaquetado (no van en el repo)
-TVM Client/resources/app.asar.before-*
-TVM Client/resources/app.asar.original
-TVM Client/resources/app.asar.respaldo
-TVM Client/resources/app/
+TL App/resources/app.asar.before-*
+TL App/resources/app.asar.original
+TL App/resources/app.asar.respaldo
+TL App/resources/app/
 node_modules/

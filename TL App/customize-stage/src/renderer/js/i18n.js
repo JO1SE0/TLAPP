@@ -1,5 +1,5 @@
 /* ══════════════════════════════════════════════════════════
-   TVM Client — textos
+   TL App — textos
    ══════════════════════════════════════════════════════════
    Los textos estáticos se marcan en el HTML con data-i18n y se
    resuelven al cambiar de idioma. Los dinámicos usan t('clave').
@@ -12,6 +12,8 @@
 
 const STRINGS = {
   es: {
+    'net.ripple': 'Red del arco animada',
+    'net.rippleHelp': 'La red ondula un momento después de un gol. Sólo se ve en tu pantalla.',
     'ball.3d': 'Pelota 3D',
     'ball.3dHelp': 'Sombreado y rotación al moverse. Funciona con la pelota normal o tu imagen. Sólo lo ves vos; no cambia la física.',
     'account.settingsInfo': 'Los ajustes y las identidades de HaxBall se guardan solo en esta PC. TL App no inicia sesión ni sincroniza cuentas de Discord.',
@@ -115,6 +117,7 @@ const STRINGS = {
     'rooms.eyebrow': 'En vivo',
     'rooms.title': 'Salas',
     'rooms.refresh': 'Actualizar',
+    'rooms.backShort': 'Última sala',
     'rooms.back': 'Volver a la última sala',
     'rooms.search': 'Buscar sala por nombre…',
     'rooms.summary': '{players} jugadores en {rooms} salas',
@@ -593,6 +596,8 @@ const STRINGS = {
   },
 
   en: {
+    'net.ripple': 'Animated goal net',
+    'net.rippleHelp': 'The net ripples for a moment after a goal. Only visible on your screen.',
     'ball.3d': '3D ball',
     'ball.3dHelp': 'Shading and rotation as the ball moves. Works with the default ball or your image. Only you see it; physics stay the same.',
     'account.settingsInfo': 'Settings and HaxBall identities are saved only on this PC. TL App does not sign in to or sync Discord accounts.',
@@ -695,6 +700,7 @@ const STRINGS = {
     'rooms.eyebrow': 'Live',
     'rooms.title': 'Rooms',
     'rooms.refresh': 'Refresh',
+    'rooms.backShort': 'Last room',
     'rooms.back': 'Back to your last room',
     'rooms.search': 'Search rooms by name…',
     'rooms.summary': '{players} players in {rooms} rooms',
