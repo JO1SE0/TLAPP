@@ -33,7 +33,13 @@ const TEXTURES = {
   checker: { tint: '#3b6ea5', strength: 0.9, tile: 'checker', lum: 0.1 },
   carbon: { tint: '#4a4f58', strength: 0.92, tile: 'carbon', lum: -0.05 },
   marble: { tint: '#c9ccd2', strength: 0.9, tile: 'marble', lum: 0.3 },
-  hex: { tint: '#2f8f9d', strength: 0.9, tile: 'hex', lum: 0.08 }
+  hex: { tint: '#2f8f9d', strength: 0.9, tile: 'hex', lum: 0.08 },
+  stars: { tint: '#17224a', strength: 0.95, tile: 'stars', lum: -0.18 },
+  brick: { tint: '#a0503c', strength: 0.92, tile: 'brick', lum: 0.06 },
+  snow: { tint: '#e4eef6', strength: 0.92, tile: 'snow', lum: 0.5 },
+  neon: { tint: '#1b1a45', strength: 0.95, tile: 'neon', lum: -0.12 },
+  lava: { tint: '#52180a', strength: 0.95, tile: 'lava', lum: -0.05 },
+  waves: { tint: '#2d7fb8', strength: 0.92, tile: 'waves', lum: 0.1 }
 };
 
 function textureSpec(key) {
@@ -218,6 +224,89 @@ function tileFor(doc, name) {
         for (let k = 0; k < 6; k++) c.lineTo(cx + r * Math.cos(k * TAU / 6), cy + r * Math.sin(k * TAU / 6));
         c.closePath(); c.stroke();
       }
+    }
+  } else if (name === 'stars') {
+    // Cielo estrellado: puntos de varios tamaños, algunos con brillo.
+    const dot = (x, y, rr, a) => {
+      for (let dx = -size; dx <= size; dx += size) {
+        for (let dy = -size; dy <= size; dy += size) {
+          c.fillStyle = `rgba(255,255,255,${a})`;
+          c.beginPath(); c.arc(x + dx, y + dy, rr, 0, TAU); c.fill();
+        }
+      }
+    };
+    for (let i = 0; i < 70; i++) dot(rand() * size, rand() * size, 0.5 + rand() * 0.6, 0.25 + rand() * 0.4);
+    for (let i = 0; i < 8; i++) dot(rand() * size, rand() * size, 1.4 + rand() * 0.8, 0.8);
+  } else if (name === 'brick') {
+    // Ladrillos de 32×16, alternados; la mezcla es una línea oscura.
+    for (let row = 0; row < 8; row++) {
+      for (let col = 0; col < 5; col++) {
+        const x = col * 32 - (row % 2 ? 16 : 0);
+        const sh = (rand() - 0.5) * 0.24;
+        c.fillStyle = sh > 0 ? `rgba(255,255,255,${sh})` : `rgba(0,0,0,${-sh})`;
+        c.fillRect(x, row * 16, 32, 16);
+        c.fillStyle = 'rgba(0,0,0,0.42)';
+        c.fillRect(x, row * 16, 32, 1.5);
+        c.fillRect(x, row * 16, 1.5, 16);
+      }
+    }
+    for (let i = 0; i < 500; i++) {
+      c.fillStyle = rand() > 0.5 ? `rgba(255,255,255,${rand() * 0.1})` : `rgba(0,0,0,${rand() * 0.12})`;
+      c.fillRect(Math.floor(rand() * size), Math.floor(rand() * size), 1, 1);
+    }
+  } else if (name === 'snow') {
+    // Nieve: manchas suaves y destellos.
+    for (let i = 0; i < 40; i++) {
+      const bx = rand() * size, by = rand() * size, br = 8 + rand() * 14;
+      for (let dx = -size; dx <= size; dx += size) {
+        for (let dy = -size; dy <= size; dy += size) {
+          const g = c.createRadialGradient(bx + dx, by + dy, 0, bx + dx, by + dy, br);
+          g.addColorStop(0, rand() > 0.5 ? 'rgba(255,255,255,0.12)' : 'rgba(80,110,150,0.08)');
+          g.addColorStop(1, 'rgba(128,128,128,0)');
+          c.fillStyle = g; c.fillRect(0, 0, size, size);
+        }
+      }
+    }
+    for (let i = 0; i < 90; i++) {
+      c.fillStyle = `rgba(255,255,255,${0.2 + rand() * 0.4})`;
+      c.fillRect(Math.floor(rand() * size), Math.floor(rand() * size), 1, 1);
+    }
+  } else if (name === 'neon') {
+    // Cuadrícula de neón: líneas claras con un halo suave.
+    for (let k = 0; k <= size; k += 32) {
+      c.fillStyle = 'rgba(255,255,255,0.1)';
+      c.fillRect(k - 2, 0, 5, size); c.fillRect(0, k - 2, size, 5);
+      c.fillStyle = 'rgba(255,255,255,0.55)';
+      c.fillRect(k, 0, 1.5, size); c.fillRect(0, k, size, 1.5);
+    }
+  } else if (name === 'lava') {
+    // Magma: grietas brillantes sobre roca oscura.
+    for (let i = 0; i < 4; i++) {
+      const y0 = rand() * size;
+      for (let pass = 0; pass < 2; pass++) {
+        c.strokeStyle = pass ? 'rgba(255,255,255,0.7)' : 'rgba(255,255,255,0.18)';
+        c.lineWidth = pass ? 1.2 : 4;
+        c.beginPath();
+        let x = 0, y = y0;
+        c.moveTo(x, y);
+        const r2 = rng(seed + i * 101);
+        while (x < size - 12) { x += 8 + r2() * 12; y += (r2() - 0.5) * 26; c.lineTo(Math.min(x, size), y); }
+        c.lineTo(size, y0);
+        c.stroke();
+      }
+    }
+    for (let i = 0; i < 700; i++) {
+      c.fillStyle = rand() > 0.5 ? `rgba(0,0,0,${rand() * 0.2})` : `rgba(255,255,255,${rand() * 0.08})`;
+      c.fillRect(Math.floor(rand() * size), Math.floor(rand() * size), 1, 1);
+    }
+  } else if (name === 'waves') {
+    // Agua: ondas que se repiten de punta a punta.
+    for (let y = 0; y < size; y += 16) {
+      c.strokeStyle = (y / 16) % 2 ? 'rgba(255,255,255,0.28)' : 'rgba(0,0,0,0.16)';
+      c.lineWidth = 1.6;
+      c.beginPath();
+      for (let x = 0; x <= size; x += 4) c.lineTo(x, y + 8 + Math.sin((x / size) * TAU * 2) * 4);
+      c.stroke();
     }
   } else {
     // Grano: puntitos claros y oscuros.
