@@ -2760,7 +2760,11 @@ function keyLabel(code) {
 /** El mapa que se está mostrando: el del cliente si lo tocó, si no el del juego. */
 function activeKeys() {
   const own = state.config.keys || {};
-  return Object.keys(own).length ? own : (state.liveKeys || {});
+  if (Object.keys(own).length) return own;
+  // Si el juego todavía no reportó sus teclas (no entraste a ninguna sala), se
+  // parte de las de fábrica: arrancar de un mapa vacío hacía que atar UNA tecla
+  // dejara todas las demás acciones sin nada.
+  return state.liveKeys || (state.schema && state.schema.defaultKeys) || {};
 }
 
 let capturingFor = null;
