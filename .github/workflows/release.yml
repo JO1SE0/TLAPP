@@ -108,6 +108,9 @@ jobs:
         run: |
           $v = "${{ steps.ver.outputs.version }}"
           node "TL App\customize-stage\tools\make-update-feed.js" "dist\TL-App-Setup-$v.exe" $v "TL App $v"
+          # Copia con nombre fijo: el enlace .../releases/latest/download/TL-App-Setup.exe
+          # baja siempre la última versión, así se puede compartir una sola vez.
+          Copy-Item "dist\TL-App-Setup-$v.exe" "dist\TL-App-Setup.exe"
 
       - name: Publicar el Release
         uses: softprops/action-gh-release@v2
@@ -117,4 +120,5 @@ jobs:
           generate_release_notes: true
           files: |
             dist/TL-App-Setup-${{ steps.ver.outputs.version }}.exe
+            dist/TL-App-Setup.exe
             dist/updates.json
