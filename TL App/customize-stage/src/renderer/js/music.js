@@ -193,6 +193,8 @@
       }
       sync();
     },
+    /** Cuánto va de la canción que suena (0 a 1), para la barrita del cartel. */
+    progress() { const a = current(); return a && isFinite(a.duration) && a.duration ? Math.min(1, a.currentTime / a.duration) : 0; },
     next() { step(1, false); },
     prev() { step(-1, false); },
     skip() { step(1, false); },

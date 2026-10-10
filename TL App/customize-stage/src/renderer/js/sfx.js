@@ -40,7 +40,7 @@
   }
 
   /** Una nota corta: frecuencia inicial → final, con ataque casi instantáneo. */
-  function blip(type, f0, f1, dur, peak, delay) {
+  function blip(type, f0, f1, dur, peak, delay, cut, detune) {
     const a = ctx();
     if (!a) return;
     const t = a.currentTime + (delay || 0);
@@ -50,7 +50,8 @@
     if (f1 !== f0) o.frequency.exponentialRampToValueAtTime(f1, t + dur);
     const lp = a.createBiquadFilter();
     lp.type = 'lowpass';
-    lp.frequency.value = 6500;
+    lp.frequency.value = cut || 6500;
+    if (detune) o.detune.value = detune;
     const g = a.createGain();
     g.gain.setValueAtTime(0.0001, t);
     g.gain.linearRampToValueAtTime(peak, t + 0.004);
@@ -87,6 +88,58 @@
       off() { [784, 659, 523].forEach((f, i) => blip('square', f, f, 0.06, 0.03, i * 0.055)); }
     }
   };
+  /** Un chasquido de vinilo, bajito: da el aire de lofi. */
+  function crackle(peak, delay) {
+    const a = ctx();
+    if (!a) return;
+    const t = a.currentTime + (delay || 0);
+    const len = Math.max(1, Math.floor(a.sampleRate * 0.012));
+    const buf = a.createBuffer(1, len, a.sampleRate);
+    const d = buf.getChannelData(0);
+    for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 3);
+    const src = a.createBufferSource();
+    src.buffer = buf;
+    const hp = a.createBiquadFilter();
+    hp.type = 'highpass';
+    hp.frequency.value = 2500;
+    const g = a.createGain();
+    g.gain.value = peak;
+    src.connect(hp); hp.connect(g); g.connect(out);
+    src.start(t);
+  }
+  const pick = (list) => list[Math.floor(Math.random() * list.length)];
+  const wob = () => (Math.random() * 24 - 12); // desafinación leve, tipo cinta
+  // Escalas pentatónicas menores: cualquier nota combina con cualquier otra.
+  const LOFI = [262, 294, 330, 392, 440, 523];
+  const WOOD = [523, 587, 659, 784, 880];
+
+  STYLES.lofi = {
+    hover() { blip('triangle', pick(LOFI), pick(LOFI), 0.1, 0.022, 0, 1500, wob()); },
+    click() { crackle(0.02); blip('triangle', 294, 294, 0.17, 0.05, 0, 1600, wob()); blip('triangle', 440, 440, 0.2, 0.04, 0.02, 1500, wob()); },
+    on() { crackle(0.015); blip('triangle', 330, 330, 0.14, 0.045, 0, 1500, wob()); blip('triangle', 494, 494, 0.2, 0.045, 0.09, 1500, wob()); },
+    off() { crackle(0.015); blip('triangle', 494, 494, 0.14, 0.04, 0, 1500, wob()); blip('triangle', 330, 330, 0.2, 0.04, 0.09, 1500, wob()); }
+  };
+
+  // Madera: golpecitos de marimba, redondos y cortos.
+  const wood = (f, peak, delay) => {
+    blip('sine', f, f, 0.14, peak, delay, 3200);
+    blip('sine', f * 4, f * 4, 0.035, peak * 0.35, delay, 5000);
+  };
+  STYLES.wood = {
+    hover() { const f = pick(WOOD); blip('sine', f, f, 0.06, 0.022, 0, 3000); },
+    click() { wood(392, 0.08); },
+    on() { wood(523, 0.06); wood(784, 0.06, 0.07); },
+    off() { wood(784, 0.055); wood(523, 0.055, 0.07); }
+  };
+
+  // Burbuja: gotitas de agua, el tono sube rápido y se apaga.
+  STYLES.bubble = {
+    hover() { const f = 500 + Math.random() * 300; blip('sine', f, f * 1.7, 0.05, 0.02, 0, 3500); },
+    click() { blip('sine', 320, 980, 0.1, 0.06, 0, 4000); blip('sine', 640, 1500, 0.07, 0.025, 0.015, 4000); },
+    on() { blip('sine', 380, 900, 0.08, 0.05, 0, 4000); blip('sine', 560, 1300, 0.09, 0.05, 0.07, 4000); },
+    off() { blip('sine', 560, 1300, 0.08, 0.045, 0, 4000); blip('sine', 380, 900, 0.09, 0.045, 0.07, 4000); }
+  };
+
   let style = 'modern';
   const sounds = {
     hover: () => STYLES[style].hover(),

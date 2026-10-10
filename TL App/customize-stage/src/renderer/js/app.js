@@ -3845,35 +3845,63 @@ async function renderMusicOwn() {
   }
 }
 
-/* «Ahora suena»: se muestra unos segundos al cambiar de tema y al pasar el mouse por el audio. */
+/* «Ahora suena». Si a la derecha de la lista de salas hay un hueco ancho, es una tarjeta que se queda mientras suena
+   la música; si no hay lugar, es una píldora que se muestra unos segundos al cambiar de tema. */
 let npTimer = null;
 let npTitle = '';
+let npPlaying = false;
+let npProgress = null;
+const NP_CARD_W = 250;
+function layoutNowPlaying() {
+  const el = $('#nowPlaying');
+  const panel = document.querySelector('.rpanel');
+  const gap = panel && panel.offsetParent ? window.innerWidth - panel.getBoundingClientRect().right : 0;
+  const card = gap >= NP_CARD_W + 40;
+  el.classList.toggle('np--card', card);
+  el.style.right = card ? `${Math.round((gap - NP_CARD_W) / 2)}px` : '';
+  return card;
+}
 function showNowPlaying(ms) {
   const el = $('#nowPlaying');
   if (!el || !npTitle) return;
+  const card = layoutNowPlaying();
   $('#npTitle').textContent = npTitle;
   el.hidden = false;
   requestAnimationFrame(() => el.classList.add('is-in'));
   clearTimeout(npTimer);
-  npTimer = setTimeout(hideNowPlaying, ms || 6000);
+  // La tarjeta se queda mientras suene algo; la píldora se va sola.
+  if (!card) npTimer = setTimeout(hideNowPlaying, ms || 6000);
+  clearInterval(npProgress);
+  npProgress = setInterval(() => {
+    const bar = $('#npBar');
+    if (bar && window.TLMusic) bar.style.transform = `scaleX(${window.TLMusic.progress().toFixed(3)})`;
+  }, 500);
 }
 function hideNowPlaying() {
   const el = $('#nowPlaying');
   if (!el) return;
   el.classList.remove('is-in');
   clearTimeout(npTimer);
+  clearInterval(npProgress);
   npTimer = setTimeout(() => { if (!el.classList.contains('is-in')) el.hidden = true; }, 350);
 }
+window.addEventListener('resize', () => {
+  const el = $('#nowPlaying');
+  if (!el || el.hidden) return;
+  if (layoutNowPlaying()) clearTimeout(npTimer);
+  else { clearTimeout(npTimer); npTimer = setTimeout(hideNowPlaying, 4000); }
+});
 window.addEventListener('tl:track', (e) => {
   const d = e.detail || {};
   $('#audEq').classList.toggle('is-playing', !!d.playing);
   $('#nowPlaying .eq').classList.toggle('is-playing', !!d.playing);
   $('#nowPlaying').classList.toggle('is-playing', !!d.playing);
+  npPlaying = !!d.playing;
   if (d.playing && d.title) { npTitle = d.title; showNowPlaying(6000); }
   else if (!d.playing) hideNowPlaying();
 });
 $('#nowPlaying').addEventListener('mouseenter', () => clearTimeout(npTimer));
-$('#nowPlaying').addEventListener('mouseleave', () => { npTimer = setTimeout(hideNowPlaying, 2500); });
+$('#nowPlaying').addEventListener('mouseleave', () => { if (!$('#nowPlaying').classList.contains('np--card')) npTimer = setTimeout(hideNowPlaying, 2500); });
 // Al pasar por la música se muestra el tema; al pasar por los estilos de sonido se esconde, porque ahí se abre su selector.
 $('#audMusic').addEventListener('mouseenter', () => showNowPlaying(4500));
 $('.audio__sfx').addEventListener('mouseenter', hideNowPlaying);
@@ -3886,7 +3914,9 @@ function paintAudio() {
   const vol = typeof ap.musicVolume === 'number' ? ap.musicVolume : 0.35;
   $('#audMusic').classList.toggle('is-off', ap.music === false);
   $('#audSfx').classList.toggle('is-off', ap.uiSounds === false);
-  const styleNames = isEn() ? { soft: 'Soft', modern: 'Modern', arcade: 'Arcade' } : { soft: 'Suave', modern: 'Moderno', arcade: 'Arcade' };
+  const styleNames = isEn()
+    ? { soft: 'Soft', modern: 'Modern', arcade: 'Arcade', lofi: 'Lo-fi', wood: 'Wood', bubble: 'Bubble' }
+    : { soft: 'Suave', modern: 'Moderno', arcade: 'Arcade', lofi: 'Lofi', wood: 'Madera', bubble: 'Burbuja' };
   document.querySelectorAll('#audSfxMenu .chip').forEach((chip) => {
     chip.textContent = styleNames[chip.dataset.style];
     chip.classList.toggle('is-active', chip.dataset.style === (ap.uiSoundStyle || 'modern'));
