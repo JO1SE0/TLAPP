@@ -8241,7 +8241,7 @@ function syncCanvasHotFlags() {
   visual.postColor = lookfx.safeColor(cfg.postColor);
   visual.discOutline = lookfx.safeColor(cfg.discOutline);
   visual.ballOutline = lookfx.safeColor(cfg.ballOutline);
-  visual.discStyle = ['sphere', 'glass', 'neon', 'metal'].includes(cfg.discStyle) ? cfg.discStyle : 'default';
+  visual.discStyle = ['sphere', 'glass', 'neon', 'metal', 'bubble', 'target', 'stripes', 'gem', 'cartoon', 'dots'].includes(cfg.discStyle) ? cfg.discStyle : 'default';
   visual.ringStyle = ['double', 'dashed', 'crown'].includes(cfg.ringStyle) ? cfg.ringStyle : 'default';
   visual.ringColor = lookfx.safeColor(cfg.ringColor);
   visual.selfTrail = !!cfg.selfTrail;
@@ -8491,7 +8491,7 @@ function installCanvasHooks(doc) {
         mul = visual.pitchLine; // las líneas de la cancha las dibuja HaxBall a 3
         if (visual.lineColor && lookfx.isLightLine(this.strokeStyle)) color = visual.lineColor;
       }
-      if (overlay) lookfx.discOverlay(this, visual.discStyle, pend.x, pend.y, pend.r);
+      if (overlay) lookfx.discOverlay(this, visual.discStyle, pend.x, pend.y, pend.r, origStroke);
       if (mul === 1 && !color) return origStroke.apply(this, args);
       const prevWidth = this.lineWidth;
       const prevStyle = color ? this.strokeStyle : null;

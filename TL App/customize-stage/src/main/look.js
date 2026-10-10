@@ -370,27 +370,29 @@ function paintCrest(ctx, world, bounds, img, opacity, sizeRatio) {
  * Brillo y relieve sobre un disco ya rellenado. Usa el trazo en curso (el
  * círculo del disco) como recorte, así que se llama justo antes del `stroke()`.
  */
-function discOverlay(ctx, style, x, y, r) {
+function discOverlay(ctx, style, x, y, r, strokeFn) {
   if (!(r > 0)) return;
+  // `stroke` es el que parchea el preload: llamarlo desde acá se re-entraba a sí
+  // mismo (era lo que hacía desaparecer todo con «Neón»). Se usa el original.
+  const doStroke = () => (strokeFn ? strokeFn.call(ctx) : ctx.stroke());
+  let rebuild = false;
   ctx.save();
   try {
+    ctx.clip();
+    let fill = null;
     if (style === 'neon') {
-      ctx.clip();
+      rebuild = true;
       ctx.lineWidth = Math.max(0.6, r * 0.16);
       ctx.strokeStyle = 'rgba(255,255,255,0.28)';
       ctx.beginPath();
       ctx.arc(x, y, r * 0.8, 0, TAU);
-      ctx.stroke();
+      doStroke();
       ctx.lineWidth = Math.max(0.5, r * 0.07);
       ctx.strokeStyle = 'rgba(255,255,255,0.9)';
       ctx.beginPath();
       ctx.arc(x, y, r * 0.8, 0, TAU);
-      ctx.stroke();
-      return;
-    }
-    ctx.clip();
-    let fill;
-    if (style === 'metal') {
+      doStroke();
+    } else if (style === 'metal') {
       fill = ctx.createLinearGradient(x - r, y - r, x + r, y + r);
       fill.addColorStop(0, 'rgba(255,255,255,0.6)');
       fill.addColorStop(0.32, 'rgba(255,255,255,0)');
@@ -403,6 +405,73 @@ function discOverlay(ctx, style, x, y, r) {
       fill.addColorStop(0.28, 'rgba(255,255,255,0.18)');
       fill.addColorStop(0.7, 'rgba(255,255,255,0)');
       fill.addColorStop(1, 'rgba(255,255,255,0.28)');
+    } else if (style === 'bubble') {
+      // Burbuja: borde claro y un reflejo chico arriba a la izquierda.
+      fill = ctx.createRadialGradient(x, y, r * 0.55, x, y, r);
+      fill.addColorStop(0, 'rgba(255,255,255,0)');
+      fill.addColorStop(0.8, 'rgba(255,255,255,0.18)');
+      fill.addColorStop(1, 'rgba(255,255,255,0.55)');
+      ctx.fillStyle = fill;
+      ctx.fillRect(x - r, y - r, r * 2, r * 2);
+      ctx.fillStyle = 'rgba(255,255,255,0.8)';
+      ctx.beginPath();
+      ctx.ellipse(x - r * 0.38, y - r * 0.42, r * 0.2, r * 0.12, -0.7, 0, TAU);
+      ctx.fill();
+      rebuild = true;
+      fill = null;
+    } else if (style === 'target') {
+      // Diana: dos anillos concéntricos.
+      rebuild = true;
+      ctx.strokeStyle = 'rgba(255,255,255,0.6)';
+      ctx.lineWidth = Math.max(0.5, r * 0.1);
+      for (const k of [0.36, 0.7]) {
+        ctx.beginPath();
+        ctx.arc(x, y, r * k, 0, TAU);
+        doStroke();
+      }
+    } else if (style === 'stripes') {
+      // Rayas diagonales oscuras.
+      ctx.fillStyle = 'rgba(0,0,0,0.26)';
+      const w = r * 0.3;
+      for (let i = -3; i <= 3; i += 2) {
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.rotate(-0.785);
+        ctx.fillRect(-r * 1.5, i * w - w / 2, r * 3, w);
+        ctx.restore();
+      }
+    } else if (style === 'gem') {
+      // Gema: ocho facetas alternando claro y oscuro.
+      for (let i = 0; i < 8; i++) {
+        ctx.fillStyle = i % 2 ? 'rgba(0,0,0,0.26)' : 'rgba(255,255,255,0.24)';
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+        ctx.arc(x, y, r * 1.1, (i * TAU) / 8, ((i + 1) * TAU) / 8);
+        ctx.closePath();
+        ctx.fill();
+      }
+      rebuild = true;
+    } else if (style === 'cartoon') {
+      // Sombreado de dibujo: media luna oscura abajo a la derecha + brillo.
+      ctx.fillStyle = 'rgba(0,0,0,0.3)';
+      ctx.beginPath();
+      ctx.arc(x, y, r * 1.1, 0, TAU);
+      ctx.arc(x - r * 0.32, y - r * 0.32, r * 0.95, 0, TAU, true);
+      ctx.fill('evenodd');
+      ctx.fillStyle = 'rgba(255,255,255,0.85)';
+      ctx.beginPath();
+      ctx.arc(x - r * 0.42, y - r * 0.44, r * 0.14, 0, TAU);
+      ctx.fill();
+      rebuild = true;
+    } else if (style === 'dots') {
+      // Lunares claros.
+      ctx.fillStyle = 'rgba(255,255,255,0.4)';
+      for (const [dx, dy] of [[0, 0], [0.55, 0.05], [-0.55, 0.05], [0.28, -0.5], [-0.28, -0.5], [0.28, 0.52], [-0.28, 0.52]]) {
+        ctx.beginPath();
+        ctx.arc(x + dx * r, y + dy * r, r * 0.13, 0, TAU);
+        ctx.fill();
+      }
+      rebuild = true;
     } else {
       // sphere
       fill = ctx.createRadialGradient(x - r * 0.35, y - r * 0.4, r * 0.05, x, y, r);
@@ -410,10 +479,18 @@ function discOverlay(ctx, style, x, y, r) {
       fill.addColorStop(0.45, 'rgba(255,255,255,0.04)');
       fill.addColorStop(1, 'rgba(0,0,0,0.5)');
     }
-    ctx.fillStyle = fill;
-    ctx.fillRect(x - r, y - r, r * 2, r * 2);
+    if (fill) {
+      ctx.fillStyle = fill;
+      ctx.fillRect(x - r, y - r, r * 2, r * 2);
+    }
   } finally {
     ctx.restore();
+    // Los estilos que dibujan con su propio trazado dejan el del disco hecho
+    // pedazos, y el contorno que viene después lo usa: se vuelve a armar.
+    if (rebuild) {
+      ctx.beginPath();
+      ctx.arc(x, y, r, 0, TAU);
+    }
   }
 }
 

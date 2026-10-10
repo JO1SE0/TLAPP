@@ -386,7 +386,7 @@ const DEFAULTS = {
     /** Contorno de las fichas y de la pelota. Vacío = como viene. */
     discOutline: '',
     ballOutline: '',
-    /** Aspecto de las fichas: `default` · `sphere` · `glass` · `neon` · `metal`. */
+    /** Aspecto de las fichas: `default` · `sphere` · `glass` · `neon` · `metal` · `bubble` · `target` · `stripes` · `gem` · `cartoon` · `dots`. */
     discStyle: 'default',
     /** Tu aro: `default` · `double` · `dashed` · `crown`. Color vacío = el acento. */
     ringStyle: 'default',
