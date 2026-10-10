@@ -286,6 +286,20 @@ async function hideSplash() {
 
   splash.classList.add('is-out');
   setTimeout(() => splash.remove(), 450);
+  setTimeout(startWelcome, 470);
+}
+
+/** La bienvenida del club, una vez por arranque (ver welcome.js). */
+function startWelcome() {
+  const cfg = state.config && state.config.appearance;
+  if (!cfg || cfg.welcome === false || cfg.animations === false || !window.TLWelcome) return;
+  try {
+    window.TLWelcome.play({
+      sound: cfg.welcomeSound !== false,
+      nick: String((state.config.general && state.config.general.nickname) || '').trim(),
+      english: isEn()
+    });
+  } catch (e) { /* una intro no puede romper el arranque */ }
 }
 
 /*
@@ -2998,11 +3012,15 @@ const AVATAR_PRESETS = ['⚽', '🔥', '⭐', '💀', '👑', '🐐', '🚀', '�
 const LOOK_SWITCHES = {
   es: [
     { key: 'cleanMode', label: 'Sólo la cancha', description: 'Sin el menú ni los costados del sitio.' },
-    { key: 'animations', label: 'Animaciones', description: 'Apagalo para que todo sea instantáneo.' }
+    { key: 'animations', label: 'Animaciones', description: 'Apagalo para que todo sea instantáneo.' },
+    { key: 'welcome', label: 'Bienvenida del club', description: 'Una intro corta con el escudo al abrir la app.' },
+    { key: 'welcomeSound', label: 'Sonido de la bienvenida', description: 'Se puede apagar sin quitar la animación.' }
   ],
   en: [
     { key: 'cleanMode', label: 'Pitch only', description: "Hides HaxBall's site menu and side panels." },
-    { key: 'animations', label: 'Animations', description: 'Turn it off to make everything instant.' }
+    { key: 'animations', label: 'Animations', description: 'Turn it off to make everything instant.' },
+    { key: 'welcome', label: 'Club welcome', description: 'A short intro with the crest when the app opens.' },
+    { key: 'welcomeSound', label: 'Welcome sound', description: 'Turn it off without removing the animation.' }
   ]
 };
 

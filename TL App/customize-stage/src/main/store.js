@@ -70,6 +70,9 @@ const DEFAULTS = {
     language: 'es',
     cleanMode: true,
     animations: true,
+    /** Intro del club al abrir la app y su sonido. */
+    welcome: true,
+    welcomeSound: true,
     /** Saca el chat de la pantalla durante la partida y en la sala. */
     hideChat: false,
     /** El cartel de gol estilo TV, con autor y asistencia. */
