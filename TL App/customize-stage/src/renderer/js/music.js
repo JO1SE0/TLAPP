@@ -1,7 +1,8 @@
 /*
- * Música del menú: las canciones de `assets/music` suenan una tras otra mientras
- * estás en el menú de salas, y se silencian al entrar a una sala (hay que oír el
- * juego). Arranca cuando termina la bienvenida.
+ * Música del menú: las canciones de `assets/music` suenan en el menú de salas.
+ * Cada vez que aparece el menú arranca una distinta; si te quedás, siguen una tras
+ * otra completas. Se silencian al entrar a una sala (hay que oír el juego).
+ * Arranca cuando termina la bienvenida.
  *
  * La lista sale de la carpeta (la lee el proceso principal), así que agregar o
  * sacar canciones es copiar o borrar archivos, sin tocar código.
@@ -10,7 +11,7 @@
   'use strict';
 
   const FADE_MS = 700;
-  const M = { tracks: [], index: 0, audio: null, enabled: true, volume: 0.35, allowed: false, inGame: false, errors: 0, fadeTimer: null, loading: null };
+  const M = { tracks: [], index: 0, audio: null, enabled: true, volume: 0.35, allowed: false, inGame: false, started: false, errors: 0, fadeTimer: null, loading: null };
 
   const gain = () => Math.min(1, Math.max(0, M.volume));
   const wantPlaying = () => M.enabled && M.allowed && !M.inGame && M.tracks.length > 0;
@@ -101,12 +102,23 @@
     async start() {
       M.allowed = true;
       await loadTracks();
+      // La primera de la sesión es al azar; después van en orden.
+      if (M.tracks.length > 1 && !M.started) M.index = Math.floor(Math.random() * M.tracks.length);
+      M.started = true;
       sync();
     },
     /** `true` dentro de una sala o partida: se silencia. */
     setInGame(flag) {
+      const back = M.inGame && !flag;
       M.inGame = !!flag;
-      if (M.allowed) sync();
+      if (!M.allowed) return;
+      // Cada vez que aparece el menú suena una canción distinta, desde el principio.
+      if (back && wantPlaying()) {
+        M.index = (M.index + 1) % M.tracks.length;
+        playCurrent();
+        return;
+      }
+      sync();
     },
     skip() { next(); },
     get count() { return M.tracks.length; }
