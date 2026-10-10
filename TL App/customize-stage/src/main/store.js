@@ -388,6 +388,10 @@ const DEFAULTS = {
     ballOutline: '',
     /** Aspecto de la pelota: `default` · `soccer` · `neon` · `gold` · `beach` · `eight` · `star`. */
     ballStyle: 'default',
+    /** Color de la pelota (se multiplica sobre su relleno). Vacío = como viene. */
+    ballColor: '',
+    /** Brillo de neón en las líneas de la cancha. */
+    lineGlow: false,
     /** Luz de la cancha: `none` · `vignette` · `spot` · `corners`. */
     pitchLight: 'none',
     /** Sombra suave bajo las fichas y la pelota. */

@@ -7574,6 +7574,7 @@ const LOOK_SECTIONS = {
     { key: 'crestOpacity', type: 'range', label: 'look.crestOpacity', min: 0.05, max: 0.6, step: 0.01, showIf: (v) => v.crest },
     { key: 'crestSize', type: 'range', label: 'look.crestSize', min: 0.2, max: 1, step: 0.01, showIf: (v) => v.crest },
     { key: 'lineColor', type: 'color', label: 'look.lineColor', desc: 'look.lineColorHelp' },
+    { key: 'lineGlow', type: 'switch', label: 'look.lineGlow', desc: 'look.lineGlowHelp' },
     { key: 'postColor', type: 'color', label: 'look.postColor' }
   ],
   lookDiscs: [
@@ -7581,6 +7582,7 @@ const LOOK_SECTIONS = {
     { key: 'softShadows', type: 'switch', label: 'look.softShadows', desc: 'look.softShadowsHelp' },
     { key: 'discOutline', type: 'color', label: 'look.discOutline' },
     { key: 'ballStyle', type: 'select', label: 'look.ballStyle', options: [['default', 'look.opt.none'], ['soccer', 'look.bs.soccer'], ['neon', 'look.bs.neon'], ['gold', 'look.bs.gold'], ['beach', 'look.bs.beach'], ['eight', 'look.bs.eight'], ['star', 'look.bs.star']] },
+    { key: 'ballColor', type: 'color', label: 'look.ballColor' },
     { key: 'ballOutline', type: 'color', label: 'look.ballOutline' },
     { key: 'ringStyle', type: 'select', label: 'look.ringStyle', desc: 'look.ringHelp', options: [['default', 'look.opt.simple'], ['double', 'look.ring.double'], ['dashed', 'look.ring.dashed'], ['crown', 'look.ring.crown'], ['glow', 'look.ring.glow'], ['dots', 'look.ring.dots'], ['arrow', 'look.ring.arrow']] },
     { key: 'ringColor', type: 'color', label: 'look.ringColor' },
@@ -7605,7 +7607,7 @@ const LOOK_SECTIONS = {
 
 const LOOK_DEFAULTS = {
   texture: 'none', pitchLight: 'none', softShadows: false, crest: false, crestOpacity: 0.18, crestSize: 0.45, lineColor: '', postColor: '',
-  discStyle: 'default', ballStyle: 'default', discOutline: '', ballOutline: '', ringStyle: 'default', ringColor: '',
+  discStyle: 'default', ballStyle: 'default', ballColor: '', lineGlow: false, discOutline: '', ballOutline: '', ringStyle: 'default', ringColor: '',
   selfTrail: false, selfTrailColor: '', nameScale: 1, nameColor: '', nameOutline: false, nameFont: 'default',
   chatScale: 1, chatBg: -1, chatFont: 'default', menuBg: 'none'
 };

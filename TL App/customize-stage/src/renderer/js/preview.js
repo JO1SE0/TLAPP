@@ -108,6 +108,10 @@
     ctx.lineWidth = 3 * pitchLine;
     ctx.strokeStyle = lineColor;
     ctx.lineJoin = 'round';
+    if (V.lineGlow) {
+      ctx.shadowColor = lineColor;
+      ctx.shadowBlur = 10;
+    }
     ctx.beginPath();
     rounded(ctx, -HALF_W, -HALF_H, 2 * HALF_W, 2 * HALF_H, 6);
     ctx.moveTo(0, -HALF_H);
@@ -134,6 +138,9 @@
         ctx.strokeStyle = lineColor;
       }
     }
+
+    ctx.shadowBlur = 0;
+    ctx.shadowColor = 'transparent';
 
     /* ── Color, textura y luz: la misma receta que en el juego ──────── */
     const modeOn = skin.mode === 'theme' || skin.mode === 'custom';
@@ -298,7 +305,8 @@
     ctx.arc(-55, 38, br, 0, TAU);
     ctx.fillStyle = '#ffffff';
     ctx.fill();
-    if (ballStyle !== 'default' && L.ballOverlay) L.ballOverlay(ctx, ballStyle, -55, 38, br, null);
+    const ballTint = L.safeColor(V.ballColor);
+    if ((ballStyle !== 'default' || ballTint) && L.ballOverlay) L.ballOverlay(ctx, ballStyle, -55, 38, br, null, ballTint);
     ctx.lineWidth = 2 * ballLine;
     ctx.strokeStyle = ballOutline;
     ctx.stroke();

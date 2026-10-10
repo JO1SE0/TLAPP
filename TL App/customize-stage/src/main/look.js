@@ -567,12 +567,20 @@ function pentagon(ctx, cx, cy, r, rot) {
  * curso (el círculo de la pelota) como recorte y se llama justo antes del
  * `stroke()`. `strokeFn` es el `stroke` original, para no re-entrar al parche.
  */
-function ballOverlay(ctx, style, x, y, r, strokeFn) {
+function ballOverlay(ctx, style, x, y, r, strokeFn, tint) {
   if (!(r > 0)) return;
   const doStroke = () => (strokeFn ? strokeFn.call(ctx) : ctx.stroke());
   ctx.save();
   try {
     ctx.clip();
+    // El color de la pelota: se multiplica sobre el relleno, así una blanca toma el
+    // color elegido y una con imagen sólo se tiñe.
+    if (tint) {
+      ctx.globalCompositeOperation = 'multiply';
+      ctx.fillStyle = tint;
+      ctx.fillRect(x - r, y - r, r * 2, r * 2);
+      ctx.globalCompositeOperation = 'source-over';
+    }
     if (style === 'soccer') {
       // Pentágono negro al medio y cinco más cortados por el borde.
       ctx.fillStyle = '#16181d';

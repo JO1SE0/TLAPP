@@ -4513,7 +4513,7 @@ function drawBall(ctx, x, y, r, indice) {
     handled = drawBallInner(ctx, x, y, r, indice);
   } finally {
     // Lo que sigue en el juego es el `stroke()` de este mismo disco.
-    if (indice === 0 && (visual.lines || visual.ballOutline || visual.ballStyle !== 'default')) {
+    if (indice === 0 && (visual.lines || visual.ballOutline || visual.ballColor || visual.ballStyle !== 'default')) {
       pend.on = true; pend.kind = 'ball'; pend.k = 1; pend.x = x; pend.y = y; pend.r = r;
     } else if (indice > 0 && visual.lines) {
       pend.on = true; pend.kind = 'post'; pend.k = 1; pend.x = x; pend.y = y; pend.r = r;
@@ -8299,7 +8299,7 @@ const visual = {
   pitchLine: 1, discLine: 1, ballLine: 1, ballSize: 1, discSize: 1, lines: false, sizes: false,
   texture: 'none', crest: false, crestOpacity: 0.18, crestSize: 0.45,
   lineColor: '', postColor: '', discOutline: '', ballOutline: '',
-  discStyle: 'default', ballStyle: 'default', ringStyle: 'default', ringColor: '', light: '', shadows: false,
+  discStyle: 'default', ballStyle: 'default', ringStyle: 'default', ringColor: '', light: '', shadows: false, ballColor: '', lineGlow: false,
   selfTrail: false, selfTrailColor: '',
   nameScale: 1, nameColor: '', nameOutline: false, nameFont: 'default',
   /** Hay algo que hacerle a las fichas o a la pelota en el `stroke()`. */
@@ -8338,6 +8338,8 @@ function syncCanvasHotFlags() {
   visual.discStyle = ['sphere', 'glass', 'neon', 'metal', 'bubble', 'target', 'stripes', 'gem', 'cartoon', 'dots'].includes(cfg.discStyle) ? cfg.discStyle : 'default';
   visual.light = ['vignette', 'spot', 'corners'].includes(cfg.pitchLight) ? cfg.pitchLight : '';
   visual.shadows = !!cfg.softShadows;
+  visual.ballColor = lookfx.safeColor(cfg.ballColor);
+  visual.lineGlow = !!cfg.lineGlow;
   visual.ballStyle = ['soccer', 'neon', 'gold', 'beach', 'eight', 'star'].includes(cfg.ballStyle) ? cfg.ballStyle : 'default';
   visual.ringStyle = ['double', 'dashed', 'crown', 'glow', 'dots', 'arrow'].includes(cfg.ringStyle) ? cfg.ringStyle : 'default';
   visual.ringColor = lookfx.safeColor(cfg.ringColor);
@@ -8347,7 +8349,7 @@ function syncCanvasHotFlags() {
   visual.nameColor = lookfx.safeColor(cfg.nameColor);
   visual.nameOutline = !!cfg.nameOutline;
   visual.nameFont = FONT_FAMILIES[cfg.nameFont] ? cfg.nameFont : 'default';
-  visual.discFx = visual.shadows || visual.discStyle !== 'default' || visual.ballStyle !== 'default' || !!visual.discOutline || !!visual.ballOutline;
+  visual.discFx = visual.shadows || visual.discStyle !== 'default' || visual.ballStyle !== 'default' || !!visual.ballColor || !!visual.discOutline || !!visual.ballOutline;
   visual.names = visual.nameScale !== 1 || !!visual.nameColor || visual.nameOutline || visual.nameFont !== 'default';
 }
 
@@ -8572,16 +8574,17 @@ function installCanvasHooks(doc) {
   const baseStroke = function (args) {
     if (!flatOn()) {
       // Grosor y colores propios. «Gráficos planos» manda sobre esto.
-      if (!(visual.lines || visual.discFx || visual.lineColor) || ownDraw > 0) return origStroke.apply(this, args);
+      if (!(visual.lines || visual.discFx || visual.lineColor || visual.lineGlow) || ownDraw > 0) return origStroke.apply(this, args);
       let mul = 1;
       let color = '';
       let overlay = false;
       let ballFx = false;
+      let glow = '';
       if (pend.on) {
         if (pend.kind === 'ball') {
           mul = visual.ballLine;
           color = visual.ballOutline;
-          ballFx = visual.ballStyle !== 'default';
+          ballFx = visual.ballStyle !== 'default' || !!visual.ballColor;
         } else if (pend.kind === 'disc') {
           mul = visual.discLine;
           color = visual.discOutline;
@@ -8592,14 +8595,37 @@ function installCanvasHooks(doc) {
       } else if (Math.abs(this.lineWidth - 3) < 0.01) {
         mul = visual.pitchLine; // las líneas de la cancha las dibuja HaxBall a 3
         if (visual.lineColor && lookfx.isLightLine(this.strokeStyle)) color = visual.lineColor;
+        if (visual.lineGlow && lookfx.isLightLine(this.strokeStyle)) glow = color || this.strokeStyle;
       }
       if (overlay) lookfx.discOverlay(this, visual.discStyle, pend.x, pend.y, pend.r, origStroke);
       if (ballFx) {
         ownDraw++;
         try {
-          lookfx.ballOverlay(this, visual.ballStyle, pend.x, pend.y, pend.r, origStroke);
+          lookfx.ballOverlay(this, visual.ballStyle, pend.x, pend.y, pend.r, origStroke, visual.ballColor);
         } finally {
           ownDraw--;
+        }
+      }
+      if (glow) {
+        // Brillo de neón: la línea se dibuja dos veces, ancha y tenue abajo, y la normal arriba.
+        // Va dentro del caché de la cancha, así que se paga una vez por invalidación.
+        const w0 = this.lineWidth;
+        const s0 = this.strokeStyle;
+        const a0 = this.globalAlpha;
+        ownDraw++;
+        try {
+          this.strokeStyle = glow;
+          this.globalAlpha = a0 * 0.18;
+          this.lineWidth = w0 * mul * 4;
+          origStroke.apply(this, args);
+          this.globalAlpha = a0 * 0.35;
+          this.lineWidth = w0 * mul * 2;
+          origStroke.apply(this, args);
+        } finally {
+          ownDraw--;
+          this.lineWidth = w0;
+          this.strokeStyle = s0;
+          this.globalAlpha = a0;
         }
       }
       if (mul === 1 && !color) return origStroke.apply(this, args);
@@ -8619,12 +8645,12 @@ function installCanvasHooks(doc) {
     // del cliente, no de HaxBall.
     if (pend.on && ownDraw === 0) {
       const discFx = pend.kind === 'disc' && pend.mine && visual.discStyle !== 'default';
-      const ballFx = pend.kind === 'ball' && visual.ballStyle !== 'default';
+      const ballFx = pend.kind === 'ball' && (visual.ballStyle !== 'default' || !!visual.ballColor);
       if (discFx || ballFx) {
         ownDraw++;
         try {
           if (discFx) lookfx.discOverlay(this, visual.discStyle, pend.x, pend.y, pend.r, origStroke);
-          else lookfx.ballOverlay(this, visual.ballStyle, pend.x, pend.y, pend.r, origStroke);
+          else lookfx.ballOverlay(this, visual.ballStyle, pend.x, pend.y, pend.r, origStroke, visual.ballColor);
         } finally {
           ownDraw--;
         }
