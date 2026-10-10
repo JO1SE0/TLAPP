@@ -1,5 +1,9 @@
 'use strict';
 
+/* Compartido con el renderer: la vista previa del panel (renderer/js/preview.js)
+   carga este archivo como script común. Por eso no puede usar `require` ni
+   declarar al nivel de arriba nombres que ya use app.js. */
+
 /**
  * Dibujo de la personalización visual: texturas de cancha, escudo central,
  * aspecto de las fichas, forma del aro propio y cola de color.

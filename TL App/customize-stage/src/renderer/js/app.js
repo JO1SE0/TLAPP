@@ -458,6 +458,31 @@ function applyConfig(config) {
   syncMusic();
   // Quién sos vive en la barra: el apodo o la foto pueden haber cambiado.
   paintMeChip();
+  paintPreview();
+}
+
+/**
+ * La vista previa de Cancha y Fichas. Se redibuja con cada cambio de config y
+ * al cambiar de solapa; fuera de esas dos solapas se esconde.
+ */
+let previewFrame = 0;
+function paintPreview() {
+  const box = document.getElementById('pv');
+  if (!box) return;
+  const modalCanvas = document.getElementById('pvCanvas2');
+  if (modalCanvas && window.TLPreview && state.config) {
+    requestAnimationFrame(() => { try { window.TLPreview.draw(modalCanvas, state.config); } catch (e) {} });
+  }
+  const panel = document.getElementById('panel');
+  const on = state.view === 'aspecto'
+    && ['cancha', 'fichas'].includes(currentTab('aspecto'))
+    && !(panel && panel.classList.contains('is-searching'));
+  box.hidden = !on;
+  if (!on || !window.TLPreview || !state.config) return;
+  cancelAnimationFrame(previewFrame);
+  previewFrame = requestAnimationFrame(() => {
+    try { window.TLPreview.draw(document.getElementById('pvCanvas'), state.config); } catch (e) { box.hidden = true; }
+  });
 }
 
 /**
@@ -861,6 +886,7 @@ function applyTab(page) {
   if (!el || !PANEL_TABS[page]) return;
   const cur = currentTab(page);
   for (const node of $$('[data-tab]', el)) node.classList.toggle('is-tab-off', node.dataset.tab !== cur);
+  paintPreview();
 }
 
 /** Las páginas que llevan índice. Replays no: es una lista con su buscador. */
@@ -1081,8 +1107,16 @@ function openSecModal(id) {
   sec.before(anchor);
   sec.classList.remove('is-tab-off');
   $('#secModalBody').append(sec);
+  // Las líneas y tamaños se ven en el acto: una vista previa arriba de la ventana.
+  if (id === 'trazos') {
+    const pv = document.createElement('div');
+    pv.className = 'pv pv--modal';
+    pv.innerHTML = '<canvas id="pvCanvas2" width="456" height="270"></canvas>';
+    $('#secModalBody').prepend(pv);
+  }
   $('#secModal').hidden = false;
   secModal = { sec, anchor, id };
+  paintPreview();
   $('#secModalClose').focus();
 }
 
@@ -1090,6 +1124,8 @@ function closeSecModal() {
   if (!secModal) return;
   const { sec, anchor } = secModal;
   secModal = null;
+  const pv2 = $('.pv--modal');
+  if (pv2) pv2.remove();
   if (anchor.parentNode) anchor.replaceWith(sec);
   $('#secModal').hidden = true;
   applyTab(state.view);

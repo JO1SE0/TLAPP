@@ -4437,3 +4437,21 @@ input[type="color"].is-unset { opacity: .45; }
 }
 @media (max-height: 720px) { .roster { display: none; } }
 @media (max-width: 820px) { .roster { display: none; } }
+
+/* ══════════════════════════════════════════════════════════
+   Vista previa de Personalización (columna izquierda del panel)
+   ══════════════════════════════════════════════════════════ */
+.pv {
+  margin-top: 14px;
+  padding: 10px;
+  border: 1px solid var(--line-hi);
+  border-radius: 10px;
+  background: var(--surface);
+  flex: none;
+}
+.pv[hidden] { display: none; }
+.pv__head { display: flex; flex-direction: column; gap: 1px; margin-bottom: 8px; }
+.pv__head b { font-family: var(--font-display); font-size: 12.5px; font-weight: 700; color: var(--text); }
+.pv__head small { font-size: 11px; color: var(--text-faint); }
+.pv canvas { display: block; width: 100%; height: auto; border-radius: 6px; }
+.pv--modal { margin: 0 auto 14px; max-width: 320px; }
