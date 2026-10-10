@@ -4704,3 +4704,25 @@ input[type="color"].is-unset { opacity: .45; }
 .gate__btn:disabled { opacity: .6; cursor: default; }
 .gate__msg { min-height: 18px; font-size: 12.5px; color: #ff8d8d; }
 .gate__help { font-size: 11.5px; color: rgb(244 240 223 / 45%); }
+
+/* Botones: respuesta al tacto (todo con :where, así lo que ya tiene estilo propio manda) */
+:where(.btn, .iconbtn, .ghostbtn, .wbtn, .railitem, .launch, .themecard, .switch) {
+  transition: transform .16s cubic-bezier(.2, .8, .2, 1), box-shadow .2s ease, filter .2s ease, background-color .2s ease, border-color .2s ease;
+}
+:where(.btn, .iconbtn, .ghostbtn, .wbtn, .railitem):not(:disabled):hover { filter: brightness(1.08); }
+:where(.btn, .iconbtn, .ghostbtn, .wbtn, .railitem, .launch):not(:disabled):active { transform: translateY(1px) scale(.97); filter: brightness(.95); }
+:where(.btn--primary):not(:disabled):hover { box-shadow: 0 6px 22px rgb(var(--accent-rgb) / 32%); }
+:where(.launch, .themecard):hover { transform: translateY(-2px); }
+:where(button, .btn, .iconbtn, [role="tab"], select, summary):focus-visible { outline: 2px solid rgb(var(--accent-rgb) / 70%); outline-offset: 2px; }
+:root[data-animations="off"] :where(.btn, .iconbtn, .ghostbtn, .wbtn, .railitem, .launch, .themecard, .switch) { transition: none; }
+
+/* Audio del menú en la barra superior */
+.audio { display: flex; align-items: center; gap: 2px; margin-right: 6px; -webkit-app-region: no-drag; }
+#app[data-stage="game"] .audio { display: none; }
+.audio__vol { width: 0; min-width: 0; opacity: 0; margin: 0; padding: 0; transition: width .22s ease, opacity .18s ease, margin .22s ease; pointer-events: none; }
+.audio:hover .audio__vol, .audio:focus-within .audio__vol { width: 76px; opacity: 1; margin: 0 6px; pointer-events: auto; }
+.audio__btn .audio__off { display: none; }
+.audio__btn.is-off .audio__off { display: inline; }
+.audio__btn.is-off .audio__on { display: none; }
+.audio__btn.is-off { opacity: .55; }
+:root[data-animations="off"] .audio__vol { transition: none; }

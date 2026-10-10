@@ -569,6 +569,8 @@ function applyConfig(config) {
   paintPreview();
   // Partículas del menú: dependen de su interruptor y de que las animaciones estén prendidas.
   if (window.TLMusic) window.TLMusic.configure(config.appearance.music !== false, config.appearance.musicVolume);
+  if (window.TLSfx) window.TLSfx.configure(config.appearance.uiSounds !== false);
+  if (typeof paintAudio === 'function' && document.getElementById('audMusic')) paintAudio();
   if (window.TLSparks) window.TLSparks.setEnabled(config.appearance.sparks !== false && config.appearance.animations !== false);
 }
 
@@ -3167,16 +3169,14 @@ const LOOK_SWITCHES = {
     { key: 'animations', label: 'Animaciones', description: 'Apagalo para que todo sea instantáneo.' },
     { key: 'welcome', label: 'Bienvenida del club', description: 'Una intro corta con el escudo al abrir la app.' },
     { key: 'welcomeSound', label: 'Sonido de la bienvenida', description: 'Se puede apagar sin quitar la animación.' },
-    { key: 'sparks', label: 'Partículas doradas', description: 'Motitas de luz flotando en el menú. Se apagan solas en la partida.' },
-    { key: 'music', label: 'Música del menú', description: 'Suenan canciones del club en el menú de salas. Se silencian al entrar a una sala.' }
+    { key: 'sparks', label: 'Partículas doradas', description: 'Motitas de luz flotando en el menú. Se apagan solas en la partida.' }
   ],
   en: [
     { key: 'cleanMode', label: 'Pitch only', description: "Hides HaxBall's site menu and side panels." },
     { key: 'animations', label: 'Animations', description: 'Turn it off to make everything instant.' },
     { key: 'welcome', label: 'Club welcome', description: 'A short intro with the crest when the app opens.' },
     { key: 'welcomeSound', label: 'Welcome sound', description: 'Turn it off without removing the animation.' },
-    { key: 'sparks', label: 'Golden particles', description: 'Specks of light floating in the menu. They stop on their own during a match.' },
-    { key: 'music', label: 'Menu music', description: 'Club songs play in the rooms menu. They go quiet when you enter a room.' }
+    { key: 'sparks', label: 'Golden particles', description: 'Specks of light floating in the menu. They stop on their own during a match.' }
   ]
 };
 
@@ -3424,11 +3424,6 @@ function renderAspect() {
   $('#overlayOpacity').value = state.config.overlay.opacity;
   $('#overlayOpacityValue').textContent = `${Math.round(state.config.overlay.opacity * 100)}%`;
   syncRangeFill($('#overlayOpacity'));
-
-  const mv = typeof state.config.appearance.musicVolume === 'number' ? state.config.appearance.musicVolume : 0.35;
-  $('#musicVolume').value = mv;
-  $('#musicVolumeValue').textContent = `${Math.round(mv * 100)}%`;
-  syncRangeFill($('#musicVolume'));
 
   $('#hudScale').value = state.config.appearance.hudScale;
   $('#hudScaleValue').textContent = `${Math.round(state.config.appearance.hudScale * 100)}%`;
@@ -3763,13 +3758,25 @@ $('#overlayOpacity').addEventListener('input', (e) => {
 });
 $('#overlayOpacity').addEventListener('change', (e) => patchConfig({ overlay: { opacity: Number(e.target.value) } }));
 
-$('#musicVolume').addEventListener('input', (e) => {
+/* Audio del menú (barra superior): música on/off, volumen y sonidos de botones. */
+function paintAudio() {
+  const ap = (state.config && state.config.appearance) || {};
+  const vol = typeof ap.musicVolume === 'number' ? ap.musicVolume : 0.35;
+  $('#audMusic').classList.toggle('is-off', ap.music === false);
+  $('#audSfx').classList.toggle('is-off', ap.uiSounds === false);
+  $('#audMusic').setAttribute('aria-pressed', String(ap.music !== false));
+  $('#audSfx').setAttribute('aria-pressed', String(ap.uiSounds !== false));
+  const range = $('#audVol');
+  if (document.activeElement !== range) range.value = String(vol);
+  syncRangeFill(range);
+}
+$('#audMusic').addEventListener('click', () => patchConfig({ appearance: { music: state.config.appearance.music === false } }));
+$('#audSfx').addEventListener('click', () => patchConfig({ appearance: { uiSounds: state.config.appearance.uiSounds === false } }));
+$('#audVol').addEventListener('input', (e) => {
   syncRangeFill(e.target);
-  $('#musicVolumeValue').textContent = `${Math.round(Number(e.target.value) * 100)}%`;
   if (window.TLMusic) window.TLMusic.configure(state.config.appearance.music !== false, Number(e.target.value));
 });
-$('#musicVolume').addEventListener('change', (e) => patchConfig({ appearance: { musicVolume: Number(e.target.value) } }));
-$('#musicSkip').addEventListener('click', () => { if (window.TLMusic) window.TLMusic.skip(); });
+$('#audVol').addEventListener('change', (e) => patchConfig({ appearance: { musicVolume: Number(e.target.value), music: true } }));
 
 $('#hudScale').addEventListener('input', (e) => {
   syncRangeFill(e.target);

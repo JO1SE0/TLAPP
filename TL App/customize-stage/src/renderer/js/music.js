@@ -1,7 +1,7 @@
 /*
  * Música del menú: las canciones de `assets/music` suenan en el menú de salas.
- * Cada vez que aparece el menú arranca una distinta; si te quedás, siguen una tras
- * otra completas. Se silencian al entrar a una sala (hay que oír el juego).
+ * Cada vez que aparece el menú arranca una distinta al azar; si te quedás, siguen
+ * en orden (la 5, la 6, la 7...) completas. Se silencian al entrar a una sala (hay que oír el juego).
  * Arranca cuando termina la bienvenida.
  *
  * La lista sale de la carpeta (la lee el proceso principal), así que agregar o
@@ -114,7 +114,11 @@
       if (!M.allowed) return;
       // Cada vez que aparece el menú suena una canción distinta, desde el principio.
       if (back && wantPlaying()) {
-        M.index = (M.index + 1) % M.tracks.length;
+        // Al azar, y nunca la misma que sonaba. Desde ahí, si te quedás, siguen en orden.
+        if (M.tracks.length > 1) {
+          const pick = Math.floor(Math.random() * (M.tracks.length - 1));
+          M.index = (M.index % M.tracks.length + 1 + pick) % M.tracks.length;
+        }
         playCurrent();
         return;
       }

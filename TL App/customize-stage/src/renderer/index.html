@@ -142,6 +142,17 @@
         <b class="toplast__name" id="topLastRoomName" hidden></b>
       </button>
 
+      <!-- Audio del menú: música (on/off + volumen) y sonidos de botones. Se esconde dentro de la sala. -->
+      <div class="audio" id="audio">
+        <button class="iconbtn audio__btn" id="audMusic" type="button" data-i18n-title="audio.music" title="Música del menú" aria-label="Música del menú">
+          <svg data-icon viewBox="0 0 24 24"><path d="M4 9.6v4.8h3.4L12 18.4V5.6L7.4 9.6H4z"/><path class="audio__on" d="M15.4 9.2a4 4 0 0 1 0 5.6M17.9 6.7a7.5 7.5 0 0 1 0 10.6"/><path class="audio__off" d="M15.5 9.5l5 5M20.5 9.5l-5 5"/></svg>
+        </button>
+        <input type="range" class="audio__vol" id="audVol" min="0" max="1" step="0.01" aria-label="Volumen de la música" />
+        <button class="iconbtn audio__btn" id="audSfx" type="button" data-i18n-title="audio.sfx" title="Sonidos de los botones" aria-label="Sonidos de los botones">
+          <svg data-icon viewBox="0 0 24 24"><path d="M12 4.5l1.7 4.8 4.8 1.7-4.8 1.7L12 17.5l-1.7-4.8L5.5 11l4.8-1.7z"/><path class="audio__off" d="M5 19.5L19.5 5"/></svg>
+        </button>
+      </div>
+
       <!-- El dock de amigos se abre desde acá y desde F9 adentro del juego.
            El contador es de conectados; el punto, de algo sin leer. -->
       <button class="friendsbtn" id="btnFriends" hidden data-i18n-title="friends.toggle" title="Amigos">
@@ -803,16 +814,6 @@
                 <div class="row__ctl"><div class="themes" id="themes"></div></div>
               </div>
               <div class="rows" id="lookSwitches"></div>
-              <div class="row">
-                <div class="row__text">
-                  <span class="row__label" data-i18n="look.musicVolume">Volumen de la música</span>
-                </div>
-                <div class="row__ctl">
-                  <input type="range" id="musicVolume" min="0" max="1" step="0.01" />
-                  <b class="row__val" id="musicVolumeValue">35%</b>
-                  <button type="button" class="btn btn--ghost" id="musicSkip" data-i18n="look.musicSkip">Siguiente</button>
-                </div>
-              </div>
             </div>
           </section>
 
@@ -1650,6 +1651,7 @@
   <script src="js/welcome.js"></script>
   <script src="js/sparks.js"></script>
   <script src="js/music.js"></script>
+  <script src="js/sfx.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>

@@ -77,6 +77,8 @@ const DEFAULTS = {
     sparks: true,
     /** Música del menú de salas (archivos en assets/music) y su volumen. */
     music: true,
+    /** Sonidos suaves al pasar el mouse y apretar botones. */
+    uiSounds: true,
     musicVolume: 0.35,
     /** Saca el chat de la pantalla durante la partida y en la sala. */
     hideChat: false,
