@@ -353,9 +353,18 @@ function showGate(reason) {
 }
 
 let welcomePending = false;
+let wasLocked = false;
 function onAccess(st) {
   state.access = st;
+  if (st && st.state === 'ok' && wasLocked) {
+    // El juego se arma una sola vez por sesión y, con el acceso cerrado, no se pudo montar:
+    // al desbloquear se recarga la interfaz para que arranque completo.
+    wasLocked = false;
+    location.reload();
+    return;
+  }
   if (st && st.state === 'locked') {
+    wasLocked = true;
     // Si había una partida abierta, se corta: el juego no puede seguir tapado por la pantalla.
     try { document.querySelectorAll('webview').forEach((w) => w.remove()); } catch (e) { /* nada */ }
     showGate(st.reason);
