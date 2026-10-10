@@ -1,4 +1,73 @@
 {
   "enabled": false,
-  "users": []
+  "users": [
+    {
+      "name": "Cuti",
+      "hash": "a26ca678cb8030265c7235e1cdec777e899df7475ef11599e97e6e7f4a7fa988"
+    },
+    {
+      "name": "tenka",
+      "hash": "7c74cf98a5fccde799988bd36017bc1c45b4e21b3d1f946092b25f4af608831b"
+    },
+    {
+      "name": "abis",
+      "hash": "46bebc9d9ec4d624966b4fd7f978b4f5174c090cdbba92d2edc5b379c2a09c1a"
+    },
+    {
+      "name": "nardo",
+      "hash": "9b1abe6eb1c357f0ba5b8dfe6eada2a2f39698778709b668018d14da3b7a6c62"
+    },
+    {
+      "name": "Mudryk",
+      "hash": "fb927e87c234a2dd7c9b86f7aae3a641cfd7de5e1e3d4b50305bb4beb3275212"
+    },
+    {
+      "name": "bruno",
+      "hash": "5ca02b5c4a0a980c9c32b4c561200b1aeeffeabea96a4c9e79ba331d2cfa23fa"
+    },
+    {
+      "name": "pasta",
+      "hash": "dd1f7616c1f79fe6f955a9726d8556d9e80cc3e348756e08779ae2c04e8a5ec3"
+    },
+    {
+      "name": "paco",
+      "hash": "ca673c75b45d4abc95e9f69c09cbd23c8bae593e9606e98b61dcb05de77654f1"
+    },
+    {
+      "name": "stefa",
+      "hash": "23f2ea6c15dc64881610307a67811a6b88d9f6520e3abbac7837eb1ee8cdd99c"
+    },
+    {
+      "name": "cgl",
+      "hash": "2d9d7170d6f33355d1ccd429bf200df1f40a9536afc0c618686abc55bc967047"
+    },
+    {
+      "name": "paxe",
+      "hash": "62909d7ce085b2f4beb5c2e0aa661493653f037071f921c12aa2254a28b99a57"
+    },
+    {
+      "name": "melo",
+      "hash": "e12467802513033333396a7a3f9c100ffd04125f7b2c232702f7ff693978a1a9"
+    },
+    {
+      "name": "mg",
+      "hash": "a4bea4387656c1f24d4169c43afe388ab94ab0ae74b11bb9a5566b97b3c8e799"
+    },
+    {
+      "name": "kag",
+      "hash": "da45c586206e31399f9a9490129a880b201841bec44f913826f6f0def2c42bcd"
+    },
+    {
+      "name": "naza",
+      "hash": "4baa469bc68e670a5de84ae1c8cd3d225404067a946d54c2895550f87b21aed1"
+    },
+    {
+      "name": "pandu",
+      "hash": "8d5e79f54aac6e2b5f7340a485e1db3320e3e7a0b3108dadd300351e0e87a632"
+    },
+    {
+      "name": "jere",
+      "hash": "2cdc27b6fb6216c2135304ae61577df56b18075a05efba3780dfc70134b6aee3"
+    }
+  ]
 }
