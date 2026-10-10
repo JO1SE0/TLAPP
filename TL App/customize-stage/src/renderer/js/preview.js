@@ -79,6 +79,7 @@
     const postColor = L.safeColor(V.postColor) || '#ffffff';
     const discOutline = L.safeColor(V.discOutline) || '#000000';
     const ballOutline = L.safeColor(V.ballOutline) || '#000000';
+    const ballStyle = V.ballStyle || 'default';
     const tex = L.textureSpec(V.texture);
 
     ctx.save();
@@ -287,6 +288,7 @@
     ctx.arc(-55, 38, br, 0, TAU);
     ctx.fillStyle = '#ffffff';
     ctx.fill();
+    if (ballStyle !== 'default' && L.ballOverlay) L.ballOverlay(ctx, ballStyle, -55, 38, br, null);
     ctx.lineWidth = 2 * ballLine;
     ctx.strokeStyle = ballOutline;
     ctx.stroke();

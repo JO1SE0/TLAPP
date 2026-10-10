@@ -7578,8 +7578,9 @@ const LOOK_SECTIONS = {
   lookDiscs: [
     { key: 'discStyle', type: 'select', label: 'look.discStyle', options: [['default', 'look.opt.none'], ['sphere', 'look.ds.sphere'], ['glass', 'look.ds.glass'], ['neon', 'look.ds.neon'], ['metal', 'look.ds.metal'], ['bubble', 'look.ds.bubble'], ['target', 'look.ds.target'], ['stripes', 'look.ds.stripes'], ['gem', 'look.ds.gem'], ['cartoon', 'look.ds.cartoon'], ['dots', 'look.ds.dots']] },
     { key: 'discOutline', type: 'color', label: 'look.discOutline' },
+    { key: 'ballStyle', type: 'select', label: 'look.ballStyle', options: [['default', 'look.opt.none'], ['soccer', 'look.bs.soccer'], ['neon', 'look.bs.neon'], ['gold', 'look.bs.gold'], ['beach', 'look.bs.beach'], ['eight', 'look.bs.eight'], ['star', 'look.bs.star']] },
     { key: 'ballOutline', type: 'color', label: 'look.ballOutline' },
-    { key: 'ringStyle', type: 'select', label: 'look.ringStyle', desc: 'look.ringHelp', options: [['default', 'look.opt.simple'], ['double', 'look.ring.double'], ['dashed', 'look.ring.dashed'], ['crown', 'look.ring.crown']] },
+    { key: 'ringStyle', type: 'select', label: 'look.ringStyle', desc: 'look.ringHelp', options: [['default', 'look.opt.simple'], ['double', 'look.ring.double'], ['dashed', 'look.ring.dashed'], ['crown', 'look.ring.crown'], ['glow', 'look.ring.glow'], ['dots', 'look.ring.dots'], ['arrow', 'look.ring.arrow']] },
     { key: 'ringColor', type: 'color', label: 'look.ringColor' },
     { key: 'selfTrail', type: 'switch', label: 'look.selfTrail', desc: 'look.selfTrailHelp' },
     { key: 'selfTrailColor', type: 'color', label: 'look.selfTrailColor', showIf: (v) => v.selfTrail }
@@ -7602,7 +7603,7 @@ const LOOK_SECTIONS = {
 
 const LOOK_DEFAULTS = {
   texture: 'none', crest: false, crestOpacity: 0.18, crestSize: 0.45, lineColor: '', postColor: '',
-  discStyle: 'default', discOutline: '', ballOutline: '', ringStyle: 'default', ringColor: '',
+  discStyle: 'default', ballStyle: 'default', discOutline: '', ballOutline: '', ringStyle: 'default', ringColor: '',
   selfTrail: false, selfTrailColor: '', nameScale: 1, nameColor: '', nameOutline: false, nameFont: 'default',
   chatScale: 1, chatBg: -1, chatFont: 'default', menuBg: 'none'
 };

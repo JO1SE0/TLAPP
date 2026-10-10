@@ -4489,7 +4489,7 @@ function drawBall(ctx, x, y, r, indice) {
     handled = drawBallInner(ctx, x, y, r, indice);
   } finally {
     // Lo que sigue en el juego es el `stroke()` de este mismo disco.
-    if (indice === 0 && (visual.lines || visual.ballOutline)) {
+    if (indice === 0 && (visual.lines || visual.ballOutline || visual.ballStyle !== 'default')) {
       pend.on = true; pend.kind = 'ball'; pend.k = 1; pend.x = x; pend.y = y; pend.r = r;
     } else if (indice > 0 && visual.lines) {
       pend.on = true; pend.kind = 'post'; pend.k = 1; pend.x = x; pend.y = y; pend.r = r;
@@ -8273,7 +8273,7 @@ const visual = {
   pitchLine: 1, discLine: 1, ballLine: 1, ballSize: 1, discSize: 1, lines: false, sizes: false,
   texture: 'none', crest: false, crestOpacity: 0.18, crestSize: 0.45,
   lineColor: '', postColor: '', discOutline: '', ballOutline: '',
-  discStyle: 'default', ringStyle: 'default', ringColor: '',
+  discStyle: 'default', ballStyle: 'default', ringStyle: 'default', ringColor: '',
   selfTrail: false, selfTrailColor: '',
   nameScale: 1, nameColor: '', nameOutline: false, nameFont: 'default',
   /** Hay algo que hacerle a las fichas o a la pelota en el `stroke()`. */
@@ -8310,7 +8310,8 @@ function syncCanvasHotFlags() {
   visual.discOutline = lookfx.safeColor(cfg.discOutline);
   visual.ballOutline = lookfx.safeColor(cfg.ballOutline);
   visual.discStyle = ['sphere', 'glass', 'neon', 'metal', 'bubble', 'target', 'stripes', 'gem', 'cartoon', 'dots'].includes(cfg.discStyle) ? cfg.discStyle : 'default';
-  visual.ringStyle = ['double', 'dashed', 'crown'].includes(cfg.ringStyle) ? cfg.ringStyle : 'default';
+  visual.ballStyle = ['soccer', 'neon', 'gold', 'beach', 'eight', 'star'].includes(cfg.ballStyle) ? cfg.ballStyle : 'default';
+  visual.ringStyle = ['double', 'dashed', 'crown', 'glow', 'dots', 'arrow'].includes(cfg.ringStyle) ? cfg.ringStyle : 'default';
   visual.ringColor = lookfx.safeColor(cfg.ringColor);
   visual.selfTrail = !!cfg.selfTrail;
   visual.selfTrailColor = lookfx.safeColor(cfg.selfTrailColor);
@@ -8318,7 +8319,7 @@ function syncCanvasHotFlags() {
   visual.nameColor = lookfx.safeColor(cfg.nameColor);
   visual.nameOutline = !!cfg.nameOutline;
   visual.nameFont = FONT_FAMILIES[cfg.nameFont] ? cfg.nameFont : 'default';
-  visual.discFx = visual.discStyle !== 'default' || !!visual.discOutline || !!visual.ballOutline;
+  visual.discFx = visual.discStyle !== 'default' || visual.ballStyle !== 'default' || !!visual.discOutline || !!visual.ballOutline;
   visual.names = visual.nameScale !== 1 || !!visual.nameColor || visual.nameOutline || visual.nameFont !== 'default';
 }
 
@@ -8547,10 +8548,12 @@ function installCanvasHooks(doc) {
       let mul = 1;
       let color = '';
       let overlay = false;
+      let ballFx = false;
       if (pend.on) {
         if (pend.kind === 'ball') {
           mul = visual.ballLine;
           color = visual.ballOutline;
+          ballFx = visual.ballStyle !== 'default';
         } else if (pend.kind === 'disc') {
           mul = visual.discLine;
           color = visual.discOutline;
@@ -8563,6 +8566,14 @@ function installCanvasHooks(doc) {
         if (visual.lineColor && lookfx.isLightLine(this.strokeStyle)) color = visual.lineColor;
       }
       if (overlay) lookfx.discOverlay(this, visual.discStyle, pend.x, pend.y, pend.r, origStroke);
+      if (ballFx) {
+        ownDraw++;
+        try {
+          lookfx.ballOverlay(this, visual.ballStyle, pend.x, pend.y, pend.r, origStroke);
+        } finally {
+          ownDraw--;
+        }
+      }
       if (mul === 1 && !color) return origStroke.apply(this, args);
       const prevWidth = this.lineWidth;
       const prevStyle = color ? this.strokeStyle : null;
@@ -8578,12 +8589,17 @@ function installCanvasHooks(doc) {
 
     // Con gráficos planos tu estilo de ficha (metal, vidrio…) se ve igual: es
     // del cliente, no de HaxBall.
-    if (pend.on && pend.kind === 'disc' && pend.mine && visual.discStyle !== 'default' && ownDraw === 0) {
-      ownDraw++;
-      try {
-        lookfx.discOverlay(this, visual.discStyle, pend.x, pend.y, pend.r, origStroke);
-      } finally {
-        ownDraw--;
+    if (pend.on && ownDraw === 0) {
+      const discFx = pend.kind === 'disc' && pend.mine && visual.discStyle !== 'default';
+      const ballFx = pend.kind === 'ball' && visual.ballStyle !== 'default';
+      if (discFx || ballFx) {
+        ownDraw++;
+        try {
+          if (discFx) lookfx.discOverlay(this, visual.discStyle, pend.x, pend.y, pend.r, origStroke);
+          else lookfx.ballOverlay(this, visual.ballStyle, pend.x, pend.y, pend.r, origStroke);
+        } finally {
+          ownDraw--;
+        }
       }
     }
 

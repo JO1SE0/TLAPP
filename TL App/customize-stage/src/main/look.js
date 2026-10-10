@@ -498,6 +498,118 @@ function discOverlay(ctx, style, x, y, r, strokeFn) {
   }
 }
 
+/* ── Aspecto de la pelota ───────────────────────────────────────────── */
+
+function pentagon(ctx, cx, cy, r, rot) {
+  ctx.beginPath();
+  for (let i = 0; i < 5; i++) {
+    const a = rot + (i * TAU) / 5;
+    const px = cx + Math.cos(a) * r;
+    const py = cy + Math.sin(a) * r;
+    if (i) ctx.lineTo(px, py);
+    else ctx.moveTo(px, py);
+  }
+  ctx.closePath();
+}
+
+/**
+ * Dibujo sobre la pelota ya rellenada. Igual que `discOverlay`: usa el trazo en
+ * curso (el círculo de la pelota) como recorte y se llama justo antes del
+ * `stroke()`. `strokeFn` es el `stroke` original, para no re-entrar al parche.
+ */
+function ballOverlay(ctx, style, x, y, r, strokeFn) {
+  if (!(r > 0)) return;
+  const doStroke = () => (strokeFn ? strokeFn.call(ctx) : ctx.stroke());
+  ctx.save();
+  try {
+    ctx.clip();
+    if (style === 'soccer') {
+      // Pentágono negro al medio y cinco más cortados por el borde.
+      ctx.fillStyle = '#16181d';
+      pentagon(ctx, x, y, r * 0.36, -Math.PI / 2);
+      ctx.fill();
+      for (let i = 0; i < 5; i++) {
+        const a = -Math.PI / 2 + (i * TAU) / 5 + TAU / 10;
+        pentagon(ctx, x + Math.cos(a) * r * 0.98, y + Math.sin(a) * r * 0.98, r * 0.34, a);
+        ctx.fill();
+      }
+      ctx.strokeStyle = 'rgba(22,24,29,0.55)';
+      ctx.lineWidth = Math.max(0.4, r * 0.06);
+      for (let i = 0; i < 5; i++) {
+        const a = -Math.PI / 2 + (i * TAU) / 5;
+        ctx.beginPath();
+        ctx.moveTo(x + Math.cos(a) * r * 0.36, y + Math.sin(a) * r * 0.36);
+        ctx.lineTo(x + Math.cos(a) * r * 0.7, y + Math.sin(a) * r * 0.7);
+        doStroke();
+      }
+    } else if (style === 'neon') {
+      ctx.fillStyle = 'rgba(8,16,40,0.78)';
+      ctx.fillRect(x - r, y - r, r * 2, r * 2);
+      ctx.lineWidth = Math.max(0.6, r * 0.2);
+      ctx.strokeStyle = 'rgba(0,229,255,0.35)';
+      ctx.beginPath();
+      ctx.arc(x, y, r * 0.72, 0, TAU);
+      doStroke();
+      ctx.lineWidth = Math.max(0.5, r * 0.08);
+      ctx.strokeStyle = '#7df9ff';
+      ctx.beginPath();
+      ctx.arc(x, y, r * 0.72, 0, TAU);
+      doStroke();
+    } else if (style === 'gold') {
+      const g = ctx.createLinearGradient(x - r, y - r, x + r, y + r);
+      g.addColorStop(0, 'rgba(255,240,170,0.95)');
+      g.addColorStop(0.45, 'rgba(214,170,60,0.92)');
+      g.addColorStop(0.7, 'rgba(255,226,120,0.92)');
+      g.addColorStop(1, 'rgba(150,108,30,0.95)');
+      ctx.fillStyle = g;
+      ctx.fillRect(x - r, y - r, r * 2, r * 2);
+    } else if (style === 'beach') {
+      const cols = ['#e5483f', '#ffffff', '#f2c230', '#ffffff', '#3b8be0', '#ffffff'];
+      for (let i = 0; i < 6; i++) {
+        ctx.fillStyle = cols[i];
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+        ctx.arc(x, y, r * 1.1, (i * TAU) / 6, ((i + 1) * TAU) / 6);
+        ctx.closePath();
+        ctx.fill();
+      }
+    } else if (style === 'eight') {
+      ctx.fillStyle = '#111317';
+      ctx.fillRect(x - r, y - r, r * 2, r * 2);
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.arc(x, y, r * 0.5, 0, TAU);
+      ctx.fill();
+      ctx.fillStyle = '#111317';
+      ctx.font = `bold ${(r * 0.8).toFixed(2)}px sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('8', x, y + r * 0.04);
+    } else if (style === 'star') {
+      ctx.fillStyle = '#f2c230';
+      ctx.beginPath();
+      for (let i = 0; i < 10; i++) {
+        const rad = i % 2 ? r * 0.28 : r * 0.7;
+        const a = -Math.PI / 2 + (i * Math.PI) / 5;
+        const px = x + Math.cos(a) * rad;
+        const py = y + Math.sin(a) * rad;
+        if (i) ctx.lineTo(px, py);
+        else ctx.moveTo(px, py);
+      }
+      ctx.closePath();
+      ctx.fill();
+      ctx.lineWidth = Math.max(0.4, r * 0.07);
+      ctx.strokeStyle = 'rgba(0,0,0,0.6)';
+      doStroke();
+    }
+  } finally {
+    ctx.restore();
+    // El contorno que viene después usa el trazo del círculo: se vuelve a armar.
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, TAU);
+  }
+}
+
 /* ── Aro propio ─────────────────────────────────────────────────────── */
 
 const DASH = [0, 0];
@@ -557,6 +669,55 @@ function drawRing(ctx, style, color, x, y, r, px) {
     ctx.lineTo(left + w * 0.75, top + h * 0.6);
     ctx.lineTo(left + w, top + h * 0.25);
     ctx.lineTo(left + w, top + h);
+    ctx.closePath();
+    ctx.fillStyle = color;
+    ctx.fill();
+    ctx.lineWidth = 1.4 * px;
+    ctx.strokeStyle = 'rgba(0,0,0,0.7)';
+    ctx.stroke();
+    return true;
+  }
+  if (style === 'glow') {
+    // Halo: tres vueltas cada vez más finas y más claras.
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = color;
+    const widths = [9, 5.5, 2.2];
+    const alphas = [0.16, 0.3, 0.95];
+    const prev = ctx.globalAlpha;
+    for (let i = 0; i < 3; i++) {
+      ctx.globalAlpha = prev * alphas[i];
+      ctx.lineWidth = widths[i] * px;
+      ctx.beginPath();
+      ctx.arc(x, y, r + 4 * px, 0, TAU);
+      ctx.stroke();
+    }
+    ctx.globalAlpha = prev;
+    return true;
+  }
+  if (style === 'dots') {
+    // Un anillo de puntitos redondos.
+    DASH[0] = 0.1;
+    DASH[1] = 5.5 * px;
+    ctx.setLineDash(DASH);
+    ctx.lineCap = 'round';
+    ctx.lineWidth = 3.4 * px;
+    ctx.strokeStyle = color;
+    ctx.beginPath();
+    ctx.arc(x, y, r + 5 * px, 0, TAU);
+    ctx.stroke();
+    ctx.setLineDash(NO_DASH);
+    ctx.lineCap = 'butt';
+    return true;
+  }
+  if (style === 'arrow') {
+    // Una flechita que apunta a tu ficha desde arriba.
+    const w = r * 0.9;
+    const h = r * 0.8;
+    const tip = y - r - 3 * px;
+    ctx.beginPath();
+    ctx.moveTo(x, tip);
+    ctx.lineTo(x - w / 2, tip - h);
+    ctx.lineTo(x + w / 2, tip - h);
     ctx.closePath();
     ctx.fillStyle = color;
     ctx.fill();
@@ -666,6 +827,7 @@ module.exports = {
   paintTexture,
   paintCrest,
   discOverlay,
+  ballOverlay,
   drawRing,
   noteTrail,
   drawTrail,
