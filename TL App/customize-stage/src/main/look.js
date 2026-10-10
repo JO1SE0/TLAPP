@@ -346,6 +346,56 @@ function paintTexture(ctx, world, view, name) {
   }
 }
 
+/* ── Luz de la cancha ───────────────────────────────────────────────── */
+
+/**
+ * Viñeta, foco o luces de esquina sobre la cancha. Corre dentro del caché de la
+ * cancha (una vez por invalidación, no por cuadro), así que no cuesta cuadros.
+ * `bounds` puede ser null: ahí se usa el centro de la superficie.
+ */
+function paintLight(ctx, w, h, world, bounds, mode) {
+  const cx = bounds ? world.e : w / 2;
+  const cy = bounds ? world.f : h / 2;
+  const sx = bounds ? Math.abs(world.a) : 1;
+  const hw = bounds ? bounds.halfW * sx : w / 2;
+  const hh = bounds ? bounds.halfH * sx : h / 2;
+  const diag = Math.hypot(hw, hh);
+  ctx.save();
+  try {
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.globalAlpha = 1;
+    if (mode === 'vignette') {
+      const g = ctx.createRadialGradient(cx, cy, diag * 0.45, cx, cy, diag * 1.15);
+      g.addColorStop(0, 'rgba(0,0,0,0)');
+      g.addColorStop(1, 'rgba(0,0,0,0.5)');
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, w, h);
+    } else if (mode === 'spot') {
+      const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, diag * 0.9);
+      g.addColorStop(0, 'rgba(255,244,214,0.26)');
+      g.addColorStop(1, 'rgba(255,244,214,0)');
+      ctx.globalCompositeOperation = 'screen';
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, w, h);
+    } else if (mode === 'corners') {
+      ctx.globalCompositeOperation = 'screen';
+      const rad = hw * 0.7;
+      for (const [kx, ky] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) {
+        const px = cx + kx * hw;
+        const py = cy + ky * hh;
+        const g = ctx.createRadialGradient(px, py, 0, px, py, rad);
+        g.addColorStop(0, 'rgba(255,248,225,0.3)');
+        g.addColorStop(1, 'rgba(255,248,225,0)');
+        ctx.fillStyle = g;
+        ctx.fillRect(0, 0, w, h);
+      }
+    }
+  } finally {
+    ctx.restore();
+  }
+}
+
 /* ── Escudo en el centro ────────────────────────────────────────────── */
 
 /**
@@ -826,6 +876,7 @@ module.exports = {
   textureSpec,
   paintTexture,
   paintCrest,
+  paintLight,
   discOverlay,
   ballOverlay,
   drawRing,

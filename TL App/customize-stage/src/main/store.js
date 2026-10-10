@@ -388,6 +388,10 @@ const DEFAULTS = {
     ballOutline: '',
     /** Aspecto de la pelota: `default` · `soccer` · `neon` · `gold` · `beach` · `eight` · `star`. */
     ballStyle: 'default',
+    /** Luz de la cancha: `none` · `vignette` · `spot` · `corners`. */
+    pitchLight: 'none',
+    /** Sombra suave bajo las fichas y la pelota. */
+    softShadows: false,
     /** Aspecto de las fichas: `default` · `sphere` · `glass` · `neon` · `metal` · `bubble` · `target` · `stripes` · `gem` · `cartoon` · `dots`. */
     discStyle: 'default',
     /** Tu aro: `default` · `double` · `dashed` · `crown`. Color vacío = el acento. */

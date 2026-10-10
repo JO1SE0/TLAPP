@@ -225,6 +225,8 @@
       ctx.restore();
     }
 
+    if (V.pitchLight && L.paintLight) L.paintLight(ctx, W, H, world, { halfW: HALF_W, halfH: HALF_H }, V.pitchLight);
+
     /* ── Fichas, pelota y nombres ───────────────────────────────────── */
     ctx.setTransform(sc, 0, 0, sc, W / 2, H / 2);
     ctx.globalCompositeOperation = 'source-over';
@@ -270,7 +272,14 @@
       }
     }
 
+    const shadow = (x, y, r) => {
+      ctx.beginPath();
+      ctx.arc(x + r * 0.16, y + r * 0.3, r * 1.04, 0, TAU);
+      ctx.fillStyle = 'rgba(0,0,0,0.24)';
+      ctx.fill();
+    };
     for (const d of discs) {
+      if (V.softShadows) shadow(d.x, d.y, r0);
       ctx.beginPath();
       ctx.arc(d.x, d.y, r0, 0, TAU);
       ctx.fillStyle = d.team;
@@ -284,6 +293,7 @@
 
     // La pelota.
     const br = 10 * ballSize;
+    if (V.softShadows) shadow(-55, 38, br);
     ctx.beginPath();
     ctx.arc(-55, 38, br, 0, TAU);
     ctx.fillStyle = '#ffffff';

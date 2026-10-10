@@ -4473,6 +4473,29 @@ let ball3dLogged = false;
  * Lo que el juego llama por cada disco sin jugador. Acá se resuelve el tamaño
  * y el grosor propios de la pelota; el dibujo en sí está en `drawBallInner`.
  */
+/**
+ * Sombra suave bajo una ficha o la pelota: un solo círculo oscuro corrido hacia
+ * abajo a la derecha. `rebuild` rearma el trazo del círculo, que el juego todavía
+ * tiene que rellenar (la pelota); en las fichas lo rearma el `arc` que sigue.
+ */
+function softShadow(ctx, x, y, r, rebuild) {
+  // Con `ownDraw` arriba el `arc` de abajo no vuelve a entrar al gancho de fichas.
+  ownDraw++;
+  ctx.save();
+  try {
+    ctx.beginPath();
+    ctx.arc(x + r * 0.16, y + r * 0.3, r * 1.04, 0, 2 * Math.PI, false);
+    ctx.fillStyle = 'rgba(0,0,0,0.24)';
+    ctx.globalAlpha = 1;
+    ctx.fill();
+  } finally {
+    ctx.restore();
+    ctx.beginPath();
+    if (rebuild) ctx.arc(x, y, r, 0, 2 * Math.PI, false);
+    ownDraw--;
+  }
+}
+
 function drawBall(ctx, x, y, r, indice) {
   const wantSize = indice === 0 && visual.ballSize !== 1;
   if (wantSize) {
@@ -4484,6 +4507,7 @@ function drawBall(ctx, x, y, r, indice) {
   }
   // Palos con color propio: el relleno que sigue lo hace el juego con este color.
   if (indice > 0 && visual.postColor) ctx.fillStyle = visual.postColor;
+  if (visual.shadows && indice === 0 && r > 0) softShadow(ctx, x, y, r, true);
   let handled = false;
   try {
     handled = drawBallInner(ctx, x, y, r, indice);
@@ -5758,7 +5782,7 @@ function skinPitch(ctx, w, h, stadium) {
    */
   const modeOn = skin.mode === 'theme' || skin.mode === 'custom';
   const tex = lookfx.textureSpec(visual.texture);
-  if (!modeOn && !tex && !visual.crest) return;
+  if (!modeOn && !tex && !visual.crest && !visual.light) return;
 
   let field = modeOn ? pitchSkinColor() : null;
   let outside = modeOn ? pitchOutsideColor(field) : null;
@@ -5774,7 +5798,7 @@ function skinPitch(ctx, w, h, stadium) {
     // (arena, cemento, mármol) la levantan para no quedar barrosos.
     brightness = tex.lum || 0;
   }
-  if (!field && !outside && !brightness && !stripes && !tex && !visual.crest) return;
+  if (!field && !outside && !brightness && !stripes && !tex && !visual.crest && !visual.light) return;
 
   /*
    * El contexto llega con la transformación de mundo puesta: es la que usó el
@@ -5813,6 +5837,8 @@ function skinPitch(ctx, w, h, stadium) {
       ctx.restore();
     }
   }
+
+  if (visual.light) lookfx.paintLight(ctx, w, h, world, bounds, visual.light);
 
   if (visual.crest) {
     lookfx.paintCrest(ctx, world, bounds, crestImage(ctx), visual.crestOpacity, visual.crestSize);
@@ -6003,7 +6029,7 @@ function roundedRect(ctx, x, y, w, h, r) {
 function pitchSkinPrint() {
   const skin = (state.config.pitch && state.config.pitch.skin) || {};
   const field = pitchSkinColor();
-  return `${skin.mode}|${field}|${pitchOutsideColor(field)}|${skin.strength}|${skin.brightness}|${skin.stripes}|${visual.pitchLine}|${flatGraphicsEnabled}|${visual.texture}|${visual.crest}|${visual.crestOpacity}|${visual.crestSize}|${visual.lineColor}`;
+  return `${skin.mode}|${field}|${pitchOutsideColor(field)}|${skin.strength}|${skin.brightness}|${skin.stripes}|${visual.pitchLine}|${flatGraphicsEnabled}|${visual.texture}|${visual.light}|${visual.crest}|${visual.crestOpacity}|${visual.crestSize}|${visual.lineColor}`;
 }
 
 /** Le tira el cache al estadio para que se vuelva a dibujar con el color nuevo. */
@@ -8273,7 +8299,7 @@ const visual = {
   pitchLine: 1, discLine: 1, ballLine: 1, ballSize: 1, discSize: 1, lines: false, sizes: false,
   texture: 'none', crest: false, crestOpacity: 0.18, crestSize: 0.45,
   lineColor: '', postColor: '', discOutline: '', ballOutline: '',
-  discStyle: 'default', ballStyle: 'default', ringStyle: 'default', ringColor: '',
+  discStyle: 'default', ballStyle: 'default', ringStyle: 'default', ringColor: '', light: '', shadows: false,
   selfTrail: false, selfTrailColor: '',
   nameScale: 1, nameColor: '', nameOutline: false, nameFont: 'default',
   /** Hay algo que hacerle a las fichas o a la pelota en el `stroke()`. */
@@ -8310,6 +8336,8 @@ function syncCanvasHotFlags() {
   visual.discOutline = lookfx.safeColor(cfg.discOutline);
   visual.ballOutline = lookfx.safeColor(cfg.ballOutline);
   visual.discStyle = ['sphere', 'glass', 'neon', 'metal', 'bubble', 'target', 'stripes', 'gem', 'cartoon', 'dots'].includes(cfg.discStyle) ? cfg.discStyle : 'default';
+  visual.light = ['vignette', 'spot', 'corners'].includes(cfg.pitchLight) ? cfg.pitchLight : '';
+  visual.shadows = !!cfg.softShadows;
   visual.ballStyle = ['soccer', 'neon', 'gold', 'beach', 'eight', 'star'].includes(cfg.ballStyle) ? cfg.ballStyle : 'default';
   visual.ringStyle = ['double', 'dashed', 'crown', 'glow', 'dots', 'arrow'].includes(cfg.ringStyle) ? cfg.ringStyle : 'default';
   visual.ringColor = lookfx.safeColor(cfg.ringColor);
@@ -8319,7 +8347,7 @@ function syncCanvasHotFlags() {
   visual.nameColor = lookfx.safeColor(cfg.nameColor);
   visual.nameOutline = !!cfg.nameOutline;
   visual.nameFont = FONT_FAMILIES[cfg.nameFont] ? cfg.nameFont : 'default';
-  visual.discFx = visual.discStyle !== 'default' || visual.ballStyle !== 'default' || !!visual.discOutline || !!visual.ballOutline;
+  visual.discFx = visual.shadows || visual.discStyle !== 'default' || visual.ballStyle !== 'default' || !!visual.discOutline || !!visual.ballOutline;
   visual.names = visual.nameScale !== 1 || !!visual.nameColor || visual.nameOutline || visual.nameFont !== 'default';
 }
 
@@ -8646,6 +8674,8 @@ function installCanvasHooks(doc) {
   proto.arc = function (x, y, r, a0, a1, ccw) {
     if ((visual.sizes || visual.lines || visual.discFx) && ownDraw === 0 && playerPatterns.has(this.fillStyle)) {
       const k = visual.discSize;
+      // La sombra va antes de agrandar: se agranda junto con la ficha.
+      if (visual.shadows) softShadow(this, x, y, r, false);
       pend.on = true;
       pend.kind = 'disc';
       pend.k = k;
