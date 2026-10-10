@@ -6943,28 +6943,45 @@ function paintGoalNames() {
  * esa hora sea fresca (el renglón de arriba se dibuja ANTES, por eso también se
  * arma una ventana corta desde el aviso del gol del motor).
  */
-const GOAL_LINE_TOP = new Set(['Rojo', 'Azul', 'Red is', 'Blue is']);
+const GOAL_LINE_TOP = new Set(['Rojo', 'Azul', 'Red', 'Blue']);
 const GOAL_LINE_MAIN = new Set(['¡GOL!', 'Scores!']);
 let goalTextSeenAt = 0;
 let goalTextArmedUntil = 0;
+// Los colores de equipo de HaxBall (rojo e56e56, azul 5689e5), como los devuelve
+// `fillStyle` según cómo se los haya escrito.
+const TEAM_FILL = /^(#e56e56|#5689e5|rgba?\(\s*229\s*,\s*110\s*,\s*86|rgba?\(\s*86\s*,\s*137\s*,\s*229)/i;
 
 function goalTextReplaced() {
   const cfg = state.config.pitch;
   return !!(cfg && cfg.goalFlash && state.config.appearance && state.config.appearance.animations);
 }
 
-/** ¿Este `fillText` es parte del cartel de gol de HaxBall? Barato: casi siempre sale en el primer `if`. */
-function isGoalAnnounce(text) {
+/**
+ * ¿Parece el renglón de arriba del cartel? «Rojo»/«Red» también es un nombre
+ * posible de jugador, así que no alcanza con el texto: el cartel es grande y va
+ * con el color del equipo; un nombre es chico y blanco.
+ *
+ * Antes se miraba la hora del renglón de abajo, y fallaba justo en lo que más
+ * importa: si HaxBall arma el cartel una sola vez y lo copia cuadro a cuadro,
+ * el renglón de arriba se dibuja ANTES que el de abajo y la hora siempre estaba
+ * vieja, o sea que «Red» quedaba siempre. Y «Red» a secas ni estaba en la lista.
+ */
+function looksLikeGoalBanner(ctx) {
+  if (!ctx) return false;
+  const m = /(\d+(?:\.\d+)?)px/.exec(String(ctx.font || ''));
+  if (m && Number(m[1]) >= 28) return true;
+  return typeof ctx.fillStyle === 'string' && TEAM_FILL.test(ctx.fillStyle);
+}
+
+/** ¿Este texto es parte del cartel de gol de HaxBall? Barato: casi siempre sale en el primer `if`. */
+function isGoalAnnounce(text, ctx) {
   if (typeof text !== 'string' || text.length > 7) return false;
   if (GOAL_LINE_MAIN.has(text)) {
     if (!goalTextReplaced()) return false;
     goalTextSeenAt = Date.now();
     return true;
   }
-  if (GOAL_LINE_TOP.has(text)) {
-    const now = Date.now();
-    return (now - goalTextSeenAt < 250 || now < goalTextArmedUntil) && goalTextReplaced();
-  }
+  if (GOAL_LINE_TOP.has(text)) return goalTextReplaced() && looksLikeGoalBanner(ctx);
   return false;
 }
 
@@ -8685,11 +8702,18 @@ function installCanvasHooks(doc) {
     } else if (esTextura) {
       lastTextureMine = false;
     }
-    if (!esTextura && isGoalAnnounce(text)) return undefined;
+    if (!esTextura && isGoalAnnounce(text, this)) return undefined;
     if (visual.names && !esTextura && ownDraw === 0) {
       return drawNameText(this, originalFillText, text, x, y, rest);
     }
     return originalFillText.call(this, text, x, y, ...rest);
+  };
+
+  // El cartel de gol también puede llevar contorno: se saca igual que el relleno.
+  const originalStrokeText = proto.strokeText;
+  proto.strokeText = function (text, ...rest) {
+    if (isGoalAnnounce(text, this)) return undefined;
+    return originalStrokeText.call(this, text, ...rest);
   };
 
   /*
