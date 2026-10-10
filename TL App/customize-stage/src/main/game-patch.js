@@ -346,7 +346,7 @@ if (window.__tvmStadium) return;
 
 /* Margen del cache, en píxeles de pantalla. Con el cache del tamaño exacto del
    canvas, mover la cámara dejaba franjas sin dibujar en el borde. */
-var PAD = 96;
+var PAD = 192;
 
 var cache = null, ctx = null;
 var lastStadium = null, lastPrint = '', lastW = 0, lastH = 0;
@@ -354,7 +354,7 @@ var lastZoom = 0, lastTop = -1, lastBot = -1, lastCamX = 0, lastCamY = 0;
 var flush = false, broken = false;
 
 /* Estadística, leíble desde afuera con window.__tvmStadiumStats. */
-var S = { hits: 0, misses: 0, why: {}, drawMs: 0, blitMs: 0 };
+var S = { hits: 0, misses: 0, why: {}, drawMs: 0, skinMs: 0, pintarMs: 0, on: false };
 window.__tvmStadiumStats = S;
 
 /* Alt+Tab y volver deja restos: se tira el cache para no arrastrar fantasmas. */
@@ -411,9 +411,11 @@ window.__tvmStadiumFlush = markFlush;
  */
 function pintar(self, zoom) {
   if (!window.__tvmPaint) return;
+  var t = S.on ? performance.now() : 0;
   self.c.save();
   try { window.__tvmPaint(self.c, self, zoom); } catch (e4) {}
   self.c.restore();
+  if (S.on) S.pintarMs += performance.now() - t;
 }
 
 /*
@@ -552,8 +554,11 @@ window.__tvmStadium = function (self, cvKey, camKey, zoom, topPad, botPad, lineW
       self.c = ctx;
       self[cvKey] = { width: cacheW, height: cacheH };
       try {
+        var m0 = S.on ? performance.now() : 0;
         draw(self, stadium);
+        var m1 = S.on ? performance.now() : 0;
         skin(ctx, cacheW, cacheH, stadium);
+        if (S.on) { S.drawMs += m1 - m0; S.skinMs += performance.now() - m1; }
       } finally {
         self.c = realCtx;
         self[cvKey] = realCv;
@@ -1601,7 +1606,7 @@ const KEEP = 4;
  * 23: `__tvmRoomLink` publica el código de la sala al entrar o al hostear, así
  *     los clientes se reconocen aunque hayan entrado desde la lista de salas.
  */
-const PATCH_VERSION = 23;
+const PATCH_VERSION = 24;
 
 /** El idioma es parte de la clave: el mismo bundle parchea distinto en cada uno. */
 function keyOf(url, lang) {

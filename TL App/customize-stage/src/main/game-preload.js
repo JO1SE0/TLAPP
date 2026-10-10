@@ -798,6 +798,8 @@ function onNewGameDocument(doc) {
      */
     doc.defaultView.__tvmAvatarPre = (obj) => {
       textureOwner = obj && typeof obj.__tvmMine === 'boolean' ? obj.__tvmMine : null;
+      textureMineHint = textureOwner;
+      if (textureOwner !== null) ownerVerdictSeen = true;
     };
   }
   if (gifBytes) safe(buildGifFrames);
@@ -2313,6 +2315,30 @@ function applyCameraZoom(doc = gameDocument()) {
   if (doc && doc.defaultView) doc.defaultView.__tvmCameraZoom = zoomControl.normalize(state.config.appearance.gameZoom);
 }
 
+const perfProbe = { frames: 0, tickMs: 0, t0: 0 };
+
+function togglePerfProbe(view) {
+  const win = view || (gameDocument() && gameDocument().defaultView);
+  const S = win && win.__tvmStadiumStats;
+  if (!S) { notify('Medidor no disponible en esta sala', 'err'); return; }
+  const now = performance.now();
+  if (!S.on) {
+    S.on = true; S.hits = 0; S.misses = 0; S.why = {}; S.drawMs = 0; S.skinMs = 0; S.pintarMs = 0;
+    perfProbe.frames = 0; perfProbe.tickMs = 0; perfProbe.t0 = now;
+    notify('Midiendo… jugá un rato y apretá F6 de nuevo');
+    return;
+  }
+  S.on = false;
+  const secs = Math.max(0.001, (now - perfProbe.t0) / 1000);
+  const frames = Math.max(1, perfProbe.frames);
+  const total = S.hits + S.misses;
+  const why = Object.keys(S.why).map((k) => `${k} ${S.why[k]}`).join(', ') || 'ninguna';
+  const per = (ms) => (ms / frames).toFixed(2);
+  const msg = `${Math.round(frames / secs)} FPS · caché ${total ? Math.round((100 * S.hits) / total) : 0}% de aciertos (fallas: ${why}) · por cuadro: cancha ${per(S.drawMs)} ms, color/textura ${per(S.skinMs)} ms, ayudas ${per(S.pintarMs)} ms, estadísticas ${per(perfProbe.tickMs)} ms`;
+  notify(msg);
+  log('info', `Medidor F6: ${msg}`, 'rendimiento');
+}
+
 function onKeyDown(event) {
   /*
    * El resumen del partido, con la tecla que diga la config (Tab de fábrica).
@@ -2339,6 +2365,16 @@ function onKeyDown(event) {
     // Que no le llegue a HaxBall, que si no abre el chat además del resumen.
     event.stopPropagation();
     ipcRenderer.send('game:toggle-stats');
+    return;
+  }
+
+  /*
+   * F6: medidor de rendimiento. La primera vez empieza a medir; la segunda
+   * muestra qué se llevó el tiempo de cada cuadro y apaga la medición.
+   */
+  if (event.key === 'F6') {
+    event.preventDefault();
+    safe(togglePerfProbe, event.target && event.target.ownerDocument && event.target.ownerDocument.defaultView);
     return;
   }
 
@@ -4809,6 +4845,18 @@ let lastTextureMine = false;
  */
 let textureOwner = null;
 
+/**
+ * Las texturas de disco que son TUYAS, para los estilos de ficha (metal, vidrio,
+ * neón…), que son sólo para tu ficha. Se marcan en `createPattern`, a partir del
+ * veredicto que `__tvmAvatarPre` deja justo antes de rearmar cada textura.
+ * `ownerVerdictSeen` dice si alguna vez llegó un veredicto: si el parche del
+ * bundle no aplicó nunca llega, y en ese caso el estilo vale para todas las
+ * fichas en vez de no verse en ninguna.
+ */
+let textureMineHint = null;
+let ownerVerdictSeen = false;
+const minePatterns = new WeakSet();
+
 function gifOn() {
   return !!(gifSheet && gifDelays && gifDelays.length > 1);
 }
@@ -5556,8 +5604,11 @@ function installTracking(view) {
   let broken = false;
   view.__tvmTick = (room) => {
     if (broken) return;
+    const stats = view.__tvmStadiumStats;
+    const t0 = stats && stats.on ? performance.now() : 0;
     try {
       onGameTick(view, room);
+      if (t0) { perfProbe.frames++; perfProbe.tickMs += performance.now() - t0; }
     } catch (err) {
       broken = true;
       log('error', `el motor de estadísticas se apagó: ${err && err.message ? err.message : err}`, 'juego');
@@ -8304,7 +8355,7 @@ const playerPatterns = new WeakSet();
  * Lo que está esperando su `stroke()`: el disco que se acaba de armar y cómo
  * deshacer su agrandado. `kind`: `disc` (ficha) · `ball` · `post` (palos).
  */
-const pend = { on: false, kind: '', k: 1, x: 0, y: 0, r: 0 };
+const pend = { on: false, kind: '', k: 1, x: 0, y: 0, r: 0, mine: false };
 
 /** > 0 mientras dibuja el propio cliente (ayudas, color de cancha): no se toca. */
 let ownDraw = 0;
@@ -8322,7 +8373,7 @@ function installCanvasHooks(doc) {
     Object.defineProperty(proto, 'shadowBlur', {
       get: origShadowBlur.get,
       set: function (value) {
-        if (flatOn()) {
+        if (flatOn() && ownDraw === 0) {
           origShadowBlur.set.call(this, 0);
         } else {
           origShadowBlur.set.call(this, value);
@@ -8336,7 +8387,7 @@ function installCanvasHooks(doc) {
     Object.defineProperty(proto, 'shadowColor', {
       get: origShadowColor.get,
       set: function (value) {
-        if (flatOn()) {
+        if (flatOn() && ownDraw === 0) {
           origShadowColor.set.call(this, 'transparent');
         } else {
           origShadowColor.set.call(this, value);
@@ -8377,6 +8428,7 @@ function installCanvasHooks(doc) {
     if (pattern && image && typeof image.getContext === 'function') {
       // La textura de un jugador (un canvas de 64×64): así se reconoce su disco.
       playerPatterns.add(pattern);
+      if (textureMineHint === true) minePatterns.add(pattern);
       return pattern;
     }
     if (!pattern || !image) return pattern;
@@ -8418,7 +8470,9 @@ function installCanvasHooks(doc) {
   const origCreateRadialGradient = proto.createRadialGradient;
   proto.createRadialGradient = function (x0, y0, r0, x1, y1, r1) {
     const grad = origCreateRadialGradient.call(this, x0, y0, r0, x1, y1, r1);
-    if (flatOn()) {
+    // «Gráficos planos» aplana lo de HaxBall, no lo que pone el cliente (estilo
+    // de ficha, textura de cancha): eso se sigue viendo con el modo prendido.
+    if (flatOn() && ownDraw === 0) {
       const origAddColorStop = grad.addColorStop;
       grad.addColorStop = function (offset, color) {
         origAddColorStop.call(this, offset, 'transparent');
@@ -8430,7 +8484,7 @@ function installCanvasHooks(doc) {
   const origCreateLinearGradient = proto.createLinearGradient;
   proto.createLinearGradient = function (x0, y0, x1, y1) {
     const grad = origCreateLinearGradient.call(this, x0, y0, x1, y1);
-    if (flatOn()) {
+    if (flatOn() && ownDraw === 0) {
       const origAddColorStop = grad.addColorStop;
       let firstColor = null;
       grad.addColorStop = function (offset, color) {
@@ -8483,7 +8537,7 @@ function installCanvasHooks(doc) {
         } else if (pend.kind === 'disc') {
           mul = visual.discLine;
           color = visual.discOutline;
-          overlay = visual.discStyle !== 'default';
+          overlay = visual.discStyle !== 'default' && pend.mine;
         } else {
           mul = visual.pitchLine;
         }
@@ -8502,6 +8556,17 @@ function installCanvasHooks(doc) {
       } finally {
         this.lineWidth = prevWidth;
         if (color) this.strokeStyle = prevStyle;
+      }
+    }
+
+    // Con gráficos planos tu estilo de ficha (metal, vidrio…) se ve igual: es
+    // del cliente, no de HaxBall.
+    if (pend.on && pend.kind === 'disc' && pend.mine && visual.discStyle !== 'default' && ownDraw === 0) {
+      ownDraw++;
+      try {
+        lookfx.discOverlay(this, visual.discStyle, pend.x, pend.y, pend.r, origStroke);
+      } finally {
+        ownDraw--;
       }
     }
 
@@ -8554,6 +8619,9 @@ function installCanvasHooks(doc) {
       pend.x = x;
       pend.y = y;
       pend.r = r;
+      // Los estilos de ficha son sólo para la tuya (o para todas si el juego
+      // no nos dice cuál es la tuya: ver `ownerVerdictSeen`).
+      pend.mine = !ownerVerdictSeen || minePatterns.has(this.fillStyle);
       if (k !== 1) {
         this.translate(x, y);
         this.scale(k, k);
