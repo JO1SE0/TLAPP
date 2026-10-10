@@ -23,6 +23,7 @@ const { hashKey } = require('../src/main/access');
 const FILE = path.resolve(__dirname, '..', '..', '..', 'access.json');
 
 function read() {
+  try { return JSON.parse(fs.readFileSync(FILE, 'utf8')); } catch { return { enabled: false, users: [] }; }
 }
 function write(j) { fs.writeFileSync(FILE, `${JSON.stringify(j, null, 2)}\n`, 'utf8'); }
 
