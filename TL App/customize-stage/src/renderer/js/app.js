@@ -1127,7 +1127,7 @@ function openSecModal(id) {
   if (id === 'trazos') {
     const pv = document.createElement('div');
     pv.className = 'pv pv--modal';
-    pv.innerHTML = '<canvas id="pvCanvas2" width="456" height="270"></canvas>';
+    pv.innerHTML = '<canvas id="pvCanvas2" width="1200" height="500"></canvas>';
     $('#secModalBody').prepend(pv);
   }
   $('#secModal').hidden = false;

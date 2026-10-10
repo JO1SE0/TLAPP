@@ -22,6 +22,11 @@
   const TAU = Math.PI * 2;
   const HALF_W = 300;
   const HALF_H = 150;
+  // Se muestra un recorte grande de la cancha —el arco de la izquierda y la mitad de
+  // la cancha— y no la cancha entera: así las líneas, los contornos y los detalles
+  // de las fichas se ven del tamaño de verdad.
+  const VIEW_W = 410;
+  const VIEW_CX = -110;
 
   function css(name, fallback) {
     const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
@@ -67,7 +72,8 @@
     const V = cfg.visual || {};
     const P = cfg.pitch || {};
     const skin = P.skin || {};
-    const sc = (W - 28) / (2 * HALF_W);
+    const sc = W / VIEW_W;
+    const tx = W / 2 - VIEW_CX * sc;
     const px = 1 / sc;
 
     const pitchLine = num(V.pitchLine, 0.3, 4, 1);
@@ -91,7 +97,7 @@
     /* ── Cancha de HaxBall, sin retocar ─────────────────────────────── */
     ctx.fillStyle = '#586f45';
     ctx.fillRect(0, 0, W, H);
-    ctx.setTransform(sc, 0, 0, sc, W / 2, H / 2);
+    ctx.setTransform(sc, 0, 0, sc, tx, H / 2);
     const world = ctx.getTransform();
     ctx.beginPath();
     rounded(ctx, -HALF_W, -HALF_H, 2 * HALF_W, 2 * HALF_H, 6);
@@ -235,7 +241,7 @@
     if (V.pitchLight && L.paintLight) L.paintLight(ctx, W, H, world, { halfW: HALF_W, halfH: HALF_H }, V.pitchLight);
 
     /* ── Fichas, pelota y nombres ───────────────────────────────────── */
-    ctx.setTransform(sc, 0, 0, sc, W / 2, H / 2);
+    ctx.setTransform(sc, 0, 0, sc, tx, H / 2);
     ctx.globalCompositeOperation = 'source-over';
     ctx.globalAlpha = 1;
     ctx.lineJoin = 'round';
@@ -243,9 +249,9 @@
     const accent = css('--accent', '#d0b878');
     const nick = String((cfg.general && cfg.general.nickname) || '').trim() || 'Vos';
     const discs = [
-      { x: -120, y: 25, team: '#e56e56', name: nick, mine: true },
-      { x: 95, y: -50, team: '#5689e5', name: 'Rival' },
-      { x: -25, y: -80, team: '#e56e56', name: 'Amigo' }
+      { x: -178, y: 6, team: '#e56e56', name: nick, mine: true },
+      { x: -62, y: -30, team: '#5689e5', name: 'Rival' },
+      { x: -34, y: 42, team: '#e56e56', name: 'Amigo' }
     ];
     const r0 = 15 * discSize;
 
@@ -300,13 +306,13 @@
 
     // La pelota.
     const br = 10 * ballSize;
-    if (V.softShadows) shadow(-55, 38, br);
+    if (V.softShadows) shadow(-122, 26, br);
     ctx.beginPath();
-    ctx.arc(-55, 38, br, 0, TAU);
+    ctx.arc(-122, 26, br, 0, TAU);
     ctx.fillStyle = '#ffffff';
     ctx.fill();
     const ballTint = L.safeColor(V.ballColor);
-    if ((ballStyle !== 'default' || ballTint) && L.ballOverlay) L.ballOverlay(ctx, ballStyle, -55, 38, br, null, ballTint);
+    if ((ballStyle !== 'default' || ballTint) && L.ballOverlay) L.ballOverlay(ctx, ballStyle, -122, 26, br, null, ballTint);
     ctx.lineWidth = 2 * ballLine;
     ctx.strokeStyle = ballOutline;
     ctx.stroke();

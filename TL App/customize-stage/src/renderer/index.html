@@ -666,11 +666,6 @@
                 </button>
               </div>
               <nav class="pnav__list" id="panelNavList"></nav>
-              <!-- Vista previa: sólo en Cancha y Fichas (ver paintPreview en app.js). -->
-              <div class="pv" id="pv" hidden>
-                <div class="pv__head"><b data-i18n="preview.title">Vista previa</b><small data-i18n="preview.sub">Tu ficha es la de la izquierda</small></div>
-                <canvas id="pvCanvas" width="456" height="270"></canvas>
-              </div>
             </aside>
 
             <div class="panel__pages">
@@ -790,6 +785,13 @@
             <h1 data-i18n="nav.personalize">Personalización</h1>
             <p data-i18n="personalize.subtitle">Cómo se ve el cliente y tu juego. Lo marcado «sólo lo ves vos» no afecta a nadie más.</p>
           </header>
+
+          <!-- Vista previa: sólo en Cancha y Fichas (ver paintPreview en app.js). Va fija arriba
+               mientras se mueve el resto de la página. -->
+          <div class="pv" id="pv" hidden>
+            <div class="pv__head"><b data-i18n="preview.title">Vista previa</b><small data-i18n="preview.sub">Tu ficha es la de la izquierda</small></div>
+            <canvas id="pvCanvas" width="1200" height="500"></canvas>
+          </div>
 
           <section class="sec sec--feature" data-sec="tema">
             <header class="sec__head">
