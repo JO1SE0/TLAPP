@@ -60,23 +60,39 @@
     o.stop(t + dur + 0.03);
   }
 
-  const sounds = {
-    hover() {
-      const f = SCALE[Math.floor(Math.random() * SCALE.length)];
-      blip('sine', f, f * 1.12, 0.05, 0.028);
+  /*
+   * Tres estilos. Cada uno define los cuatro sonidos con las mismas notas base, así
+   * que cambiar de estilo cambia el carácter, no el volumen general.
+   */
+  const STYLES = {
+    // Moderno: tics cristalinos y pops redondos.
+    modern: {
+      hover() { const f = SCALE[Math.floor(Math.random() * SCALE.length)]; blip('sine', f, f * 1.12, 0.05, 0.028); },
+      click() { blip('triangle', 520, 1040, 0.075, 0.07); blip('sine', 1560, 1560, 0.045, 0.03, 0.012); },
+      on() { blip('triangle', 700, 700, 0.07, 0.055); blip('triangle', 1050, 1050, 0.1, 0.055, 0.065); },
+      off() { blip('triangle', 1050, 1050, 0.07, 0.05); blip('triangle', 700, 700, 0.1, 0.05, 0.065); }
     },
-    click() {
-      blip('triangle', 520, 1040, 0.075, 0.07);
-      blip('sine', 1560, 1560, 0.045, 0.03, 0.012);
+    // Suave: sólo senos graves y largos, casi un susurro.
+    soft: {
+      hover() { const f = SCALE[Math.floor(Math.random() * 3)] * 0.5; blip('sine', f, f, 0.11, 0.016); },
+      click() { blip('sine', 392, 523, 0.14, 0.05); },
+      on() { blip('sine', 523, 523, 0.12, 0.04); blip('sine', 659, 659, 0.16, 0.04, 0.08); },
+      off() { blip('sine', 659, 659, 0.12, 0.035); blip('sine', 523, 523, 0.16, 0.035, 0.08); }
     },
-    on() {
-      blip('triangle', 700, 700, 0.07, 0.055);
-      blip('triangle', 1050, 1050, 0.1, 0.055, 0.065);
-    },
-    off() {
-      blip('triangle', 1050, 1050, 0.07, 0.05);
-      blip('triangle', 700, 700, 0.1, 0.05, 0.065);
+    // Arcade: ondas cuadradas de 8 bits, con arpegios.
+    arcade: {
+      hover() { const f = [988, 1175, 1319][Math.floor(Math.random() * 3)]; blip('square', f, f, 0.03, 0.014); },
+      click() { blip('square', 440, 880, 0.06, 0.035); blip('square', 1320, 1320, 0.04, 0.025, 0.05); },
+      on() { [523, 659, 784].forEach((f, i) => blip('square', f, f, 0.06, 0.03, i * 0.055)); },
+      off() { [784, 659, 523].forEach((f, i) => blip('square', f, f, 0.06, 0.03, i * 0.055)); }
     }
+  };
+  let style = 'modern';
+  const sounds = {
+    hover: () => STYLES[style].hover(),
+    click: () => STYLES[style].click(),
+    on: () => STYLES[style].on(),
+    off: () => STYLES[style].off()
   };
 
   const isOff = (el) => el.disabled || el.getAttribute('aria-disabled') === 'true';
@@ -115,7 +131,10 @@
   }, true);
 
   window.TLSfx = {
-    configure(flag) { enabled = flag !== false; },
+    configure(flag, name) {
+      enabled = flag !== false;
+      if (name && STYLES[name]) style = name;
+    },
     play(name) { if (enabled && sounds[name]) sounds[name](); }
   };
 })();

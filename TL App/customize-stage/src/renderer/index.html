@@ -147,10 +147,20 @@
         <button class="iconbtn audio__btn" id="audMusic" type="button" data-i18n-title="audio.music" title="Música del menú" aria-label="Música del menú">
           <svg data-icon viewBox="0 0 24 24"><path d="M4 9.6v4.8h3.4L12 18.4V5.6L7.4 9.6H4z"/><path class="audio__on" d="M15.4 9.2a4 4 0 0 1 0 5.6M17.9 6.7a7.5 7.5 0 0 1 0 10.6"/><path class="audio__off" d="M15.5 9.5l5 5M20.5 9.5l-5 5"/></svg>
         </button>
+        <span class="eq eq--mini" id="audEq" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
         <input type="range" class="audio__vol" id="audVol" min="0" max="1" step="0.01" aria-label="Volumen de la música" />
-        <button class="iconbtn audio__btn" id="audSfx" type="button" data-i18n-title="audio.sfx" title="Sonidos de los botones" aria-label="Sonidos de los botones">
+        <div class="audio__sfx">
+          <button class="iconbtn audio__btn" id="audSfx" type="button" data-i18n-title="audio.sfx" title="Sonidos de los botones" aria-label="Sonidos de los botones">
           <svg data-icon viewBox="0 0 24 24"><path d="M12 4.5l1.7 4.8 4.8 1.7-4.8 1.7L12 17.5l-1.7-4.8L5.5 11l4.8-1.7z"/><path class="audio__off" d="M5 19.5L19.5 5"/></svg>
         </button>
+          <div class="audio__menu" id="audSfxMenu" role="group" aria-label="Estilo de los sonidos">
+            <div class="audio__menu-in">
+              <button type="button" class="chip" data-style="soft"></button>
+              <button type="button" class="chip" data-style="modern"></button>
+              <button type="button" class="chip" data-style="arcade"></button>
+            </div>
+          </div>
+        </div>
       </div>
 
       <!-- El dock de amigos se abre desde acá y desde F9 adentro del juego.
@@ -184,6 +194,15 @@
         <button class="wbtn wbtn--close" data-win="close" aria-label="✕"><svg viewBox="0 0 12 12"><path d="M3 3l6 6M9 3l-6 6"/></svg></button>
       </div>
     </header>
+
+    <!-- «Ahora suena»: aparece unos segundos al cambiar de tema -->
+    <div class="nowplaying" id="nowPlaying" hidden>
+      <span class="eq" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+      <div class="nowplaying__text"><small data-i18n="audio.now">Ahora suena</small><b id="npTitle"></b></div>
+      <button class="iconbtn" id="npPrev" type="button" data-i18n-title="audio.prev" title="Anterior" aria-label="Anterior"><svg data-icon viewBox="0 0 24 24"><path d="M7 5.5v13M18 6l-8 6 8 6z"/></svg></button>
+      <button class="iconbtn" id="npNext" type="button" data-i18n-title="audio.next" title="Siguiente" aria-label="Siguiente"><svg data-icon viewBox="0 0 24 24"><path d="M17 5.5v13M6 6l8 6-8 6z"/></svg></button>
+    </div>
+
     <button class="topbar-reveal" id="btnTopbarReveal" type="button" data-i18n-title="topbar.show" title="Mostrar la barra superior" aria-controls="topbar" aria-expanded="false" hidden>
       <svg data-icon viewBox="0 0 24 24"><path d="m6 10 6 6 6-6"/></svg>
       <span data-i18n="topbar.showLabel">Mostrar barra</span>
@@ -814,6 +833,7 @@
                 <div class="row__ctl"><div class="themes" id="themes"></div></div>
               </div>
               <div class="rows" id="lookSwitches"></div>
+              <div class="rows" id="musicOwn"></div>
             </div>
           </section>
 

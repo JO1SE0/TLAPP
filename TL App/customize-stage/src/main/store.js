@@ -77,8 +77,12 @@ const DEFAULTS = {
     sparks: true,
     /** Música del menú de salas (archivos en assets/music) y su volumen. */
     music: true,
+    /** Incluir las canciones del club (además de las propias). */
+    musicClub: true,
     /** Sonidos suaves al pasar el mouse y apretar botones. */
     uiSounds: true,
+    /** Estilo de esos sonidos: soft | modern | arcade. */
+    uiSoundStyle: 'modern',
     musicVolume: 0.35,
     /** Saca el chat de la pantalla durante la partida y en la sala. */
     hideChat: false,

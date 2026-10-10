@@ -9,6 +9,9 @@
  *   node make-access-key.js list            muestra quién está en la lista
  *   node make-access-key.js enable          activa la lista (desde ahí se exige clave)
  *   node make-access-key.js disable         la desactiva (entra cualquiera)
+ *   node make-access-key.js notice "texto"  publica un aviso que le aparece a todos al abrir la app
+ *   node make-access-key.js notice "Título" "texto"   lo mismo, con título
+ *   node make-access-key.js notice clear    saca el aviso
  *
  * La clave en claro se muestra UNA vez al agregar: pasásela a la persona y no se
  * guarda en ningún lado. En el JSON sólo queda el hash. Después hay que subir el
@@ -38,7 +41,22 @@ const name = rest.join(' ').trim();
 const j = read();
 if (!Array.isArray(j.users)) j.users = [];
 
-if (cmd === 'add' && name) {
+if (cmd === 'notice') {
+  if (rest[0] === 'clear') {
+    delete j.announcement;
+    write(j);
+    console.log('Aviso borrado.');
+  } else if (rest.length >= 1 && rest.length <= 2 && rest[rest.length - 1].trim()) {
+    const text = rest[rest.length - 1].trim().slice(0, 600);
+    const title = rest.length === 2 ? rest[0].trim().slice(0, 80) : '';
+    j.announcement = { id: Date.now().toString(36), title, text };
+    write(j);
+    console.log(`Aviso publicado${title ? ` (${title})` : ''}: ${text}`);
+  } else {
+    console.error('Uso: notice "texto"  |  notice "Título" "texto"  |  notice clear  (poné el texto entre comillas)');
+    process.exit(1);
+  }
+} else if (cmd === 'add' && name) {
   if (j.users.some((u) => u.name.toLowerCase() === name.toLowerCase())) { console.error(`Ya existe "${name}". Sacalo primero para generar otra clave.`); process.exit(1); }
   const key = newKey();
   j.users.push({ name, hash: hashKey(key) });
@@ -51,12 +69,13 @@ if (cmd === 'add' && name) {
   console.log(before === j.users.length ? `No encontré a "${name}".` : `Listo, "${name}" ya no tiene acceso.`);
 } else if (cmd === 'list') {
   console.log(`Lista ${j.enabled ? 'ACTIVA' : 'desactivada'} — ${j.users.length} persona(s):`);
+  if (j.announcement) console.log(`Aviso actual: ${j.announcement.title ? `${j.announcement.title} — ` : ''}${j.announcement.text}`);
   j.users.forEach((u) => console.log(' -', u.name));
 } else if (cmd === 'enable' || cmd === 'disable') {
   j.enabled = cmd === 'enable';
   write(j);
   console.log(j.enabled ? 'Lista ACTIVADA: ahora se exige clave.' : 'Lista desactivada: entra cualquiera.');
 } else {
-  console.error('Uso: add <nombre> | remove <nombre> | list | enable | disable');
+  console.error('Uso: add <nombre> | remove <nombre> | list | enable | disable | notice "texto" | notice clear');
   process.exit(1);
 }

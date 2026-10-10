@@ -32,7 +32,9 @@ const DAY = 24 * 3600 * 1000;
 
 let dir = null;
 let saved = { key: '', enabled: null, name: '', validatedAt: 0 };
-let status = { state: 'ok', name: '', reason: '' };
+let status = { state: 'ok', name: '', reason: '', notice: null };
+/** Último anuncio del capitán que se pudo leer (se conserva si después no hay conexión). */
+let notice = null;
 let timer = null;
 let onChange = () => {};
 
@@ -63,8 +65,18 @@ async function fetchList() {
   } finally { clearTimeout(t); }
 }
 
+/** Un anuncio válido: texto corto, sólo texto (la interfaz lo muestra sin HTML). */
+function cleanNotice(raw) {
+  if (!raw || typeof raw !== 'object' || typeof raw.text !== 'string' || !raw.text.trim()) return null;
+  const text = raw.text.trim().slice(0, 600);
+  const id = String(raw.id || crypto.createHash('sha1').update(text).digest('hex').slice(0, 10)).slice(0, 40);
+  return { id, title: String(raw.title || '').trim().slice(0, 80), text };
+}
+
 function set(next) {
-  const changed = next.state !== status.state || next.reason !== status.reason || next.name !== status.name;
+  next.notice = notice;
+  const changed = next.state !== status.state || next.reason !== status.reason || next.name !== status.name ||
+    JSON.stringify(next.notice) !== JSON.stringify(status.notice);
   status = next;
   if (changed) onChange(status);
 }
@@ -76,6 +88,7 @@ async function evaluate(key) {
   const candidate = key != null ? key : saved.key;
 
   if (list) {
+    notice = cleanNotice(list.announcement);
     const enabled = list.enabled === true;
     saved.enabled = enabled;
     if (!enabled) { saved.validatedAt = Date.now(); persist(); return set({ state: 'ok', name: saved.name, reason: '' }); }

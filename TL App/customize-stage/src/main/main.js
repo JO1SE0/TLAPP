@@ -2097,14 +2097,62 @@ function handle(channel, fn) {
   });
 }
 
-/* Música del menú: los archivos de assets/music, en orden alfabético -------- */
+/* Música del menú: las del club (assets/music) y las que cada jugador suma ---- */
+const MUSIC_EXT = /\.(mp3|ogg|m4a|wav|flac|opus)$/i;
+const MUSIC_MAX_BYTES = 60 * 1024 * 1024;
+const MUSIC_MAX_FILES = 60;
+const userMusicDir = () => path.join(app.getPath('userData'), 'music');
+const byName = (a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
+
+async function listMusic(dir) {
+  try { return (await fs.promises.readdir(dir)).filter((n) => MUSIC_EXT.test(n)).sort(byName); } catch { return []; }
+}
+
 handle('tracks:list', async () => {
-  const dir = path.join(ROOT, 'assets', 'music');
-  let names = [];
-  try { names = await fs.promises.readdir(dir); } catch { return []; }
-  return names
-    .filter((n) => /\.(mp3|ogg|m4a|wav|flac|opus)$/i.test(n))
-    .sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
+  const club = (await listMusic(path.join(ROOT, 'assets', 'music')))
+    .map((name) => ({ name, user: false, url: `../../assets/music/${encodeURIComponent(name)}` }));
+  const dir = userMusicDir();
+  const { pathToFileURL } = require('url');
+  const mine = (await listMusic(dir))
+    .map((name) => ({ name, user: true, url: pathToFileURL(path.join(dir, name)).href }));
+  return [...club, ...mine];
+});
+
+handle('tracks:add', async () => {
+  const res = await dialog.showOpenDialog(mainWindow, {
+    title: 'Elegí tus canciones',
+    filters: [{ name: 'Audio', extensions: ['mp3', 'ogg', 'm4a', 'wav', 'flac', 'opus'] }],
+    properties: ['openFile', 'multiSelections']
+  });
+  if (res.canceled || !res.filePaths.length) return { added: 0, skipped: 0 };
+  const dir = userMusicDir();
+  await fs.promises.mkdir(dir, { recursive: true });
+  let have = (await listMusic(dir)).length;
+  let added = 0;
+  let skipped = 0;
+  for (const src of res.filePaths) {
+    try {
+      const stat = await fs.promises.stat(src);
+      if (!stat.isFile() || stat.size > MUSIC_MAX_BYTES || have >= MUSIC_MAX_FILES || !MUSIC_EXT.test(src)) { skipped++; continue; }
+      // Nombre limpio y sin pisar otro que ya esté.
+      const clean = path.basename(src).replace(/[<>:"/\\|?*\x00-\x1f]/g, '_');
+      const ext = path.extname(clean);
+      const stem = clean.slice(0, clean.length - ext.length);
+      let name = clean;
+      for (let i = 2; fs.existsSync(path.join(dir, name)); i++) name = `${stem} (${i})${ext}`;
+      await fs.promises.copyFile(src, path.join(dir, name));
+      have++;
+      added++;
+    } catch { skipped++; }
+  }
+  return { added, skipped };
+});
+
+handle('tracks:remove', async (_e, name) => {
+  const clean = path.basename(String(name || ''));
+  if (!clean || clean !== name || !MUSIC_EXT.test(clean)) throw new Error('Nombre no válido');
+  await fs.promises.unlink(path.join(userMusicDir(), clean));
+  return true;
 });
 
 /* Lista de acceso (access.js) --------------------------------------- */

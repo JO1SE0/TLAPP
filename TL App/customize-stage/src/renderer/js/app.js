@@ -359,6 +359,46 @@ function showGate(reason) {
   setTimeout(() => { const i = gate.querySelector('.gate__input'); if (i) i.focus(); }, 50);
 }
 
+/* Aviso del capitán (access.json → announcement): se muestra una vez por aviso. */
+function noticeSeen() { try { return localStorage.getItem('tl_notice_seen') || ''; } catch (e) { return ''; } }
+function showNoticeIfReady() {
+  const n = state.access && state.access.notice;
+  if (!n || state.access.state === 'locked' || n.id === noticeSeen()) return;
+  if (document.getElementById('welcome') || $('#startScreen') && !$('#startScreen').hidden && $('#startScreen').offsetParent) return;
+  if (state.stage === 'game' || $('#notice')) return;
+  const en = isEn();
+  const box = document.createElement('div');
+  box.id = 'notice';
+  box.className = 'gate notice';
+  const card = document.createElement('div');
+  card.className = 'gate__card';
+  const img = document.createElement('img');
+  img.src = '../../assets/toda-la-lecce.png';
+  img.alt = '';
+  img.className = 'gate__crest';
+  const h = document.createElement('h2');
+  h.className = 'gate__title';
+  h.textContent = n.title || (en ? "Captain's notice" : 'Aviso del capitán');
+  const p = document.createElement('p');
+  p.className = 'notice__text';
+  p.textContent = n.text;
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'gate__btn';
+  btn.textContent = en ? 'Got it' : 'Entendido';
+  btn.addEventListener('click', () => {
+    try { localStorage.setItem('tl_notice_seen', n.id); } catch (e) { /* sin almacenamiento: se vuelve a mostrar */ }
+    box.remove();
+  });
+  card.append(img, h, p, btn);
+  box.append(card);
+  document.body.append(box);
+  setTimeout(() => btn.focus(), 50);
+}
+window.addEventListener('tl:welcome-done', () => setTimeout(showNoticeIfReady, 400));
+// También cuando se cierra la pantalla de apodo: una consulta barata cada tanto, que sale enseguida si no hay nada.
+setInterval(showNoticeIfReady, 2500);
+
 let welcomePending = false;
 let wasLocked = false;
 function onAccess(st) {
@@ -380,6 +420,7 @@ function onAccess(st) {
   const gate = $('#gate');
   if (gate) { gate.hidden = true; document.body.classList.remove('is-gated'); }
   if (welcomePending) { welcomePending = false; startWelcome(); }
+  setTimeout(showNoticeIfReady, 900);
 }
 
 /** La bienvenida del club, una vez por arranque (ver welcome.js). */
@@ -568,8 +609,8 @@ function applyConfig(config) {
   paintMeChip();
   paintPreview();
   // Partículas del menú: dependen de su interruptor y de que las animaciones estén prendidas.
-  if (window.TLMusic) window.TLMusic.configure(config.appearance.music !== false, config.appearance.musicVolume);
-  if (window.TLSfx) window.TLSfx.configure(config.appearance.uiSounds !== false);
+  if (window.TLMusic) window.TLMusic.configure(config.appearance.music !== false, config.appearance.musicVolume, config.appearance.musicClub !== false);
+  if (window.TLSfx) window.TLSfx.configure(config.appearance.uiSounds !== false, config.appearance.uiSoundStyle);
   if (typeof paintAudio === 'function' && document.getElementById('audMusic')) paintAudio();
   if (window.TLSparks) window.TLSparks.setEnabled(config.appearance.sparks !== false && config.appearance.animations !== false);
 }
@@ -1590,6 +1631,7 @@ function setStage(kind) {
   state.stage = kind;
   $('#app').dataset.stage = kind;
   if (window.TLMusic) window.TLMusic.setInGame(kind === 'game');
+  if (kind === 'browser') setTimeout(showNoticeIfReady, 600);
   // El fondo ambiental se apaga cuando hay cancha detrás, no cuando estás en la
   // pestaña Salas: con los paneles encima son cosas distintas.
   document.documentElement.dataset.stage = kind;
@@ -3169,14 +3211,16 @@ const LOOK_SWITCHES = {
     { key: 'animations', label: 'Animaciones', description: 'Apagalo para que todo sea instantáneo.' },
     { key: 'welcome', label: 'Bienvenida del club', description: 'Una intro corta con el escudo al abrir la app.' },
     { key: 'welcomeSound', label: 'Sonido de la bienvenida', description: 'Se puede apagar sin quitar la animación.' },
-    { key: 'sparks', label: 'Partículas doradas', description: 'Motitas de luz flotando en el menú. Se apagan solas en la partida.' }
+    { key: 'sparks', label: 'Partículas doradas', description: 'Motitas de luz flotando en el menú. Se apagan solas en la partida.' },
+    { key: 'musicClub', label: 'Canciones del club en el menú', description: 'Apagalo si querés que suenen sólo las tuyas. El volumen y el apagado están arriba, en la barra.' }
   ],
   en: [
     { key: 'cleanMode', label: 'Pitch only', description: "Hides HaxBall's site menu and side panels." },
     { key: 'animations', label: 'Animations', description: 'Turn it off to make everything instant.' },
     { key: 'welcome', label: 'Club welcome', description: 'A short intro with the crest when the app opens.' },
     { key: 'welcomeSound', label: 'Welcome sound', description: 'Turn it off without removing the animation.' },
-    { key: 'sparks', label: 'Golden particles', description: 'Specks of light floating in the menu. They stop on their own during a match.' }
+    { key: 'sparks', label: 'Golden particles', description: 'Specks of light floating in the menu. They stop on their own during a match.' },
+    { key: 'musicClub', label: 'Club songs in the menu', description: 'Turn it off to hear only your own. Volume and mute are up in the top bar.' }
   ]
 };
 
@@ -3403,6 +3447,7 @@ function renderAspect() {
     (item, value) => patchConfig({ appearance: { [item.key]: value } })
   );
 
+  renderMusicOwn();
   renderAvatar();
 
   renderGameSettings($('#gameChat'), 'chat');
@@ -3758,12 +3803,91 @@ $('#overlayOpacity').addEventListener('input', (e) => {
 });
 $('#overlayOpacity').addEventListener('change', (e) => patchConfig({ overlay: { opacity: Number(e.target.value) } }));
 
+/* Mis canciones: las suma cada jugador desde su PC (se guardan en su carpeta de datos). */
+async function renderMusicOwn() {
+  const box = $('#musicOwn');
+  if (!box) return;
+  const en = isEn();
+  let mine = [];
+  try { mine = (await tvm.tracks.list()).filter((t) => t.user); } catch (e) { mine = []; }
+  box.replaceChildren();
+  const add = document.createElement('button');
+  add.type = 'button';
+  add.className = 'btn btn--ghost btn--sm';
+  add.textContent = en ? 'Add songs…' : 'Agregar canciones…';
+  add.addEventListener('click', async () => {
+    try {
+      const r = await tvm.tracks.add();
+      if (r && r.added) toast(en ? `${r.added} song(s) added` : `${r.added} canción(es) agregada(s)`, 'ok');
+      if (r && r.skipped) toast(en ? `${r.skipped} skipped (too big or not audio)` : `${r.skipped} no se pudieron agregar (muy pesadas o no son audio)`, 'err');
+      if (r && r.added && window.TLMusic) await window.TLMusic.reload();
+      renderMusicOwn();
+    } catch (e) { toast(e.message, 'err'); }
+  });
+  box.append(settingRow({
+    label: en ? 'My songs' : 'Mis canciones',
+    description: en ? 'Add mp3 files from your PC; they play along with the club songs.' : 'Sumá mp3 de tu PC: suenan junto con las del club.',
+    control: add
+  }));
+  for (const t of mine) {
+    const rm = document.createElement('button');
+    rm.type = 'button';
+    rm.className = 'btn btn--ghost btn--sm';
+    rm.textContent = en ? 'Remove' : 'Quitar';
+    rm.addEventListener('click', async () => {
+      try {
+        await tvm.tracks.remove(t.name);
+        if (window.TLMusic) await window.TLMusic.reload();
+      } catch (e) { toast(e.message, 'err'); }
+      renderMusicOwn();
+    });
+    box.append(settingRow({ label: t.name.replace(/\.[a-z0-9]+$/i, ''), control: rm }));
+  }
+}
+
+/* «Ahora suena»: se muestra unos segundos al cambiar de tema y al pasar el mouse por el audio. */
+let npTimer = null;
+let npTitle = '';
+function showNowPlaying(ms) {
+  const el = $('#nowPlaying');
+  if (!el || !npTitle) return;
+  $('#npTitle').textContent = npTitle;
+  el.hidden = false;
+  requestAnimationFrame(() => el.classList.add('is-in'));
+  clearTimeout(npTimer);
+  npTimer = setTimeout(hideNowPlaying, ms || 6000);
+}
+function hideNowPlaying() {
+  const el = $('#nowPlaying');
+  if (!el) return;
+  el.classList.remove('is-in');
+  clearTimeout(npTimer);
+  npTimer = setTimeout(() => { if (!el.classList.contains('is-in')) el.hidden = true; }, 350);
+}
+window.addEventListener('tl:track', (e) => {
+  const d = e.detail || {};
+  $('#audEq').classList.toggle('is-playing', !!d.playing);
+  $('#nowPlaying .eq').classList.toggle('is-playing', !!d.playing);
+  if (d.playing && d.title) { npTitle = d.title; showNowPlaying(6000); }
+  else if (!d.playing) hideNowPlaying();
+});
+$('#nowPlaying').addEventListener('mouseenter', () => clearTimeout(npTimer));
+$('#nowPlaying').addEventListener('mouseleave', () => { npTimer = setTimeout(hideNowPlaying, 2500); });
+$('#audio').addEventListener('mouseenter', () => showNowPlaying(4500));
+$('#npPrev').addEventListener('click', () => window.TLMusic && window.TLMusic.prev());
+$('#npNext').addEventListener('click', () => window.TLMusic && window.TLMusic.next());
+
 /* Audio del menú (barra superior): música on/off, volumen y sonidos de botones. */
 function paintAudio() {
   const ap = (state.config && state.config.appearance) || {};
   const vol = typeof ap.musicVolume === 'number' ? ap.musicVolume : 0.35;
   $('#audMusic').classList.toggle('is-off', ap.music === false);
   $('#audSfx').classList.toggle('is-off', ap.uiSounds === false);
+  const styleNames = isEn() ? { soft: 'Soft', modern: 'Modern', arcade: 'Arcade' } : { soft: 'Suave', modern: 'Moderno', arcade: 'Arcade' };
+  document.querySelectorAll('#audSfxMenu .chip').forEach((chip) => {
+    chip.textContent = styleNames[chip.dataset.style];
+    chip.classList.toggle('is-active', chip.dataset.style === (ap.uiSoundStyle || 'modern'));
+  });
   $('#audMusic').setAttribute('aria-pressed', String(ap.music !== false));
   $('#audSfx').setAttribute('aria-pressed', String(ap.uiSounds !== false));
   const range = $('#audVol');
@@ -3772,9 +3896,16 @@ function paintAudio() {
 }
 $('#audMusic').addEventListener('click', () => patchConfig({ appearance: { music: state.config.appearance.music === false } }));
 $('#audSfx').addEventListener('click', () => patchConfig({ appearance: { uiSounds: state.config.appearance.uiSounds === false } }));
+document.querySelectorAll('#audSfxMenu .chip').forEach((chip) => {
+  chip.addEventListener('click', async () => {
+    // Se oye el estilo elegido al instante, aunque la config tarde en volver.
+    if (window.TLSfx) { window.TLSfx.configure(true, chip.dataset.style); window.TLSfx.play('on'); }
+    await patchConfig({ appearance: { uiSoundStyle: chip.dataset.style, uiSounds: true } });
+  });
+});
 $('#audVol').addEventListener('input', (e) => {
   syncRangeFill(e.target);
-  if (window.TLMusic) window.TLMusic.configure(state.config.appearance.music !== false, Number(e.target.value));
+  if (window.TLMusic) window.TLMusic.configure(state.config.appearance.music !== false, Number(e.target.value), state.config.appearance.musicClub !== false);
 });
 $('#audVol').addEventListener('change', (e) => patchConfig({ appearance: { musicVolume: Number(e.target.value), music: true } }));
 
