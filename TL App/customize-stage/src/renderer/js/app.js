@@ -3868,12 +3868,15 @@ window.addEventListener('tl:track', (e) => {
   const d = e.detail || {};
   $('#audEq').classList.toggle('is-playing', !!d.playing);
   $('#nowPlaying .eq').classList.toggle('is-playing', !!d.playing);
+  $('#nowPlaying').classList.toggle('is-playing', !!d.playing);
   if (d.playing && d.title) { npTitle = d.title; showNowPlaying(6000); }
   else if (!d.playing) hideNowPlaying();
 });
 $('#nowPlaying').addEventListener('mouseenter', () => clearTimeout(npTimer));
 $('#nowPlaying').addEventListener('mouseleave', () => { npTimer = setTimeout(hideNowPlaying, 2500); });
-$('#audio').addEventListener('mouseenter', () => showNowPlaying(4500));
+// Al pasar por la música se muestra el tema; al pasar por los estilos de sonido se esconde, porque ahí se abre su selector.
+$('#audMusic').addEventListener('mouseenter', () => showNowPlaying(4500));
+$('.audio__sfx').addEventListener('mouseenter', hideNowPlaying);
 $('#npPrev').addEventListener('click', () => window.TLMusic && window.TLMusic.prev());
 $('#npNext').addEventListener('click', () => window.TLMusic && window.TLMusic.next());
 
