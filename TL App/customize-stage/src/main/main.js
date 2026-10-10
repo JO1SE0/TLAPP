@@ -18,6 +18,7 @@ const roomlist = require('./roomlist');
 const flags = require('./flags');
 const discord = require('./discord');
 const updater = require('./updater');
+const access = require('./access');
 const panel = require('./panel');
 const avatars = require('./avatars');
 const countries = require('./countries');
@@ -1661,6 +1662,7 @@ function gameConfig(config) {
  */
 app.on('web-contents-created', (_e, contents) => {
   contents.on('will-attach-webview', (_event, webPreferences, params) => {
+    if (access.isLocked()) { _event.preventDefault(); return; }
     try {
       const url = new URL(params.src);
       if (url.protocol !== 'https:' || !isHaxballHost(url.hostname) || params.partition !== GAME_PARTITION) {
@@ -2002,6 +2004,9 @@ if (!app.requestSingleInstanceLock()) {
     // Se pregunta ya, en paralelo con el resto del arranque: para cuando la
     // interfaz vaya a montar el juego, el veredicto suele estar listo.
     firstProbe = probeHaxball().catch(() => ({ down: false, reason: '' }));
+    accessReady = access.init(app.getPath('userData'), (st) => {
+      if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('access:changed', st);
+    }).catch(() => {});
     createWindow();
     const syncActiveDisplay = () => {
       if (!mainWindow || mainWindow.isDestroyed()) return;
@@ -2075,6 +2080,8 @@ function listen(channel, fn) {
   });
 }
 
+let accessReady = Promise.resolve();
+
 function handle(channel, fn) {
   ipcMain.handle(channel, async (event, ...args) => {
     try {
@@ -2089,6 +2096,11 @@ function handle(channel, fn) {
     }
   });
 }
+
+/* Lista de acceso (access.js) --------------------------------------- */
+handle('access:status', async () => { await accessReady; return access.get(); });
+handle('access:submit', (_e, key) => access.submit(key));
+handle('access:recheck', () => access.recheck());
 
 /* App / ventana ---------------------------------------------------- */
 handle('app:info', () => ({

@@ -140,6 +140,13 @@ contextBridge.exposeInMainWorld('tvm', {
     onResolved: (cb) => on('avatar:resolved', cb)
   },
 
+  access: {
+    status: () => call('access:status'),
+    submit: (key) => call('access:submit', key),
+    recheck: () => call('access:recheck'),
+    onChange: (cb) => on('access:changed', cb)
+  },
+
   updates: {
     check: () => call('update:check'),
     download: () => call('update:download'),

@@ -4690,3 +4690,17 @@ input[type="color"].is-unset { opacity: .45; }
 }
 :root[data-animations="off"] .brand__crest::after,
 .app[data-stage="game"] .brand__crest::after { animation: none; display: none; }
+
+/* Pantalla de acceso (lista del equipo) */
+.gate { position: fixed; inset: 0; z-index: 100002; display: flex; align-items: center; justify-content: center; background: radial-gradient(60% 55% at 50% 45%, #12284a, #04070f 80%); -webkit-app-region: no-drag; }
+.gate[hidden] { display: none; }
+.gate__card { display: flex; flex-direction: column; align-items: center; gap: 12px; width: min(380px, 90vw); padding: 30px 28px; border: 1px solid rgb(208 184 120 / 35%); border-radius: 16px; background: rgb(8 16 32 / 85%); box-shadow: 0 20px 60px rgb(0 0 0 / 60%); text-align: center; }
+.gate__crest { height: 96px; filter: drop-shadow(0 0 18px rgb(208 184 120 / 40%)); }
+.gate__title { margin: 4px 0 0; font-size: 22px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: #e8cf8e; }
+.gate__sub { margin: 0 0 4px; font-size: 13px; color: rgb(244 240 223 / 70%); }
+.gate__input { width: 100%; padding: 11px 14px; border-radius: 10px; border: 1px solid rgb(208 184 120 / 40%); background: #060d1b; color: #f4f0df; font-size: 15px; letter-spacing: .12em; text-align: center; outline: none; }
+.gate__input:focus { border-color: #e8cf8e; box-shadow: 0 0 0 3px rgb(208 184 120 / 20%); }
+.gate__btn { width: 100%; padding: 11px; border: 0; border-radius: 10px; background: linear-gradient(180deg, #f1dc9b, #b8953f); color: #1a1405; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; cursor: pointer; }
+.gate__btn:disabled { opacity: .6; cursor: default; }
+.gate__msg { min-height: 18px; font-size: 12.5px; color: #ff8d8d; }
+.gate__help { font-size: 11.5px; color: rgb(244 240 223 / 45%); }

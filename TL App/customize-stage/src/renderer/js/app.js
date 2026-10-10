@@ -289,8 +289,86 @@ async function hideSplash() {
   setTimeout(startWelcome, 470);
 }
 
+/* ── Lista de acceso (main/access.js) ───────────────────────────────────── */
+const GATE_TEXT = {
+  es: {
+    title: 'Acceso del equipo', sub: 'Poné tu clave personal para usar TL App.', ph: 'TL-XXXX-XXXX-XXXX', go: 'Entrar', checking: 'Verificando…',
+    'need-key': '', 'bad-key': 'Esa clave no está en la lista.', revoked: 'Tu acceso fue quitado. No podés usar la app.',
+    offline: 'No se pudo verificar la clave: hace falta conexión.', expired: 'Hace más de 3 días que no se verifica tu acceso. Conectate a internet.',
+    help: 'Si no tenés clave, pedísela al capitán.'
+  },
+  en: {
+    title: 'Team access', sub: 'Enter your personal key to use TL App.', ph: 'TL-XXXX-XXXX-XXXX', go: 'Enter', checking: 'Checking…',
+    'need-key': '', 'bad-key': 'That key is not on the list.', revoked: 'Your access was removed. You cannot use the app.',
+    offline: 'Could not verify the key: a connection is required.', expired: 'Your access has not been verified for over 3 days. Please go online.',
+    help: 'No key? Ask the captain.'
+  }
+};
+
+function showGate(reason) {
+  const tx = GATE_TEXT[isEn() ? 'en' : 'es'];
+  let gate = $('#gate');
+  if (!gate) {
+    gate = document.createElement('div');
+    gate.id = 'gate';
+    gate.className = 'gate';
+    const card = document.createElement('form');
+    card.className = 'gate__card';
+    card.autocomplete = 'off';
+    const img = document.createElement('img');
+    img.src = '../../assets/toda-la-lecce.png';
+    img.alt = '';
+    img.className = 'gate__crest';
+    const h = document.createElement('h2'); h.className = 'gate__title';
+    const p = document.createElement('p'); p.className = 'gate__sub';
+    const input = document.createElement('input'); input.className = 'gate__input'; input.type = 'password'; input.spellcheck = false; input.maxLength = 40;
+    const btn = document.createElement('button'); btn.type = 'submit'; btn.className = 'gate__btn';
+    const msg = document.createElement('div'); msg.className = 'gate__msg'; msg.setAttribute('role', 'alert');
+    const help = document.createElement('div'); help.className = 'gate__help';
+    card.append(img, h, p, input, btn, msg, help);
+    gate.append(card);
+    document.body.append(gate);
+    card.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const t = GATE_TEXT[isEn() ? 'en' : 'es'];
+      if (!input.value.trim()) return;
+      btn.disabled = true; btn.textContent = t.checking; msg.textContent = '';
+      try {
+        const st = await tvm.access.submit(input.value);
+        if (st.state === 'ok') { input.value = ''; return onAccess(st); }
+        msg.textContent = t[st.reason] || t['bad-key'];
+      } catch (err) { msg.textContent = t.offline; }
+      btn.disabled = false; btn.textContent = t.go;
+    });
+  }
+  gate.querySelector('.gate__title').textContent = tx.title;
+  gate.querySelector('.gate__sub').textContent = tx.sub;
+  gate.querySelector('.gate__input').placeholder = tx.ph;
+  gate.querySelector('.gate__btn').textContent = tx.go;
+  gate.querySelector('.gate__msg').textContent = tx[reason] || '';
+  gate.querySelector('.gate__help').textContent = tx.help;
+  gate.hidden = false;
+  document.body.classList.add('is-gated');
+  setTimeout(() => { const i = gate.querySelector('.gate__input'); if (i) i.focus(); }, 50);
+}
+
+let welcomePending = false;
+function onAccess(st) {
+  state.access = st;
+  if (st && st.state === 'locked') {
+    // Si había una partida abierta, se corta: el juego no puede seguir tapado por la pantalla.
+    try { document.querySelectorAll('webview').forEach((w) => w.remove()); } catch (e) { /* nada */ }
+    showGate(st.reason);
+    return;
+  }
+  const gate = $('#gate');
+  if (gate) { gate.hidden = true; document.body.classList.remove('is-gated'); }
+  if (welcomePending) { welcomePending = false; startWelcome(); }
+}
+
 /** La bienvenida del club, una vez por arranque (ver welcome.js). */
 function startWelcome() {
+  if (state.access && state.access.state === 'locked') { welcomePending = true; return; }
   const cfg = state.config && state.config.appearance;
   if (!cfg || cfg.welcome === false || cfg.animations === false || !window.TLWelcome) return;
   try {
@@ -7802,6 +7880,10 @@ async function boot() {
   state.info = info;
   applyConfig(config);
   applyThemeVars(vars);
+  try {
+    tvm.access.onChange(onAccess);
+    onAccess(await tvm.access.status());
+  } catch (e) { /* sin lista de acceso: la app abre normal */ }
 
   // Recién acá se sabe el idioma y la versión: hasta este punto la pantalla de
   // carga muestra el texto que trae el HTML.
