@@ -473,6 +473,8 @@ function applyConfig(config) {
   // Quién sos vive en la barra: el apodo o la foto pueden haber cambiado.
   paintMeChip();
   paintPreview();
+  // Partículas del menú: dependen de su interruptor y de que las animaciones estén prendidas.
+  if (window.TLSparks) window.TLSparks.setEnabled(config.appearance.sparks !== false && config.appearance.animations !== false);
 }
 
 /**
@@ -3014,13 +3016,15 @@ const LOOK_SWITCHES = {
     { key: 'cleanMode', label: 'Sólo la cancha', description: 'Sin el menú ni los costados del sitio.' },
     { key: 'animations', label: 'Animaciones', description: 'Apagalo para que todo sea instantáneo.' },
     { key: 'welcome', label: 'Bienvenida del club', description: 'Una intro corta con el escudo al abrir la app.' },
-    { key: 'welcomeSound', label: 'Sonido de la bienvenida', description: 'Se puede apagar sin quitar la animación.' }
+    { key: 'welcomeSound', label: 'Sonido de la bienvenida', description: 'Se puede apagar sin quitar la animación.' },
+    { key: 'sparks', label: 'Partículas doradas', description: 'Motitas de luz flotando en el menú. Se apagan solas en la partida.' }
   ],
   en: [
     { key: 'cleanMode', label: 'Pitch only', description: "Hides HaxBall's site menu and side panels." },
     { key: 'animations', label: 'Animations', description: 'Turn it off to make everything instant.' },
     { key: 'welcome', label: 'Club welcome', description: 'A short intro with the crest when the app opens.' },
-    { key: 'welcomeSound', label: 'Welcome sound', description: 'Turn it off without removing the animation.' }
+    { key: 'welcomeSound', label: 'Welcome sound', description: 'Turn it off without removing the animation.' },
+    { key: 'sparks', label: 'Golden particles', description: 'Specks of light floating in the menu. They stop on their own during a match.' }
   ]
 };
 

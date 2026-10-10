@@ -4619,3 +4619,14 @@ input[type="color"].is-unset { opacity: .45; }
 @keyframes wlLine { to { width: min(420px, 70vw); } }
 @keyframes wlName { to { opacity: 1; transform: translateY(0); } }
 :root[data-animations="off"] .wl * { animation-duration: .01s !important; }
+
+/* Partículas doradas del menú (sparks.js): encima del contenido, debajo del panel y del riel. */
+#sparks {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 20;
+  pointer-events: none;
+}
+#sparks[hidden] { display: none; }

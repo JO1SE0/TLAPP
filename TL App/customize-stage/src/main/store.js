@@ -73,6 +73,8 @@ const DEFAULTS = {
     /** Intro del club al abrir la app y su sonido. */
     welcome: true,
     welcomeSound: true,
+    /** Partículas doradas flotando en el menú. */
+    sparks: true,
     /** Saca el chat de la pantalla durante la partida y en la sala. */
     hideChat: false,
     /** El cartel de gol estilo TV, con autor y asistencia. */
