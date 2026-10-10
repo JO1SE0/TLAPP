@@ -803,6 +803,16 @@
                 <div class="row__ctl"><div class="themes" id="themes"></div></div>
               </div>
               <div class="rows" id="lookSwitches"></div>
+              <div class="row">
+                <div class="row__text">
+                  <span class="row__label" data-i18n="look.musicVolume">Volumen de la música</span>
+                </div>
+                <div class="row__ctl">
+                  <input type="range" id="musicVolume" min="0" max="1" step="0.01" />
+                  <b class="row__val" id="musicVolumeValue">35%</b>
+                  <button type="button" class="btn btn--ghost" id="musicSkip" data-i18n="look.musicSkip">Siguiente</button>
+                </div>
+              </div>
             </div>
           </section>
 
@@ -1639,6 +1649,7 @@
   <script src="js/preview.js"></script>
   <script src="js/welcome.js"></script>
   <script src="js/sparks.js"></script>
+  <script src="js/music.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>

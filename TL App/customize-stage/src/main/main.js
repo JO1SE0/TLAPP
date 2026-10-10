@@ -2097,6 +2097,16 @@ function handle(channel, fn) {
   });
 }
 
+/* Música del menú: los archivos de assets/music, en orden alfabético -------- */
+handle('tracks:list', async () => {
+  const dir = path.join(ROOT, 'assets', 'music');
+  let names = [];
+  try { names = await fs.promises.readdir(dir); } catch { return []; }
+  return names
+    .filter((n) => /\.(mp3|ogg|m4a|wav|flac|opus)$/i.test(n))
+    .sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
+});
+
 /* Lista de acceso (access.js) --------------------------------------- */
 handle('access:status', async () => { await accessReady; return access.get(); });
 handle('access:submit', (_e, key) => access.submit(key));

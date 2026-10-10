@@ -289,6 +289,13 @@ async function hideSplash() {
   setTimeout(startWelcome, 470);
 }
 
+/** La música del menú arranca cuando termina la bienvenida (o enseguida si no hay). */
+function startMusic() {
+  if (state.access && state.access.state === 'locked') return;
+  if (window.TLMusic) window.TLMusic.start();
+}
+window.addEventListener('tl:welcome-done', startMusic);
+
 /* ── Lista de acceso (main/access.js) ───────────────────────────────────── */
 const GATE_TEXT = {
   es: {
@@ -379,14 +386,14 @@ function onAccess(st) {
 function startWelcome() {
   if (state.access && state.access.state === 'locked') { welcomePending = true; return; }
   const cfg = state.config && state.config.appearance;
-  if (!cfg || cfg.welcome === false || cfg.animations === false || !window.TLWelcome) return;
+  if (!cfg || cfg.welcome === false || cfg.animations === false || !window.TLWelcome) { startMusic(); return; }
   try {
     window.TLWelcome.play({
       sound: cfg.welcomeSound !== false,
       nick: String((state.config.general && state.config.general.nickname) || '').trim(),
       english: isEn()
     });
-  } catch (e) { /* una intro no puede romper el arranque */ }
+  } catch (e) { startMusic(); /* una intro no puede romper el arranque */ }
 }
 
 /*
@@ -561,6 +568,7 @@ function applyConfig(config) {
   paintMeChip();
   paintPreview();
   // Partículas del menú: dependen de su interruptor y de que las animaciones estén prendidas.
+  if (window.TLMusic) window.TLMusic.configure(config.appearance.music !== false, config.appearance.musicVolume);
   if (window.TLSparks) window.TLSparks.setEnabled(config.appearance.sparks !== false && config.appearance.animations !== false);
 }
 
@@ -1579,6 +1587,7 @@ function setStage(kind) {
   if (state.stage === kind) return;
   state.stage = kind;
   $('#app').dataset.stage = kind;
+  if (window.TLMusic) window.TLMusic.setInGame(kind === 'game');
   // El fondo ambiental se apaga cuando hay cancha detrás, no cuando estás en la
   // pestaña Salas: con los paneles encima son cosas distintas.
   document.documentElement.dataset.stage = kind;
@@ -2569,6 +2578,60 @@ function gameSettingControl(setting) {
     });
   }
 
+  if (setting.type === 'select' && setting.slider) {
+    // Los valores de siempre en una lista, y además una barra para cualquier número del mínimo al máximo.
+    const pct = (v) => Math.round(Number(v) * 100);
+    const select = document.createElement('select');
+    select.id = `hb-${setting.id}`;
+    const range = document.createElement('input');
+    range.type = 'range';
+    range.min = String(pct(setting.min));
+    range.max = String(pct(setting.max));
+    range.step = '1';
+    const shown = document.createElement('b');
+    shown.className = 'row__val';
+    const custom = document.createElement('option');
+    custom.value = 'custom';
+    const fill = (v) => {
+      const p = pct(v);
+      const preset = setting.options.find((o) => pct(o.value) === p);
+      select.replaceChildren(...setting.options.map((opt) => {
+        const o = document.createElement('option');
+        o.value = String(opt.value);
+        o.textContent = (isEn() && opt.labelEn) || opt.label;
+        return o;
+      }));
+      if (!preset) {
+        custom.textContent = isEn() ? `Custom · ${p}%` : `Personalizada · ${p}%`;
+        select.append(custom);
+      }
+      select.value = preset ? String(preset.value) : 'custom';
+      range.value = String(p);
+      shown.textContent = `${p}%`;
+      syncRangeFill(range);
+    };
+    fill(current);
+    const commitScale = async (v) => {
+      await patchConfig({ game: { [setting.id]: String(v) } });
+      applyGameSetting(setting);
+    };
+    select.addEventListener('change', () => {
+      if (select.value === 'custom') return;
+      fill(select.value);
+      commitScale(select.value);
+    });
+    range.addEventListener('input', () => { shown.textContent = `${range.value}%`; syncRangeFill(range); });
+    range.addEventListener('change', () => {
+      const v = Number(range.value) / 100;
+      fill(v);
+      commitScale(v);
+    });
+    queueMicrotask(() => syncRangeFill(range));
+    const row = settingRow({ label: label(setting), description, hint, control: [select, range, shown] });
+    row.dataset.ctl = 'select';
+    return row;
+  }
+
   if (setting.type === 'select') {
     return selectRow({
       label: label(setting),
@@ -3104,14 +3167,16 @@ const LOOK_SWITCHES = {
     { key: 'animations', label: 'Animaciones', description: 'Apagalo para que todo sea instantáneo.' },
     { key: 'welcome', label: 'Bienvenida del club', description: 'Una intro corta con el escudo al abrir la app.' },
     { key: 'welcomeSound', label: 'Sonido de la bienvenida', description: 'Se puede apagar sin quitar la animación.' },
-    { key: 'sparks', label: 'Partículas doradas', description: 'Motitas de luz flotando en el menú. Se apagan solas en la partida.' }
+    { key: 'sparks', label: 'Partículas doradas', description: 'Motitas de luz flotando en el menú. Se apagan solas en la partida.' },
+    { key: 'music', label: 'Música del menú', description: 'Suenan canciones del club en el menú de salas. Se silencian al entrar a una sala.' }
   ],
   en: [
     { key: 'cleanMode', label: 'Pitch only', description: "Hides HaxBall's site menu and side panels." },
     { key: 'animations', label: 'Animations', description: 'Turn it off to make everything instant.' },
     { key: 'welcome', label: 'Club welcome', description: 'A short intro with the crest when the app opens.' },
     { key: 'welcomeSound', label: 'Welcome sound', description: 'Turn it off without removing the animation.' },
-    { key: 'sparks', label: 'Golden particles', description: 'Specks of light floating in the menu. They stop on their own during a match.' }
+    { key: 'sparks', label: 'Golden particles', description: 'Specks of light floating in the menu. They stop on their own during a match.' },
+    { key: 'music', label: 'Menu music', description: 'Club songs play in the rooms menu. They go quiet when you enter a room.' }
   ]
 };
 
@@ -3359,6 +3424,11 @@ function renderAspect() {
   $('#overlayOpacity').value = state.config.overlay.opacity;
   $('#overlayOpacityValue').textContent = `${Math.round(state.config.overlay.opacity * 100)}%`;
   syncRangeFill($('#overlayOpacity'));
+
+  const mv = typeof state.config.appearance.musicVolume === 'number' ? state.config.appearance.musicVolume : 0.35;
+  $('#musicVolume').value = mv;
+  $('#musicVolumeValue').textContent = `${Math.round(mv * 100)}%`;
+  syncRangeFill($('#musicVolume'));
 
   $('#hudScale').value = state.config.appearance.hudScale;
   $('#hudScaleValue').textContent = `${Math.round(state.config.appearance.hudScale * 100)}%`;
@@ -3692,6 +3762,14 @@ $('#overlayOpacity').addEventListener('input', (e) => {
   $('#overlayOpacityValue').textContent = `${Math.round(Number(e.target.value) * 100)}%`;
 });
 $('#overlayOpacity').addEventListener('change', (e) => patchConfig({ overlay: { opacity: Number(e.target.value) } }));
+
+$('#musicVolume').addEventListener('input', (e) => {
+  syncRangeFill(e.target);
+  $('#musicVolumeValue').textContent = `${Math.round(Number(e.target.value) * 100)}%`;
+  if (window.TLMusic) window.TLMusic.configure(state.config.appearance.music !== false, Number(e.target.value));
+});
+$('#musicVolume').addEventListener('change', (e) => patchConfig({ appearance: { musicVolume: Number(e.target.value) } }));
+$('#musicSkip').addEventListener('click', () => { if (window.TLMusic) window.TLMusic.skip(); });
 
 $('#hudScale').addEventListener('input', (e) => {
   syncRangeFill(e.target);

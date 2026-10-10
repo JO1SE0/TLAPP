@@ -140,6 +140,8 @@ contextBridge.exposeInMainWorld('tvm', {
     onResolved: (cb) => on('avatar:resolved', cb)
   },
 
+  tracks: { list: () => call('tracks:list') },
+
   access: {
     status: () => call('access:status'),
     submit: (key) => call('access:submit', key),

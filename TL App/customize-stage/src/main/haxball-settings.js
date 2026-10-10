@@ -40,6 +40,11 @@ const SETTINGS = [
     type: 'select',
     group: 'video',
     default: '1',
+    // Además de los cuatro valores de la lista, deja cualquier número entre 25% y 100% con una barra.
+    slider: true,
+    min: 0.25,
+    max: 1,
+    step: 0.01,
     options: [
       { value: '1', label: '100% · nítido', labelEn: '100% · sharp' },
       { value: '0.75', label: '75%', labelEn: '75%' },
@@ -417,6 +422,11 @@ function normalize(setting, value) {
     const clamped = Math.min(setting.max, Math.max(setting.min, n));
     const step = setting.step || 1;
     return String(Number((setting.min + Math.round((clamped - setting.min) / step) * step).toFixed(6)));
+  }
+  if (setting.slider) {
+    const n = Number(value);
+    if (!Number.isFinite(n)) return String(setting.default);
+    return String(Math.round(Math.min(setting.max, Math.max(setting.min, n)) * 100) / 100);
   }
   if (setting.options && !setting.options.some(option => String(option.value) === String(value))) return String(setting.default);
   return String(value);

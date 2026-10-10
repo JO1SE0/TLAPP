@@ -283,6 +283,7 @@
         root.remove();
         if (ac) ac.close().catch(() => {});
         current = null;
+        window.dispatchEvent(new Event('tl:welcome-done'));
       }, quick ? 320 : T.fade * 1000);
     };
     const onSkip = (e) => {

@@ -75,6 +75,9 @@ const DEFAULTS = {
     welcomeSound: true,
     /** Partículas doradas flotando en el menú. */
     sparks: true,
+    /** Música del menú de salas (archivos en assets/music) y su volumen. */
+    music: true,
+    musicVolume: 0.35,
     /** Saca el chat de la pantalla durante la partida y en la sala. */
     hideChat: false,
     /** El cartel de gol estilo TV, con autor y asistencia. */
