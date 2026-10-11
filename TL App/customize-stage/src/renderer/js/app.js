@@ -2396,6 +2396,50 @@ $('#actJoin').addEventListener('click', () => {
   if (state.selected) joinRoom(state.selected);
 });
 $('#actAutoJoin').addEventListener('click', toggleAutoJoin);
+/* ── Plantel en vivo ──────────────────────────────────────────
+ * La lista del riel pasa a mostrar a quien del club tiene la app abierta (punto
+ * verde) y, abajo del nombre, la sala en la que está. Si no hay presencia (sin red o
+ * sin lista) queda la lista fija de siempre. */
+const rosterStatic = $('.roster__list') ? $('.roster__list').innerHTML : '';
+function paintRoster(list) {
+  const ul = $('.roster__list');
+  if (!ul) return;
+  if (!Array.isArray(list)) { ul.innerHTML = rosterStatic; return; }
+  ul.textContent = '';
+  const MAX = 12;
+  if (!list.length) {
+    const li = document.createElement('li');
+    li.className = 'is-live is-none';
+    li.textContent = t('roster.none');
+    ul.append(li);
+    return;
+  }
+  for (const m of list.slice(0, MAX)) {
+    const li = document.createElement('li');
+    li.className = 'is-live' + (m.self ? ' is-self' : '');
+    const n = document.createElement('span');
+    n.className = 'rn';
+    n.textContent = m.name;
+    li.append(n);
+    if (m.room) {
+      const r = document.createElement('em');
+      r.textContent = m.room;
+      li.append(r);
+    }
+    ul.append(li);
+  }
+  if (list.length > MAX) {
+    const li = document.createElement('li');
+    li.className = 'is-live is-none';
+    li.textContent = `+${list.length - MAX}`;
+    ul.append(li);
+  }
+}
+if (window.tvm.presence) {
+  window.tvm.presence.onRoster(paintRoster);
+  window.tvm.presence.roster().then((l) => { if (l) paintRoster(l); }).catch(() => {});
+}
+
 /** «Ocultar con clave» y «Ocultar llenas»: botones que se prenden y se apagan, y se recuerdan. */
 for (const [id, key, store] of [['#hideLocked', 'hideLocked', 'tl_hide_locked'], ['#hideFull', 'hideFull', 'tl_hide_full']]) {
   const btn = $(id);

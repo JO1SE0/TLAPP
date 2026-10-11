@@ -2708,6 +2708,32 @@ function myCosmetics() {
   return out.gradient || out.font ? out : null;
 }
 
+/* Plantel en vivo: quién del club tiene la app abierta y dónde. */
+let liveRoster = null;
+let onlineBusy = false;
+async function beatOnline() {
+  if (onlineBusy) return;
+  onlineBusy = true;
+  try {
+    const list = await presence.online({
+      url: access.presenceUrl(),
+      key: access.getKey(),
+      roster: access.getRoster(),
+      room: roomInfo.name || '',
+      selfName: access.get().name || ''
+    });
+    if (list) { liveRoster = list; send('presence:roster', list); }
+  } catch { /* sin red o sin permisos: se queda lo último que se supo */ }
+  onlineBusy = false;
+}
+handle('presence:roster', async () => liveRoster);
+(function startOnline() {
+  const run = () => { accessReady.then(beatOnline).catch(() => {}); };
+  setTimeout(run, 4000);
+  const t = setInterval(beatOnline, 30000);
+  if (t.unref) t.unref();
+})();
+
 let lastPresenceError = '';
 let lastPresenceOk = '';
 
@@ -2792,6 +2818,7 @@ listen('game:room-info', (_e, info) => {
   const token = info && info.token ? String(info.token).slice(0, 64) : null;
   if (room === roomInfo.room && nick === roomInfo.nick && name === roomInfo.name) return;
   roomInfo = { room, token, name, nick };
+  setTimeout(beatOnline, 800);
 
   /*
    * Lo que ya se sabía de ESTA sala, de vuelta y en el acto. Empezar o terminar
@@ -3478,7 +3505,7 @@ function rememberVolume(volume) {
 // cambio se guarda en el acto en vez de esperar a un temporizador que ya no va
 // a correr.
 app.on('before-quit', saveVolumeNow);
-app.on('before-quit', () => { try { presence.leave({ url: access.presenceUrl(), key: access.getKey() }); } catch { /* vence solo */ } });
+app.on('before-quit', () => { try { presence.leaveOnline({ url: access.presenceUrl(), key: access.getKey() }); presence.leave({ url: access.presenceUrl(), key: access.getKey() }); } catch { /* vence solo */ } });
 
 /** Alguien recién llegó y necesita saber qué está sonando. */
 listen('music:want-state', (e) => {

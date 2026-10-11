@@ -129,4 +129,59 @@ function leave(ctx) {
   lastFp = null;
 }
 
-module.exports = { why: () => why, leave, beat, cleanUrl, signedText, EVERY_MS, ALIVE_MS };
+/* ── Plantel en vivo ───────────────────────────────────────────
+ * Cada app, esté o no en una sala, deja `online/<pid> = { t, r, s }` (r = nombre de la
+ * sala o vacío) firmado como el resto, y lee los de los demás. Quien tiene firma
+ * válida y hora reciente está «en línea». */
+const ONLINE_ALIVE_MS = 120000;
+let onlineMarked = false;
+
+const onlineText = (r, t) => `online|${r}|${t}`;
+
+/** ctx = { url, key, roster, room, selfName } → [{ name, room, self }] o null. */
+async function online(ctx) {
+  const base = cleanUrl(ctx && ctx.url);
+  if (!base || !ctx.key) return null;
+  const id = idOf(ctx.key);
+  const t = Date.now();
+  const r = String(ctx.room || '').replace(/[\r\n]/g, ' ').slice(0, 40);
+  await call(`${base}/online/${id.pid}.json`, 'PUT', { t, r, s: id.sign(onlineText(r, t)) });
+  onlineMarked = true;
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+  let data = {};
+  let skew = 0;
+  try {
+    const res = await fetch(`${base}/online.json`, { signal: controller.signal });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    data = (await res.json()) || {};
+    const d = res.headers && res.headers.get ? Date.parse(res.headers.get('date') || '') : NaN;
+    if (isFinite(d)) skew = d - Date.now(); // el reloj de Firebase manda sobre el de esta PC
+  } finally { clearTimeout(timer); }
+
+  const now = Date.now() + skew;
+  const out = [];
+  for (const u of ctx.roster || []) {
+    if (!u || !/^[0-9a-f]{64}$/i.test(u.pub || '')) continue;
+    const pid = identity.pidOf(u.pub);
+    const e = data[pid];
+    if (!e || typeof e !== 'object' || typeof e.t !== 'number' || typeof e.s !== 'string') continue;
+    const room = typeof e.r === 'string' ? e.r : '';
+    if (!identity.verify(u.pub, onlineText(room, e.t), e.s)) continue;
+    if (pid !== id.pid && Math.abs(now - e.t) > ONLINE_ALIVE_MS) continue;
+    out.push({ name: u.name, room, self: pid === id.pid });
+  }
+  out.sort((a, b) => (b.self - a.self) || a.name.localeCompare(b.name, 'es'));
+  return out;
+}
+
+/** Al cerrar la app: se baja de la lista de conectados. */
+function leaveOnline(ctx) {
+  const base = cleanUrl(ctx && ctx.url);
+  if (!base || !ctx.key || !onlineMarked) return;
+  try { call(`${base}/online/${idOf(ctx.key).pid}.json`, 'DELETE').catch(() => {}); } catch { /* vence solo */ }
+  onlineMarked = false;
+}
+
+module.exports = { online, leaveOnline, why: () => why, leave, beat, cleanUrl, signedText, EVERY_MS, ALIVE_MS };

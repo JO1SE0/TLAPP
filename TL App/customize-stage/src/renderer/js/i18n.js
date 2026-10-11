@@ -176,6 +176,7 @@ const STRINGS = {
     'create.creating': 'Creando la sala…',
 
     'rooms.onlyFavs': 'Favoritos',
+    'roster.none': 'Nadie conectado',
     'rooms.hideLocked': 'Ocultar con clave',
     'rooms.hideFull': 'Ocultar llenas',
     'rooms.autoJoin': 'Auto-entrar',
@@ -911,6 +912,7 @@ const STRINGS = {
     'create.creating': 'Creating the room…',
 
     'rooms.onlyFavs': 'Favourites',
+    'roster.none': 'Nobody online',
     'rooms.hideLocked': 'Hide password rooms',
     'rooms.hideFull': 'Hide full rooms',
     'rooms.autoJoin': 'Auto-join',
