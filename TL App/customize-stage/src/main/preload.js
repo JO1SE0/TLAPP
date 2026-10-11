@@ -97,7 +97,7 @@ contextBridge.exposeInMainWorld('tvm', {
   },
 
   theme: {
-    vars: () => call('theme:vars'),
+    vars: (accent) => call('theme:vars', accent),
     onVars: (cb) => on('theme:vars', cb),
     save: (theme) => call('themes:save', theme),
     remove: (id) => call('themes:delete', id)

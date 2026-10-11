@@ -54,7 +54,7 @@ settingsUpdates.before(accountSection('[data-sec="identidades"]'), accountSectio
 const PANEL_TABS = {
   aspecto: [
     { id: 'estilo', label: 'tab.style', hint: 'tab.styleHint',
-      secs: ['tema', 'acento', 'looks', 'menubg'] },
+      secs: ['tema', 'acento', 'animaciones', 'looks', 'menubg'] },
     { id: 'cancha', label: 'tab.pitch', hint: 'tab.pitchHint',
       secs: ['cancha', 'acabado', 'trazos', 'replays'] },
     { id: 'fichas', label: 'tab.discs', hint: 'tab.discsHint',
@@ -792,7 +792,19 @@ function applyConfig(config) {
   if (window.TLMusic) window.TLMusic.configure(config.appearance.music !== false, config.appearance.musicVolume, config.appearance.musicClub !== false);
   if (window.TLSfx) window.TLSfx.configure(config.appearance.uiSounds !== false, config.appearance.uiSoundStyle);
   if (typeof paintAudio === 'function' && document.getElementById('audMusic')) paintAudio();
-  if (window.TLSparks) window.TLSparks.setEnabled(config.appearance.sparks !== false && config.appearance.animations !== false);
+  if (window.TLSparks) {
+    window.TLSparks.setStyle(config.appearance.sparkStyle || 'oro');
+    window.TLSparks.setDensity(config.appearance.sparkCount || 40);
+    window.TLSparks.setEnabled(config.appearance.sparks !== false && config.appearance.animations !== false);
+  }
+  const rd = document.documentElement.dataset;
+  rd.pageTrans = config.appearance.pageTransition || 'fade';
+  const flag = (k, name) => { if (config.appearance[k] === false) rd[name] = 'off'; else delete rd[name]; };
+  flag('crestBreath', 'crestBreath');
+  flag('roomCurtain', 'roomCurtain');
+  flag('toggleBounce', 'toggleBounce');
+  flag('listStagger', 'listStagger');
+  try { syncAccentDrift(); } catch (e) { /* adorno */ }
 }
 
 /**
@@ -1001,6 +1013,13 @@ function switchRow(item, onToggle) {
   sync(item.value());
 
   toggle.addEventListener('click', async () => {
+    const rd = document.documentElement.dataset;
+    if (rd.animations !== 'off' && rd.toggleBounce !== 'off') {
+      toggle.classList.remove('is-pop');
+      void toggle.offsetWidth; // reinicia la animación si se aprieta rápido
+      toggle.classList.add('is-pop');
+      toggle.addEventListener('animationend', () => toggle.classList.remove('is-pop'), { once: true });
+    }
     sync(!item.value());
     await onToggle(item, !item.value());
     sync(item.value());
@@ -1220,6 +1239,11 @@ function applyTab(page) {
   if (!el || !PANEL_TABS[page]) return;
   const cur = currentTab(page);
   for (const node of $$('[data-tab]', el)) node.classList.toggle('is-tab-off', node.dataset.tab !== cur);
+  // Orden de entrada de las secciones que se ven (ver «Las filas entran de a una» en app.css).
+  let i = 0;
+  for (const sec of $$('.page__inner > .sec', el)) {
+    if (!sec.classList.contains('is-tab-off')) sec.style.setProperty('--i', String(i++));
+  }
   paintPreview();
 }
 
@@ -1805,11 +1829,27 @@ function focusGame() {
   if (state.stage === 'game' && state.webview) state.webview.focus();
 }
 
+/** Cortina con el escudo al entrar a una sala: un solo nodo que se borra al terminar. */
+function roomCurtain() {
+  const rd = document.documentElement.dataset;
+  if (rd.animations === 'off' || rd.roomCurtain === 'off' || document.querySelector('.room-curtain')) return;
+  const c = document.createElement('div');
+  c.className = 'room-curtain';
+  c.setAttribute('aria-hidden', 'true');
+  const img = document.createElement('img');
+  img.src = '../../assets/toda-la-lecce.png';
+  img.alt = '';
+  c.append(img);
+  document.body.append(c);
+  setTimeout(() => c.remove(), 1300);
+}
+
 /** El juego se muestra sólo dentro de una sala; si no, mandamos nuestra lista. */
 function setStage(kind) {
   if (state.stage === kind) return;
   state.stage = kind;
   $('#app').dataset.stage = kind;
+  if (kind === 'game') roomCurtain();
   if (window.TLMusic) window.TLMusic.setInGame(kind === 'game');
   if (kind === 'browser') setTimeout(showNoticeIfReady, 600);
   // El fondo ambiental se apaga cuando hay cancha detrás, no cuando estás en la
@@ -2206,8 +2246,16 @@ function renderRooms() {
     return;
   }
 
+  const firstPaint = !roomView || !roomView.length;
   roomView = list;
   paintRoomWindow(true);
+  if (firstPaint) {
+    // Las filas entran en cascada sólo cuando la lista aparece, no al scrollear ni al filtrar.
+    const host = $('#roomList');
+    host.dataset.enter = '1';
+    clearTimeout(host._enterT);
+    host._enterT = setTimeout(() => { delete host.dataset.enter; }, 900);
+  }
 
   checkAutoJoin();
   syncJoinButton();
@@ -4158,6 +4206,7 @@ $('#npNext').addEventListener('click', () => window.TLMusic && window.TLMusic.ne
 /* Audio del menú (barra superior): música on/off, volumen y sonidos de botones. */
 function paintAudio() {
   try { paintGameExtras(); } catch (e) { /* adorno */ }
+  try { paintAnimations(); } catch (e) { /* adorno */ }
   const ap = (state.config && state.config.appearance) || {};
   const vol = typeof ap.musicVolume === 'number' ? ap.musicVolume : 0.35;
   $('#audMusic').classList.toggle('is-off', ap.music === false);
@@ -4190,6 +4239,113 @@ $('#audVol').addEventListener('input', (e) => {
 });
 $('#audVol').addEventListener('change', (e) => patchConfig({ appearance: { musicVolume: Number(e.target.value), music: true } }));
 
+
+
+/* Animaciones del menú: interruptores, transición, estilo y cantidad de partículas. */
+const ANIM_SWITCHES = {
+  es: [
+    { key: 'crestBreath', label: 'Escudo que respira', description: 'Un latido muy suave del escudo en la barra y la pantalla de inicio.' },
+    { key: 'roomCurtain', label: 'Cortina al entrar a una sala', description: 'El escudo tapa la pantalla un instante mientras carga la sala.' },
+    { key: 'toggleBounce', label: 'Interruptores con rebote', description: 'Los interruptores dan un saltito al cambiar.' },
+    { key: 'listStagger', label: 'Filas que entran de a una', description: 'Las salas y los ajustes aparecen en cascada al abrir la pantalla.' },
+    { key: 'accentDrift', label: 'Acento que cambia solo', description: 'El color de acento pasa despacio por el arcoíris (un paso cada 20 s, sin gastar nada entre medio).' },
+    { key: 'goalEdge', label: 'Destello de gol en los bordes', description: 'Un pulso con el color del equipo que anotó, en el borde de la pantalla.' },
+    { key: 'joinSparkle', label: 'Chispas al entrar un compañero', description: 'Brilla el nombre cuando entra a la sala alguien verificado del club.' }
+  ],
+  en: [
+    { key: 'crestBreath', label: 'Breathing crest', description: 'A very soft pulse on the crest in the sidebar and start screen.' },
+    { key: 'roomCurtain', label: 'Curtain when entering a room', description: 'The crest covers the screen briefly while the room loads.' },
+    { key: 'toggleBounce', label: 'Bouncy switches', description: 'Switches give a little hop when toggled.' },
+    { key: 'listStagger', label: 'Rows that enter one by one', description: 'Rooms and settings cascade in when a screen opens.' },
+    { key: 'accentDrift', label: 'Self-changing accent', description: 'The accent colour slowly walks the rainbow (one step every 20 s, nothing running in between).' },
+    { key: 'goalEdge', label: 'Goal glow on the screen edges', description: 'A pulse in the scoring team’s colour around the screen edge.' },
+    { key: 'joinSparkle', label: 'Sparkles when a teammate joins', description: 'The name glows when a verified club member joins the room.' }
+  ]
+};
+const PAGE_TRANS = [['off', 'Sin transición', 'None'], ['fade', 'Fundido', 'Fade'], ['slide', 'Deslizar', 'Slide'], ['zoom', 'Zoom', 'Zoom']];
+const SPARK_STYLES = [['oro', 'Oro', 'Gold'], ['estrellas', 'Estrellas', 'Stars'], ['luciernagas', 'Luciérnagas', 'Fireflies'], ['nieve', 'Nieve', 'Snow'], ['confeti', 'Confeti', 'Confetti']];
+const SPARK_COUNTS = [[20, 'Pocas', 'Few'], [40, 'Normal', 'Normal'], [80, 'Muchas', 'Many']];
+
+function paintAnimations() {
+  const host = $('#animSwitches');
+  if (!host || !state.config) return;
+  const lang = isEn() ? 'en' : 'es';
+  const ap = state.config.appearance;
+  $('#animTitle').textContent = lang === 'en' ? 'Menu animations' : 'Animaciones del menú';
+  $('#animDesc').textContent = lang === 'en'
+    ? 'Cheap motion only. Everything stops with “Animations” off.'
+    : 'Sólo movimiento barato. Todo se apaga con «Animaciones» apagado.';
+  $('#pageTransLabel').textContent = lang === 'en' ? 'Screen transition' : 'Transición entre pantallas';
+  $('#sparkStyleLabel').textContent = lang === 'en' ? 'Menu particles' : 'Partículas del menú';
+  $('#sparkDensLabel').textContent = lang === 'en' ? 'Particle amount' : 'Cantidad de partículas';
+  buildSwitches(
+    host,
+    ANIM_SWITCHES[lang].map((i) => ({ ...i, value: () => !!state.config.appearance[i.key] })),
+    (item, value) => patchConfig({ appearance: { [item.key]: value } })
+  );
+  const fill = (el, items, cur, attr) => {
+    el.replaceChildren();
+    for (const it of items) {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'chip' + (String(it[0]) === String(cur) ? ' is-active' : '');
+      b.dataset[attr] = it[0];
+      b.textContent = lang === 'en' ? it[2] : it[1];
+      el.append(b);
+    }
+  };
+  fill($('#pageTransChips'), PAGE_TRANS, ap.pageTransition || 'fade', 'pt');
+  fill($('#sparkStyleChips'), SPARK_STYLES, ap.sparkStyle || 'oro', 'ss');
+  fill($('#sparkDensChips'), SPARK_COUNTS, ap.sparkCount || 40, 'sc');
+}
+(function wireAnimations() {
+  const on = (sel, attr, key, conv) => {
+    const el = $(sel);
+    if (!el) return;
+    el.addEventListener('click', (e) => {
+      const b = e.target.closest(`[data-${attr}]`);
+      if (b) patchConfig({ appearance: { [key]: conv ? conv(b.dataset[attr]) : b.dataset[attr] } });
+    });
+  };
+  on('#pageTransChips', 'pt', 'pageTransition');
+  on('#sparkStyleChips', 'ss', 'sparkStyle');
+  on('#sparkDensChips', 'sc', 'sparkCount', Number);
+})();
+
+/*
+ * Acento que cambia solo: un paso cada 20 s en vez de un bucle por cuadro. La
+ * transición de 20 s del color la hace el motor de CSS (`--accent` registrado
+ * como <color>), así que no hay JS corriendo entre un paso y el siguiente.
+ */
+let driftTimer = 0;
+let driftHue = 0;
+function hslHex(h, sat, lig) {
+  const a = sat * Math.min(lig, 1 - lig);
+  const f = (n) => {
+    const k = (n + h / 30) % 12;
+    const c = lig - a * Math.max(-1, Math.min(k - 3, 9 - k, 1));
+    return Math.round(255 * c).toString(16).padStart(2, '0');
+  };
+  return `#${f(0)}${f(8)}${f(4)}`;
+}
+function syncAccentDrift() {
+  const ap = (state.config && state.config.appearance) || {};
+  const want = ap.accentDrift === true && ap.animations !== false;
+  if (!want) {
+    if (driftTimer) { clearInterval(driftTimer); driftTimer = 0; refreshThemeVars(); }
+    return;
+  }
+  if (driftTimer) return;
+  const step = async () => {
+    const app = document.getElementById('app');
+    if (document.hidden || (app && app.dataset.stage === 'game')) return;
+    driftHue = (driftHue + 24) % 360;
+    const vars = await tvm.theme.vars(hslHex(driftHue, 0.62, 0.46)).catch(() => null);
+    if (vars && driftTimer) applyThemeVars(vars);
+  };
+  driftTimer = setInterval(step, 20000);
+  step();
+}
 
 /* Sonido de gol incluido y estilo del cartel de marcador. */
 const SCOREBOARDS = [

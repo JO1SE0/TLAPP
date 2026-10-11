@@ -4911,3 +4911,90 @@ input[type="color"].is-unset { opacity: .45; }
 .pnav__favs { display: flex; flex-direction: column; gap: 2px; margin-bottom: 10px; }
 .row.is-flash { animation: favFlash 1.8s ease-out; }
 @keyframes favFlash { 0%, 40% { background: var(--accent-soft); box-shadow: 0 0 0 2px var(--accent); } 100% { background: transparent; box-shadow: none; } }
+
+/*
+ * ══════════════════════════════════════════════════════════
+ * Animaciones del menú (sección «Animaciones»)
+ * ══════════════════════════════════════════════════════════
+ *
+ * Todo es `opacity` y `transform`: corre en el compositor, no repinta nada y no
+ * deja nada andando cuando la animación termina. «Animaciones» apagado las mata
+ * a todas de una (`html[data-animations="off"]`), y cada una tiene su propio
+ * interruptor (`data-page-trans`, `data-crest-breath`, ...).
+ */
+
+/* 1 · Transición entre pantallas */
+@keyframes pgFade  { from { opacity: 0; } to { opacity: 1; } }
+@keyframes pgSlide { from { opacity: 0; transform: translateX(18px); } to { opacity: 1; transform: none; } }
+@keyframes pgZoom  { from { opacity: 0; transform: scale(0.97); } to { opacity: 1; transform: none; } }
+html:not([data-animations="off"])[data-page-trans="fade"]  .page.is-active { animation: pgFade 0.22s ease-out; }
+html:not([data-animations="off"])[data-page-trans="slide"] .page.is-active { animation: pgSlide 0.26s cubic-bezier(0.2, 0.7, 0.2, 1); }
+html:not([data-animations="off"])[data-page-trans="zoom"]  .page.is-active { animation: pgZoom 0.24s cubic-bezier(0.2, 0.7, 0.2, 1); }
+
+/* 2 · El escudo respira (sólo el dibujo; el destello de arriba sigue aparte) */
+@keyframes crestBreath { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.07); } }
+html:not([data-animations="off"]):not([data-crest-breath="off"]) .brand__mark,
+html:not([data-animations="off"]):not([data-crest-breath="off"]) .startcard__logo {
+  animation: crestBreath 5.5s ease-in-out infinite;
+}
+html:not([data-animations="off"]) .app[data-stage="game"] .brand__mark { animation: none; }
+
+/* 3 · Cortina con el escudo al entrar a una sala */
+.room-curtain {
+  position: fixed;
+  inset: 0;
+  z-index: 100001;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  background: radial-gradient(60% 55% at 50% 50%, rgb(var(--accent-rgb) / 22%), var(--bg-0) 78%);
+  animation: curtainFade 1.15s ease both;
+}
+.room-curtain img {
+  width: 120px;
+  height: 120px;
+  object-fit: contain;
+  animation: curtainCrest 1.15s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+@keyframes curtainFade { 0% { opacity: 0; } 22% { opacity: 1; } 62% { opacity: 1; } 100% { opacity: 0; } }
+@keyframes curtainCrest { 0% { transform: scale(0.7); } 40% { transform: scale(1.04); } 100% { transform: scale(1.12); } }
+html[data-animations="off"] .room-curtain,
+html[data-room-curtain="off"] .room-curtain { display: none; }
+
+/* 4 · Interruptores con rebote: se estiran al apretarlos y dan un saltito al cambiar */
+.switch::after { transition: transform 0.24s cubic-bezier(0.34, 1.56, 0.64, 1), width 0.12s ease, background var(--mid); }
+html:not([data-animations="off"]):not([data-toggle-bounce="off"]) .switch:active::after { width: 22px; }
+html:not([data-animations="off"]):not([data-toggle-bounce="off"]) .switch.is-on:active::after { transform: translateX(12px); }
+@keyframes swHop { 0% { transform: scale(1); } 35% { transform: scale(1.12, 0.88); } 70% { transform: scale(0.97, 1.05); } 100% { transform: scale(1); } }
+.switch.is-pop { animation: swHop 0.34s ease-out; }
+html[data-animations="off"] .switch.is-pop,
+html[data-toggle-bounce="off"] .switch.is-pop { animation: none; }
+
+/* 5 · Las filas entran de a una */
+@keyframes rowIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+html:not([data-animations="off"]):not([data-list-stagger="off"]) .page.is-active .page__inner > .sec {
+  animation: rowIn 0.38s cubic-bezier(0.2, 0.7, 0.2, 1) backwards;
+  animation-delay: min(calc(var(--i, 0) * 45ms), 270ms);
+}
+html:not([data-animations="off"]):not([data-list-stagger="off"]) .rtable[data-enter] .rrow {
+  animation: rowIn 0.34s cubic-bezier(0.2, 0.7, 0.2, 1) backwards;
+}
+.rtable[data-enter] .rrow:nth-child(1){animation-delay:0ms}
+.rtable[data-enter] .rrow:nth-child(2){animation-delay:28ms}
+.rtable[data-enter] .rrow:nth-child(3){animation-delay:56ms}
+.rtable[data-enter] .rrow:nth-child(4){animation-delay:84ms}
+.rtable[data-enter] .rrow:nth-child(5){animation-delay:112ms}
+.rtable[data-enter] .rrow:nth-child(6){animation-delay:140ms}
+.rtable[data-enter] .rrow:nth-child(7){animation-delay:168ms}
+.rtable[data-enter] .rrow:nth-child(8){animation-delay:196ms}
+.rtable[data-enter] .rrow:nth-child(9){animation-delay:224ms}
+.rtable[data-enter] .rrow:nth-child(10){animation-delay:252ms}
+.rtable[data-enter] .rrow:nth-child(11){animation-delay:280ms}
+.rtable[data-enter] .rrow:nth-child(12){animation-delay:308ms}
+.rtable[data-enter] .rrow:nth-child(13){animation-delay:336ms}
+.rtable[data-enter] .rrow:nth-child(14){animation-delay:364ms}
+.rtable[data-enter] .rrow:nth-child(15){animation-delay:392ms}
+.rtable[data-enter] .rrow:nth-child(16){animation-delay:420ms}
+
+/* 14/16 · Efectos dentro del juego viven en game-preload (ver `goalEdge` y `joinSparkle`). */

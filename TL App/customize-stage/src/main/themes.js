@@ -176,6 +176,45 @@ const BUILT_IN = {
     accent: '#d5345f', accent2: '#8857dd', accentText: '#ffffff',
     aura: { stops: ['#ffc2d2', '#ffdcc0', '#cfc0ff', '#ffe8f0'], seconds: 40 }
   },
+  papel: {
+    label: 'Papel',
+    description: 'Claro, color hueso y tinta marrón.',
+    dark: false,
+    bg: '#f1e9d8', bg1: '#f8f2e4', panel: '#fbf6ea', panelTop: '#fffaf0',
+    field: '#ece3cf',
+    text: '#2b2118', dim: '#5a4a3a', faint: '#7a6a58',
+    accent: '#9c3b2a', accentText: '#ffffff'
+  },
+  retro: {
+    label: 'Retro CRT',
+    description: 'Negro y fósforo verde, como un monitor viejo.',
+    dark: true,
+    bg: '#030905', bg1: '#06120a', panel: '#0a1b0f', panelTop: '#0f2616',
+    field: '#040d07',
+    text: '#c9ffd6', dim: '#7fd596', faint: '#58a06c',
+    accent: '#1fa84a', accentText: '#02140a',
+    aura: { stops: ['#0c3a1a', '#12632b', '#0a2a14', '#020a05'], seconds: 44 }
+  },
+  cyberpunk: {
+    label: 'Cyberpunk',
+    description: 'Violeta noche con neón magenta y cian.',
+    dark: true,
+    bg: '#0b0618', bg1: '#110a24', panel: '#1a0f35', panelTop: '#241547',
+    field: '#0c0719',
+    text: '#f6eeff', dim: '#c5b3e6', faint: '#9582bd',
+    accent: '#e0198f', accent2: '#12b7d4', accentText: '#ffffff',
+    aura: { stops: ['#e0198f', '#7a2be0', '#12b7d4', '#1a0b3d'], seconds: 32 }
+  },
+  marmol: {
+    label: 'Mármol',
+    description: 'Claro, blanco veteado con detalles dorados.',
+    dark: false,
+    bg: '#eceef0', bg1: '#f7f8f9', panel: '#ffffff', panelTop: '#fafbfb',
+    field: '#e6e8eb',
+    text: '#1d1f24', dim: '#4a4e57', faint: '#6b707a',
+    accent: '#8a6a24', accentText: '#ffffff',
+    aura: { stops: ['#dfe3e8', '#f4efe2', '#d7dbe2', '#f7f8f9'], seconds: 52 }
+  },
   clasico: {
     label: 'Clásico',
     description: 'HaxBall tal cual, sin tocar. La app queda oscura.',

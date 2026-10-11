@@ -1628,9 +1628,16 @@ function reply(event, channel, payload) {
 }
 
 /** Variables CSS del tema actual, para que la interfaz se pinte igual que el juego. */
-function themeVars() {
+function themeVars(accentOverride) {
   const look = store.get().appearance;
-  return themes.appVars(themes.palette(look.theme, look.accent, look.customThemes));
+  const pal = themes.palette(look.theme, look.accent, look.customThemes);
+  // `accentOverride` es el acento «que cambia solo»: se pinta encima del tema, pero no se guarda.
+  if (/^#[0-9a-f]{6}$/i.test(String(accentOverride || ''))) {
+    pal.accent = accentOverride;
+    pal.accentText = themes.readableOn(accentOverride);
+    pal.duo = false;
+  }
+  return themes.appVars(pal);
 }
 
 /** Avisa a los dos lados de un cambio de configuración. */
@@ -2275,7 +2282,7 @@ handle('cfg:schema', () => ({
   countries: countries.COUNTRIES
 }));
 
-handle('theme:vars', () => themeVars());
+handle('theme:vars', (_e, accent) => themeVars(accent));
 
 /**
  * Las mismas variables, pero síncronas y para el arranque de la ventana.

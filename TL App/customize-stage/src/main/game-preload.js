@@ -4220,8 +4220,10 @@ function myNick() {
  */
 function paintPeers(doc) {
   const me = selfPeer();
+  const rows = playerRows(doc);
+  safe(sparkleJoiners, doc, rows);
 
-  for (const row of playerRows(doc)) {
+  for (const row of rows) {
     const name = row.querySelector('[data-hook="name"]');
     if (!name) continue;
 
@@ -7230,12 +7232,104 @@ function ensurePitchFxStyle(doc) {
   doc.head.append(style);
 }
 
+/*
+ * Efectos chicos de personalización (borde de gol y chispas al entrar un
+ * compañero). Un estilo por documento, nodos que se borran solos y sólo
+ * `opacity` / `transform`: nada corre entre un efecto y el siguiente.
+ */
+function ensureFx2Style(doc) {
+  if (!doc || !doc.head || doc.getElementById('tvm-fx2')) return;
+  const st = doc.createElement('style');
+  st.id = 'tvm-fx2';
+  st.textContent = `
+    #tvm-goal-edge { position: fixed; inset: 0; z-index: 2147482990; pointer-events: none; opacity: 0;
+      box-shadow: inset 0 0 9vmin 1.2vmin var(--tvm-edge, #d0b878), inset 0 0 2vmin 0 var(--tvm-edge, #d0b878); }
+    #tvm-goal-edge.is-on { animation: tvmEdge 1.3s ease-out both; }
+    @keyframes tvmEdge { 0% { opacity: 0; } 14% { opacity: .95; } 100% { opacity: 0; } }
+    .tvm-spk { position: relative; display: inline-block; width: 0; height: 0; overflow: visible; pointer-events: none; vertical-align: middle; }
+    .tvm-spk b { position: absolute; left: 0; top: 0; font: 700 11px/1 system-ui, sans-serif; color: #f6df98;
+      text-shadow: 0 0 6px #d0b878; opacity: 0; animation: tvmSpk 1.3s ease-out var(--w) both; }
+    @keyframes tvmSpk { 0% { opacity: 0; transform: translate(0, 4px) scale(.4); }
+      30% { opacity: 1; } 100% { opacity: 0; transform: translate(var(--x), var(--y)) scale(1.1) rotate(80deg); } }
+    .tvm-spk-name { animation: tvmSpkName 1.4s ease-out both; }
+    @keyframes tvmSpkName { 0%, 100% { opacity: 1; } 25% { opacity: .55; } 50% { opacity: 1; } 75% { opacity: .7; } }`;
+  doc.head.append(st);
+}
+
+/** Pulso en el borde de la pantalla con el color del equipo que anotó. */
+function goalEdgeFx(doc) {
+  const ap = state.config.appearance;
+  if (ap.goalEdge === false || !ap.animations) return;
+  ensureFx2Style(doc);
+  let el = doc.getElementById('tvm-goal-edge');
+  if (!el) {
+    el = doc.createElement('div');
+    el.id = 'tvm-goal-edge';
+    el.setAttribute('aria-hidden', 'true');
+    doc.body.append(el);
+  }
+  const fresh = Date.now() - lastGoal.at < 1500;
+  const color = fresh && lastGoal.team === 'Red' ? '#e56e56' : fresh && lastGoal.team === 'Blue' ? '#5689e5' : '#d0b878';
+  el.style.setProperty('--tvm-edge', color);
+  el.classList.remove('is-on');
+  void el.offsetWidth;
+  el.classList.add('is-on');
+}
+
+/*
+ * Chispas cuando entra a la sala alguien del plantel (verificado por clave).
+ * Los que ya estaban al entrar vos NO brillan: los primeros 3,5 s sólo se anotan.
+ */
+const sparkleSeen = new Set();
+let sparkleSeedAt = 0;
+
+function sparkleJoiners(doc, rows) {
+  const ap = state.config.appearance;
+  const me = myNick();
+  const now = [];
+  for (const row of rows) {
+    const name = row.querySelector('[data-hook="name"]');
+    if (!name) continue;
+    const nick = (name.textContent || '').trim();
+    const peer = nick && nick !== me ? peers.get(nick) : null;
+    if (peer && peer.name) now.push([nick, name]);
+  }
+  if (!rows.length) { sparkleSeen.clear(); sparkleSeedAt = 0; return; }
+  if (!sparkleSeedAt) sparkleSeedAt = Date.now();
+  const seeding = Date.now() - sparkleSeedAt < 3500;
+  const current = new Set(now.map((x) => x[0]));
+  for (const [nick, name] of now) {
+    if (sparkleSeen.has(nick)) continue;
+    sparkleSeen.add(nick);
+    if (seeding || ap.joinSparkle === false || !ap.animations) continue;
+    ensureFx2Style(doc);
+    const spk = doc.createElement('span');
+    spk.className = 'tvm-spk';
+    for (let i = 0; i < 5; i++) {
+      const b = doc.createElement('b');
+      b.textContent = i % 2 ? '✦' : '✧';
+      b.style.setProperty('--x', `${Math.round((Math.random() - 0.3) * 46)}px`);
+      b.style.setProperty('--y', `${Math.round(-8 - Math.random() * 18)}px`);
+      b.style.setProperty('--w', `${(i * 0.09).toFixed(2)}s`);
+      spk.append(b);
+    }
+    name.after(spk);
+    name.classList.add('tvm-spk-name');
+    setTimeout(() => { spk.remove(); name.classList.remove('tvm-spk-name'); }, 1700);
+  }
+  for (const nick of [...sparkleSeen]) if (!current.has(nick)) sparkleSeen.delete(nick);
+}
+
 function goalImpact() {
   const cfg = state.config.pitch;
   if (!cfg) return;
   // El interruptor global de animaciones manda: si el jugador las apagó, es
   // porque quiere que nada se mueva, y esto es lo primero que sobra.
   if (!state.config.appearance.animations) return;
+  {
+    const d0 = gameDocument();
+    if (d0 && d0.body) safe(goalEdgeFx, d0);
+  }
   if (!cfg.goalFlash && !cfg.goalShake) return;
 
   const doc = gameDocument();

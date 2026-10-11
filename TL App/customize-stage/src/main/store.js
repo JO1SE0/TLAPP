@@ -75,6 +75,26 @@ const DEFAULTS = {
     welcomeSound: true,
     /** Partículas doradas flotando en el menú. */
     sparks: true,
+    /** Estilo de las partículas del menú: oro | estrellas | luciernagas | nieve | confeti. */
+    sparkStyle: 'oro',
+    /** Cantidad de partículas: 20 | 40 | 80. */
+    sparkCount: 40,
+    /** Transición entre pantallas del menú: off | fade | slide | zoom. */
+    pageTransition: 'fade',
+    /** El escudo "respira" en la barra lateral y la pantalla de inicio. */
+    crestBreath: true,
+    /** Cortina con el escudo al entrar a una sala. */
+    roomCurtain: true,
+    /** Los interruptores rebotan al cambiar. */
+    toggleBounce: true,
+    /** Las filas de salas y ajustes entran una tras otra. */
+    listStagger: true,
+    /** El acento cambia solo, muy despacio (sólo en temas que usan el acento del jugador). */
+    accentDrift: false,
+    /** Destello en los bordes de la pantalla al hacer un gol, con el color del equipo. */
+    goalEdge: true,
+    /** Chispas sobre el nombre cuando entra un integrante verificado del club. */
+    joinSparkle: true,
     /** Música del menú de salas (archivos en assets/music) y su volumen. */
     music: true,
     /** Incluir las canciones del club (además de las propias). */
