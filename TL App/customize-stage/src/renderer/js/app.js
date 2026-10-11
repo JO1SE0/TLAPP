@@ -307,7 +307,9 @@ const GATE_TEXT = {
     help: 'Si no tenés clave, pedísela al capitán.',
     outdated: 'Hay una versión nueva y obligatoria de TL App.', outdatedSub: 'Actualizá para seguir usando la app.', update: 'Actualizar ahora', updating: 'Buscando actualización…',
     noUpdate: 'Todavía no hay una actualización disponible. Probá en unos minutos.',
-    'other-pc': 'Tu clave ya está en uso en otra PC.', otherSub: 'Cada clave sirve para una sola computadora. Pedile al capitán que la libere y esta pantalla se abre sola.'
+    'other-pc': 'Tu clave ya está en uso en otra PC.', otherSub: 'Cada clave sirve para una sola computadora. Pedile al capitán que la libere y esta pantalla se abre sola.',
+    shared: 'Tu clave se usó desde otra PC.', sharedSub: 'Las claves no se comparten: quedó bloqueada en las dos computadoras. Hablá con el capitán para resolverlo.',
+    banned: 'Esta PC no está autorizada.', bannedSub: 'Esta computadora no puede usar esa clave. Si es un error, hablá con el capitán.'
   },
   en: {
     title: 'Team access', sub: 'Enter your personal key to use TL App.', ph: 'TL-XXXX-XXXX-XXXX', go: 'Enter', checking: 'Checking…',
@@ -316,14 +318,16 @@ const GATE_TEXT = {
     help: 'No key? Ask the captain.',
     outdated: 'A new, mandatory version of TL App is available.', outdatedSub: 'Update to keep using the app.', update: 'Update now', updating: 'Checking for updates…',
     noUpdate: 'No update is available yet. Try again in a few minutes.',
-    'other-pc': 'Your key is already in use on another PC.', otherSub: 'Each key works on a single computer. Ask the captain to release it and this screen will open by itself.'
+    'other-pc': 'Your key is already in use on another PC.', otherSub: 'Each key works on a single computer. Ask the captain to release it and this screen will open by itself.',
+    shared: 'Your key was used from another PC.', sharedSub: 'Keys are not to be shared: it is now blocked on both computers. Talk to the captain to sort it out.',
+    banned: 'This PC is not authorized.', bannedSub: 'This computer cannot use that key. If this is a mistake, talk to the captain.'
   }
 };
 
 /* ── Actualización obligatoria ────────────────────────────────
  * Si el capitán la tiene activa (panel → Acceso y versión) y hay una versión publicada más
  * nueva que la que tenés, la app muestra este cartel y no deja usarla hasta actualizar.
- * No corta una partida en curso: espera a que vuelvas al menú. El capitán queda afuera. */
+ * Sólo se pide al abrir la app: si ya estás en una sala, no te interrumpe. El capitán queda afuera. */
 const FORCE_MSGS = {
   es: [
     'Tu TL App quedó en el siglo pasado. Actualizá y volvé a la cancha.',
@@ -356,8 +360,10 @@ async function enforceUpdate() {
     showGate('outdated', forceMsg);
   } catch (e) { /* sin red: se reintenta más tarde */ }
 }
-setTimeout(enforceUpdate, 20000);
-setInterval(enforceUpdate, 15 * 60 * 1000);
+// Sólo al abrir la app (nunca a mitad de una tanda de partidos): una revisión a los pocos
+// segundos y, si no hubo red, un reintento a los dos minutos mientras no se haya entrado a una sala.
+setTimeout(enforceUpdate, 12000);
+setTimeout(enforceUpdate, 120000);
 
 function showGate(reason, extra) {
   const tx = GATE_TEXT[isEn() ? 'en' : 'es'];
@@ -411,11 +417,11 @@ function showGate(reason, extra) {
     });
   }
   const outdated = reason === 'outdated';
-  const otherPc = reason === 'other-pc';
+  const otherPc = reason === 'other-pc' || reason === 'shared' || reason === 'banned';
   gate.classList.toggle('is-outdated', outdated);
   gate.classList.toggle('is-info', otherPc);
-  gate.querySelector('.gate__title').textContent = outdated ? tx.outdated : otherPc ? tx['other-pc'] : tx.title;
-  gate.querySelector('.gate__sub').textContent = outdated ? (extra || tx.outdatedSub) : otherPc ? tx.otherSub : tx.sub;
+  gate.querySelector('.gate__title').textContent = outdated ? tx.outdated : otherPc ? tx[reason] : tx.title;
+  gate.querySelector('.gate__sub').textContent = outdated ? (extra || tx.outdatedSub) : otherPc ? tx[reason === 'other-pc' ? 'otherSub' : `${reason}Sub`] : tx.sub;
   gate.querySelector('.gate__input').placeholder = tx.ph;
   gate.querySelector('.gate__btn').textContent = outdated ? tx.update : tx.go;
   gate.querySelector('.gate__msg').textContent = outdated || otherPc ? '' : (tx[reason] || '');

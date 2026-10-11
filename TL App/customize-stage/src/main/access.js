@@ -134,7 +134,7 @@ function rebuild(list) {
       minMessage: typeof d.minMessage === 'string' ? d.minMessage : '',
       captains, legacyNotice: null, seq: d.seq, source: 'captain',
       removed: Array.isArray(d.removed) ? d.removed : [],
-      forceUpdate: d.forceUpdate !== false
+      forceUpdate: d.forceUpdate === true
     };
   } else {
     eff = {
@@ -229,30 +229,43 @@ function deviceId() {
   return saved.device;
 }
 
+/** Devuelve 'ok' | 'other-pc' (la clave es de otra PC) | 'shared' (alguien más la usó) | 'banned' (esta PC fue vetada). */
 async function deviceCheck(me, candidate) {
   const url = presenceMod.cleanUrl(presence);
-  if (!url || isCaptainKey(candidate)) return true;
+  if (!url || isCaptainKey(candidate)) return 'ok';
   const epoch = Number(me.epoch) || 0;
   const norm = normalize(candidate);
-  if (lastDev && lastDev.key === norm && lastDev.epoch === epoch && Date.now() - lastDev.at < 10 * 60 * 1000) return true;
+  const mine = deviceId();
+  if (Array.isArray(me.banned) && me.banned.includes(mine)) return 'banned';
   try {
     const id = identity.fromKey(candidate);
-    const mine = deviceId();
+    if (lastDev && lastDev.key === norm && lastDev.epoch === epoch && Date.now() - lastDev.at < 10 * 60 * 1000) {
+      return (await ownAlert(url, id, epoch)) ? 'shared' : 'ok'; // ya registrada: sólo se mira si hubo un intento ajeno
+    }
     const rec = await presenceMod.call(`${url}/devices/${id.pid}.json`, 'GET');
     const valid = rec && typeof rec.d === 'string' && Number.isInteger(rec.e) && typeof rec.t === 'number' && typeof rec.s === 'string' &&
       identity.verify(id.pub, `dev|${rec.d}|${rec.e}|${rec.t}`, rec.s);
     if (valid && rec.e === epoch && rec.d !== mine) {
       const t = Date.now();
-      presenceMod.call(`${url}/alerts/${id.pid}.json`, 'PUT', { d: mine, t, s: id.sign(`alert|${mine}|${t}`) }).catch(() => {});
-      return false;
+      presenceMod.call(`${url}/alerts/${id.pid}.json`, 'PUT', { d: mine, e: epoch, t, s: id.sign(`alert|${mine}|${epoch}|${t}`) }).catch(() => {});
+      return 'other-pc';
     }
     if (!(valid && rec.e === epoch && rec.d === mine)) {
       const t = Date.now();
       await presenceMod.call(`${url}/devices/${id.pid}.json`, 'PUT', { d: mine, e: epoch, t, s: id.sign(`dev|${mine}|${epoch}|${t}`) });
+    } else if (await ownAlert(url, id, epoch)) {
+      return 'shared'; // soy la PC dueña, pero otra intentó usar mi clave: los dos quedan frenados
     }
     lastDev = { key: norm, epoch, at: Date.now() };
-    return true;
-  } catch { return true; }
+    return 'ok';
+  } catch { return 'ok'; }
+}
+
+/** ¿Hay una alerta vigente (de esta época) sobre mi clave? */
+async function ownAlert(url, id, epoch) {
+  const a = await presenceMod.call(`${url}/alerts/${id.pid}.json`, 'GET');
+  return !!(a && typeof a.d === 'string' && Number.isInteger(a.e) && a.e === epoch && typeof a.t === 'number' && typeof a.s === 'string' &&
+    identity.verify(id.pub, `alert|${a.d}|${a.e}|${a.t}`, a.s));
 }
 
 /** «ok», salvo que la app sea más vieja que la versión mínima que pidió el capitán (él no se bloquea). */
@@ -282,11 +295,13 @@ async function evaluate(key, opts) {
     const h = candidate ? hashKey(candidate) : '';
     const me = h && users.find((u) => u && String(u.hash).toLowerCase() === h);
     if (me) {
-      if (!(await deviceCheck(me, candidate))) {
-        // Se guarda la clave (sin darla por validada): cuando el capitán libere la PC, entra sola.
+      const dev = await deviceCheck(me, candidate);
+      if (dev !== 'ok') {
+        // Se guarda la clave (sin darla por validada): cuando el capitán resuelva, entra sola.
         saved = { ...saved, key: normalize(candidate), name: String(me.name || ''), validatedAt: 0 };
         persist();
-        return set({ state: 'locked', name: '', reason: 'other-pc' });
+        lastDev = null;
+        return set({ state: 'locked', name: '', reason: dev });
       }
       saved = { key: normalize(candidate), enabled: true, name: String(me.name || ''), validatedAt: Date.now(), admin: saved.admin, device: saved.device };
       persist();
@@ -318,7 +333,19 @@ function init(userDataDir, cb, version) {
   timer = setInterval(run, RECHECK_MS);
   if (timer.unref) timer.unref();
   // Lo del capitán se mira cada minuto (avisos urgentes, bajas, versión mínima)…
-  const poll = async () => { if (lastList && await refreshAdmin()) await evaluate(null, { skipGithub: true }); };
+  const poll = async () => {
+    if (lastList && await refreshAdmin()) { await evaluate(null, { skipGithub: true }); return; }
+    // Bloqueada por la PC o por una clave compartida: se reintenta sola, para entrar apenas el capitán resuelva.
+    if (lastList && status.state === 'locked' && (status.reason === 'shared' || status.reason === 'other-pc')) { await evaluate(null, { skipGithub: true }); return; }
+    // Si otra PC usó mi clave, esta también se frena (sin esperar a la próxima revisión de la hora).
+    if (lastList && status.state === 'ok' && saved.key && saved.enabled && !isCaptainKey(saved.key)) {
+      const url = presenceMod.cleanUrl(presence);
+      const me = eff.users.find((u) => u && String(u.hash).toLowerCase() === hashKey(saved.key));
+      if (url && me) {
+        try { if (await ownAlert(url, identity.fromKey(saved.key), Number(me.epoch) || 0)) { lastDev = null; await evaluate(null, { skipGithub: true }); } } catch { /* sin red */ }
+      }
+    }
+  };
   const t2 = setInterval(() => { poll().catch(() => {}); }, ADMIN_POLL_MS);
   // …y cada medio minuto se recalcula qué aviso toca según la hora, sin red.
   const t3 = setInterval(() => { if (lastList) set({ ...status }); }, NOTICE_TICK_MS);

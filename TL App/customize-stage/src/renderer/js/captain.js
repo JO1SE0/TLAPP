@@ -69,16 +69,19 @@
     const old = members.filter((m) => m.version && latest && cmp(m.version, latest) < 0).length;
     for (const al of data.alerts || []) {
       const box = el('div', 'cap__alert');
-      box.append(el('b', null, '⚠'), el('span', null, `${al.name} intentó entrar con su clave desde otra PC (${ago(al.at)}).`));
-      const free = el('button', 'cap__btn cap__btn--sm', 'Liberar PC'); free.type = 'button'; free.disabled = busy;
-      free.title = 'Permite que la clave se use en otra PC (la primera que entre se queda con ella).';
+      box.append(el('b', null, '⚠'), el('span', null, `La clave de ${al.name} se usó desde otra PC (${ago(al.at)}). Quedó bloqueada en las dos.`));
+      const keep = el('button', 'cap__btn cap__btn--sm', 'Perdonar al dueño'); keep.type = 'button'; keep.disabled = busy;
+      keep.title = 'Libera la clave y deja VETADA la PC que la usó sin permiso: el dueño la recupera, el otro queda afuera.';
+      keep.addEventListener('click', async () => { if (await act({ type: 'resetDevice', name: al.name, banDevice: al.device })) flash(`${al.name} liberado; la otra PC quedó vetada.`); });
+      const free = el('button', 'cap__btn cap__btn--sm cap__btn--ghost', 'Solo liberar'); free.type = 'button'; free.disabled = busy;
+      free.title = 'Por si es la misma persona cambiando de PC: la primera que entre se queda con la clave.';
       free.addEventListener('click', async () => { if (await act({ type: 'resetDevice', name: al.name })) flash(`PC de ${al.name} liberada.`); });
       const nk = el('button', 'cap__btn cap__btn--sm', 'Clave nueva'); nk.type = 'button'; nk.disabled = busy;
       nk.title = 'Anula la clave actual y genera otra (por si la compartió).';
       nk.addEventListener('click', () => newKey(al.name));
       const no = el('button', 'cap__btn cap__btn--sm cap__btn--ghost', 'Descartar'); no.type = 'button'; no.disabled = busy;
       no.addEventListener('click', () => act({ type: 'dismissAlert', name: al.name }));
-      box.append(free, nk, no);
+      box.append(keep, free, nk, no);
       root.append(box);
     }
     root.append(el('p', 'cap__sum', `${members.length} personas · ${online} conectadas · ${old} con versión vieja${latest ? ` (última vista: v${latest})` : ''}`));
@@ -215,12 +218,12 @@
     root.append(tog);
 
     root.append(el('h3', 'cap__h', 'Actualización obligatoria'));
-    root.append(el('p', 'cap__muted', doc.forceUpdate !== false
-      ? 'ACTIVA: cuando publicás una versión nueva, a todos (menos a vos) les sale un cartel y no pueden usar la app hasta actualizar. Si están en una partida, esperan a volver al menú.'
-      : 'APAGADA: nadie queda obligado a actualizar (salvo que pongas una versión mínima).'));
-    const force = el('button', 'cap__btn', doc.forceUpdate !== false ? 'Apagar la actualización obligatoria' : 'Activar la actualización obligatoria');
+    root.append(el('p', 'cap__muted', doc.forceUpdate === true
+      ? 'ACTIVA: cuando publicás una versión nueva, a todos (menos a vos) les sale un cartel al abrir la app y no pueden usarla hasta actualizar.'
+      : 'APAGADA: nadie queda obligado a actualizar (salvo que pongas una versión mínima). Cuando esté activa, el cartel solo sale al abrir la app.'));
+    const force = el('button', 'cap__btn', doc.forceUpdate === true ? 'Apagar la actualización obligatoria' : 'Activar la actualización obligatoria');
     force.type = 'button'; force.disabled = busy;
-    force.addEventListener('click', () => act({ type: 'setForceUpdate', value: doc.forceUpdate === false }));
+    force.addEventListener('click', () => act({ type: 'setForceUpdate', value: doc.forceUpdate !== true }));
     root.append(force);
 
     root.append(el('h3', 'cap__h', 'Versión mínima'));

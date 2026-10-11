@@ -24,12 +24,12 @@ const cleanText = (v, n) => String(v == null ? '' : v).replace(/\r/g, '').trim()
 function applyAction(cur, action, myPub) {
   const doc = {
     enabled: cur.enabled === true,
-    users: cur.users.map((u) => ({ name: u.name, hash: u.hash, pub: u.pub, epoch: Number(u.epoch) || 0 })),
+    users: cur.users.map((u) => ({ name: u.name, hash: u.hash, pub: u.pub, epoch: Number(u.epoch) || 0, banned: Array.isArray(u.banned) ? u.banned.slice(-5) : [] })),
     removed: (cur.removed || []).slice(),
     notices: cur.notices.slice(),
     minVersion: cur.minVersion || '',
     minMessage: cur.minMessage || '',
-    forceUpdate: cur.source === 'captain' ? cur.forceUpdate !== false : true
+    forceUpdate: cur.source === 'captain' ? cur.forceUpdate === true : false
   };
   let extra = null;
   switch (action && action.type) {
@@ -48,14 +48,14 @@ function applyAction(cur, action, myPub) {
       if (!target) throw new Error('No encontré a esa persona.');
       if (target.pub === myPub) throw new Error('No podés sacarte a vos mismo.');
       doc.users = doc.users.filter((u) => u !== target);
-      doc.removed = [...doc.removed.filter((u) => u.name !== target.name), { name: target.name, hash: target.hash, pub: target.pub, epoch: target.epoch, at: Date.now() }].slice(-100);
+      doc.removed = [...doc.removed.filter((u) => u.name !== target.name), { name: target.name, hash: target.hash, pub: target.pub, epoch: target.epoch, banned: target.banned || [], at: Date.now() }].slice(-100);
       break;
     }
     case 'restoreUser': {
       const back = doc.removed.find((u) => String(u.name).toLowerCase() === String(action.name || '').toLowerCase());
       if (!back) throw new Error('No encontré a esa persona entre los quitados.');
       doc.removed = doc.removed.filter((u) => u !== back);
-      doc.users.push({ name: back.name, hash: back.hash, pub: back.pub, epoch: (Number(back.epoch) || 0) + 1 });
+      doc.users.push({ name: back.name, hash: back.hash, pub: back.pub, epoch: (Number(back.epoch) || 0) + 1, banned: back.banned || [] });
       break;
     }
     case 'changeKey': {
@@ -73,6 +73,8 @@ function applyAction(cur, action, myPub) {
       const target = doc.users.find((u) => String(u.name).toLowerCase() === String(action.name || '').toLowerCase());
       if (!target) throw new Error('No encontré a esa persona.');
       target.epoch = (Number(target.epoch) || 0) + 1;
+      // Con `banDevice`: la PC que intentó usar la clave queda vetada para siempre.
+      if (/^[0-9a-f]{16}$/.test(String(action.banDevice || ''))) target.banned = [...(target.banned || []), String(action.banDevice)].slice(-5);
       break;
     }
     case 'setEnabled':
@@ -151,8 +153,8 @@ async function readAlerts() {
   const out = [];
   for (const u of access.getRoster()) {
     const e = data[identity.pidOf(u.pub)];
-    if (e && typeof e.d === 'string' && typeof e.t === 'number' && typeof e.s === 'string' && identity.verify(u.pub, `alert|${e.d}|${e.t}`, e.s)) {
-      out.push({ name: u.name, at: e.t });
+    if (e && typeof e.d === 'string' && Number.isInteger(e.e) && typeof e.t === 'number' && typeof e.s === 'string' && identity.verify(u.pub, `alert|${e.d}|${e.e}|${e.t}`, e.s)) {
+      out.push({ name: u.name, at: e.t, device: e.d });
     }
   }
   return out.sort((x, y) => y.at - x.at);
