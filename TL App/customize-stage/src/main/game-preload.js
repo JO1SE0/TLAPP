@@ -22,8 +22,6 @@ const zoomControl = require('./game-zoom');
 const themes = require('./themes');
 const roomUi = require('./room-ui');
 const aimAssist = require('./aim-assist');
-const crosshair = require('./crosshair');
-const weather = require('./weather');
 let goalSfx = null;
 try { goalSfx = require('../renderer/js/goal-sfx.js'); } catch { /* sin sonidos incluidos */ }
 const gif = require('./gif');
@@ -531,34 +529,6 @@ function ensureFontFace(doc) {
   mount.append(style);
 }
 
-/** Clima sobre la cancha (opcional, sólo tu pantalla). */
-function applyWeather(doc) {
-  try {
-    const cfg = state.config.pitch || {};
-    const animate = !!(state.config.appearance && state.config.appearance.animations);
-    weather.install(doc, cfg.weather, cfg.weatherLevel, animate);
-  } catch (e) { /* adorno */ }
-}
-
-
-/** Cursor de mira sobre la cancha (opcional). */
-function applyCrosshair(doc) {
-  if (!doc) return;
-  const mount = doc.head || doc.documentElement;
-  if (!mount) return;
-  const ap = state.config.appearance || {};
-  const css = crosshair.css(ap.crossStyle, ap.crossColor, ap.crossSize);
-  let style = doc.getElementById('tvm-cross');
-  if (!css) { if (style) style.remove(); return; }
-  if (!style) {
-    style = doc.createElement('style');
-    style.id = 'tvm-cross';
-    mount.append(style);
-  }
-  style.textContent = css;
-}
-
-
 /** Inyecta el tema dentro del documento del juego (el iframe). */
 function applyGameTheme(doc) {
   if (!doc) return;
@@ -856,8 +826,6 @@ function onNewGameDocument(doc) {
   ensureFontFace(doc);
   applyGameTheme(doc);
   applyClientStyles(doc);
-  try { applyCrosshair(doc); } catch (e) { /* adorno */ }
-  applyWeather(doc);
   watchChatLog(doc);
   attachHotkeys(doc);
   attachFreeCam(doc);
@@ -1216,21 +1184,7 @@ const HIT_SOUND_MAX_MS = 3000;
 function playHitSound() {
   const cfg = state.config.vip;
   const file = cfg && cfg.hitSound;
-  if (!file) {
-    // Sonido de patada incluido (sintetizado), si el jugador eligió uno.
-    const ap = state.config.appearance || {};
-    if (goalSfx && ap.kickSfx && ap.kickSfx !== 'default' && goalSfx.hasKick(ap.kickSfx)) {
-      const lv = gameSoundLevel();
-      if (lv <= 0) return true;
-      const nowK = Date.now();
-      if (nowK - lastHitSoundAt < HIT_SOUND_GAP_MS) return true;
-      lastHitSoundAt = nowK;
-      const vv = Math.min(1, Math.max(0, Number(ap.kickSfxVolume)));
-      soundHookSeen = true;
-      return goalSfx.playKick(ap.kickSfx, (Number.isFinite(vv) ? vv : 0.7) * lv);
-    }
-    return false;
-  }
+  if (!file) return false;
 
   // Callado el juego, callado esto. Va ANTES de la espera entre patadas: si no,
   // la patada muda dejaría marcada la hora y la primera de después de sacar el
@@ -7197,14 +7151,13 @@ function noteGoalTeam(team) {
  * Llega por dos caminos —el gol del motor, ya con autor, o el marcador del DOM
  * unos 400 ms después— y en los dos se completa el cartel que ya está en pantalla.
  */
-const goalNames = { scorer: null, assist: null, own: false, at: 0, kind: null };
+const goalNames = { scorer: null, assist: null, own: false, at: 0 };
 
 function noteGoalNames(goal) {
   if (!goal) return;
   goalNames.scorer = goal.scorer || null;
   goalNames.assist = goal.assist || null;
   goalNames.own = !!goal.own;
-  goalNames.kind = goal.kind || null;
   goalNames.at = Date.now();
   paintGoalNames();
   try { clubGoalFx(); } catch (e) { /* adorno */ }
@@ -7243,8 +7196,7 @@ function clubGoalFx() {
   const box = doc.createElement('div');
   box.id = 'tvm-club-fx';
   const cols = ['#d0b878', '#f1e6c4', '#203860', '#e9d49a'];
-  const total = goalNames.kind ? 90 : 46;
-  for (let i = 0; i < total; i++) {
+  for (let i = 0; i < 46; i++) {
     const c = doc.createElement('i');
     c.style.left = `${Math.random() * 100}%`;
     c.style.background = cols[i % cols.length];
@@ -7254,9 +7206,7 @@ function clubGoalFx() {
     box.append(c);
   }
   const t = doc.createElement('b');
-  const LABELS = { hora: 'SOBRE LA HORA · TODA LA LECCE', empate: 'EMPATE · TODA LA LECCE', lejos: 'GOLAZO DE LEJOS · TODA LA LECCE' };
-  t.textContent = LABELS[goalNames.kind] || 'TODA LA LECCE';
-  if (goalNames.kind) t.style.fontSize = '4vmin';
+  t.textContent = 'TODA LA LECCE';
   box.append(t);
   doc.body.append(box);
   setTimeout(() => box.remove(), 3400);
@@ -7796,13 +7746,7 @@ function recordTouch(into, f, player) {
     return null;
   }
 
-  let tx = null; let ty = null;
-  try {
-    const d = player && f.disc ? player[f.disc] : null;
-    const at = d && f.pos ? d[f.pos] : null;
-    if (at && Number.isFinite(at.x)) { tx = at.x; ty = at.y; }
-  } catch (e) { /* sin posición: el festejo por distancia no aplica */ }
-  list.push({ name, team, at: into.clock, x: tx, y: ty });
+  list.push({ name, team, at: into.clock });
   if (list.length > 8) list.shift();
 
   /* La ficha sólo se entera de los toques NUEVOS —acá abajo del filtro de
@@ -8057,7 +8001,6 @@ function realGoal(view, teamObj, room) {
   const seconds = S && match ? Number(match[S.time]) : NaN;
 
   const credit = creditGoal(real, team, REAL_GOAL_GRACE_MS);
-  try { credit.kind = goalKind(f, room, match, S, team, score, credit, seconds); } catch (e) { credit.kind = null; }
   noteGoalNames(credit);
   ipcRenderer.send('game:goal', {
     ...credit,
@@ -8067,44 +8010,6 @@ function realGoal(view, teamObj, room) {
     speed: replaySpeed(view) || 1
   });
   return team;
-}
-
-/** Largo del partido en segundos: un campo fijo de la partida, múltiplo de 60, que todavía no se cumplió. */
-const limitCache = { match: null, value: null };
-function matchLimitSeconds(match, S, seconds) {
-  if (limitCache.match === match) return limitCache.value;
-  let best = null;
-  if (match && Number.isFinite(seconds)) {
-    for (const k of Object.keys(match)) {
-      if (S && (k === S.red || k === S.blue || k === S.time)) continue;
-      const v = match[k];
-      if (typeof v === 'number' && Number.isInteger(v) && v >= 60 && v <= 3600 && v % 60 === 0 && v >= seconds) {
-        if (best === null || v < best) best = v;
-      }
-    }
-  }
-  limitCache.match = match;
-  limitCache.value = best;
-  return best;
-}
-
-/**
- * Qué clase de gol fue, para el festejo del plantel: 'hora' (en los últimos
- * 20 s), 'empate' (iguala desde atrás), 'lejos' (rematado de lejos) o null.
- */
-function goalKind(f, room, match, S, team, score, credit, seconds) {
-  if (credit.own || !score) return null;
-  const mine = team === 'Red' ? score.red : score.blue;
-  const other = team === 'Red' ? score.blue : score.red;
-  const limit = matchLimitSeconds(match, S, seconds);
-  if (limit && Number.isFinite(seconds) && limit - seconds <= 20 && limit - seconds >= 0) return 'hora';
-  if (mine === other && mine >= 1) return 'empate';
-  const ball = ballPos(f, room);
-  if (ball && credit.sx != null) {
-    const dist = Math.hypot(ball.x - credit.sx, ball.y - credit.sy);
-    if (dist >= 330) return 'lejos';
-  }
-  return null;
 }
 
 /** «MM:SS» a partir de los segundos de partido, como lo escribe el HUD. */
@@ -8168,9 +8073,7 @@ function creditGoal(from, team, grace = GOAL_GRACE_MS) {
     scorer: scorer ? scorer.name : null,
     scorerTeam: scorer ? scorer.team : null,
     assist: assist ? assist.name : null,
-    own,
-    sx: scorer && Number.isFinite(scorer.x) ? scorer.x : null,
-    sy: scorer && Number.isFinite(scorer.y) ? scorer.y : null
+    own
   };
 }
 
@@ -8703,7 +8606,7 @@ function syncCanvasHotFlags() {
   visual.shadows = !!cfg.softShadows;
   visual.ballColor = lookfx.safeColor(cfg.ballColor);
   visual.lineGlow = !!cfg.lineGlow;
-  visual.ballStyle = ['soccer', 'neon', 'gold', 'beach', 'eight', 'star', 'club', 'rayas', 'clubball', 'clubstar'].includes(cfg.ballStyle) ? cfg.ballStyle : 'default';
+  visual.ballStyle = ['soccer', 'neon', 'gold', 'beach', 'eight', 'star'].includes(cfg.ballStyle) ? cfg.ballStyle : 'default';
   visual.ringStyle = ['double', 'dashed', 'crown', 'glow', 'dots', 'arrow'].includes(cfg.ringStyle) ? cfg.ringStyle : 'default';
   visual.ringColor = lookfx.safeColor(cfg.ringColor);
   visual.selfTrail = !!cfg.selfTrail;
@@ -11779,8 +11682,6 @@ function boot() {
     if (doc) {
       applyGameTheme(doc);
       applyClientStyles(doc);
-      applyCrosshair(doc);
-      applyWeather(doc);
       watchChatLog(doc);
       // Imagen nueva (o VIP recién activado): se recarga y se repinta el disco.
       if ((config.vip || {}).avatarImage !== beforeImage) {

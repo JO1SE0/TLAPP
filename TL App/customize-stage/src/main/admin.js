@@ -36,8 +36,7 @@ function describe(action, extra) {
     case 'setMinVersion': return { text: action.version ? `Versión mínima: v${action.version}` : 'Quitó la versión mínima', who: '' };
     case 'addNotice': {
       const when = Number(action.at) > Date.now() ? ` (programado ${fmtDate(Number(action.at))})` : '';
-      const to = cleanText(action.to, 40);
-      return { text: `${to ? `Mensaje a ${to}` : action.urgent ? 'Aviso URGENTE' : 'Aviso'}: ${cleanText(action.title || action.text, 50)}${when}`, who: to };
+      return { text: `${action.urgent ? 'Aviso URGENTE' : 'Aviso'}: ${cleanText(action.title || action.text, 50)}${when}`, who: '' };
     }
     case 'removeNotice': return { text: 'Borró un aviso', who: '' };
     default: return { text: String(action.type || 'Acción'), who: '' };
@@ -122,8 +121,7 @@ function applyAction(cur, action, myPub) {
         text,
         at: Number.isFinite(at) && at > 0 ? at : Date.now(),
         repeat: action.repeat === 'daily' || action.repeat === 'weekly' ? action.repeat : null,
-        urgent: action.urgent === true,
-        to: cleanText(action.to, 40)
+        urgent: action.urgent === true
       });
       doc.notices = doc.notices.slice(-60);
       break;

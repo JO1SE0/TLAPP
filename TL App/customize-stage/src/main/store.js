@@ -90,16 +90,9 @@ const DEFAULTS = {
     goalBanner: true,
     /** Cartel de marcador: default | club | neon | minimal | tv. */
     scoreboard: 'default',
-    /** Cursor de mira sobre la cancha: default | cruz | punto | circulo | mira | club. */
-    crossStyle: 'default',
-    crossColor: '#ffffff',
-    crossSize: 28,
     /** Sonido de gol incluido: default | bocina | campanas | aplausos | silbato | tribuna | retro. */
     goalSfx: 'default',
     goalSfxVolume: 0.7,
-    /** Sonido de patada incluido: default | seco | cuero | madera | pelotazo | suave | retro. */
-    kickSfx: 'default',
-    kickSfxVolume: 0.7,
     /** Tamaño de la botonera flotante de la partida. */
     hudScale: 1,
     /** Factor de zoom de cámara: conserva la resolución nativa del canvas. */
@@ -510,9 +503,6 @@ const DEFAULTS = {
     goalShake: true,
     /** Festejo extra cuando mete un gol alguien del plantel verificado. */
     goalClub: true,
-    /** Clima sobre la cancha: none | lluvia | nieve | niebla | noche. */
-    weather: 'none',
-    weatherLevel: 0.6,
     /**
      * Estela de la pelota: por dónde ESTUVO, nunca por dónde va.
      *

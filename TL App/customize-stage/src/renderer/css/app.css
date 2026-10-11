@@ -4113,55 +4113,6 @@ button, input, select, textarea { font-family: var(--font); }
     repeating-radial-gradient(ellipse at 50% 120%, rgb(255 255 255 / 5%) 0 14px, transparent 14px 34px),
     linear-gradient(180deg, #0d2c4a, #0a1f36);
 }
-/* Fondos del club: con el escudo. Estáticos, el escudo va en una capa suelta. */
-.app[data-menubg="escudo"] .browser {
-  background:
-    radial-gradient(110% 90% at 80% 20%, rgb(32 56 96 / 85%), transparent 62%),
-    linear-gradient(160deg, #0a1327, #0f1d3a);
-}
-.app[data-menubg="escudo"] .browser::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  pointer-events: none;
-  background: url("../../../assets/toda-la-lecce.png") no-repeat 92% 55% / min(70vh, 560px);
-  opacity: .09;
-}
-.app[data-menubg="mosaico"] .browser {
-  background: linear-gradient(160deg, #0a1327, #14284f);
-}
-.app[data-menubg="mosaico"] .browser::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  pointer-events: none;
-  background: url("../../../assets/toda-la-lecce.png") 0 0 / 110px 110px;
-  opacity: .045;
-}
-.app[data-menubg="estadio"] .browser {
-  background:
-    radial-gradient(40% 35% at 12% 0%, rgb(255 244 200 / 22%), transparent 70%),
-    radial-gradient(40% 35% at 88% 0%, rgb(255 244 200 / 22%), transparent 70%),
-    linear-gradient(180deg, #060b16 0%, #0b1a30 55%, #0d3320 100%);
-}
-.app[data-menubg="estadio"] .browser::before {
-  content: "";
-  position: absolute;
-  left: 0; right: 0; bottom: 0; height: 38%;
-  z-index: -1;
-  pointer-events: none;
-  background:
-    repeating-linear-gradient(90deg, rgb(255 255 255 / 4%) 0 70px, transparent 70px 140px),
-    linear-gradient(0deg, rgb(255 255 255 / 5%), transparent);
-}
-.app[data-menubg="oro"] .browser {
-  background:
-    radial-gradient(70% 60% at 85% 10%, rgb(208 184 120 / 30%), transparent 65%),
-    radial-gradient(60% 60% at 5% 95%, rgb(208 184 120 / 14%), transparent 60%),
-    linear-gradient(150deg, #0b1630, #203860 70%, #2b4a7c);
-}
 @keyframes menuDrift {
   from { transform: translate3d(-4%, -2%, 0); }
   to { transform: translate3d(5%, 3%, 0); }
