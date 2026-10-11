@@ -176,6 +176,8 @@ const STRINGS = {
     'create.creating': 'Creando la sala…',
 
     'rooms.onlyFavs': 'Favoritos',
+    'rooms.hideLocked': 'Ocultar con clave',
+    'rooms.hideFull': 'Ocultar llenas',
     'rooms.autoJoin': 'Auto-entrar',
     'rooms.autoJoinOn': 'Auto-entrar activo: esperando lugar en «{name}»',
     'rooms.autoJoinOff': 'Auto-entrar cancelado',
@@ -909,6 +911,8 @@ const STRINGS = {
     'create.creating': 'Creating the room…',
 
     'rooms.onlyFavs': 'Favourites',
+    'rooms.hideLocked': 'Hide password rooms',
+    'rooms.hideFull': 'Hide full rooms',
     'rooms.autoJoin': 'Auto-join',
     'rooms.autoJoinOn': 'Auto-join on: waiting for a slot in “{name}”',
     'rooms.autoJoinOff': 'Auto-join cancelled',

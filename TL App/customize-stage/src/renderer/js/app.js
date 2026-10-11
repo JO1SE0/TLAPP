@@ -138,6 +138,8 @@ const state = {
   sort: 'distance',
   flags: null,
   onlyFavs: false,
+  hideLocked: (() => { try { return localStorage.getItem('tl_hide_locked') === '1'; } catch (e) { return false; } })(),
+  hideFull: (() => { try { return localStorage.getItem('tl_hide_full') === '1'; } catch (e) { return false; } })(),
   /** Token de la sala que estamos esperando a que tenga lugar. */
   autoJoin: null,
   /** Pendiente mientras el usuario confirma su apodo en la pantalla de inicio. */
@@ -1875,6 +1877,8 @@ function visibleRooms() {
   let list = state.rooms.list || [];
   if (query) list = list.filter((r) => r.name.toLowerCase().includes(query));
   if (state.onlyFavs) list = list.filter((r) => isFavorite(r.token));
+  if (state.hideLocked) list = list.filter((r) => !r.password);
+  if (state.hideFull) list = list.filter((r) => r.players < r.maxPlayers);
 
   const compare = roomComparator();
   const sponsored = [];
@@ -2015,7 +2019,7 @@ function renderRooms() {
   const list = visibleRooms();
 
   if (!list.length) {
-    const hasQuery = $('#roomSearch').value.trim().length > 0;
+    const hasQuery = $('#roomSearch').value.trim().length > 0 || state.hideLocked || state.hideFull || state.onlyFavs;
     showRoomsMessage(emptyState(
       hasQuery ? t('rooms.noResults') : t('rooms.empty'),
       hasQuery ? t('rooms.noResultsText') : t('rooms.emptyText')
@@ -2392,6 +2396,19 @@ $('#actJoin').addEventListener('click', () => {
   if (state.selected) joinRoom(state.selected);
 });
 $('#actAutoJoin').addEventListener('click', toggleAutoJoin);
+/** «Ocultar con clave» y «Ocultar llenas»: botones que se prenden y se apagan, y se recuerdan. */
+for (const [id, key, store] of [['#hideLocked', 'hideLocked', 'tl_hide_locked'], ['#hideFull', 'hideFull', 'tl_hide_full']]) {
+  const btn = $(id);
+  const paint = () => { btn.classList.toggle('is-on', !!state[key]); btn.setAttribute('aria-pressed', state[key] ? 'true' : 'false'); };
+  paint();
+  btn.addEventListener('click', () => {
+    state[key] = !state[key];
+    try { localStorage.setItem(store, state[key] ? '1' : '0'); } catch (e) { /* sin almacenamiento: dura la sesión */ }
+    paint();
+    renderRoomsFromTop();
+  });
+}
+
 $('#favToggle').addEventListener('click', () => {
   state.onlyFavs = !state.onlyFavs;
   $('#favToggle').classList.toggle('is-on', state.onlyFavs);
