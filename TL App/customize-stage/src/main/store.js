@@ -88,6 +88,11 @@ const DEFAULTS = {
     hideChat: false,
     /** El cartel de gol estilo TV, con autor y asistencia. */
     goalBanner: true,
+    /** Cartel de marcador: default | club | neon | minimal | tv. */
+    scoreboard: 'default',
+    /** Sonido de gol incluido: default | bocina | campanas | aplausos | silbato | tribuna | retro. */
+    goalSfx: 'default',
+    goalSfxVolume: 0.7,
     /** Tamaño de la botonera flotante de la partida. */
     hudScale: 1,
     /** Factor de zoom de cámara: conserva la resolución nativa del canvas. */
@@ -488,6 +493,8 @@ const DEFAULTS = {
     goalFlash: true,
     /** Sacudón de cámara en el gol. */
     goalShake: true,
+    /** Festejo extra cuando mete un gol alguien del plantel verificado. */
+    goalClub: true,
     /**
      * Estela de la pelota: por dónde ESTUVO, nunca por dónde va.
      *

@@ -21,6 +21,8 @@ const lookfx = require('./look');
 const zoomControl = require('./game-zoom');
 const themes = require('./themes');
 const roomUi = require('./room-ui');
+let goalSfx = null;
+try { goalSfx = require('../renderer/js/goal-sfx.js'); } catch { /* sin sonidos incluidos */ }
 const gif = require('./gif');
 const haxball = require('./haxball-settings');
 const countries = require('./countries');
@@ -528,7 +530,7 @@ function applyGameTheme(doc) {
   const mount = doc.head || doc.documentElement;
   if (!mount) return;
 
-  const css = themes.gameCss(currentPalette(), { hudScale: state.config.appearance.hudScale });
+  const css = themes.gameCss(currentPalette(), { hudScale: state.config.appearance.hudScale, scoreboard: state.config.appearance.scoreboard });
   let style = doc.getElementById('tvm-theme');
   if (!css) {
     if (style) style.remove();
@@ -1080,7 +1082,17 @@ let goalAudio = null;
  */
 function playGoalSound() {
   const file = state.config.vip && state.config.vip.goalSound;
-  if (!file) return false;
+  if (!file) {
+    // Sonido incluido en la app (sintetizado), si el jugador eligió uno.
+    const ap = state.config.appearance || {};
+    if (goalSfx && ap.goalSfx && ap.goalSfx !== 'default' && goalSfx.has(ap.goalSfx)) {
+      const lv = gameSoundLevel();
+      if (lv <= 0) return true;
+      const vol = Math.min(1, Math.max(0, Number(ap.goalSfxVolume)));
+      return goalSfx.play(ap.goalSfx, (Number.isFinite(vol) ? vol : 0.7) * lv);
+    }
+    return false;
+  }
 
   /*
    * Con el juego callado no suena tampoco el propio. Se contesta `true` —«de
@@ -6980,6 +6992,56 @@ function noteGoalNames(goal) {
   goalNames.own = !!goal.own;
   goalNames.at = Date.now();
   paintGoalNames();
+  try { clubGoalFx(); } catch (e) { /* adorno */ }
+}
+
+let clubFxAt = 0;
+
+/** Festejo extra si el que convirtió es del plantel (verificado por clave). */
+function clubGoalFx() {
+  const cfg = state.config.pitch;
+  if (!cfg || cfg.goalClub === false) return;
+  if (!state.config.appearance.animations) return;
+  if (goalNames.own || !goalNames.scorer) return;
+  if (Date.now() - clubFxAt < 3000) return;
+  const nick = String(goalNames.scorer).trim();
+  const peer = peers.get(nick);
+  const me = myNick();
+  const isClub = (peer && peer.name) || (selfClub && me && nick === me);
+  if (!isClub) return;
+  const doc = gameDocument();
+  if (!doc || !doc.body) return;
+  clubFxAt = Date.now();
+  if (!doc.getElementById('tvm-club-fx-style')) {
+    const st = doc.createElement('style');
+    st.id = 'tvm-club-fx-style';
+    st.textContent = `
+      #tvm-club-fx { position: fixed; inset: 0; z-index: 2147483000; pointer-events: none; overflow: hidden; }
+      #tvm-club-fx i { position: absolute; top: -4vmin; width: 1.2vmin; height: 2.2vmin; border-radius: 2px; animation: tvmClubFall var(--d) linear var(--w) both; }
+      @keyframes tvmClubFall { to { transform: translateY(112vh) rotate(var(--r)); opacity: .85; } }
+      #tvm-club-fx b { position: absolute; left: 50%; bottom: 14%; transform: translateX(-50%); font: 800 3.4vmin/1 system-ui, sans-serif; letter-spacing: .12em; color: #d0b878; text-shadow: 0 0 2vmin rgba(208,184,120,.7), 0 .3vmin 0 #203860; white-space: nowrap; animation: tvmClubTxt 2.6s ease-out both; }
+      @keyframes tvmClubTxt { 0% { opacity: 0; transform: translateX(-50%) scale(.6); } 15% { opacity: 1; transform: translateX(-50%) scale(1.08); } 80% { opacity: 1; } 100% { opacity: 0; } }`;
+    doc.head.append(st);
+  }
+  const old = doc.getElementById('tvm-club-fx');
+  if (old) old.remove();
+  const box = doc.createElement('div');
+  box.id = 'tvm-club-fx';
+  const cols = ['#d0b878', '#f1e6c4', '#203860', '#e9d49a'];
+  for (let i = 0; i < 46; i++) {
+    const c = doc.createElement('i');
+    c.style.left = `${Math.random() * 100}%`;
+    c.style.background = cols[i % cols.length];
+    c.style.setProperty('--d', `${(1.6 + Math.random() * 1.4).toFixed(2)}s`);
+    c.style.setProperty('--w', `${(Math.random() * 0.5).toFixed(2)}s`);
+    c.style.setProperty('--r', `${Math.round(240 + Math.random() * 480)}deg`);
+    box.append(c);
+  }
+  const t = doc.createElement('b');
+  t.textContent = 'TODA LA LECCE';
+  box.append(t);
+  doc.body.append(box);
+  setTimeout(() => box.remove(), 3400);
 }
 
 /** Escribe los nombres en el cartel si está armado y el gol es reciente. */

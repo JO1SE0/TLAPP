@@ -12,7 +12,9 @@ window.TL_NEWS = {
   items: {
     es: [
       'Insignia del plantel: quien entra con su clave se ve con el escudo, el nombre dorado y «Toda la Lecce · nombre» en las salas.',
-      'Plantel en vivo: a la izquierda ves quién del club está conectado y en qué sala.',
+      'Medidor de latencia de entrada (Rendimiento → Overlay): cuánto tarda la pantalla en responder a tu tecla.',
+      'Sonidos de gol incluidos (bocina, campanas, aplausos, silbato, tribuna, retro) y 4 estilos de cartel de marcador.',
+      'Festejo especial («Toda la Lecce») cuando mete un gol alguien del plantel verificado.',
       'Menú de salas: botones para ocultar las salas con clave y las llenas.',
       'Música en el menú, con tus propias canciones, y efectos de sonido al pasar por los botones.',
       'Resolución ajustable con barra del 25 al 100 %.',
@@ -21,7 +23,9 @@ window.TL_NEWS = {
     ],
     en: [
       'Squad badge: members who sign in with their key show the crest, a golden name and “Toda la Lecce · name” in rooms.',
-      'Live squad: see on the left who from the club is online and in which room.',
+      'Input latency meter (Performance → Overlay): how long the screen takes to react to your key.',
+      'Built-in goal sounds (air horn, bells, applause, whistle, stands, retro) and 4 scoreboard styles.',
+      'Special celebration (“Toda la Lecce”) when a verified squad member scores.',
       'Room menu: buttons to hide password-protected and full rooms.',
       'Menu music, with your own songs, and sound effects on buttons.',
       'Adjustable resolution with a 25–100 % slider.',

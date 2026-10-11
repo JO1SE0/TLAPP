@@ -411,6 +411,33 @@ const each = (list, suffix) => list.map((s) => `${s}${suffix}`).join(',');
  */
 const FONT = '"Outfit", "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif';
 
+/** Estilos del cartel de marcador (opcionales). `default` no toca nada. */
+function scoreboardCss(p, style) {
+  const bar = '.game-state-view .bar';
+  const sc = bar + ' > .scoreboard .score';
+  switch (style) {
+    case 'club':
+      return `${bar} { border: 1px solid #d0b878 !important; background: linear-gradient(180deg, #203860, #16284a) !important; box-shadow: 0 0 18px -4px rgba(208,184,120,.55) !important; }
+${sc} { color: #d0b878 !important; font-size: 24px !important; text-shadow: 0 0 10px rgba(208,184,120,.5); }
+${bar} > .game-timer-view { border-left-color: rgba(208,184,120,.45) !important; color: #f1e6c4 !important; }`;
+    case 'neon':
+      return `${bar} { background: rgba(6,10,20,.88) !important; border: 1px solid #22e3ff !important; box-shadow: 0 0 16px rgba(34,227,255,.5), inset 0 0 12px rgba(34,227,255,.15) !important; }
+${sc} { color: #22e3ff !important; font-size: 24px !important; text-shadow: 0 0 8px #22e3ff, 0 0 18px rgba(34,227,255,.7); }
+${bar} > .game-timer-view { color: #ff4fd8 !important; text-shadow: 0 0 8px rgba(255,79,216,.8); border-left-color: rgba(34,227,255,.4) !important; }`;
+    case 'minimal':
+      return `${bar} { background: transparent !important; border: 0 !important; box-shadow: none !important; }
+${sc} { font-size: 26px !important; font-weight: 300 !important; text-shadow: 0 1px 6px rgba(0,0,0,.7); }
+${bar} > .scoreboard .teamicon { width: 6px !important; height: 6px !important; border-radius: 50% !important; }`;
+    case 'tv':
+      return `${bar} { background: #0c0f14 !important; border: 0 !important; border-radius: 6px !important; box-shadow: 0 4px 14px rgba(0,0,0,.55) !important; }
+${sc} { font-size: 28px !important; font-weight: 800 !important; color: #fff !important; background: #1b2230; padding: 0 8px; border-radius: 4px; }
+${bar} > .scoreboard .teamicon { width: 6px !important; height: 22px !important; border-radius: 2px !important; }
+${bar} > .game-timer-view { color: #ffd34d !important; font-weight: 800 !important; }`;
+    default:
+      return '';
+  }
+}
+
 /**
  * @param {Palette} p Paleta ya resuelta
  * @param {{hudScale?:number}} [options]
@@ -1061,6 +1088,7 @@ ${each(FIELDS, ':focus')} {
 }
 .game-state-view .bar > .scoreboard .teamicon.red { background: ${p.red} !important; color: ${p.red} !important; }
 .game-state-view .bar > .scoreboard .teamicon.blue { background: ${p.blue} !important; color: ${p.blue} !important; }
+${scoreboardCss(p, options.scoreboard)}
 
 /* El reloj se separa solo del marcador: aire a los dos lados de una línea. */
 .game-state-view .bar > .game-timer-view {

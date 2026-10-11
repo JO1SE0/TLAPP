@@ -3463,13 +3463,15 @@ const PITCH_SWITCHES = {
     { key: 'selfRing', label: 'Marcar tu disco', description: 'Un aro de tu color sobre tu disco.', hint: 'En un 4v4 es lo que te ahorra tener que buscarte.' },
     { key: 'teamRings', label: 'Modo daltónico', description: 'Un aro por equipo, lleno o punteado.', hint: 'Se distinguen por la forma y no por el color, así que sirve con cualquier color que le ponga la sala.' },
     { key: 'goalFlash', label: 'Efecto de gol', description: 'Onda dorada, escudo y chispas con los colores del club.', hint: 'Dura poco más de un segundo y no tapa la cancha.' },
-    { key: 'goalShake', label: 'Sacudón en el gol', description: 'La cancha pega un golpe.', hint: 'No mueve la cámara del juego ni te cambia lo que podés ver.' }
+    { key: 'goalShake', label: 'Sacudón en el gol', description: 'La cancha pega un golpe.', hint: 'No mueve la cámara del juego ni te cambia lo que podés ver.' },
+    { key: 'goalClub', label: 'Festejo del plantel', description: 'Lluvia dorada y «Toda la Lecce» cuando mete un gol alguien del plantel.', hint: 'Sólo se activa con jugadores verificados con su clave, así que nadie puede fingirlo.' }
   ],
   en: [
     { key: 'selfRing', label: 'Mark your disc', description: 'A ring in your colour on your disc.', hint: 'In a 4v4 it saves you from hunting for yourself.' },
     { key: 'teamRings', label: 'Colourblind mode', description: 'One ring per team, solid or dashed.', hint: 'They are told apart by shape and not by colour, so it works with whatever colours the room picks.' },
     { key: 'goalFlash', label: 'Goal effect', description: 'Golden shockwave, crest and sparks in the club colours.', hint: 'It lasts just over a second and does not cover the pitch.' },
-    { key: 'goalShake', label: 'Goal shake', description: 'The pitch takes a hit.', hint: 'It does not move the game camera or change what you can see.' }
+    { key: 'goalShake', label: 'Goal shake', description: 'The pitch takes a hit.', hint: 'It does not move the game camera or change what you can see.' },
+    { key: 'goalClub', label: 'Squad celebration', description: 'Golden rain and "Toda la Lecce" when a squad member scores.', hint: 'Only fires for players verified with their key, so nobody can fake it.' }
   ]
 };
 
@@ -4122,6 +4124,7 @@ $('#npNext').addEventListener('click', () => window.TLMusic && window.TLMusic.ne
 
 /* Audio del menú (barra superior): música on/off, volumen y sonidos de botones. */
 function paintAudio() {
+  try { paintGameExtras(); } catch (e) { /* adorno */ }
   const ap = (state.config && state.config.appearance) || {};
   const vol = typeof ap.musicVolume === 'number' ? ap.musicVolume : 0.35;
   $('#audMusic').classList.toggle('is-off', ap.music === false);
@@ -4153,6 +4156,60 @@ $('#audVol').addEventListener('input', (e) => {
   if (window.TLMusic) window.TLMusic.configure(state.config.appearance.music !== false, Number(e.target.value), state.config.appearance.musicClub !== false);
 });
 $('#audVol').addEventListener('change', (e) => patchConfig({ appearance: { musicVolume: Number(e.target.value), music: true } }));
+
+
+/* Sonido de gol incluido y estilo del cartel de marcador. */
+const SCOREBOARDS = [
+  ['default', 'Normal', 'Default'], ['club', 'Club dorado', 'Gold club'], ['neon', 'Neón', 'Neon'],
+  ['minimal', 'Minimal', 'Minimal'], ['tv', 'Clásico TV', 'TV classic']
+];
+function paintGameExtras() {
+  const ap = (state.config && state.config.appearance) || {};
+  const en = isEn();
+  $('#goalSfxLabel').textContent = en ? 'Built-in goal sound' : 'Sonido de gol incluido';
+  $('#goalSfxVolLabel').textContent = en ? 'Built-in volume' : 'Volumen del incluido';
+  $('#scoreboardLabel').textContent = en ? 'Scoreboard style' : 'Cartel de marcador';
+  const fill = (host, items, cur, attr) => {
+    host.innerHTML = '';
+    for (const it of items) {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'chip' + (it[0] === cur ? ' is-active' : '');
+      b.dataset[attr] = it[0];
+      b.textContent = en ? it[2] : it[1];
+      host.appendChild(b);
+    }
+  };
+  fill($('#goalSfxChips'), (window.TLGoalSfx ? window.TLGoalSfx.STYLES : []), ap.goalSfx || 'default', 'sfx');
+  fill($('#scoreboardChips'), SCOREBOARDS, ap.scoreboard || 'default', 'sb');
+  const v = typeof ap.goalSfxVolume === 'number' ? ap.goalSfxVolume : 0.7;
+  const r = $('#goalSfxVolume');
+  if (document.activeElement !== r) r.value = String(v);
+  $('#goalSfxVolumeValue').textContent = `${Math.round(v * 100)}%`;
+  syncRangeFill(r);
+}
+$('#goalSfxChips').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-sfx]');
+  if (!b) return;
+  const vol = state.config.appearance.goalSfxVolume ?? 0.7;
+  if (window.TLGoalSfx) window.TLGoalSfx.play(b.dataset.sfx, vol);
+  patchConfig({ appearance: { goalSfx: b.dataset.sfx } });
+});
+$('#scoreboardChips').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-sb]');
+  if (b) patchConfig({ appearance: { scoreboard: b.dataset.sb } });
+});
+$('#goalSfxVolume').addEventListener('input', (e) => {
+  syncRangeFill(e.target);
+  $('#goalSfxVolumeValue').textContent = `${Math.round(Number(e.target.value) * 100)}%`;
+});
+$('#goalSfxVolume').addEventListener('change', (e) => {
+  const v = Number(e.target.value);
+  const st = state.config.appearance.goalSfx;
+  if (window.TLGoalSfx && st && st !== 'default') window.TLGoalSfx.play(st, v);
+  patchConfig({ appearance: { goalSfxVolume: v } });
+});
+try { if (state && state.config) paintGameExtras(); } catch (e) { /* aún sin config */ }
 
 $('#hudScale').addEventListener('input', (e) => {
   syncRangeFill(e.target);
@@ -8271,7 +8328,7 @@ function renderLookSections() {
 }
 
 /* Looks guardados: una foto de los ajustes visuales, con nombre. */
-const LOOK_PITCH_KEYS = ['ball3d', 'selfRing', 'teamRings', 'goalFlash', 'goalShake', 'skin'];
+const LOOK_PITCH_KEYS = ['ball3d', 'selfRing', 'teamRings', 'goalFlash', 'goalShake', 'goalClub', 'skin'];
 const LOOK_MAX = 12;
 
 function currentLookData() {
