@@ -4817,4 +4817,7 @@ input[type="color"].is-unset { opacity: .45; }
 
 /* Aviso del capitán */
 .gate.notice { z-index: 100001; background: rgb(3 6 14 / 78%); }
+.news__list { margin: 0 0 14px; padding: 0; list-style: none; max-width: 100%; text-align: left; display: flex; flex-direction: column; gap: 9px; }
+.news__list li { position: relative; padding-left: 18px; font-size: 14px; line-height: 1.45; color: #f4f0df; overflow-wrap: anywhere; }
+.news__list li::before { content: ""; position: absolute; left: 3px; top: .55em; width: 6px; height: 6px; transform: rotate(45deg); background: #d0b878; }
 .notice__text { margin: 0 0 6px; max-width: 100%; font-size: 15px; line-height: 1.5; color: #f4f0df; white-space: pre-wrap; overflow-wrap: anywhere; }

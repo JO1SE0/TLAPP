@@ -397,6 +397,46 @@ function showNoticeIfReady() {
   document.body.append(box);
   setTimeout(() => btn.focus(), 50);
 }
+/* «Qué hay de nuevo»: una vez por cada `id` de novedades.js, después del aviso del capitán. */
+function newsSeen() { try { return localStorage.getItem('tl_news_seen') || ''; } catch (e) { return ''; } }
+function showNewsIfReady() {
+  const n = window.TL_NEWS;
+  if (!n || n.id === newsSeen()) return;
+  if (state.access && state.access.state === 'locked') return;
+  if (document.getElementById('welcome') || $('#notice') || $('#news') || state.stage === 'game') return;
+  if ($('#startScreen') && !$('#startScreen').hidden && $('#startScreen').offsetParent) return;
+  const en = isEn();
+  const lang = en ? 'en' : 'es';
+  const box = document.createElement('div');
+  box.id = 'news';
+  box.className = 'gate notice';
+  const card = document.createElement('div');
+  card.className = 'gate__card';
+  const img = document.createElement('img');
+  img.src = '../../assets/toda-la-lecce.png';
+  img.alt = '';
+  img.className = 'gate__crest';
+  const h = document.createElement('h2');
+  h.className = 'gate__title';
+  h.textContent = n.title[lang];
+  const ul = document.createElement('ul');
+  ul.className = 'news__list';
+  for (const line of n.items[lang]) { const li = document.createElement('li'); li.textContent = line; ul.append(li); }
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'gate__btn';
+  btn.textContent = en ? 'Got it' : 'Entendido';
+  btn.addEventListener('click', () => {
+    try { localStorage.setItem('tl_news_seen', n.id); } catch (e) { /* sin almacenamiento: se vuelve a mostrar */ }
+    box.remove();
+  });
+  card.append(img, h, ul, btn);
+  box.append(card);
+  document.body.append(box);
+  setTimeout(() => btn.focus(), 50);
+}
+setInterval(showNewsIfReady, 3000);
+
 window.addEventListener('tl:welcome-done', () => setTimeout(showNoticeIfReady, 400));
 // También cuando se cierra la pantalla de apodo: una consulta barata cada tanto, que sale enseguida si no hay nada.
 setInterval(showNoticeIfReady, 2500);
