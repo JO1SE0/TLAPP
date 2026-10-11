@@ -4116,6 +4116,31 @@ const PEER_LOOK_VARS = ['--tvm-vip-bg', '--tvm-vip-bg-hi', '--tvm-vip-edge', '--
 
 let selfClub = null;
 
+/**
+ * Cartelito propio: el `title` nativo no siempre se muestra dentro del juego, así que
+ * lo que lleve `data-tvm-tip` (escudo y nombre de quien está verificado) se dibuja acá.
+ */
+function installTip(doc) {
+  if (doc.__tvmTip) return;
+  doc.__tvmTip = true;
+  const tip = doc.createElement('div');
+  tip.style.cssText = 'position:fixed;z-index:2147483647;pointer-events:none;display:none;padding:5px 9px;border-radius:6px;'
+    + 'font:600 12px/1.2 system-ui,sans-serif;color:#f3e3b4;background:#203860;border:1px solid #d0b878;box-shadow:0 4px 14px rgba(0,0,0,.5);white-space:nowrap';
+  (doc.body || doc.documentElement).appendChild(tip);
+  const find = (el) => (el && el.closest ? el.closest('[data-tvm-tip]') : null);
+  doc.addEventListener('mouseover', (e) => {
+    const t = find(e.target);
+    if (!t) return;
+    tip.textContent = t.dataset.tvmTip;
+    tip.style.display = 'block';
+    const r = t.getBoundingClientRect();
+    const w = tip.offsetWidth;
+    tip.style.left = `${Math.max(4, Math.min(r.left, (doc.documentElement.clientWidth || 800) - w - 4))}px`;
+    tip.style.top = `${r.bottom + 6}px`;
+  }, true);
+  doc.addEventListener('mouseout', (e) => { if (find(e.target)) tip.style.display = 'none'; }, true);
+}
+
 function setPeers(list) {
   peers = new Map();
   selfClub = null;
@@ -4191,7 +4216,9 @@ function paintPeers(doc) {
     marks.vip.hidden = !peer.vip;
     const tip = peer.name ? `Toda la Lecce · ${peer.name}` : 'Está jugando con TL App';
     marks.logo.title = tip;
-    if (peer.name) name.title = tip;
+    marks.logo.dataset.tvmTip = tip;
+    if (peer.name) { name.title = tip; name.dataset.tvmTip = tip; } else delete name.dataset.tvmTip;
+    installTip(doc);
     /*
      * Quién de los que están en la cancha es amigo tuyo.
      *
