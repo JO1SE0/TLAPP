@@ -6701,7 +6701,6 @@ function renderSettings() {
   );
 
   renderGameSettings($('#gameSound'), 'sound');
-  renderNotify();
   renderAbout();
 }
 
@@ -6892,52 +6891,6 @@ async function reconcileResolution() {
   toast(t('toast.resDisplayChanged', { w: fixed.w, h: fixed.h }), '');
   if (state.applyResolution) await state.applyResolution();
 }
-
-/* ── Avisos de amigos ───────────────────────────────────── *
- * Lo que se apaga acá es el TONO, no el cartel: ver `notifySound()`. */
-const NOTIFY_SWITCHES = {
-  es: [
-    { key: 'messages', label: 'Mensajes', description: 'Cuando un amigo te escribe.' },
-    { key: 'invites', label: 'Invitaciones', description: 'Cuando un amigo te invita a su sala.' },
-    { key: 'requests', label: 'Solicitudes de amistad', description: 'Cuando alguien te quiere agregar.' }
-  ],
-  en: [
-    { key: 'messages', label: 'Messages', description: 'When a friend writes to you.' },
-    { key: 'invites', label: 'Invites', description: 'When a friend invites you to their room.' },
-    { key: 'requests', label: 'Friend requests', description: 'When someone wants to add you.' }
-  ]
-};
-
-function renderNotify() {
-  const lang = isEn() ? 'en' : 'es';
-  buildSwitches(
-    $('#notifySwitches'),
-    NOTIFY_SWITCHES[lang].map((i) => ({ ...i, value: () => !!state.config.notify[i.key] })),
-    (item, value) => patchConfig({ notify: { [item.key]: value } })
-  );
-
-  const volume = state.config.notify.volume ?? 0.5;
-  $('#notifyVolume').value = volume;
-  $('#notifyVolumeValue').textContent = `${Math.round(volume * 100)}%`;
-  syncRangeFill($('#notifyVolume'));
-}
-
-$('#notifyVolume').addEventListener('input', (e) => {
-  syncRangeFill(e.target);
-  $('#notifyVolumeValue').textContent = `${Math.round(Number(e.target.value) * 100)}%`;
-});
-
-$('#notifyVolume').addEventListener('change', (e) => {
-  const volume = Number(e.target.value);
-  patchConfig({ notify: { volume } });
-  /*
-   * Y una prueba, al soltar y no al arrastrar: elegir un volumen sin oírlo es
-   * elegir a ciegas. Suena el de mensajes —el que más va a sonar— y se toca
-   * derecho en vez de por `notifySound()`, que respeta el interruptor: acá el
-   * usuario pidió escucharlo.
-   */
-  if (volume) playTones(NOTIFY_TONES.messages, volume);
-});
 
 const DISCORD_SWITCHES = {
   es: [

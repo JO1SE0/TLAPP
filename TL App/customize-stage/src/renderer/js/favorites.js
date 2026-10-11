@@ -53,7 +53,8 @@
         b.classList.toggle('is-on', i < 0);
         paint();
       });
-      text.appendChild(b);
+      const lab = row.querySelector('.row__label') || text;
+      lab.appendChild(b);
     }
   }
 
