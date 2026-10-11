@@ -214,6 +214,15 @@
     });
     root.append(tog);
 
+    root.append(el('h3', 'cap__h', 'Actualización obligatoria'));
+    root.append(el('p', 'cap__muted', doc.forceUpdate !== false
+      ? 'ACTIVA: cuando publicás una versión nueva, a todos (menos a vos) les sale un cartel y no pueden usar la app hasta actualizar. Si están en una partida, esperan a volver al menú.'
+      : 'APAGADA: nadie queda obligado a actualizar (salvo que pongas una versión mínima).'));
+    const force = el('button', 'cap__btn', doc.forceUpdate !== false ? 'Apagar la actualización obligatoria' : 'Activar la actualización obligatoria');
+    force.type = 'button'; force.disabled = busy;
+    force.addEventListener('click', () => act({ type: 'setForceUpdate', value: doc.forceUpdate === false }));
+    root.append(force);
+
     root.append(el('h3', 'cap__h', 'Versión mínima'));
     const latest = latestVersion();
     root.append(el('p', 'cap__muted', `Quien tenga una versión más vieja queda bloqueado hasta actualizar (vos no). Tu versión: v${data.version}${latest ? ` · la más nueva en el plantel: v${latest}` : ''}. ${doc.minVersion ? `Ahora exige: v${doc.minVersion}.` : 'Ahora no se exige ninguna.'}`));

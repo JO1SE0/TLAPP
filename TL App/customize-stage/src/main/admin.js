@@ -28,7 +28,8 @@ function applyAction(cur, action, myPub) {
     removed: (cur.removed || []).slice(),
     notices: cur.notices.slice(),
     minVersion: cur.minVersion || '',
-    minMessage: cur.minMessage || ''
+    minMessage: cur.minMessage || '',
+    forceUpdate: cur.source === 'captain' ? cur.forceUpdate !== false : true
   };
   let extra = null;
   switch (action && action.type) {
@@ -94,6 +95,9 @@ function applyAction(cur, action, myPub) {
     }
     case 'removeNotice':
       doc.notices = doc.notices.filter((n) => String(n.id) !== String(action.id));
+      break;
+    case 'setForceUpdate':
+      doc.forceUpdate = action.value === true;
       break;
     case 'setMinVersion': {
       const v = cleanText(action.version, 20);

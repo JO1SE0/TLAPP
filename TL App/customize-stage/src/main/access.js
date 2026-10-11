@@ -45,7 +45,7 @@ let appVersion = '0.0.0';
 /** Última lista de GitHub que se pudo leer, para reevaluar sin volver a bajarla. */
 let lastList = null;
 /** Lo que manda: la lista oficial firmada por el capitán si la hay, y si no access.json. */
-let eff = { enabled: false, users: [], notices: [], minVersion: '', minMessage: '', captains: [], legacyNotice: null, seq: 0, source: 'github', removed: [] };
+let eff = { enabled: false, users: [], notices: [], minVersion: '', minMessage: '', captains: [], legacyNotice: null, seq: 0, source: 'github', removed: [], forceUpdate: false };
 const ADMIN_POLL_MS = 60 * 1000;
 const NOTICE_TICK_MS = 30 * 1000;
 const HEX64 = /^[0-9a-f]{64}$/i;
@@ -133,14 +133,15 @@ function rebuild(list) {
       minVersion: typeof d.minVersion === 'string' ? d.minVersion : '',
       minMessage: typeof d.minMessage === 'string' ? d.minMessage : '',
       captains, legacyNotice: null, seq: d.seq, source: 'captain',
-      removed: Array.isArray(d.removed) ? d.removed : []
+      removed: Array.isArray(d.removed) ? d.removed : [],
+      forceUpdate: d.forceUpdate !== false
     };
   } else {
     eff = {
       enabled: base.enabled === true,
       users: Array.isArray(base.users) ? base.users : [],
       notices: [], minVersion: '', minMessage: '', captains,
-      legacyNotice: cleanNotice(base.announcement), seq: 0, source: 'github', removed: []
+      legacyNotice: cleanNotice(base.announcement), seq: 0, source: 'github', removed: [], forceUpdate: false
     };
   }
   roster = eff.users.filter((u) => u && HEX64.test(String(u.pub || ''))).map((u) => ({ name: String(u.name || '').slice(0, 40), pub: String(u.pub).toLowerCase() }));
@@ -207,9 +208,10 @@ function set(next) {
   next.urgent = urgent ? { id: urgent.id, title: urgent.title, text: urgent.text } : null;
   next.minVersion = eff.minVersion || '';
   next.captain = next.state === 'ok' && isCaptainKey(saved.key);
+  next.forceUpdate = eff.forceUpdate === true;
   const changed = next.state !== status.state || next.reason !== status.reason || next.name !== status.name ||
-    JSON.stringify([next.notice, next.urgent, next.minVersion, next.captain, next.minMessage]) !==
-    JSON.stringify([status.notice, status.urgent, status.minVersion, status.captain, status.minMessage]);
+    JSON.stringify([next.notice, next.urgent, next.minVersion, next.captain, next.minMessage, next.forceUpdate]) !==
+    JSON.stringify([status.notice, status.urgent, status.minVersion, status.captain, status.minMessage, status.forceUpdate]);
   status = next;
   if (changed) onChange(status);
 }
@@ -338,7 +340,7 @@ const presenceUrl = () => presence;
 /** Copia de lo que rige hoy (para el panel del capitán). */
 const getEffective = () => JSON.parse(JSON.stringify({
   enabled: eff.enabled, users: eff.users, notices: eff.notices, minVersion: eff.minVersion, minMessage: eff.minMessage,
-  seq: eff.seq, source: eff.source, captains: eff.captains, removed: eff.removed
+  seq: eff.seq, source: eff.source, captains: eff.captains, removed: eff.removed, forceUpdate: eff.forceUpdate
 }));
 const isCaptain = () => !!status.captain;
 /** El capitán acaba de publicar: se adopta al instante, sin esperar el próximo minuto. */

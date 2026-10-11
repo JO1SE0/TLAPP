@@ -320,6 +320,45 @@ const GATE_TEXT = {
   }
 };
 
+/* ── Actualización obligatoria ────────────────────────────────
+ * Si el capitán la tiene activa (panel → Acceso y versión) y hay una versión publicada más
+ * nueva que la que tenés, la app muestra este cartel y no deja usarla hasta actualizar.
+ * No corta una partida en curso: espera a que vuelvas al menú. El capitán queda afuera. */
+const FORCE_MSGS = {
+  es: [
+    'Tu TL App quedó en el siglo pasado. Actualizá y volvé a la cancha.',
+    'El DT dice que sin la última versión no se juega. Actualizá y salís al campo.',
+    'Esta versión ya está en el banco de suplentes. Actualizá para volver a ser titular.',
+    'Salió una versión nueva y vos seguís con la vieja. Actualizá y seguimos.',
+    'El árbitro no te deja entrar con la versión vieja. Actualizá y pasás.'
+  ],
+  en: [
+    'Your TL App is stuck in the last century. Update and get back on the pitch.',
+    'The coach says no update, no game. Update and take the field.',
+    'This version has been benched. Update to be a starter again.',
+    'A new version is out and you are still on the old one. Update and we go on.',
+    'The referee will not let the old version in. Update and you are through.'
+  ]
+};
+let forceMsg = '';
+let forceActive = false;
+async function enforceUpdate() {
+  const st = state.access;
+  if (!st || st.state !== 'ok' || !st.forceUpdate || st.captain || state.stage === 'game' || forceActive) return;
+  try {
+    const res = await tvm.updates.check();
+    if (!(res && res.status === 'available' && res.canDownload !== false)) return;
+    if (state.stage === 'game') return;
+    forceActive = true;
+    wasLocked = true;
+    try { document.querySelectorAll('webview').forEach((w) => w.remove()); } catch (e) { /* nada */ }
+    if (!forceMsg) { const list = FORCE_MSGS[isEn() ? 'en' : 'es']; forceMsg = list[Math.floor(Math.random() * list.length)]; }
+    showGate('outdated', forceMsg);
+  } catch (e) { /* sin red: se reintenta más tarde */ }
+}
+setTimeout(enforceUpdate, 20000);
+setInterval(enforceUpdate, 15 * 60 * 1000);
+
 function showGate(reason, extra) {
   const tx = GATE_TEXT[isEn() ? 'en' : 'es'];
   let gate = $('#gate');
@@ -510,7 +549,7 @@ function onAccess(st) {
     return;
   }
   const gate = $('#gate');
-  if (gate) { gate.hidden = true; document.body.classList.remove('is-gated'); }
+  if (gate && !forceActive) { gate.hidden = true; document.body.classList.remove('is-gated'); }
   const capBtn = $('#captainBtn');
   if (capBtn) capBtn.hidden = !(st && st.captain);
   showUrgentIfAny();
