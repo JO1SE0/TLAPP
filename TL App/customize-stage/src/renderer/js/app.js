@@ -304,23 +304,23 @@ const GATE_TEXT = {
     title: 'Acceso del equipo', sub: 'Poné tu clave personal para usar TL App.', ph: 'TL-XXXX-XXXX-XXXX', go: 'Entrar', checking: 'Verificando…',
     'need-key': '', 'bad-key': 'Esa clave no está en la lista.', revoked: 'Tu acceso fue quitado. No podés usar la app.',
     offline: 'No se pudo verificar la clave: hace falta conexión.', expired: 'Hace más de 3 días que no se verifica tu acceso. Conectate a internet.',
-    help: 'Si no tenés clave, pedísela al capitán.',
+    help: 'Si no tenés clave, pedísela a miclo.',
     outdated: 'Hay una versión nueva y obligatoria de TL App.', outdatedSub: 'Actualizá para seguir usando la app.', update: 'Actualizar ahora', updating: 'Buscando actualización…',
     noUpdate: 'Todavía no hay una actualización disponible. Probá en unos minutos.',
-    'other-pc': 'Tu clave ya está en uso en otra PC.', otherSub: 'Cada clave sirve para una sola computadora. Pedile al capitán que la libere y esta pantalla se abre sola.',
-    shared: 'Tu clave se usó desde otra PC.', sharedSub: 'Las claves no se comparten: quedó bloqueada en las dos computadoras. Hablá con el capitán para resolverlo.',
-    banned: 'Esta PC no está autorizada.', bannedSub: 'Esta computadora no puede usar esa clave. Si es un error, hablá con el capitán.'
+    'other-pc': 'Tu clave ya está en uso en otra PC.', otherSub: 'Cada clave sirve para una sola computadora. Pedile a miclo que la libere y esta pantalla se abre sola.',
+    shared: 'Tu clave se usó desde otra PC.', sharedSub: 'Las claves no se comparten: quedó bloqueada en las dos computadoras. Hablá con miclo para resolverlo.',
+    banned: 'Esta PC no está autorizada.', bannedSub: 'Esta computadora no puede usar esa clave. Si es un error, hablá con miclo.'
   },
   en: {
     title: 'Team access', sub: 'Enter your personal key to use TL App.', ph: 'TL-XXXX-XXXX-XXXX', go: 'Enter', checking: 'Checking…',
     'need-key': '', 'bad-key': 'That key is not on the list.', revoked: 'Your access was removed. You cannot use the app.',
     offline: 'Could not verify the key: a connection is required.', expired: 'Your access has not been verified for over 3 days. Please go online.',
-    help: 'No key? Ask the captain.',
+    help: 'No key? Ask miclo.',
     outdated: 'A new, mandatory version of TL App is available.', outdatedSub: 'Update to keep using the app.', update: 'Update now', updating: 'Checking for updates…',
     noUpdate: 'No update is available yet. Try again in a few minutes.',
-    'other-pc': 'Your key is already in use on another PC.', otherSub: 'Each key works on a single computer. Ask the captain to release it and this screen will open by itself.',
-    shared: 'Your key was used from another PC.', sharedSub: 'Keys are not to be shared: it is now blocked on both computers. Talk to the captain to sort it out.',
-    banned: 'This PC is not authorized.', bannedSub: 'This computer cannot use that key. If this is a mistake, talk to the captain.'
+    'other-pc': 'Your key is already in use on another PC.', otherSub: 'Each key works on a single computer. Ask miclo to release it and this screen will open by itself.',
+    shared: 'Your key was used from another PC.', sharedSub: 'Keys are not to be shared: it is now blocked on both computers. Talk to miclo to sort it out.',
+    banned: 'This PC is not authorized.', bannedSub: 'This computer cannot use that key. If this is a mistake, talk to miclo.'
   }
 };
 
