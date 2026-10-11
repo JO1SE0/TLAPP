@@ -492,12 +492,6 @@ const DEFAULTS = {
      */
     teamRings: false,
     /** Destello del color del equipo que convirtió. */
-    /** Ayudas de apuntado (todas apagadas de fábrica). */
-    aimBallPath: false,
-    aimShot: false,
-    aimLanding: false,
-    aimFree: false,
-    aimDanger: false,
     goalFlash: true,
     /** Sacudón de cámara en el gol. */
     goalShake: true,
