@@ -20,6 +20,36 @@ function newKey() {
 
 const cleanText = (v, n) => String(v == null ? '' : v).replace(/\r/g, '').trim().slice(0, n);
 
+const fmtDate = (ms) => new Date(ms).toLocaleString('es-AR', { dateStyle: 'short', timeStyle: 'short' });
+
+/** Una línea legible para el historial. `who` es la persona afectada, si hay. */
+function describe(action, extra) {
+  const n = String(action.name || '');
+  switch (action.type) {
+    case 'addUser': return { text: `Agregó a ${extra ? extra.name : n}`, who: extra ? extra.name : n };
+    case 'removeUser': return { text: `Quitó a ${n}`, who: n };
+    case 'restoreUser': return { text: `Reactivó a ${n}`, who: n };
+    case 'changeKey': return { text: `Cambió la clave de ${n}`, who: n };
+    case 'resetDevice': return { text: `Liberó la PC de ${n}${action.banDevice ? ' y vetó la PC que la usó sin permiso' : ''}`, who: n };
+    case 'setEnabled': return { text: action.value === true ? 'Activó la lista de acceso' : 'Pausó la lista de acceso', who: '' };
+    case 'setForceUpdate': return { text: action.value === true ? 'Activó la actualización obligatoria' : 'Apagó la actualización obligatoria', who: '' };
+    case 'setMinVersion': return { text: action.version ? `Versión mínima: v${action.version}` : 'Quitó la versión mínima', who: '' };
+    case 'addNotice': {
+      const when = Number(action.at) > Date.now() ? ` (programado ${fmtDate(Number(action.at))})` : '';
+      return { text: `${action.urgent ? 'Aviso URGENTE' : 'Aviso'}: ${cleanText(action.title || action.text, 50)}${when}`, who: '' };
+    }
+    case 'removeNotice': return { text: 'Borró un aviso', who: '' };
+    default: return { text: String(action.type || 'Acción'), who: '' };
+  }
+}
+
+/** Para deshacer: lo último que se hizo, mientras la app siga abierta (15 min). */
+let undoSnap = null;
+const UNDO_MS = 15 * 60 * 1000;
+const SNAP_KEYS = ['enabled', 'users', 'removed', 'notices', 'minVersion', 'minMessage', 'forceUpdate', 'history'];
+const snapshotOf = (cur) => JSON.parse(JSON.stringify(SNAP_KEYS.reduce((o, k) => { o[k] = cur[k]; return o; }, {})));
+const undoInfo = () => (undoSnap && Date.now() - undoSnap.at < UNDO_MS ? { label: undoSnap.label, at: undoSnap.at } : null);
+
 /** Aplica una acción sobre la lista vigente. Devuelve { doc, extra }. */
 function applyAction(cur, action, myPub) {
   const doc = {
@@ -29,7 +59,8 @@ function applyAction(cur, action, myPub) {
     notices: cur.notices.slice(),
     minVersion: cur.minVersion || '',
     minMessage: cur.minMessage || '',
-    forceUpdate: cur.source === 'captain' ? cur.forceUpdate === true : false
+    forceUpdate: cur.source === 'captain' ? cur.forceUpdate === true : false,
+    history: (cur.history || []).slice(-199)
   };
   let extra = null;
   switch (action && action.type) {
@@ -130,13 +161,26 @@ async function run(action) {
     if (pid) await presence.call(`${url}/alerts/${pid}.json`, 'DELETE');
     return { doc: cur, extra: null };
   }
-  const { doc, extra } = applyAction(cur, action, id.pub);
+  let doc;
+  let extra = null;
+  let entry;
+  if (action && action.type === 'undo') {
+    if (!undoInfo()) throw new Error('Ya no hay nada para deshacer.');
+    doc = { ...JSON.parse(JSON.stringify(undoSnap.snap)) };
+    entry = { text: `Deshizo: ${undoSnap.label}`, who: undoSnap.who || '' };
+  } else {
+    ({ doc, extra } = applyAction(cur, action, id.pub));
+    entry = describe(action, extra);
+  }
+  const before = snapshotOf(cur);
+  doc.history = [...(doc.history || []), { t: Date.now(), text: entry.text, who: entry.who }].slice(-200);
   doc.seq = (cur.seq || 0) + 1;
   doc.ts = Date.now();
   const p = JSON.stringify(doc);
   const raw = { p, s: id.sign(p) };
   await presence.call(`${url}/admin/state.json`, 'PUT', raw);
   await access.adoptAdmin(raw);
+  undoSnap = action.type === 'undo' ? null : { snap: before, label: entry.text, who: entry.who, at: Date.now() };
   // Liberada la PC o cambiada la clave, la alerta ya no corresponde.
   if (action.type === 'resetDevice' || action.type === 'changeKey') {
     const pid = alertPid();
@@ -160,4 +204,38 @@ async function readAlerts() {
   return out.sort((x, y) => y.at - x.at);
 }
 
-module.exports = { run, applyAction, readAlerts };
+/** PCs que probaron claves incorrectas: { device, n, at }. Sin firma (quien falla no tiene clave), así que es sólo orientativo. */
+async function readAttempts() {
+  const url = presence.cleanUrl(access.presenceUrl());
+  if (!url) return [];
+  const data = (await presence.call(`${url}/attempts.json`, 'GET')) || {};
+  return Object.entries(data)
+    .filter(([d, e]) => /^[0-9a-f]{16}$/.test(d) && e && typeof e.n === 'number' && typeof e.t === 'number')
+    .map(([d, e]) => ({ device: d, n: Math.min(e.n, 9999), at: e.t }))
+    .sort((x, y) => y.at - x.at)
+    .slice(0, 30);
+}
+
+async function clearAttempts() {
+  if (!access.isCaptain()) throw new Error('Sólo el capitán puede hacer esto.');
+  const url = presence.cleanUrl(access.presenceUrl());
+  if (!url) return;
+  const list = await readAttempts();
+  await Promise.all(list.map((e) => presence.call(`${url}/attempts/${e.device}.json`, 'DELETE').catch(() => {})));
+}
+
+/** Datos de la ficha de una persona: desde cuándo tiene su PC registrada y cuántas veces se la liberaron. */
+async function readPerson(name) {
+  const url = presence.cleanUrl(access.presenceUrl());
+  const cur = access.getEffective();
+  const u = cur.users.find((x) => String(x.name).toLowerCase() === String(name || '').toLowerCase());
+  if (!u) throw new Error('No encontré a esa persona.');
+  let since = 0;
+  try {
+    const rec = url ? await presence.call(`${url}/devices/${identity.pidOf(u.pub)}.json`, 'GET') : null;
+    if (rec && typeof rec.t === 'number' && rec.e === (Number(u.epoch) || 0) && identity.verify(u.pub, `dev|${rec.d}|${rec.e}|${rec.t}`, rec.s)) since = rec.t;
+  } catch { /* sin dato */ }
+  return { name: u.name, deviceSince: since, releases: Number(u.epoch) || 0, banned: Array.isArray(u.banned) ? u.banned.length : 0 };
+}
+
+module.exports = { run, applyAction, readAlerts, readAttempts, clearAttempts, readPerson, undoInfo };

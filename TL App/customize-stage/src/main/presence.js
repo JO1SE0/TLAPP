@@ -145,19 +145,19 @@ async function putOnline(ctx, x) {
   if (!base || !ctx.key) return null;
   const id = idOf(ctx.key);
   const t = Date.now();
-  const r = x ? '' : clean(ctx.room, 40);
+  const r = clean(ctx.room, 40);
   const v = clean(ctx.version, 20);
   await call(`${base}/online/${id.pid}.json`, 'PUT', { t, r, v, x, s: id.sign(onlineText(r, v, x, t)) });
   return { base, id };
 }
 
-/** ctx = { url, key, roster, room, version } → [{ name, room, version, lastSeen, online, self }] o null. */
+/** ctx = { url, key, roster, room, version } → [{ name, room, lastRoom, version, lastSeen, online, self }] o null. */
 async function online(ctx) {
-  const put = await putOnline(ctx, 0);
-  if (!put) return null;
-  const { base, id } = put;
-  onlineMarked = true;
+  const base = cleanUrl(ctx && ctx.url);
+  if (!base || !ctx.key) return null;
+  const id = idOf(ctx.key);
 
+  // Primero se lee (así se sabe cuándo fue la última vez de uno mismo) y después se marca presente.
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
   let data = {};
@@ -169,6 +169,11 @@ async function online(ctx) {
     const d = res.headers && res.headers.get ? Date.parse(res.headers.get('date') || '') : NaN;
     if (isFinite(d)) skew = d - Date.now(); // el reloj de Firebase manda sobre el de esta PC
   } finally { clearTimeout(timer); }
+  const mine = data[id.pid];
+  const prevSelf = mine && typeof mine.t === 'number' ? mine.t : 0;
+
+  await putOnline(ctx, 0);
+  onlineMarked = true;
 
   const now = Date.now() + skew;
   const out = [];
@@ -184,14 +189,15 @@ async function online(ctx) {
       const x = e.x === 1 ? 1 : 0;
       ok = identity.verify(u.pub, onlineText(r, v, x, e.t), e.s);
       if (ok) {
-        const alive = !x && (self || Math.abs(now - e.t) <= ONLINE_ALIVE_MS);
-        out.push({ name: u.name, room: alive ? r : '', version: v, lastSeen: e.t, online: alive, self });
+        const alive = self || (!x && Math.abs(now - e.t) <= ONLINE_ALIVE_MS);
+        out.push({ name: u.name, room: alive ? r : '', lastRoom: r, version: self ? clean(ctx.version, 20) : v, lastSeen: self ? Date.now() : e.t, online: alive, self });
         continue;
       }
     }
-    out.push({ name: u.name, room: '', version: '', lastSeen: 0, online: false, self });
+    out.push({ name: u.name, room: '', lastRoom: '', version: self ? clean(ctx.version, 20) : '', lastSeen: self ? Date.now() : 0, online: self, self });
   }
   out.sort((a, b) => (b.self - a.self) || (b.online - a.online) || a.name.localeCompare(b.name, 'es'));
+  out.prevSelf = prevSelf;
   return out;
 }
 

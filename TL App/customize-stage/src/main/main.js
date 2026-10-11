@@ -2711,6 +2711,7 @@ function myCosmetics() {
 
 /* Plantel en vivo: quién del club tiene la app abierta y dónde. */
 let liveRoster = null;
+let welcomeBackChecked = false;
 let onlineBusy = false;
 async function beatOnline() {
   if (onlineBusy) return;
@@ -2723,7 +2724,16 @@ async function beatOnline() {
       room: roomInfo.name || '',
       version: app.getVersion()
     });
-    if (list) { liveRoster = list; send('presence:roster', list); }
+    if (list) {
+      liveRoster = list;
+      send('presence:roster', list);
+      // «Te extrañamos»: sólo la primera vez de cada arranque y si hacía mucho que no entraba.
+      if (!welcomeBackChecked) {
+        welcomeBackChecked = true;
+        const days = list.prevSelf ? Math.floor((Date.now() - list.prevSelf) / 86400000) : 0;
+        if (days >= 5) send('presence:back', { days, name: access.get().name || '' });
+      }
+    }
   } catch { /* sin red o sin permisos: se queda lo último que se supo */ }
   onlineBusy = false;
 }
@@ -2733,15 +2743,33 @@ handle('admin:get', async () => {
   if (!access.isCaptain()) return null;
   await beatOnline();
   let alerts = [];
+  let attempts = [];
   try { alerts = await admin.readAlerts(); } catch { /* sin alertas */ }
-  return { doc: access.getEffective(), members: liveRoster || [], version: app.getVersion(), alerts };
+  try { attempts = await admin.readAttempts(); } catch { /* sin datos */ }
+  return { doc: access.getEffective(), members: liveRoster || [], version: app.getVersion(), alerts, attempts, undo: admin.undoInfo() };
+});
+handle('admin:person', async (_e, name) => {
+  if (!access.isCaptain()) throw new Error('Sólo el capitán puede hacer esto.');
+  return admin.readPerson(name);
+});
+handle('admin:clear-attempts', async () => { await admin.clearAttempts(); return true; });
+// Para el punto rojo del botón: lo que está pendiente, sin abrir el panel.
+handle('admin:pending', async () => {
+  if (!access.isCaptain()) return null;
+  let alerts = [];
+  let attempts = [];
+  try { alerts = await admin.readAlerts(); } catch { /* sin datos */ }
+  try { attempts = await admin.readAttempts(); } catch { /* sin datos */ }
+  return { alerts, attempts, members: liveRoster || [] };
 });
 handle('admin:do', async (_e, action) => {
   const res = await admin.run(action);
   await beatOnline();
   let alerts = [];
+  let attempts = [];
   try { alerts = await admin.readAlerts(); } catch { /* sin alertas */ }
-  return { ...res, members: liveRoster || [], alerts };
+  try { attempts = await admin.readAttempts(); } catch { /* sin datos */ }
+  return { ...res, members: liveRoster || [], alerts, attempts, undo: admin.undoInfo() };
 });
 (function startOnline() {
   const run = () => { accessReady.then(beatOnline).catch(() => {}); };
@@ -3521,7 +3549,7 @@ function rememberVolume(volume) {
 // cambio se guarda en el acto en vez de esperar a un temporizador que ya no va
 // a correr.
 app.on('before-quit', saveVolumeNow);
-app.on('before-quit', () => { try { presence.leaveOnline({ url: access.presenceUrl(), key: access.getKey(), version: app.getVersion() }); presence.leave({ url: access.presenceUrl(), key: access.getKey() }); } catch { /* vence solo */ } });
+app.on('before-quit', () => { try { presence.leaveOnline({ url: access.presenceUrl(), key: access.getKey(), version: app.getVersion(), room: roomInfo.name || '' }); presence.leave({ url: access.presenceUrl(), key: access.getKey() }); } catch { /* vence solo */ } });
 
 /** Alguien recién llegó y necesita saber qué está sonando. */
 listen('music:want-state', (e) => {

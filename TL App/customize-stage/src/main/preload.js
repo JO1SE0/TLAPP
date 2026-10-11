@@ -148,11 +148,15 @@ contextBridge.exposeInMainWorld('tvm', {
 
   admin: {
     get: () => call('admin:get'),
-    do: (action) => call('admin:do', action)
+    do: (action) => call('admin:do', action),
+    person: (name) => call('admin:person', name),
+    clearAttempts: () => call('admin:clear-attempts'),
+    pending: () => call('admin:pending')
   },
   presence: {
     roster: () => call('presence:roster'),
-    onRoster: (cb) => on('presence:roster', cb)
+    onRoster: (cb) => on('presence:roster', cb),
+    onBack: (cb) => on('presence:back', cb)
   },
   access: {
     status: () => call('access:status'),

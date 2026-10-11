@@ -437,7 +437,7 @@ function showNoticeIfReady() {
   const n = state.access && state.access.notice;
   if (!n || state.access.state === 'locked' || n.id === noticeSeen()) return;
   if (document.getElementById('welcome') || $('#startScreen') && !$('#startScreen').hidden && $('#startScreen').offsetParent) return;
-  if (state.stage === 'game' || $('#notice')) return;
+  if (state.stage === 'game' || $('#notice') || $('.cap')) return;
   const en = isEn();
   const box = document.createElement('div');
   box.id = 'notice';
@@ -492,13 +492,53 @@ function showUrgentIfAny() {
   if (window.TLSfx && typeof window.TLSfx.play === 'function') { try { window.TLSfx.play('open'); } catch (e) { /* sin sonido */ } }
 }
 
+/* «Te extrañamos»: si hacía varios días que no abrías la app (lo avisa el proceso principal). */
+const BACK_MSGS = {
+  es: ['Te extrañamos en la cancha. Qué bueno verte de vuelta.', 'El club no es lo mismo sin vos. Bienvenido de vuelta.', 'Pasaron {d} días y la camiseta te seguía esperando.'],
+  en: ['We missed you on the pitch. Good to have you back.', 'The club is not the same without you. Welcome back.', '{d} days went by and your shirt kept waiting for you.']
+};
+function showBack(info) {
+  if (!info || $('#backcard')) return;
+  const wait = () => {
+    if (document.getElementById('welcome') || $('#gate') && !$('#gate').hidden || $('#notice') || $('#news')) { setTimeout(wait, 3000); return; }
+    const en = isEn();
+    const list = BACK_MSGS[en ? 'en' : 'es'];
+    const box = document.createElement('div');
+    box.id = 'backcard';
+    box.className = 'gate notice';
+    const card = document.createElement('div');
+    card.className = 'gate__card';
+    const img = document.createElement('img');
+    img.src = '../../assets/toda-la-lecce.png';
+    img.alt = '';
+    img.className = 'gate__crest';
+    const h = document.createElement('h2');
+    h.className = 'gate__title';
+    h.textContent = en ? `Welcome back${info.name ? `, ${info.name}` : ''}!` : `¡Volviste${info.name ? `, ${info.name}` : ''}!`;
+    const p = document.createElement('p');
+    p.className = 'notice__text';
+    p.textContent = list[Math.floor(Math.random() * list.length)].replace('{d}', String(info.days));
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'gate__btn';
+    btn.textContent = en ? 'Let us play' : 'A jugar';
+    btn.addEventListener('click', () => box.remove());
+    card.append(img, h, p, btn);
+    box.append(card);
+    document.body.append(box);
+    setTimeout(() => btn.focus(), 50);
+  };
+  setTimeout(wait, 4000);
+}
+if (window.tvm.presence && window.tvm.presence.onBack) window.tvm.presence.onBack(showBack);
+
 /* «Qué hay de nuevo»: una vez por cada `id` de novedades.js, después del aviso del capitán. */
 function newsSeen() { try { return localStorage.getItem('tl_news_seen') || ''; } catch (e) { return ''; } }
 function showNewsIfReady() {
   const n = window.TL_NEWS;
   if (!n || n.id === newsSeen()) return;
   if (state.access && state.access.state === 'locked') return;
-  if (document.getElementById('welcome') || $('#notice') || $('#news') || state.stage === 'game') return;
+  if (document.getElementById('welcome') || $('#notice') || $('#news') || $('.cap') || state.stage === 'game') return;
   if ($('#startScreen') && !$('#startScreen').hidden && $('#startScreen').offsetParent) return;
   const en = isEn();
   const lang = en ? 'en' : 'es';
@@ -2534,8 +2574,20 @@ $('#actJoin').addEventListener('click', () => {
   if (state.selected) joinRoom(state.selected);
 });
 $('#actAutoJoin').addEventListener('click', toggleAutoJoin);
+/* Punto rojo en «Capitán»: cada minuto se mira si hay algo sin ver (sólo para el capitán). */
+async function refreshCaptainDot() {
+  const btn = $('#captainBtn');
+  if (!btn || btn.hidden || !window.TLCaptain) return;
+  try {
+    const p = await tvm.admin.pending();
+    btn.classList.toggle('has-alert', window.TLCaptain.pendingCount(p) > 0 && !$('.cap'));
+  } catch (e) { /* sin conexión: no se cambia */ }
+}
+setInterval(refreshCaptainDot, 60000);
+setTimeout(refreshCaptainDot, 8000);
+
 const capBtnEl = $('#captainBtn');
-if (capBtnEl) capBtnEl.addEventListener('click', () => { if (window.TLCaptain) window.TLCaptain.open(); });
+if (capBtnEl) capBtnEl.addEventListener('click', () => { if (window.TLCaptain) { window.TLCaptain.open(); capBtnEl.classList.remove('has-alert'); } });
 
 /** «Ocultar con clave» y «Ocultar llenas»: botones que se prenden y se apagan, y se recuerdan. */
 for (const [id, key, store] of [['#hideLocked', 'hideLocked', 'tl_hide_locked'], ['#hideFull', 'hideFull', 'tl_hide_full']]) {

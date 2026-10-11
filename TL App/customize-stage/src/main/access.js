@@ -45,7 +45,7 @@ let appVersion = '0.0.0';
 /** Última lista de GitHub que se pudo leer, para reevaluar sin volver a bajarla. */
 let lastList = null;
 /** Lo que manda: la lista oficial firmada por el capitán si la hay, y si no access.json. */
-let eff = { enabled: false, users: [], notices: [], minVersion: '', minMessage: '', captains: [], legacyNotice: null, seq: 0, source: 'github', removed: [], forceUpdate: false };
+let eff = { enabled: false, users: [], notices: [], minVersion: '', minMessage: '', captains: [], legacyNotice: null, seq: 0, source: 'github', removed: [], forceUpdate: false, history: [] };
 const ADMIN_POLL_MS = 60 * 1000;
 const NOTICE_TICK_MS = 30 * 1000;
 const HEX64 = /^[0-9a-f]{64}$/i;
@@ -61,7 +61,7 @@ function load() {
     saved = { key: String(j.key || ''), enabled: j.enabled === true ? true : j.enabled === false ? false : null,
       name: String(j.name || ''), validatedAt: Number(j.validatedAt) || 0,
       admin: j.admin && typeof j.admin.p === 'string' && typeof j.admin.s === 'string' ? { p: j.admin.p, s: j.admin.s } : null,
-      device: /^[0-9a-f]{16}$/.test(String(j.device || '')) ? String(j.device) : '' };
+      device: /^[0-9a-f]{16}$/.test(String(j.device || '')) ? String(j.device) : '', failed: Number(j.failed) || 0 };
   } catch { /* primera vez */ }
 }
 
@@ -134,14 +134,15 @@ function rebuild(list) {
       minMessage: typeof d.minMessage === 'string' ? d.minMessage : '',
       captains, legacyNotice: null, seq: d.seq, source: 'captain',
       removed: Array.isArray(d.removed) ? d.removed : [],
-      forceUpdate: d.forceUpdate === true
+      forceUpdate: d.forceUpdate === true,
+      history: Array.isArray(d.history) ? d.history : []
     };
   } else {
     eff = {
       enabled: base.enabled === true,
       users: Array.isArray(base.users) ? base.users : [],
       notices: [], minVersion: '', minMessage: '', captains,
-      legacyNotice: cleanNotice(base.announcement), seq: 0, source: 'github', removed: [], forceUpdate: false
+      legacyNotice: cleanNotice(base.announcement), seq: 0, source: 'github', removed: [], forceUpdate: false, history: []
     };
   }
   roster = eff.users.filter((u) => u && HEX64.test(String(u.pub || ''))).map((u) => ({ name: String(u.name || '').slice(0, 40), pub: String(u.pub).toLowerCase() }));
@@ -268,6 +269,15 @@ async function ownAlert(url, id, epoch) {
     identity.verify(id.pub, `alert|${a.d}|${a.e}|${a.t}`, a.s));
 }
 
+/** Una clave equivocada: se anota (por PC, sin la clave) para que el capitán vea quién anda probando. */
+function reportAttempt() {
+  const url = presenceMod.cleanUrl(presence);
+  if (!url) return;
+  saved.failed = (Number(saved.failed) || 0) + 1;
+  persist();
+  presenceMod.call(`${url}/attempts/${deviceId()}.json`, 'PUT', { n: saved.failed, t: Date.now() }).catch(() => {});
+}
+
 /** «ok», salvo que la app sea más vieja que la versión mínima que pidió el capitán (él no se bloquea). */
 function allow(name, candidate) {
   if (eff.minVersion && cmpVersion(appVersion, eff.minVersion) < 0 && !isCaptainKey(candidate || saved.key)) {
@@ -303,11 +313,12 @@ async function evaluate(key, opts) {
         lastDev = null;
         return set({ state: 'locked', name: '', reason: dev });
       }
-      saved = { key: normalize(candidate), enabled: true, name: String(me.name || ''), validatedAt: Date.now(), admin: saved.admin, device: saved.device };
+      saved = { key: normalize(candidate), enabled: true, name: String(me.name || ''), validatedAt: Date.now(), admin: saved.admin, device: saved.device, failed: saved.failed };
       persist();
       return allow(saved.name, candidate);
     }
     if (saved.key && key == null) { saved.validatedAt = 0; persist(); }
+    if (key != null && candidate) reportAttempt();
     return set({ state: 'locked', name: '', reason: candidate ? (key != null ? 'bad-key' : 'revoked') : 'need-key' });
   }
 
@@ -367,7 +378,7 @@ const presenceUrl = () => presence;
 /** Copia de lo que rige hoy (para el panel del capitán). */
 const getEffective = () => JSON.parse(JSON.stringify({
   enabled: eff.enabled, users: eff.users, notices: eff.notices, minVersion: eff.minVersion, minMessage: eff.minMessage,
-  seq: eff.seq, source: eff.source, captains: eff.captains, removed: eff.removed, forceUpdate: eff.forceUpdate
+  seq: eff.seq, source: eff.source, captains: eff.captains, removed: eff.removed, forceUpdate: eff.forceUpdate, history: eff.history
 }));
 const isCaptain = () => !!status.captain;
 /** El capitán acaba de publicar: se adopta al instante, sin esperar el próximo minuto. */
