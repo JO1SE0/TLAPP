@@ -3439,6 +3439,7 @@ const OVERLAY_SWITCHES = {
     { key: 'enabled', label: 'Mostrar overlay', description: 'Panel flotante con tus datos en vivo.' },
     { key: 'showFps', label: 'FPS', description: null },
     { key: 'showPing', label: 'Ping', description: 'Se lee de la lista de jugadores.' },
+    { key: 'showLatency', label: 'Latencia de entrada', description: 'Tecla → cuadro del juego, en ms.', hint: 'No es el ping (eso es la red). Sirve para comparar antes y después de tocar los ajustes de rendimiento.' },
     { key: 'showSession', label: 'Tiempo de sesión', description: null },
     { key: 'showClock', label: 'Reloj', description: null }
   ],
@@ -3446,6 +3447,7 @@ const OVERLAY_SWITCHES = {
     { key: 'enabled', label: 'Show overlay', description: 'Floating panel with your live data.' },
     { key: 'showFps', label: 'FPS', description: null },
     { key: 'showPing', label: 'Ping', description: 'Read from the player list.' },
+    { key: 'showLatency', label: 'Input latency', description: 'Key → game frame, in ms.', hint: 'This is not ping (that is the network). Use it to compare before and after changing performance settings.' },
     { key: 'showSession', label: 'Session time', description: null },
     { key: 'showClock', label: 'Clock', description: null }
   ]

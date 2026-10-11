@@ -9392,6 +9392,7 @@ function buildOverlay() {
   const rows = [
     ['fps', 'FPS', cfg.showFps],
     ['ping', 'Ping', cfg.showPing],
+    ['latency', 'Entrada', cfg.showLatency],
     ['session', 'Sesión', cfg.showSession],
     ['clock', 'Hora', cfg.showClock]
   ];
@@ -9455,6 +9456,7 @@ function paintOverlay() {
   if (!overlayEl) return;
   setValue('fps', state.fps ? String(state.fps) : '—');
   setValue('ping', state.ping == null ? '—' : `${state.ping} ms`);
+  setValue('latency', latency.text);
   setValue('session', clock((Date.now() - state.startedAt) / 1000));
   setValue('clock', new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' }));
 }
@@ -11035,7 +11037,7 @@ let fpsMeterOn = false;
 
 function fpsMeterWanted() {
   const cfg = state.config.overlay || {};
-  return state.view === 'game' && !!cfg.enabled && !!cfg.showFps;
+  return state.view === 'game' && !!cfg.enabled && (!!cfg.showFps || !!cfg.showLatency);
 }
 
 function syncFpsMeter() {
@@ -11046,18 +11048,60 @@ function syncFpsMeter() {
   else state.fps = 0;
 }
 
+/**
+ * Latencia de entrada: desde que apretás una tecla hasta el próximo cuadro del juego.
+ *
+ * Es lo que tarda la app en «ver» tu tecla y arrancar el cuadro que la va a mostrar
+ * (espera del cuadro + lo que trabe el hilo principal). NO incluye el ping: eso es la
+ * red y va aparte. Con 60 Hz el piso es de unos 8 ms de promedio; más que eso es
+ * ruido de la PC (V-Sync, ventanas tapando, la compu justa).
+ */
+const latency = { pending: 0, samples: [], text: '—' };
+
+function onLatencyKey(e) {
+  if (e.repeat || latency.pending) return;
+  const el = e.target;
+  if (el && el.tagName && /^(INPUT|TEXTAREA)$/.test(el.tagName)) return; // chat y campos de texto
+  latency.pending = e.timeStamp;
+}
+
 function runFpsMeter() {
   const doc = gameDocument();
   const win = (doc && doc.defaultView) || window;
   let frames = 0;
   let last = win.performance.now();
+  let lastLat = last;
+  latency.pending = 0;
+  latency.samples = [];
+  latency.text = '—';
+  if (doc) doc.addEventListener('keydown', onLatencyKey, true);
   const tick = (now) => {
-    if (!fpsMeterOn) return; // fuera de la cancha se corta el bucle
+    if (!fpsMeterOn) { // fuera de la cancha se corta el bucle
+      if (doc) doc.removeEventListener('keydown', onLatencyKey, true);
+      return;
+    }
     frames++;
+    if (latency.pending) {
+      const lat = win.performance.now() - latency.pending;
+      latency.pending = 0;
+      if (lat >= 0 && lat < 500) {
+        latency.samples.push(lat);
+        if (latency.samples.length > 40) latency.samples.shift();
+      }
+    }
     if (now - last >= 1000) {
       state.fps = Math.round((frames * 1000) / (now - last));
       frames = 0;
       last = now;
+    }
+    if (now - lastLat >= 1000) {
+      lastLat = now;
+      const s = latency.samples;
+      if (s.length) {
+        const avg = s.reduce((a, b) => a + b, 0) / s.length;
+        const worst = Math.max(...s);
+        latency.text = `${avg.toFixed(0)} ms (máx ${worst.toFixed(0)})`;
+      }
     }
     win.requestAnimationFrame(tick);
   };

@@ -132,6 +132,7 @@ const DEFAULTS = {
     opacity: 0.85,
     showFps: true,
     showPing: true,
+    showLatency: false,
     showClock: false,
     showSession: true
   },
