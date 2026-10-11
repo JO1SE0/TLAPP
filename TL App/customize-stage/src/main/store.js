@@ -123,6 +123,8 @@ const DEFAULTS = {
     // GPU
     gpuRasterization: true,
     zeroCopy: true,
+    /** Experimental: deja el canvas del juego en modo desincronizado (menos retardo de pantalla). */
+    lowLatencyCanvas: false,
     forceGpu: false,
     highPerformanceGpu: true,
     noOcclusionPause: true,

@@ -5,12 +5,12 @@
 })(typeof self !== 'undefined' ? self : this, function () {
   const STYLES = [
     ['default', 'El del juego', 'Game default'],
-    ['bocina', 'Bocina', 'Air horn'],
-    ['campanas', 'Campanas', 'Bells'],
+    ['hinchada', 'Hinchada', 'Crowd roar'],
+    ['estadio', 'Estadio', 'Stadium'],
+    ['bombo', 'Bombo', 'Bass drum'],
+    ['vuvuzela', 'Vuvuzela', 'Vuvuzela'],
     ['aplausos', 'Aplausos', 'Applause'],
-    ['silbato', 'Silbato', 'Whistle'],
-    ['tribuna', 'Tribuna', 'Stands'],
-    ['retro', 'Retro', 'Retro']
+    ['silbato', 'Silbato', 'Whistle']
   ];
 
   function tone(ctx, out, t, freq, dur, type, vol, slideTo) {
@@ -43,33 +43,119 @@
     s.start(t); s.stop(t + dur + 0.05);
   }
 
+  /* Ruido con crecida lenta: la base de una multitud. */
+  function swell(ctx, out, t, dur, vol, freq, q, attack) {
+    const n = Math.max(1, Math.floor(ctx.sampleRate * dur));
+    const buf = ctx.createBuffer(1, n, ctx.sampleRate);
+    const d = buf.getChannelData(0);
+    for (let i = 0; i < n; i++) d[i] = Math.random() * 2 - 1;
+    const s = ctx.createBufferSource();
+    s.buffer = buf;
+    const f = ctx.createBiquadFilter();
+    f.type = 'bandpass'; f.frequency.value = freq; f.Q.value = q;
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(vol, t + attack);
+    g.gain.setValueAtTime(vol, t + attack + dur * 0.15);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    s.connect(f); f.connect(g); g.connect(out);
+    s.start(t); s.stop(t + dur + 0.05);
+  }
+
+  /* Una «voz» de hinchada: dientes de sierra filtrados como una «a» gritada. */
+  function voice(ctx, out, t, base, dur, vol) {
+    const o = ctx.createOscillator();
+    o.type = 'sawtooth';
+    o.frequency.setValueAtTime(base, t);
+    o.frequency.linearRampToValueAtTime(base * 1.18, t + dur * 0.35);
+    o.frequency.linearRampToValueAtTime(base * 0.92, t + dur);
+    const vib = ctx.createOscillator();
+    const vg = ctx.createGain();
+    vib.frequency.value = 5 + Math.random() * 2; vg.gain.value = base * 0.015;
+    vib.connect(vg); vg.connect(o.frequency);
+    const f1 = ctx.createBiquadFilter(); f1.type = 'bandpass'; f1.frequency.value = 800; f1.Q.value = 4;
+    const f2 = ctx.createBiquadFilter(); f2.type = 'bandpass'; f2.frequency.value = 1250; f2.Q.value = 5;
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(vol, t + dur * 0.25);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(f1); o.connect(f2); f1.connect(g); f2.connect(g); g.connect(out);
+    o.start(t); vib.start(t); o.stop(t + dur + 0.05); vib.stop(t + dur + 0.05);
+  }
+
+  function thump(ctx, out, t, vol, low) {
+    const o = ctx.createOscillator();
+    const g = ctx.createGain();
+    o.type = 'sine';
+    o.frequency.setValueAtTime(low ? 150 : 190, t);
+    o.frequency.exponentialRampToValueAtTime(low ? 42 : 55, t + 0.18);
+    g.gain.setValueAtTime(vol, t);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + (low ? 0.55 : 0.4));
+    o.connect(g); g.connect(out);
+    o.start(t); o.stop(t + 0.7);
+    noise(ctx, out, t, 0.05, vol * 0.5, 2200, 0.8);
+  }
+
+  function crowd(ctx, out, t, dur, vol) {
+    swell(ctx, out, t, dur, vol * 0.9, 500, 0.6, 0.45);
+    swell(ctx, out, t, dur, vol * 0.7, 1100, 0.7, 0.35);
+    swell(ctx, out, t + 0.1, dur, vol * 0.4, 2600, 0.9, 0.3);
+    for (let i = 0; i < 9; i++) voice(ctx, out, t + 0.05 + Math.random() * 0.5, 130 + Math.random() * 110, dur * (0.55 + Math.random() * 0.3), vol * 0.07);
+  }
+
   const RECIPES = {
-    bocina(c, o, t) {
-      [220, 277, 330].forEach((f) => tone(c, o, t, f, 1.1, 'sawtooth', 0.22));
-      tone(c, o, t + 0.05, 440, 1.0, 'square', 0.08);
+    hinchada(c, o, t) { crowd(c, o, t, 3.2, 0.9); },
+    estadio(c, o, t) {
+      crowd(c, o, t + 0.25, 3.6, 1);
+      thump(c, o, t, 0.9, true);
+      thump(c, o, t + 0.55, 0.7, true);
     },
-    campanas(c, o, t) {
-      [880, 1175, 1319, 1760].forEach((f, i) => {
-        tone(c, o, t + i * 0.12, f, 1.4, 'sine', 0.22);
-        tone(c, o, t + i * 0.12, f * 2.76, 0.6, 'sine', 0.05);
+    bombo(c, o, t) {
+      thump(c, o, t, 0.95, true);
+      thump(c, o, t + 0.3, 0.8, false);
+      thump(c, o, t + 0.6, 0.8, false);
+      thump(c, o, t + 0.9, 1, true);
+      swell(c, o, t + 0.2, 1.8, 0.25, 700, 0.6, 0.5);
+    },
+    vuvuzela(c, o, t) {
+      const lp = c.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 2400;
+      const g = c.createGain();
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(0.28, t + 0.12);
+      g.gain.setValueAtTime(0.28, t + 1.3);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 1.7);
+      lp.connect(g); g.connect(o);
+      [233, 233.9, 466, 699].forEach((f, i) => {
+        const osc = c.createOscillator();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(f * 0.96, t);
+        osc.frequency.linearRampToValueAtTime(f, t + 0.15);
+        const og = c.createGain(); og.gain.value = i < 2 ? 0.5 : 0.25;
+        osc.connect(og); og.connect(lp);
+        osc.start(t); osc.stop(t + 1.8);
       });
+      swell(c, o, t, 1.6, 0.06, 1500, 1.5, 0.1);
     },
     aplausos(c, o, t) {
-      for (let i = 0; i < 26; i++) noise(c, o, t + Math.random() * 1.6, 0.05 + Math.random() * 0.05, 0.35, 1800 + Math.random() * 2500, 0.8);
-      noise(c, o, t, 1.8, 0.12, 2500, 0.4);
+      for (let i = 0; i < 40; i++) noise(c, o, t + Math.random() * 2.2, 0.04 + Math.random() * 0.05, 0.3, 1800 + Math.random() * 2500, 0.8);
+      swell(c, o, t, 2.4, 0.14, 2500, 0.5, 0.4);
     },
     silbato(c, o, t) {
-      tone(c, o, t, 2900, 0.35, 'sine', 0.22, 3100);
-      tone(c, o, t + 0.4, 2900, 0.7, 'sine', 0.22, 3200);
-      noise(c, o, t, 1.1, 0.04, 3500, 3);
-    },
-    tribuna(c, o, t) {
-      noise(c, o, t, 2.2, 0.35, 700, 0.5);
-      noise(c, o, t + 0.2, 1.8, 0.2, 1400, 0.6);
-      tone(c, o, t, 180, 1.8, 'sawtooth', 0.05, 260);
-    },
-    retro(c, o, t) {
-      [523, 659, 784, 1047, 784, 1047].forEach((f, i) => tone(c, o, t + i * 0.09, f, 0.12, 'square', 0.12));
+      /* Silbato de árbitro: tono con la bolilla (trino rápido) en el medio. */
+      const osc = c.createOscillator(); osc.type = 'sine';
+      osc.frequency.setValueAtTime(2750, t);
+      osc.frequency.linearRampToValueAtTime(2950, t + 0.9);
+      const trill = c.createOscillator(); trill.frequency.value = 38;
+      const tg = c.createGain(); tg.gain.value = 0.5;
+      const g = c.createGain();
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(0.5, t + 0.04);
+      g.gain.setValueAtTime(0.5, t + 0.75);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 1.0);
+      trill.connect(tg); tg.connect(g.gain);
+      osc.connect(g); g.connect(o);
+      osc.start(t); trill.start(t); osc.stop(t + 1.05); trill.stop(t + 1.05);
+      noise(c, o, t, 0.9, 0.05, 3600, 2);
     }
   };
 

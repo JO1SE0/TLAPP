@@ -51,6 +51,10 @@ function hookDesynchronized(win) {
     const orig = proto.getContext;
     proto.getContext = function (type, options) {
       if (type === '2d') {
+        // Modo experimental de baja latencia: se respeta lo que pide el juego (desincronizado).
+        let lowLat = false;
+        try { lowLat = !!(state.config && state.config.perf && state.config.perf.lowLatencyCanvas); } catch (e) { /* state aún sin armar */ }
+        if (lowLat) return orig.call(this, type, options);
         if (!options) options = { desynchronized: false };
         else if (typeof options === 'object') options.desynchronized = false;
       }

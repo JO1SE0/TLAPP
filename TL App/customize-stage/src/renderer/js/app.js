@@ -2975,7 +2975,8 @@ function gameSettingControl(setting) {
 const PERF_GROUPS = {
   perfLatency: [
     { key: 'highProcessPriority', label: 'Prioridad alta', description: 'Le pide más CPU a Windows.', restart: false },
-    { key: 'disableBackgroundThrottling', label: 'Sin freno en segundo plano', description: 'No baja el ritmo sin el foco.', restart: true }
+    { key: 'disableBackgroundThrottling', label: 'Sin freno en segundo plano', description: 'No baja el ritmo sin el foco.', restart: true },
+    { key: 'lowLatencyCanvas', label: 'Menos retardo de pantalla (experimental)', description: 'La imagen sale sin esperar al compositor.', hint: 'Puede achicar el tiempo entre tu tecla y lo que ves. Medilo con «Latencia de entrada» del overlay. Si ves tirones o parpadeos, apagalo.', restart: true }
   ],
   perfGpu: [
     /*
@@ -3004,7 +3005,8 @@ const PERF_GROUPS = {
 const PERF_GROUPS_EN = {
   perfLatency: [
     { key: 'highProcessPriority', label: 'High priority', description: 'Asks Windows for more CPU.', restart: false },
-    { key: 'disableBackgroundThrottling', label: 'No background throttling', description: 'Keeps the pace without focus.', restart: true }
+    { key: 'disableBackgroundThrottling', label: 'No background throttling', description: 'Keeps the pace without focus.', restart: true },
+    { key: 'lowLatencyCanvas', label: 'Lower display lag (experimental)', description: 'Frames go out without waiting for the compositor.', hint: 'May shrink the time between your key and what you see. Measure it with the overlay “Input latency”. If you see stutter or flicker, turn it off.', restart: true }
   ],
   perfGpu: [
     { key: 'unlockFps', label: 'Unlimited FPS', description: 'Lets FPS go past the monitor refresh rate.', hint: 'Turns V-Sync off. If FPS still stick to your monitor Hz, check that your graphics card panel (NVIDIA, AMD or Intel) is not forcing vertical sync.', restart: true },
