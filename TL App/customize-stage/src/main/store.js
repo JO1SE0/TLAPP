@@ -9,7 +9,7 @@ const haxball = require('./haxball-settings');
 const FILE = 'config.json';
 
 const DEFAULTS = {
-  version: 22,
+  version: 23,
   general: {
     gameUrl: 'https://www.haxball.com/play',
     nickname: '',
@@ -721,9 +721,14 @@ function migrate(stored) {
     }
   }
 
+  // v23: la aplicación de Discord es una sola. El nombre de «jugando a …» sale de ella, y las
+  // configs que venían de instalaciones viejas guardaban otra, así que a algunos les aparecía
+  // con otro nombre. Se vuelve a la de siempre.
+  if (!(next.version >= 23) && next.discord) next.discord.appId = DEFAULTS.discord.appId;
+
   if (next.vip) next.vip.discord = null;
   delete next.privacy;
-  next.version = 22;
+  next.version = 23;
   return next;
 }
 
