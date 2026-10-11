@@ -89,6 +89,8 @@ const DEFAULTS = {
     toggleBounce: true,
     /** Las filas de salas y ajustes entran una tras otra. */
     listStagger: true,
+    /** Resplandor que late abajo mientras suena la música del menú. */
+    musicGlow: true,
     /** El acento cambia solo, muy despacio (sólo en temas que usan el acento del jugador). */
     accentDrift: false,
     /** Destello en los bordes de la pantalla al hacer un gol, con el color del equipo. */

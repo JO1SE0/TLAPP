@@ -4998,3 +4998,23 @@ html:not([data-animations="off"]):not([data-list-stagger="off"]) .rtable[data-en
 .rtable[data-enter] .rrow:nth-child(16){animation-delay:420ms}
 
 /* 14/16 · Efectos dentro del juego viven en game-preload (ver `goalEdge` y `joinSparkle`). */
+
+/* Fondo con la música: una franja de luz abajo que late mientras suena el menú.
+   Sólo `opacity` sobre una capa chica (no pantalla completa), y sólo con música sonando. */
+.ambient::after {
+  content: "";
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  height: 38%;
+  background: radial-gradient(70% 100% at 50% 100%, rgb(var(--accent-rgb) / 38%), transparent 72%);
+  opacity: 0;
+  display: none;
+}
+html[data-music-playing="on"]:not([data-animations="off"]):not([data-music-glow="off"]):not([data-stage="game"]) .ambient::after {
+  display: block;
+  animation: musicGlow 2.1s ease-in-out infinite;
+}
+@keyframes musicGlow { 0%, 100% { opacity: 0.15; } 40% { opacity: 0.9; } 60% { opacity: 0.55; } }
+
+/* 5 · Al refrescar la lista de salas, las viejas se apagan hasta que llegan las nuevas */
+html:not([data-animations="off"]) .rtable.is-loading .rrow { opacity: 0.35; transition: opacity 0.18s ease; }

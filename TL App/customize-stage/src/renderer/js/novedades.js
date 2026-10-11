@@ -23,6 +23,7 @@ window.TL_NEWS = {
       'Respuesta de teclas: avisa si las «Teclas filtro» de Windows están prendidas (agregan retardo) y abre sus ajustes.',
       'Animaciones del menú (Personalización → Estilo): transición entre pantallas, escudo que respira, cortina al entrar a una sala, interruptores con rebote y filas en cascada; todo se puede apagar.',
       'Partículas del menú en 5 estilos (oro, estrellas, luciérnagas, nieve, confeti) y cantidad a elección; acento que cambia solo (opcional).',
+      'Fondo con la música: un resplandor suave late abajo mientras suena la música del menú. Al refrescar las salas, las viejas se apagan y las nuevas entran en cascada.',
       '4 temas nuevos: Papel, Retro CRT, Cyberpunk y Mármol.',
       'En partida: destello en los bordes con el color del equipo al hacer un gol y chispas en el nombre cuando entra un integrante verificado del club.',
       'Cada clave se usa en una sola PC: si necesitás cambiar de computadora, pedile a miclo que te la libere.'
@@ -40,6 +41,7 @@ window.TL_NEWS = {
       'Key response: warns if Windows “Filter Keys” is on (it adds delay) and opens its settings.',
       'Menu animations (Personalization → Style): screen transitions, breathing crest, curtain when entering a room, bouncy switches and cascading rows; all can be turned off.',
       'Menu particles in 5 styles (gold, stars, fireflies, snow, confetti) with adjustable amount; optional self-changing accent.',
+      'Background with the music: a soft glow pulses at the bottom while the menu music plays. When refreshing rooms, old ones dim and new ones cascade in.',
       '4 new themes: Paper, Retro CRT, Cyberpunk and Marble.',
       'In match: edge glow in the scoring team’s colour on goals and sparkles on the name when a verified club member joins.',
       'Each key works on a single PC: if you switch computers, ask miclo to release it.'

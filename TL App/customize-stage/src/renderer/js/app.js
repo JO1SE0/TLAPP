@@ -804,6 +804,7 @@ function applyConfig(config) {
   flag('roomCurtain', 'roomCurtain');
   flag('toggleBounce', 'toggleBounce');
   flag('listStagger', 'listStagger');
+  flag('musicGlow', 'musicGlow');
   try { syncAccentDrift(); } catch (e) { /* adorno */ }
 }
 
@@ -2001,14 +2002,20 @@ window.addEventListener('resize', () => {
 /* ══════════════════════════════════════════════════════════
    Salas
    ══════════════════════════════════════════════════════════ */
+let roomsEnter = false;
 async function loadRooms() {
   state.rooms.loading = true;
   state.rooms.error = null;
   renderRooms();
+  // Las filas viejas se apagan mientras llega la lista nueva, y la nueva entra en cascada.
+  const hadRows = state.rooms.list && state.rooms.list.length > 0;
+  const roomHost = $('#roomList');
+  if (hadRows) roomHost.classList.add('is-loading');
   try {
     const data = await tvm.rooms.list();
     state.rooms = { ...data, list: data.rooms, loading: false, error: null };
     state.roomsFailures = 0;
+    roomsEnter = hadRows;
   } catch (err) {
     state.rooms.loading = false;
     state.rooms.error = err.message;
@@ -2024,6 +2031,7 @@ async function loadRooms() {
     state.rooms.fetchedAt = Date.now();
     state.roomsFailures = (state.roomsFailures || 0) + 1;
   }
+  roomHost.classList.remove('is-loading');
   renderRooms();
 }
 
@@ -2249,7 +2257,8 @@ function renderRooms() {
   const firstPaint = !roomView || !roomView.length;
   roomView = list;
   paintRoomWindow(true);
-  if (firstPaint) {
+  if (firstPaint || roomsEnter) {
+    roomsEnter = false;
     // Las filas entran en cascada sólo cuando la lista aparece, no al scrollear ni al filtrar.
     const host = $('#roomList');
     host.dataset.enter = '1';
@@ -4187,6 +4196,8 @@ window.addEventListener('resize', () => {
   else { clearTimeout(npTimer); npTimer = setTimeout(hideNowPlaying, 4000); }
 });
 window.addEventListener('tl:track', (e) => {
+  // Para el resplandor del fondo: sólo importa si suena o no.
+  if (e.detail) document.documentElement.dataset.musicPlaying = e.detail.playing ? 'on' : 'off';
   const d = e.detail || {};
   $('#audEq').classList.toggle('is-playing', !!d.playing);
   $('#nowPlaying .eq').classList.toggle('is-playing', !!d.playing);
@@ -4248,6 +4259,7 @@ const ANIM_SWITCHES = {
     { key: 'roomCurtain', label: 'Cortina al entrar a una sala', description: 'El escudo tapa la pantalla un instante mientras carga la sala.' },
     { key: 'toggleBounce', label: 'Interruptores con rebote', description: 'Los interruptores dan un saltito al cambiar.' },
     { key: 'listStagger', label: 'Filas que entran de a una', description: 'Las salas y los ajustes aparecen en cascada al abrir la pantalla.' },
+    { key: 'musicGlow', label: 'Fondo con la música', description: 'Un resplandor suave del color de acento late abajo mientras suena la música del menú.' },
     { key: 'accentDrift', label: 'Acento que cambia solo', description: 'El color de acento pasa despacio por el arcoíris (un paso cada 20 s). Se apaga solo al cerrar la app.' },
     { key: 'goalEdge', label: 'Destello de gol en los bordes', description: 'Un pulso con el color del equipo que anotó, en el borde de la pantalla.' },
     { key: 'joinSparkle', label: 'Chispas al entrar un compañero', description: 'Brilla el nombre cuando entra a la sala alguien verificado del club.' }
@@ -4257,6 +4269,7 @@ const ANIM_SWITCHES = {
     { key: 'roomCurtain', label: 'Curtain when entering a room', description: 'The crest covers the screen briefly while the room loads.' },
     { key: 'toggleBounce', label: 'Bouncy switches', description: 'Switches give a little hop when toggled.' },
     { key: 'listStagger', label: 'Rows that enter one by one', description: 'Rooms and settings cascade in when a screen opens.' },
+    { key: 'musicGlow', label: 'Background with the music', description: 'A soft glow in the accent colour pulses at the bottom while the menu music plays.' },
     { key: 'accentDrift', label: 'Self-changing accent', description: 'The accent colour slowly walks the rainbow (one step every 20 s). It turns itself off when the app closes.' },
     { key: 'goalEdge', label: 'Goal glow on the screen edges', description: 'A pulse in the scoring team’s colour around the screen edge.' },
     { key: 'joinSparkle', label: 'Sparkles when a teammate joins', description: 'The name glows when a verified club member joins the room.' }
