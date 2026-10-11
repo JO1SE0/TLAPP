@@ -4248,7 +4248,7 @@ const ANIM_SWITCHES = {
     { key: 'roomCurtain', label: 'Cortina al entrar a una sala', description: 'El escudo tapa la pantalla un instante mientras carga la sala.' },
     { key: 'toggleBounce', label: 'Interruptores con rebote', description: 'Los interruptores dan un saltito al cambiar.' },
     { key: 'listStagger', label: 'Filas que entran de a una', description: 'Las salas y los ajustes aparecen en cascada al abrir la pantalla.' },
-    { key: 'accentDrift', label: 'Acento que cambia solo', description: 'El color de acento pasa despacio por el arcoíris (un paso cada 20 s, sin gastar nada entre medio).' },
+    { key: 'accentDrift', label: 'Acento que cambia solo', description: 'El color de acento pasa despacio por el arcoíris (un paso cada 20 s). Se apaga solo al cerrar la app.' },
     { key: 'goalEdge', label: 'Destello de gol en los bordes', description: 'Un pulso con el color del equipo que anotó, en el borde de la pantalla.' },
     { key: 'joinSparkle', label: 'Chispas al entrar un compañero', description: 'Brilla el nombre cuando entra a la sala alguien verificado del club.' }
   ],
@@ -4257,7 +4257,7 @@ const ANIM_SWITCHES = {
     { key: 'roomCurtain', label: 'Curtain when entering a room', description: 'The crest covers the screen briefly while the room loads.' },
     { key: 'toggleBounce', label: 'Bouncy switches', description: 'Switches give a little hop when toggled.' },
     { key: 'listStagger', label: 'Rows that enter one by one', description: 'Rooms and settings cascade in when a screen opens.' },
-    { key: 'accentDrift', label: 'Self-changing accent', description: 'The accent colour slowly walks the rainbow (one step every 20 s, nothing running in between).' },
+    { key: 'accentDrift', label: 'Self-changing accent', description: 'The accent colour slowly walks the rainbow (one step every 20 s). It turns itself off when the app closes.' },
     { key: 'goalEdge', label: 'Goal glow on the screen edges', description: 'A pulse in the scoring team’s colour around the screen edge.' },
     { key: 'joinSparkle', label: 'Sparkles when a teammate joins', description: 'The name glows when a verified club member joins the room.' }
   ]
@@ -8547,6 +8547,11 @@ async function boot() {
   ]);
   state.schema = schema;
   state.info = info;
+  // El acento que cambia solo es de una sola sesión: la app siempre abre con el color del club.
+  if (config.appearance && config.appearance.accentDrift) {
+    config.appearance.accentDrift = false;
+    tvm.config.set({ appearance: { accentDrift: false } }).catch(() => {});
+  }
   applyConfig(config);
   applyThemeVars(vars);
   try {
