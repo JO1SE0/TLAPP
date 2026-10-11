@@ -2709,6 +2709,7 @@ function myCosmetics() {
 }
 
 let lastPresenceError = '';
+let lastPresenceOk = '';
 
 async function beatPresence() {
   const cfg = store.get();
@@ -2738,6 +2739,15 @@ async function beatPresence() {
     return;
   }
   lastPresenceError = '';
+  {
+    const n = res.peers.filter((p) => !p.self).length;
+    const sig = `${roomInfo.room}|${n}`;
+    if (sig !== lastPresenceOk) {
+      lastPresenceOk = sig;
+      const line = `[${new Date().toISOString()}] presencia OK: verificado como "${access.get().name}", ${n} del plantel en la sala\n`;
+      try { const f = crashLogPath(); if (f) fs.appendFileSync(f, line, 'utf8'); } catch { /* nada */ }
+    }
+  }
 
   // El servidor decide el ritmo: así se puede aflojar sin sacar una versión.
   if (res.everyMs !== presenceEveryMs) {
