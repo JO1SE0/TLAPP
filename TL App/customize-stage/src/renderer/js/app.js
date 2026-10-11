@@ -3455,6 +3455,23 @@ const OVERLAY_SWITCHES = {
   ]
 };
 
+const AIM_SWITCHES = {
+  es: [
+    { key: 'aimBallPath', label: 'Trayectoria de la pelota', description: 'Línea punteada por donde va a ir, con rebotes.' },
+    { key: 'aimShot', label: 'Trayectoria de tu tiro', description: 'Hacia dónde saldría la pelota si pateás ahora.', hint: 'Se ve fuerte cuando estás al alcance y tenue cuando no.' },
+    { key: 'aimLanding', label: 'Punto de llegada', description: 'Una cruz donde termina el recorrido (verde si es gol).' },
+    { key: 'aimFree', label: 'Ángulos libres', description: 'Pinta de verde la parte del arco rival que nadie tapa.' },
+    { key: 'aimDanger', label: 'Línea de peligro', description: 'Marca al rival que puede llegar antes a la pelota.', hint: 'Es una estimación, no una certeza.' }
+  ],
+  en: [
+    { key: 'aimBallPath', label: 'Ball trajectory', description: 'Dotted line of where it will go, with bounces.' },
+    { key: 'aimShot', label: 'Your shot trajectory', description: 'Where the ball would go if you kick now.', hint: 'Bright when in range, faint when not.' },
+    { key: 'aimLanding', label: 'Landing point', description: 'A cross where the path ends (green if it is a goal).' },
+    { key: 'aimFree', label: 'Open angles', description: 'Paints the part of the rival goal nobody covers in green.' },
+    { key: 'aimDanger', label: 'Danger line', description: 'Marks the rival who can reach the ball first.', hint: 'It is an estimate, not a certainty.' }
+  ]
+};
+
 /*
  * Lo que se dibuja sobre la cancha.
  *
@@ -3978,6 +3995,16 @@ function renderPitch() {
   buildSwitches(
     $('#pitchSwitches'),
     PITCH_SWITCHES[lang].map((i) => ({ ...i, value: () => live(i.key) })),
+    (item, value) => patchConfig({ pitch: { [item.key]: value } })
+  );
+
+  $('#aimTitle').textContent = lang === 'en' ? 'Aiming aids' : 'Ayudas de apuntado';
+  $('#aimNote').textContent = lang === 'en'
+    ? 'Experimental. All off by default. They estimate with a physics simulation and can be off in complex plays.'
+    : 'Experimental. Todas apagadas de fábrica. Estiman con una simulación de la física y pueden fallar en jugadas complejas.';
+  buildSwitches(
+    $('#aimSwitches'),
+    AIM_SWITCHES[lang].map((i) => ({ ...i, value: () => live(i.key) })),
     (item, value) => patchConfig({ pitch: { [item.key]: value } })
   );
 

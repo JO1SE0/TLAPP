@@ -21,6 +21,7 @@ const lookfx = require('./look');
 const zoomControl = require('./game-zoom');
 const themes = require('./themes');
 const roomUi = require('./room-ui');
+const aimAssist = require('./aim-assist');
 let goalSfx = null;
 try { goalSfx = require('../renderer/js/goal-sfx.js'); } catch { /* sin sonidos incluidos */ }
 const gif = require('./gif');
@@ -6179,6 +6180,167 @@ function trailWindow(cfg) {
   return Math.max(60, Number(cfg.trailMs) || 320);
 }
 
+/* ── Ayudas de apuntado ─────────────────────────────────────────────────── *
+ * Todo lo calcula aim-assist.js; acá sólo se lee el estado del juego y se
+ * dibuja. Cada ayuda es un interruptor propio y viene apagada.              */
+const aimState = { world: null, geo: null, ball: aimAssist.createBallTracker(), warned: false, logged: false };
+
+function aimGeometry(world, f) {
+  if (aimState.world !== world) {
+    aimState.world = world;
+    aimState.geo = aimAssist.probeWorld(world, f.discs);
+    aimState.ball = aimAssist.createBallTracker();
+    aimState.logged = false;
+  }
+  return aimState.geo;
+}
+
+function aimLine(ctx, pts, from, color, width, alpha, dashed, px) {
+  if (!pts.length) return;
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.strokeStyle = color;
+  ctx.lineWidth = width * px;
+  ctx.lineCap = 'round';
+  if (dashed) ctx.setLineDash([6 * px, 6 * px]);
+  ctx.beginPath();
+  ctx.moveTo(from.x, from.y);
+  for (const q of pts) ctx.lineTo(q.x, q.y);
+  ctx.stroke();
+  ctx.restore();
+}
+
+function aimCross(ctx, at, color, px, ring) {
+  ctx.save();
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 2.2 * px;
+  const a = 7 * px;
+  ctx.beginPath();
+  ctx.moveTo(at.x - a, at.y - a); ctx.lineTo(at.x + a, at.y + a);
+  ctx.moveTo(at.x - a, at.y + a); ctx.lineTo(at.x + a, at.y - a);
+  if (ring) ctx.arc(at.x, at.y, a * 1.7, 0, TAU);
+  ctx.stroke();
+  ctx.restore();
+}
+
+function paintAim(ctx, renderer, f, px, cfg) {
+  const room = tracker.room;
+  const world = room && room[f.world];
+  const discs = world && world[f.discs];
+  const ballDisc = discs && discs[0];
+  if (!ballDisc) return;
+  const geo = aimGeometry(world, f);
+  const bs = aimState.ball.update(ballDisc, f.pos, performance.now());
+  if (!bs) return;
+  if (!aimState.logged) {
+    aimState.logged = true;
+    log('info', `ayudas: ${JSON.stringify(geo.diag)} paredes=${geo.segments.length} arcos=${geo.goals.length}`, 'ayudas');
+  }
+  const ballR = (f.radius && ballDisc[f.radius]) || 10;
+  const me = renderer && renderer.__tvmMe;
+  const myDisc = me && me[f.disc];
+  const myPos = myDisc && myDisc[f.pos];
+  const myR = (myDisc && f.radius && myDisc[f.radius]) || DEFAULT_PLAYER_RADIUS;
+  const myTeam = me ? me[f.team] : null;
+
+  const rivals = [];
+  const players = room[f.players] || [];
+  for (let i = 0; i < players.length; i++) {
+    const p = players[i];
+    if (!p || p === me) continue;
+    const d = p[f.disc];
+    const at = d && d[f.pos];
+    if (!at) continue;
+    if (myTeam && p[f.team] === myTeam) continue;
+    rivals.push({ x: at.x, y: at.y, r: (f.radius && d[f.radius]) || DEFAULT_PLAYER_RADIUS });
+  }
+
+  const ball = { x: bs.x, y: bs.y, vx: bs.vx, vy: bs.vy, r: ballR, damp: bs.damp, bc: 0.5 };
+  const moving = Math.hypot(ball.vx, ball.vy) > 0.15;
+  const accent = pitchAccent();
+  let mainPath = null;
+
+  if (moving && (cfg.aimBallPath || cfg.aimLanding || cfg.aimDanger)) {
+    const sim = aimAssist.simulate(ball, geo, 240);
+    mainPath = sim.pts;
+    if (cfg.aimBallPath) aimLine(ctx, sim.pts, ball, '#ffffff', 2, 0.65, true, px);
+    if (cfg.aimLanding) aimCross(ctx, sim.end, sim.end.why === 'goal' ? '#38d96b' : '#ffffff', px, sim.end.why === 'goal');
+  }
+
+  if (cfg.aimShot && myPos) {
+    const dx = ball.x - myPos.x; const dy = ball.y - myPos.y;
+    const dist = Math.hypot(dx, dy);
+    if (dist > 0.01) {
+      const nx = dx / dist; const ny = dy / dist;
+      const inRange = dist - ballR - myR <= 4;
+      const KICK = 5;
+      const shot = { x: ball.x, y: ball.y, vx: ball.vx + nx * KICK, vy: ball.vy + ny * KICK, r: ballR, damp: ball.damp, bc: 0.5 };
+      const sim = aimAssist.simulate(shot, geo, 240);
+      aimLine(ctx, sim.pts, ball, '#ffd24d', 2.4, inRange ? 0.95 : 0.3, false, px);
+      if (cfg.aimLanding) aimCross(ctx, sim.end, sim.end.why === 'goal' ? '#38d96b' : '#ffd24d', px, sim.end.why === 'goal');
+      if (!mainPath && cfg.aimDanger) mainPath = sim.pts;
+    }
+  }
+
+  if (cfg.aimFree && geo.goals.length) {
+    let target = null;
+    if (myTeam) target = geo.goals.find((g) => g.team !== myTeam && g.team != null) || null;
+    if (!target && myPos) {
+      let best = -1;
+      for (const g of geo.goals) {
+        const d = Math.hypot((g.p0.x + g.p1.x) / 2 - myPos.x, (g.p0.y + g.p1.y) / 2 - myPos.y);
+        if (d > best) { best = d; target = g; }
+      }
+    }
+    if (target) {
+      const spans = aimAssist.freeSpans(ball, target, rivals, ballR);
+      let widest = null;
+      for (const sp of spans) if (!widest || sp[1] - sp[0] > widest[1] - widest[0]) widest = sp;
+      ctx.save();
+      ctx.strokeStyle = '#38d96b';
+      ctx.lineWidth = 5 * px;
+      ctx.lineCap = 'round';
+      ctx.globalAlpha = 0.9;
+      for (const sp of spans) {
+        ctx.beginPath();
+        ctx.moveTo(target.p0.x + (target.p1.x - target.p0.x) * sp[0], target.p0.y + (target.p1.y - target.p0.y) * sp[0]);
+        ctx.lineTo(target.p0.x + (target.p1.x - target.p0.x) * sp[1], target.p0.y + (target.p1.y - target.p0.y) * sp[1]);
+        ctx.stroke();
+      }
+      if (widest) {
+        const m = (widest[0] + widest[1]) / 2;
+        ctx.globalAlpha = 0.45;
+        ctx.lineWidth = 1.6 * px;
+        ctx.setLineDash([4 * px, 5 * px]);
+        ctx.beginPath();
+        ctx.moveTo(ball.x, ball.y);
+        ctx.lineTo(target.p0.x + (target.p1.x - target.p0.x) * m, target.p0.y + (target.p1.y - target.p0.y) * m);
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+  }
+
+  if (cfg.aimDanger && mainPath && rivals.length) {
+    const hit = aimAssist.dangerOnPath(mainPath, rivals, ballR);
+    if (hit) {
+      ctx.save();
+      ctx.strokeStyle = '#ff4d4d';
+      ctx.lineWidth = 2.4 * px;
+      ctx.globalAlpha = 0.9;
+      ctx.beginPath();
+      ctx.arc(hit.point.x, hit.point.y, 9 * px, 0, TAU);
+      ctx.moveTo(hit.point.x, hit.point.y);
+      ctx.lineTo(hit.rival.x, hit.rival.y);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(hit.rival.x, hit.rival.y, hit.rival.r + 5 * px, 0, TAU);
+      ctx.stroke();
+      ctx.restore();
+    }
+  }
+}
+
 /** El acento del tema, que es con lo que se pinta tu aro. */
 function pitchAccent() {
   const p = currentPalette();
@@ -6211,7 +6373,8 @@ function paintPitch(ctx, renderer, zoom) {
   const wantTouch = replay && cfg.replayLastTouch;
   const wantHeat = replay && cfg.replayHeatmap;
   const wantSelfTrail = visual.selfTrail && !replay;
-  if (!wantTrail && !wantTeams && !wantSelf && !wantTouch && !wantHeat && !wantSelfTrail) return;
+  const wantAim = !replay && (cfg.aimBallPath || cfg.aimShot || cfg.aimLanding || cfg.aimFree || cfg.aimDanger);
+  if (!wantTrail && !wantTeams && !wantSelf && !wantTouch && !wantHeat && !wantSelfTrail && !wantAim) return;
 
   const f = tracker.fields;
   if (!f) return;
@@ -6229,6 +6392,7 @@ function paintPitch(ctx, renderer, zoom) {
     if (doc) paintHeat(ctx, doc);
   }
   if (wantTrail) paintTrail(ctx, cfg, px);
+  if (wantAim) { try { paintAim(ctx, renderer, f, px, cfg); } catch (err) { if (!aimState.warned) { aimState.warned = true; log('warn', `ayudas de apuntado: ${err && err.message}`, 'ayudas'); } } }
   if (wantTeams || wantSelf || wantTouch || wantSelfTrail) {
     paintRings(ctx, renderer, f, px, { self: wantSelf, teams: wantTeams, touch: wantTouch, selfTrail: wantSelfTrail });
   }
