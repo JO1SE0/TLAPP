@@ -21,6 +21,7 @@ const updater = require('./updater');
 const access = require('./access');
 const panel = require('./panel');
 const presence = require('./presence');
+const admin = require('./admin');
 const avatars = require('./avatars');
 const countries = require('./countries');
 const gamePatch = require('./game-patch');
@@ -2007,7 +2008,7 @@ if (!app.requestSingleInstanceLock()) {
     firstProbe = probeHaxball().catch(() => ({ down: false, reason: '' }));
     accessReady = access.init(app.getPath('userData'), (st) => {
       if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('access:changed', st);
-    }).catch(() => {});
+    }, app.getVersion()).catch(() => {});
     createWindow();
     const syncActiveDisplay = () => {
       if (!mainWindow || mainWindow.isDestroyed()) return;
@@ -2720,13 +2721,24 @@ async function beatOnline() {
       key: access.getKey(),
       roster: access.getRoster(),
       room: roomInfo.name || '',
-      selfName: access.get().name || ''
+      version: app.getVersion()
     });
     if (list) { liveRoster = list; send('presence:roster', list); }
   } catch { /* sin red o sin permisos: se queda lo último que se supo */ }
   onlineBusy = false;
 }
 handle('presence:roster', async () => liveRoster);
+// Panel del capitán: estado vigente + estado de cada miembro, y las acciones.
+handle('admin:get', async () => {
+  if (!access.isCaptain()) return null;
+  await beatOnline();
+  return { doc: access.getEffective(), members: liveRoster || [], version: app.getVersion() };
+});
+handle('admin:do', async (_e, action) => {
+  const res = await admin.run(action);
+  await beatOnline();
+  return { ...res, members: liveRoster || [] };
+});
 (function startOnline() {
   const run = () => { accessReady.then(beatOnline).catch(() => {}); };
   setTimeout(run, 4000);
@@ -3505,7 +3517,7 @@ function rememberVolume(volume) {
 // cambio se guarda en el acto en vez de esperar a un temporizador que ya no va
 // a correr.
 app.on('before-quit', saveVolumeNow);
-app.on('before-quit', () => { try { presence.leaveOnline({ url: access.presenceUrl(), key: access.getKey() }); presence.leave({ url: access.presenceUrl(), key: access.getKey() }); } catch { /* vence solo */ } });
+app.on('before-quit', () => { try { presence.leaveOnline({ url: access.presenceUrl(), key: access.getKey(), version: app.getVersion() }); presence.leave({ url: access.presenceUrl(), key: access.getKey() }); } catch { /* vence solo */ } });
 
 /** Alguien recién llegó y necesita saber qué está sonando. */
 listen('music:want-state', (e) => {

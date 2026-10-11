@@ -304,17 +304,21 @@ const GATE_TEXT = {
     title: 'Acceso del equipo', sub: 'Poné tu clave personal para usar TL App.', ph: 'TL-XXXX-XXXX-XXXX', go: 'Entrar', checking: 'Verificando…',
     'need-key': '', 'bad-key': 'Esa clave no está en la lista.', revoked: 'Tu acceso fue quitado. No podés usar la app.',
     offline: 'No se pudo verificar la clave: hace falta conexión.', expired: 'Hace más de 3 días que no se verifica tu acceso. Conectate a internet.',
-    help: 'Si no tenés clave, pedísela al capitán.'
+    help: 'Si no tenés clave, pedísela al capitán.',
+    outdated: 'Hay una versión nueva y obligatoria de TL App.', outdatedSub: 'Actualizá para seguir usando la app.', update: 'Actualizar ahora', updating: 'Buscando actualización…',
+    noUpdate: 'Todavía no hay una actualización disponible. Probá en unos minutos.'
   },
   en: {
     title: 'Team access', sub: 'Enter your personal key to use TL App.', ph: 'TL-XXXX-XXXX-XXXX', go: 'Enter', checking: 'Checking…',
     'need-key': '', 'bad-key': 'That key is not on the list.', revoked: 'Your access was removed. You cannot use the app.',
     offline: 'Could not verify the key: a connection is required.', expired: 'Your access has not been verified for over 3 days. Please go online.',
-    help: 'No key? Ask the captain.'
+    help: 'No key? Ask the captain.',
+    outdated: 'A new, mandatory version of TL App is available.', outdatedSub: 'Update to keep using the app.', update: 'Update now', updating: 'Checking for updates…',
+    noUpdate: 'No update is available yet. Try again in a few minutes.'
   }
 };
 
-function showGate(reason) {
+function showGate(reason, extra) {
   const tx = GATE_TEXT[isEn() ? 'en' : 'es'];
   let gate = $('#gate');
   if (!gate) {
@@ -340,6 +344,21 @@ function showGate(reason) {
     card.addEventListener('submit', async (e) => {
       e.preventDefault();
       const t = GATE_TEXT[isEn() ? 'en' : 'es'];
+      if (gate.classList.contains('is-outdated')) {
+        // Versión vieja: el botón busca, baja e instala la actualización.
+        btn.disabled = true; btn.textContent = t.updating; msg.textContent = '';
+        try {
+          const res = await tvm.updates.check();
+          if (res && res.status === 'available' && res.canDownload !== false) {
+            await tvm.updates.download();
+            await tvm.updates.install();
+            return;
+          }
+          msg.textContent = t.noUpdate;
+        } catch (err) { msg.textContent = t.noUpdate; }
+        btn.disabled = false; btn.textContent = t.update;
+        return;
+      }
       if (!input.value.trim()) return;
       btn.disabled = true; btn.textContent = t.checking; msg.textContent = '';
       try {
@@ -350,12 +369,14 @@ function showGate(reason) {
       btn.disabled = false; btn.textContent = t.go;
     });
   }
-  gate.querySelector('.gate__title').textContent = tx.title;
-  gate.querySelector('.gate__sub').textContent = tx.sub;
+  const outdated = reason === 'outdated';
+  gate.classList.toggle('is-outdated', outdated);
+  gate.querySelector('.gate__title').textContent = outdated ? tx.outdated : tx.title;
+  gate.querySelector('.gate__sub').textContent = outdated ? (extra || tx.outdatedSub) : tx.sub;
   gate.querySelector('.gate__input').placeholder = tx.ph;
-  gate.querySelector('.gate__btn').textContent = tx.go;
-  gate.querySelector('.gate__msg').textContent = tx[reason] || '';
-  gate.querySelector('.gate__help').textContent = tx.help;
+  gate.querySelector('.gate__btn').textContent = outdated ? tx.update : tx.go;
+  gate.querySelector('.gate__msg').textContent = outdated ? '' : (tx[reason] || '');
+  gate.querySelector('.gate__help').textContent = outdated ? '' : tx.help;
   gate.hidden = false;
   document.body.classList.add('is-gated');
   setTimeout(() => { const i = gate.querySelector('.gate__input'); if (i) i.focus(); }, 50);
@@ -397,6 +418,31 @@ function showNoticeIfReady() {
   document.body.append(box);
   setTimeout(() => btn.focus(), 50);
 }
+/* Aviso urgente del capitán: aparece enseguida, también dentro de una sala. */
+function urgentSeen() { try { return localStorage.getItem('tl_urgent_seen') || ''; } catch (e) { return ''; } }
+function showUrgentIfAny() {
+  const u = state.access && state.access.urgent;
+  if (!u || u.id === urgentSeen() || $('#urgent') || (state.access.state === 'locked')) return;
+  const box = document.createElement('div');
+  box.id = 'urgent';
+  box.className = 'urgent';
+  box.setAttribute('role', 'alertdialog');
+  const head = document.createElement('b');
+  head.textContent = u.title || (isEn() ? 'Urgent notice' : 'Aviso urgente');
+  const p = document.createElement('p');
+  p.textContent = u.text;
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.textContent = isEn() ? 'Got it' : 'Entendido';
+  btn.addEventListener('click', () => {
+    try { localStorage.setItem('tl_urgent_seen', u.id); } catch (e) { /* se vuelve a mostrar */ }
+    box.remove();
+  });
+  box.append(head, p, btn);
+  document.body.append(box);
+  if (window.TLSfx && typeof window.TLSfx.play === 'function') { try { window.TLSfx.play('open'); } catch (e) { /* sin sonido */ } }
+}
+
 /* «Qué hay de nuevo»: una vez por cada `id` de novedades.js, después del aviso del capitán. */
 function newsSeen() { try { return localStorage.getItem('tl_news_seen') || ''; } catch (e) { return ''; } }
 function showNewsIfReady() {
@@ -456,11 +502,14 @@ function onAccess(st) {
     wasLocked = true;
     // Si había una partida abierta, se corta: el juego no puede seguir tapado por la pantalla.
     try { document.querySelectorAll('webview').forEach((w) => w.remove()); } catch (e) { /* nada */ }
-    showGate(st.reason);
+    showGate(st.reason, st.minMessage);
     return;
   }
   const gate = $('#gate');
   if (gate) { gate.hidden = true; document.body.classList.remove('is-gated'); }
+  const capBtn = $('#captainBtn');
+  if (capBtn) capBtn.hidden = !(st && st.captain);
+  showUrgentIfAny();
   if (welcomePending) { welcomePending = false; startWelcome(); }
   setTimeout(showNoticeIfReady, 900);
 }
@@ -1718,7 +1767,7 @@ watchRail();
 
 nav.addEventListener('click', (e) => {
   const item = e.target.closest('.railitem');
-  if (!item) return;
+  if (!item || !item.dataset.view) return;
   // Volver a tocar la pestaña abierta cierra el panel, como cualquier menú.
   setView(item.dataset.view === state.view ? 'play' : item.dataset.view);
 });
@@ -2446,6 +2495,7 @@ function paintRoster(list) {
   if (!ul) return;
   if (!Array.isArray(list)) { ul.innerHTML = rosterStatic; return; }
   ul.textContent = '';
+  list = list.filter((m) => m.online);
   const MAX = 12;
   if (!list.length) {
     const li = document.createElement('li');
@@ -2479,6 +2529,9 @@ if (window.tvm.presence) {
   window.tvm.presence.onRoster(paintRoster);
   window.tvm.presence.roster().then((l) => { if (l) paintRoster(l); }).catch(() => {});
 }
+
+const capBtnEl = $('#captainBtn');
+if (capBtnEl) capBtnEl.addEventListener('click', () => { if (window.TLCaptain) window.TLCaptain.open(); });
 
 /** «Ocultar con clave» y «Ocultar llenas»: botones que se prenden y se apagan, y se recuerdan. */
 for (const [id, key, store] of [['#hideLocked', 'hideLocked', 'tl_hide_locked'], ['#hideFull', 'hideFull', 'tl_hide_full']]) {

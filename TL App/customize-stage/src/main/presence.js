@@ -130,22 +130,32 @@ function leave(ctx) {
 }
 
 /* ── Plantel en vivo ───────────────────────────────────────────
- * Cada app, esté o no en una sala, deja `online/<pid> = { t, r, s }` (r = nombre de la
- * sala o vacío) firmado como el resto, y lee los de los demás. Quien tiene firma
- * válida y hora reciente está «en línea». */
-const ONLINE_ALIVE_MS = 120000;
+ * Cada app, esté o no en una sala, deja `online/<pid> = { t, r, v, x, s }`
+ * (r = sala o vacío, v = versión de la app, x = 1 si se está yendo) firmado como el
+ * resto, y lee los de los demás. Quien tiene firma válida y hora reciente está
+ * «en línea»; la hora del último latido queda como «último acceso». */
+const ONLINE_ALIVE_MS = 75000;
 let onlineMarked = false;
 
-const onlineText = (r, t) => `online|${r}|${t}`;
+const onlineText = (r, v, x, t) => `online|${r}|${v}|${x}|${t}`;
+const clean = (v, n) => String(v || '').replace(/[\r\n]/g, ' ').slice(0, n);
 
-/** ctx = { url, key, roster, room, selfName } → [{ name, room, self }] o null. */
-async function online(ctx) {
+async function putOnline(ctx, x) {
   const base = cleanUrl(ctx && ctx.url);
   if (!base || !ctx.key) return null;
   const id = idOf(ctx.key);
   const t = Date.now();
-  const r = String(ctx.room || '').replace(/[\r\n]/g, ' ').slice(0, 40);
-  await call(`${base}/online/${id.pid}.json`, 'PUT', { t, r, s: id.sign(onlineText(r, t)) });
+  const r = x ? '' : clean(ctx.room, 40);
+  const v = clean(ctx.version, 20);
+  await call(`${base}/online/${id.pid}.json`, 'PUT', { t, r, v, x, s: id.sign(onlineText(r, v, x, t)) });
+  return { base, id };
+}
+
+/** ctx = { url, key, roster, room, version } → [{ name, room, version, lastSeen, online, self }] o null. */
+async function online(ctx) {
+  const put = await putOnline(ctx, 0);
+  if (!put) return null;
+  const { base, id } = put;
   onlineMarked = true;
 
   const controller = new AbortController();
@@ -165,23 +175,31 @@ async function online(ctx) {
   for (const u of ctx.roster || []) {
     if (!u || !/^[0-9a-f]{64}$/i.test(u.pub || '')) continue;
     const pid = identity.pidOf(u.pub);
+    const self = pid === id.pid;
     const e = data[pid];
-    if (!e || typeof e !== 'object' || typeof e.t !== 'number' || typeof e.s !== 'string') continue;
-    const room = typeof e.r === 'string' ? e.r : '';
-    if (!identity.verify(u.pub, onlineText(room, e.t), e.s)) continue;
-    if (pid !== id.pid && Math.abs(now - e.t) > ONLINE_ALIVE_MS) continue;
-    out.push({ name: u.name, room, self: pid === id.pid });
+    let ok = e && typeof e === 'object' && typeof e.t === 'number' && typeof e.s === 'string';
+    if (ok) {
+      const r = typeof e.r === 'string' ? e.r : '';
+      const v = typeof e.v === 'string' ? e.v : '';
+      const x = e.x === 1 ? 1 : 0;
+      ok = identity.verify(u.pub, onlineText(r, v, x, e.t), e.s);
+      if (ok) {
+        const alive = !x && (self || Math.abs(now - e.t) <= ONLINE_ALIVE_MS);
+        out.push({ name: u.name, room: alive ? r : '', version: v, lastSeen: e.t, online: alive, self });
+        continue;
+      }
+    }
+    out.push({ name: u.name, room: '', version: '', lastSeen: 0, online: false, self });
   }
-  out.sort((a, b) => (b.self - a.self) || a.name.localeCompare(b.name, 'es'));
+  out.sort((a, b) => (b.self - a.self) || (b.online - a.online) || a.name.localeCompare(b.name, 'es'));
   return out;
 }
 
-/** Al cerrar la app: se baja de la lista de conectados. */
+/** Al cerrar la app: se marca como desconectado (si no llega, vence solo en un minuto). */
 function leaveOnline(ctx) {
-  const base = cleanUrl(ctx && ctx.url);
-  if (!base || !ctx.key || !onlineMarked) return;
-  try { call(`${base}/online/${idOf(ctx.key).pid}.json`, 'DELETE').catch(() => {}); } catch { /* vence solo */ }
+  if (!onlineMarked) return;
   onlineMarked = false;
+  putOnline(ctx, 1).catch(() => {});
 }
 
-module.exports = { online, leaveOnline, why: () => why, leave, beat, cleanUrl, signedText, EVERY_MS, ALIVE_MS };
+module.exports = { call, online, leaveOnline, why: () => why, leave, beat, cleanUrl, signedText, EVERY_MS, ALIVE_MS };

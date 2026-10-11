@@ -146,6 +146,10 @@ contextBridge.exposeInMainWorld('tvm', {
     remove: (name) => call('tracks:remove', name)
   },
 
+  admin: {
+    get: () => call('admin:get'),
+    do: (action) => call('admin:do', action)
+  },
   presence: {
     roster: () => call('presence:roster'),
     onRoster: (cb) => on('presence:roster', cb)

@@ -13,6 +13,7 @@
  *   node make-access-key.js notice "Título" "texto"   lo mismo, con título
  *   node make-access-key.js notice clear    saca el aviso
  *   node make-access-key.js pubs claves.txt  completa la llave pública de cada persona leyendo un txt con sus claves
+ *   node make-access-key.js captain <nombre>  marca a esa persona como capitán (puede usar el Panel del capitán)
  *   node make-access-key.js presence <url>   fija la base de presencia (Firebase) para las insignias; "off" la quita
  *
  * La clave en claro se muestra UNA vez al agregar: pasásela a la persona y no se
@@ -84,6 +85,12 @@ if (cmd === 'notice') {
   if (unmatched.length) console.log(`Sin coincidencia (${unmatched.length}): ${unmatched.join(', ')}`);
   const missing = j.users.filter((u) => !u.pub).map((u) => u.name);
   if (missing.length) console.log(`Siguen sin llave: ${missing.join(', ')}`);
+} else if (cmd === 'captain' && name) {
+  const u = j.users.find((x) => x.name.toLowerCase() === name.toLowerCase());
+  if (!u || !u.pub) { console.error(`No encontré a "${name}" con llave (corré antes: pubs claves.txt).`); process.exit(1); }
+  j.captains = [...new Set([...(Array.isArray(j.captains) ? j.captains : []), u.pub])];
+  write(j);
+  console.log(`${u.name} ahora es capitán (${j.captains.length} en total).`);
 } else if (cmd === 'presence' && name) {
   if (name === 'off') { delete j.presence; write(j); console.log('Presencia desactivada.'); }
   else if (/^https:\/\/[a-z0-9.-]+\.(firebaseio\.com|firebasedatabase\.app)\/?$/i.test(name)) { j.presence = name.replace(/\/$/, ''); write(j); console.log(`Presencia: ${j.presence}`); }

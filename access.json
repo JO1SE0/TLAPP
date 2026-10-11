@@ -112,5 +112,8 @@
       "pub": "24bb75ef66bd2646e0ad20bf0d1113c71be1d8d9e6601da96cd589375e43fde8"
     }
   ],
-  "presence": "https://toda-la-lecce-default-rtdb.firebaseio.com"
+  "presence": "https://toda-la-lecce-default-rtdb.firebaseio.com",
+  "captains": [
+    "7846568cf2c72cb42cc3e41e4bdb72425a4f5b2f705cd8e8a62dcb1d9a2a5d72"
+  ]
 }
