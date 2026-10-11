@@ -327,17 +327,21 @@
     const rep = el('select', 'cap__input');
     for (const [v, t] of [['', 'No se repite'], ['daily', 'Todos los días'], ['weekly', 'Todas las semanas']]) { const o = el('option', null, t); o.value = v; rep.append(o); }
     const repLabel = el('label', 'cap__lbl', 'Repetir'); repLabel.append(rep);
+    const toSel = el('select', 'cap__input');
+    { const o0 = el('option', null, 'Todos'); o0.value = ''; toSel.append(o0);
+      for (const u of ((data.doc && data.doc.users) || [])) { if (!u || !u.name || u.banned) continue; const o = el('option', null, u.name); o.value = u.name; toSel.append(o); } }
+    const toLabel = el('label', 'cap__lbl', 'Para'); toLabel.append(toSel);
     const urg = el('input'); urg.type = 'checkbox';
     const urgLabel = el('label', 'cap__chk'); urgLabel.append(urg, document.createTextNode(' Urgente (aparece enseguida en todas las apps abiertas)'));
-    line.append(atLabel, repLabel);
+    line.append(toLabel, atLabel, repLabel);
     const go = el('button', 'cap__btn', 'Publicar aviso'); go.type = 'submit'; go.disabled = busy;
     form.append(title, text, line, urgLabel, go);
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
       if (!text.value.trim()) { flash('Escribí el texto del aviso.', true); return; }
       const when = at.value ? Date.parse(at.value) : 0;
-      const r = await act({ type: 'addNotice', title: title.value, text: text.value, at: when || 0, repeat: rep.value || null, urgent: urg.checked });
-      if (r) { flash(when && when > Date.now() ? 'Aviso programado.' : 'Aviso publicado.'); title.value = ''; text.value = ''; at.value = ''; urg.checked = false; }
+      const r = await act({ type: 'addNotice', title: title.value, text: text.value, at: when || 0, repeat: rep.value || null, urgent: urg.checked, to: toSel.value || '' });
+      if (r) { flash(when && when > Date.now() ? 'Aviso programado.' : 'Aviso publicado.'); title.value = ''; text.value = ''; at.value = ''; urg.checked = false; toSel.value = ''; }
     });
     root.append(form);
 
@@ -348,7 +352,7 @@
       const row = el('div', 'cap__notice');
       const info = el('div', 'cap__ninfo');
       const future = n.at > Date.now();
-      const tags = [n.urgent ? 'URGENTE' : '', n.repeat === 'daily' ? 'cada día' : n.repeat === 'weekly' ? 'cada semana' : '', future ? 'programado' : (!n.repeat && Date.now() - n.at > 7 * 86400000 ? 'vencido' : '')].filter(Boolean).join(' · ');
+      const tags = [n.to ? `solo para ${n.to}` : '', n.urgent ? 'URGENTE' : '', n.repeat === 'daily' ? 'cada día' : n.repeat === 'weekly' ? 'cada semana' : '', future ? 'programado' : (!n.repeat && Date.now() - n.at > 7 * 86400000 ? 'vencido' : '')].filter(Boolean).join(' · ');
       info.append(el('b', null, n.title || '(sin título)'), el('span', 'cap__muted', ` — ${when(n.at)}${tags ? ` · ${tags}` : ''}`), el('div', 'cap__ntext', n.text));
       const del = el('button', 'cap__btn cap__btn--ghost', 'Borrar'); del.type = 'button'; del.disabled = busy;
       del.addEventListener('click', () => act({ type: 'removeNotice', id: n.id }));

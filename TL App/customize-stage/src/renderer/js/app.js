@@ -3979,10 +3979,44 @@ function renderPitchMirror() {
   }
 }
 
+const WEATHERS = [
+  ['none', 'Sin clima', 'None'], ['lluvia', 'Lluvia', 'Rain'], ['nieve', 'Nieve', 'Snow'],
+  ['niebla', 'Niebla', 'Fog'], ['noche', 'Noche', 'Night']
+];
+function paintWeather() {
+  const pc = (state.config && state.config.pitch) || {};
+  const en = isEn();
+  $('#weatherLabel').textContent = en ? 'Pitch weather' : 'Clima en la cancha';
+  $('#weatherLevelLabel').textContent = en ? 'Weather intensity' : 'Intensidad del clima';
+  const host = $('#weatherChips');
+  host.innerHTML = '';
+  for (const w of WEATHERS) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'chip' + (w[0] === (pc.weather || 'none') ? ' is-active' : '');
+    b.dataset.weather = w[0];
+    b.textContent = en ? w[2] : w[1];
+    host.appendChild(b);
+  }
+  $('#weatherRow2').hidden = !pc.weather || pc.weather === 'none';
+  const lv = typeof pc.weatherLevel === 'number' ? pc.weatherLevel : 0.6;
+  const r = $('#weatherLevel');
+  if (document.activeElement !== r) r.value = String(lv);
+  $('#weatherLevelValue').textContent = `${Math.round(lv * 100)}%`;
+  syncRangeFill(r);
+}
+$('#weatherChips').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-weather]');
+  if (b) patchConfig({ pitch: { weather: b.dataset.weather } });
+});
+$('#weatherLevel').addEventListener('input', (e) => { syncRangeFill(e.target); $('#weatherLevelValue').textContent = `${Math.round(Number(e.target.value) * 100)}%`; });
+$('#weatherLevel').addEventListener('change', (e) => patchConfig({ pitch: { weatherLevel: Number(e.target.value) } }));
+
 function renderPitch() {
   const lang = isEn() ? 'en' : 'es';
   renderPitchSkin();
   renderPitchMirror();
+  paintWeather();
 
   /*
    * El valor se lee de `state.config` en cada consulta y NO de una copia
@@ -4188,6 +4222,10 @@ $('#audVol').addEventListener('change', (e) => patchConfig({ appearance: { music
 
 
 /* Sonido de gol incluido y estilo del cartel de marcador. */
+const CROSSHAIRS = [
+  ['default', 'Normal', 'Default'], ['cruz', 'Cruz', 'Cross'], ['punto', 'Punto', 'Dot'],
+  ['circulo', 'Círculo', 'Circle'], ['mira', 'Mira', 'Reticle'], ['club', 'Club', 'Club']
+];
 const SCOREBOARDS = [
   ['default', 'Normal', 'Default'], ['club', 'Club dorado', 'Gold club'], ['neon', 'Neón', 'Neon'],
   ['minimal', 'Minimal', 'Minimal'], ['tv', 'Clásico TV', 'TV classic']
@@ -4197,6 +4235,8 @@ function paintGameExtras() {
   const en = isEn();
   $('#goalSfxLabel').textContent = en ? 'Built-in goal sound' : 'Sonido de gol incluido';
   $('#goalSfxVolLabel').textContent = en ? 'Built-in volume' : 'Volumen del incluido';
+  $('#kickSfxLabel').textContent = en ? 'Built-in kick sound' : 'Sonido de patada incluido';
+  $('#kickSfxVolLabel').textContent = en ? 'Kick volume' : 'Volumen de la patada';
   $('#scoreboardLabel').textContent = en ? 'Scoreboard style' : 'Cartel de marcador';
   const fill = (host, items, cur, attr) => {
     host.innerHTML = '';
@@ -4210,6 +4250,20 @@ function paintGameExtras() {
     }
   };
   fill($('#goalSfxChips'), (window.TLGoalSfx ? window.TLGoalSfx.STYLES : []), ap.goalSfx || 'default', 'sfx');
+  fill($('#kickSfxChips'), (window.TLGoalSfx ? window.TLGoalSfx.KICK_STYLES : []), ap.kickSfx || 'default', 'kick');
+  const kv = typeof ap.kickSfxVolume === 'number' ? ap.kickSfxVolume : 0.7;
+  const kr = $('#kickSfxVolume');
+  if (document.activeElement !== kr) kr.value = String(kv);
+  $('#kickSfxVolumeValue').textContent = `${Math.round(kv * 100)}%`;
+  syncRangeFill(kr);
+  $('#crossLabel').textContent = en ? 'Crosshair cursor' : 'Cursor de mira';
+  $('#crossColorLabel').textContent = en ? 'Crosshair colour and size' : 'Color y tamaño de la mira';
+  fill($('#crossChips'), CROSSHAIRS, ap.crossStyle || 'default', 'cross');
+  $('#crossRow2').hidden = !ap.crossStyle || ap.crossStyle === 'default' || ap.crossStyle === 'club';
+  const cc = $('#crossColor'); if (document.activeElement !== cc) cc.value = ap.crossColor || '#ffffff';
+  const cs = $('#crossSize'); if (document.activeElement !== cs) cs.value = String(ap.crossSize || 28);
+  $('#crossSizeValue').textContent = String(ap.crossSize || 28);
+  syncRangeFill(cs);
   fill($('#scoreboardChips'), SCOREBOARDS, ap.scoreboard || 'default', 'sb');
   const v = typeof ap.goalSfxVolume === 'number' ? ap.goalSfxVolume : 0.7;
   const r = $('#goalSfxVolume');
@@ -4224,6 +4278,30 @@ $('#goalSfxChips').addEventListener('click', (e) => {
   if (window.TLGoalSfx) window.TLGoalSfx.play(b.dataset.sfx, vol);
   patchConfig({ appearance: { goalSfx: b.dataset.sfx } });
 });
+$('#kickSfxChips').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-kick]');
+  if (!b) return;
+  const vol = state.config.appearance.kickSfxVolume ?? 0.7;
+  if (window.TLGoalSfx) window.TLGoalSfx.playKick(b.dataset.kick, vol);
+  patchConfig({ appearance: { kickSfx: b.dataset.kick } });
+});
+$('#kickSfxVolume').addEventListener('input', (e) => {
+  syncRangeFill(e.target);
+  $('#kickSfxVolumeValue').textContent = `${Math.round(Number(e.target.value) * 100)}%`;
+});
+$('#kickSfxVolume').addEventListener('change', (e) => {
+  const v = Number(e.target.value);
+  const st = state.config.appearance.kickSfx;
+  if (window.TLGoalSfx && st && st !== 'default') window.TLGoalSfx.playKick(st, v);
+  patchConfig({ appearance: { kickSfxVolume: v } });
+});
+$('#crossChips').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-cross]');
+  if (b) patchConfig({ appearance: { crossStyle: b.dataset.cross } });
+});
+$('#crossColor').addEventListener('change', (e) => patchConfig({ appearance: { crossColor: e.target.value } }));
+$('#crossSize').addEventListener('input', (e) => { syncRangeFill(e.target); $('#crossSizeValue').textContent = e.target.value; });
+$('#crossSize').addEventListener('change', (e) => patchConfig({ appearance: { crossSize: Number(e.target.value) } }));
 $('#scoreboardChips').addEventListener('click', (e) => {
   const b = e.target.closest('[data-sb]');
   if (b) patchConfig({ appearance: { scoreboard: b.dataset.sb } });
@@ -8237,7 +8315,7 @@ const LOOK_SECTIONS = {
     { key: 'discStyle', type: 'select', label: 'look.discStyle', options: [['default', 'look.opt.none'], ['sphere', 'look.ds.sphere'], ['glass', 'look.ds.glass'], ['neon', 'look.ds.neon'], ['metal', 'look.ds.metal'], ['bubble', 'look.ds.bubble'], ['target', 'look.ds.target'], ['stripes', 'look.ds.stripes'], ['gem', 'look.ds.gem'], ['cartoon', 'look.ds.cartoon'], ['dots', 'look.ds.dots']] },
     { key: 'softShadows', type: 'switch', label: 'look.softShadows', desc: 'look.softShadowsHelp' },
     { key: 'discOutline', type: 'color', label: 'look.discOutline' },
-    { key: 'ballStyle', type: 'select', label: 'look.ballStyle', options: [['default', 'look.opt.none'], ['soccer', 'look.bs.soccer'], ['neon', 'look.bs.neon'], ['gold', 'look.bs.gold'], ['beach', 'look.bs.beach'], ['eight', 'look.bs.eight'], ['star', 'look.bs.star']] },
+    { key: 'ballStyle', type: 'select', label: 'look.ballStyle', options: [['default', 'look.opt.none'], ['soccer', 'look.bs.soccer'], ['neon', 'look.bs.neon'], ['gold', 'look.bs.gold'], ['beach', 'look.bs.beach'], ['eight', 'look.bs.eight'], ['star', 'look.bs.star'], ['club', 'look.bs.club'], ['rayas', 'look.bs.rayas'], ['clubball', 'look.bs.clubball'], ['clubstar', 'look.bs.clubstar']] },
     { key: 'ballColor', type: 'color', label: 'look.ballColor' },
     { key: 'ballOutline', type: 'color', label: 'look.ballOutline' },
     { key: 'ringStyle', type: 'select', label: 'look.ringStyle', desc: 'look.ringHelp', options: [['default', 'look.opt.simple'], ['double', 'look.ring.double'], ['dashed', 'look.ring.dashed'], ['crown', 'look.ring.crown'], ['glow', 'look.ring.glow'], ['dots', 'look.ring.dots'], ['arrow', 'look.ring.arrow']] },
@@ -8257,7 +8335,7 @@ const LOOK_SECTIONS = {
     { key: 'chatFont', type: 'select', label: 'look.chatFont', options: FONT_OPTIONS }
   ],
   lookMenu: [
-    { key: 'menuBg', type: 'select', label: 'look.menuBg', options: [['none', 'look.opt.none'], ['club', 'look.menu.club'], ['aurora', 'look.menu.aurora'], ['grid', 'look.menu.grid'], ['sunset', 'look.menu.sunset'], ['stripes', 'look.menu.stripes'], ['noir', 'look.menu.noir'], ['field', 'look.menu.field'], ['dots', 'look.menu.dots'], ['neon', 'look.menu.neon'], ['waves', 'look.menu.waves']] }
+    { key: 'menuBg', type: 'select', label: 'look.menuBg', options: [['none', 'look.opt.none'], ['club', 'look.menu.club'], ['aurora', 'look.menu.aurora'], ['grid', 'look.menu.grid'], ['sunset', 'look.menu.sunset'], ['stripes', 'look.menu.stripes'], ['noir', 'look.menu.noir'], ['field', 'look.menu.field'], ['dots', 'look.menu.dots'], ['neon', 'look.menu.neon'], ['waves', 'look.menu.waves'], ['escudo', 'look.menu.escudo'], ['mosaico', 'look.menu.mosaico'], ['estadio', 'look.menu.estadio'], ['oro', 'look.menu.oro']] }
   ]
 };
 

@@ -170,10 +170,13 @@ async function refreshAdmin() {
 const PERIOD = { daily: DAY, weekly: 7 * DAY };
 
 /** Los avisos que corresponde mostrar AHORA. Los que se repiten tienen un id distinto por vez. */
-function activeNotices(now) {
+function activeNotices(now, myName) {
   const out = [];
+  const me = String(myName || '').trim().toLowerCase();
   for (const n of eff.notices) {
     if (!n || typeof n.text !== 'string' || !n.text.trim()) continue;
+    // Mensaje directo: sólo lo ve la persona nombrada.
+    if (n.to && String(n.to).trim().toLowerCase() !== me) continue;
     const at = toNum(n.at);
     let occ = at;
     let id = String(n.id || at);
@@ -202,7 +205,7 @@ function isCaptainKey(key) {
 
 function set(next) {
   const now = Date.now();
-  const active = activeNotices(now);
+  const active = activeNotices(now, next.name);
   const urgent = active.find((n) => n.urgent && now - n.at < 2 * 3600 * 1000) || null;
   const normal = active.find((n) => !n.urgent) || null;
   next.notice = normal ? { id: normal.id, title: normal.title, text: normal.text } : (notice || eff.legacyNotice);

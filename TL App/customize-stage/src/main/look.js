@@ -643,6 +643,53 @@ function ballOverlay(ctx, style, x, y, r, strokeFn, tint) {
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillText('8', x, y + r * 0.04);
+    } else if (style === 'club') {
+      // Pelota del club: azul marino con aro y centro dorados.
+      ctx.fillStyle = '#203860';
+      ctx.fillRect(x - r, y - r, r * 2, r * 2);
+      ctx.strokeStyle = '#d0b878';
+      ctx.lineWidth = Math.max(0.6, r * 0.14);
+      ctx.beginPath();
+      ctx.arc(x, y, r * 0.72, 0, TAU);
+      doStroke();
+      ctx.fillStyle = '#d0b878';
+      ctx.beginPath();
+      ctx.arc(x, y, r * 0.28, 0, TAU);
+      ctx.fill();
+    } else if (style === 'rayas') {
+      // Franjas verticales azul y dorado.
+      const n = 5;
+      for (let i = 0; i < n; i++) {
+        ctx.fillStyle = i % 2 ? '#d0b878' : '#203860';
+        ctx.fillRect(x - r + (i * 2 * r) / n, y - r, (2 * r) / n + 0.4, r * 2);
+      }
+    } else if (style === 'clubball') {
+      // Futbolera con los colores del club.
+      ctx.fillStyle = '#203860';
+      ctx.fillRect(x - r, y - r, r * 2, r * 2);
+      ctx.fillStyle = '#d0b878';
+      pentagon(ctx, x, y, r * 0.36, -Math.PI / 2);
+      ctx.fill();
+      for (let i = 0; i < 5; i++) {
+        const a = -Math.PI / 2 + (i * TAU) / 5 + TAU / 10;
+        pentagon(ctx, x + Math.cos(a) * r * 0.98, y + Math.sin(a) * r * 0.98, r * 0.34, a);
+        ctx.fill();
+      }
+    } else if (style === 'clubstar') {
+      ctx.fillStyle = '#203860';
+      ctx.fillRect(x - r, y - r, r * 2, r * 2);
+      ctx.fillStyle = '#d0b878';
+      ctx.beginPath();
+      for (let i = 0; i < 10; i++) {
+        const rad = i % 2 ? r * 0.3 : r * 0.72;
+        const a = -Math.PI / 2 + (i * Math.PI) / 5;
+        const px = x + Math.cos(a) * rad;
+        const py = y + Math.sin(a) * rad;
+        if (i) ctx.lineTo(px, py);
+        else ctx.moveTo(px, py);
+      }
+      ctx.closePath();
+      ctx.fill();
     } else if (style === 'star') {
       ctx.fillStyle = '#f2c230';
       ctx.beginPath();

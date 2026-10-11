@@ -896,6 +896,17 @@
               <div class="rows" id="pitchSkin"></div>
               <div class="rows" id="pitchSwitches"></div>
               <div class="rows" id="pitchMirror"></div>
+              <div class="row">
+                <div class="row__text"><span class="row__label" id="weatherLabel">Clima en la cancha</span></div>
+                <div class="row__ctl"><div class="chips" id="weatherChips"></div></div>
+              </div>
+              <div class="row" id="weatherRow2">
+                <div class="row__text"><span class="row__label" id="weatherLevelLabel">Intensidad del clima</span></div>
+                <div class="row__ctl">
+                  <input type="range" id="weatherLevel" min="0.15" max="1" step="0.01" />
+                  <b class="row__val" id="weatherLevelValue">60%</b>
+                </div>
+              </div>
             </div>
           </section>
 
@@ -987,6 +998,18 @@
               <div class="row">
                 <div class="row__text"><span class="row__label" id="scoreboardLabel">Cartel de marcador</span></div>
                 <div class="row__ctl"><div class="chips" id="scoreboardChips"></div></div>
+              </div>
+              <div class="row">
+                <div class="row__text"><span class="row__label" id="crossLabel">Cursor de mira</span></div>
+                <div class="row__ctl"><div class="chips" id="crossChips"></div></div>
+              </div>
+              <div class="row" id="crossRow2">
+                <div class="row__text"><span class="row__label" id="crossColorLabel">Color y tamaño de la mira</span></div>
+                <div class="row__ctl">
+                  <input type="color" id="crossColor" value="#ffffff" />
+                  <input type="range" id="crossSize" min="16" max="64" step="1" />
+                  <b class="row__val" id="crossSizeValue">28</b>
+                </div>
               </div>
               <div class="row">
                 <div class="row__text">
@@ -1243,6 +1266,17 @@
                 </div>
               </div>
 
+              <div class="row">
+                <div class="row__text"><span class="row__label" id="kickSfxLabel">Sonido de patada incluido</span></div>
+                <div class="row__ctl"><div class="chips" id="kickSfxChips"></div></div>
+              </div>
+              <div class="row">
+                <div class="row__text"><span class="row__label" id="kickSfxVolLabel">Volumen de la patada</span></div>
+                <div class="row__ctl">
+                  <input type="range" id="kickSfxVolume" min="0" max="1" step="0.01" />
+                  <b class="row__val" id="kickSfxVolumeValue">70%</b>
+                </div>
+              </div>
               <div class="row">
                 <div class="row__text">
                   <span class="row__label" data-i18n="vip.hitSound">Sonido al patear<i class="hint" tabindex="0" data-hint="vip.hitSoundHelp" aria-label="Más información">i</i></span>

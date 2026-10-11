@@ -13,6 +13,16 @@
     ['silbato', 'Silbato', 'Whistle']
   ];
 
+  const KICK_STYLES = [
+    ['default', 'El del juego', 'Game default'],
+    ['seco', 'Seco', 'Dry'],
+    ['cuero', 'Cuero', 'Leather'],
+    ['madera', 'Madera', 'Wood'],
+    ['pelotazo', 'Pelotazo', 'Heavy'],
+    ['suave', 'Suave', 'Soft'],
+    ['retro', 'Retro', 'Retro']
+  ];
+
   function tone(ctx, out, t, freq, dur, type, vol, slideTo) {
     const o = ctx.createOscillator();
     const g = ctx.createGain();
@@ -159,6 +169,42 @@
     }
   };
 
+
+  const KICKS = {
+    seco(c, o, t) { thump(c, o, t, 0.7, false); noise(c, o, t, 0.04, 0.3, 1800, 0.9); },
+    cuero(c, o, t) {
+      tone(c, o, t, 240, 0.12, 'sine', 0.6, 100);
+      noise(c, o, t, 0.07, 0.35, 900, 1.2);
+    },
+    madera(c, o, t) {
+      tone(c, o, t, 820, 0.07, 'triangle', 0.5, 320);
+      tone(c, o, t, 1600, 0.03, 'square', 0.12, 700);
+    },
+    pelotazo(c, o, t) {
+      thump(c, o, t, 1, true);
+      noise(c, o, t, 0.12, 0.45, 600, 0.7);
+    },
+    suave(c, o, t) { tone(c, o, t, 330, 0.16, 'sine', 0.45, 150); },
+    retro(c, o, t) { tone(c, o, t, 880, 0.07, 'square', 0.22, 330); }
+  };
+
+  function playKick(style, volume, AC) {
+    const recipe = KICKS[style];
+    if (!recipe) return false;
+    const Ctor = AC || (typeof AudioContext !== 'undefined' ? AudioContext : null);
+    if (!Ctor) return false;
+    try {
+      if (!shared) shared = new Ctor();
+      const ctx = shared;
+      if (ctx.state === 'suspended' && ctx.resume) ctx.resume();
+      const master = ctx.createGain();
+      master.gain.value = Math.min(1, Math.max(0, volume));
+      master.connect(ctx.destination);
+      recipe(ctx, master, ctx.currentTime + 0.005);
+      return true;
+    } catch (e) { return false; }
+  }
+
   let shared = null;
   function play(style, volume, AC) {
     const recipe = RECIPES[style];
@@ -177,5 +223,5 @@
     } catch (e) { return false; }
   }
 
-  return { STYLES, play, has: (s) => !!RECIPES[s] };
+  return { STYLES, KICK_STYLES, play, playKick, has: (s) => !!RECIPES[s], hasKick: (s) => !!KICKS[s] };
 });
