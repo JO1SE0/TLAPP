@@ -4852,7 +4852,8 @@ input[type="color"].is-unset { opacity: .45; }
 .cap__tabs { display: flex; gap: 6px; padding: 8px 20px 0; border-bottom: 1px solid var(--c-line); }
 .cap__tab { padding: 8px 14px; border: 0; border-bottom: 2px solid transparent; background: transparent; color: var(--c-dim); font-weight: 700; cursor: pointer; }
 .cap__tab.is-on { color: var(--c-accent-hi); border-bottom-color: var(--c-accent); }
-.cap__body { padding: 16px 20px 20px; overflow: auto; display: flex; flex-direction: column; gap: 12px; }
+.cap__body { padding: 16px 20px 20px; overflow-y: auto; min-height: 0; flex: 1 1 auto; display: flex; flex-direction: column; gap: 12px; }
+.cap__body > * { flex-shrink: 0; }
 .cap__sum, .cap__muted { margin: 0; font-size: 13px; color: var(--c-dim); }
 .cap__h { margin: 10px 0 0; font-size: 13px; letter-spacing: .1em; text-transform: uppercase; color: var(--c-accent); }
 .cap__table { display: flex; flex-direction: column; border: 1px solid var(--c-line); border-radius: 10px; overflow: hidden; }
