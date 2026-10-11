@@ -3,91 +3,114 @@
   "users": [
     {
       "name": "Cuti",
-      "hash": "a26ca678cb8030265c7235e1cdec777e899df7475ef11599e97e6e7f4a7fa988"
+      "hash": "a26ca678cb8030265c7235e1cdec777e899df7475ef11599e97e6e7f4a7fa988",
+      "pub": "ef9ff8b4a1042e5503d65fff314860072d9c48318bfe7e2d24a3829d67e53651"
     },
     {
       "name": "tenka",
-      "hash": "7c74cf98a5fccde799988bd36017bc1c45b4e21b3d1f946092b25f4af608831b"
+      "hash": "7c74cf98a5fccde799988bd36017bc1c45b4e21b3d1f946092b25f4af608831b",
+      "pub": "5e77e45d13bb420e6145bb3bef9fb2855d8cb8d91e5b598efe301a6a59be5950"
     },
     {
       "name": "abis",
-      "hash": "46bebc9d9ec4d624966b4fd7f978b4f5174c090cdbba92d2edc5b379c2a09c1a"
+      "hash": "46bebc9d9ec4d624966b4fd7f978b4f5174c090cdbba92d2edc5b379c2a09c1a",
+      "pub": "4e77c3c3065d4abcfbb8bc1d899236f4e7c58de4890ac716b863f669eb94bc0a"
     },
     {
       "name": "nardo",
-      "hash": "9b1abe6eb1c357f0ba5b8dfe6eada2a2f39698778709b668018d14da3b7a6c62"
+      "hash": "9b1abe6eb1c357f0ba5b8dfe6eada2a2f39698778709b668018d14da3b7a6c62",
+      "pub": "bd4e8d0c9e811328c1c0638a333109a85573045fc781a111449de047c3897a62"
     },
     {
       "name": "Mudryk",
-      "hash": "fb927e87c234a2dd7c9b86f7aae3a641cfd7de5e1e3d4b50305bb4beb3275212"
+      "hash": "fb927e87c234a2dd7c9b86f7aae3a641cfd7de5e1e3d4b50305bb4beb3275212",
+      "pub": "a88c02aa2c1cf6247bf23d3fb84f2201e4b349a4f80fe042407a31d2845f840d"
     },
     {
       "name": "bruno",
-      "hash": "5ca02b5c4a0a980c9c32b4c561200b1aeeffeabea96a4c9e79ba331d2cfa23fa"
+      "hash": "5ca02b5c4a0a980c9c32b4c561200b1aeeffeabea96a4c9e79ba331d2cfa23fa",
+      "pub": "fc72fdb8d51ed7083cfd1337482d216e8d1a47b1b71e3860bd2433f9cef0ccad"
     },
     {
       "name": "pasta",
-      "hash": "dd1f7616c1f79fe6f955a9726d8556d9e80cc3e348756e08779ae2c04e8a5ec3"
+      "hash": "dd1f7616c1f79fe6f955a9726d8556d9e80cc3e348756e08779ae2c04e8a5ec3",
+      "pub": "3e6350d15181ba04053da6dddde2b17f411f6ecd844404c2af3cc3c31e513073"
     },
     {
       "name": "paco",
-      "hash": "ca673c75b45d4abc95e9f69c09cbd23c8bae593e9606e98b61dcb05de77654f1"
+      "hash": "ca673c75b45d4abc95e9f69c09cbd23c8bae593e9606e98b61dcb05de77654f1",
+      "pub": "41e06fb9fed69169847ec5f7dd31968729cc5dbdf38d15d4f4b6768523372909"
     },
     {
       "name": "stefa",
-      "hash": "23f2ea6c15dc64881610307a67811a6b88d9f6520e3abbac7837eb1ee8cdd99c"
+      "hash": "23f2ea6c15dc64881610307a67811a6b88d9f6520e3abbac7837eb1ee8cdd99c",
+      "pub": "3163a27c90f5e230fcdf01a04c456fa81151d0c476f0bc98c856ba51577e6720"
     },
     {
       "name": "cgl",
-      "hash": "2d9d7170d6f33355d1ccd429bf200df1f40a9536afc0c618686abc55bc967047"
+      "hash": "2d9d7170d6f33355d1ccd429bf200df1f40a9536afc0c618686abc55bc967047",
+      "pub": "a72bd1f1b90efbfdee5de38830ddf9e9fd1052fde81a25d8c410435f1ba4e59b"
     },
     {
       "name": "paxe",
-      "hash": "62909d7ce085b2f4beb5c2e0aa661493653f037071f921c12aa2254a28b99a57"
+      "hash": "62909d7ce085b2f4beb5c2e0aa661493653f037071f921c12aa2254a28b99a57",
+      "pub": "096a291a1c8ddf7bf203a7e2f905ddbf163c7479047d7a5ff0113164fc0de7d9"
     },
     {
       "name": "melo",
-      "hash": "e12467802513033333396a7a3f9c100ffd04125f7b2c232702f7ff693978a1a9"
+      "hash": "e12467802513033333396a7a3f9c100ffd04125f7b2c232702f7ff693978a1a9",
+      "pub": "8fcc757163495e96d781594c9291a4ef312b66f42e9475112917c3bb4cc8b638"
     },
     {
       "name": "mg",
-      "hash": "a4bea4387656c1f24d4169c43afe388ab94ab0ae74b11bb9a5566b97b3c8e799"
+      "hash": "a4bea4387656c1f24d4169c43afe388ab94ab0ae74b11bb9a5566b97b3c8e799",
+      "pub": "f6091924a1d6b46ca17ab3d697851916cb937e959e8dde6ca9cd5838ba9d72ff"
     },
     {
       "name": "kag",
-      "hash": "da45c586206e31399f9a9490129a880b201841bec44f913826f6f0def2c42bcd"
+      "hash": "da45c586206e31399f9a9490129a880b201841bec44f913826f6f0def2c42bcd",
+      "pub": "b575f27049263af3e141bbf7924fc9753ca068cf0fc73859e67568d2bd6161d5"
     },
     {
       "name": "naza",
-      "hash": "4baa469bc68e670a5de84ae1c8cd3d225404067a946d54c2895550f87b21aed1"
+      "hash": "4baa469bc68e670a5de84ae1c8cd3d225404067a946d54c2895550f87b21aed1",
+      "pub": "b70f86f4297ddc9316e874d071874ef1d018938abf9c92a26392d8704a92147e"
     },
     {
       "name": "pandu",
-      "hash": "8d5e79f54aac6e2b5f7340a485e1db3320e3e7a0b3108dadd300351e0e87a632"
+      "hash": "8d5e79f54aac6e2b5f7340a485e1db3320e3e7a0b3108dadd300351e0e87a632",
+      "pub": "35d6108caf4ae9b86527194e790bc194708a8f2935c4c5f6d490b0ba3f80ceb5"
     },
     {
       "name": "jere",
-      "hash": "2cdc27b6fb6216c2135304ae61577df56b18075a05efba3780dfc70134b6aee3"
+      "hash": "2cdc27b6fb6216c2135304ae61577df56b18075a05efba3780dfc70134b6aee3",
+      "pub": "de570b66adfbfcaf62f270e943a75f368e038d786aa3e288b72bedf08ed6f381"
     },
     {
       "name": "miclo",
-      "hash": "a42a30e9e8350fb58af4e741e0143827b7e1e648fc61a833f199f8f9aab3ddbf"
+      "hash": "a42a30e9e8350fb58af4e741e0143827b7e1e648fc61a833f199f8f9aab3ddbf",
+      "pub": "7846568cf2c72cb42cc3e41e4bdb72425a4f5b2f705cd8e8a62dcb1d9a2a5d72"
     },
     {
       "name": "adv",
-      "hash": "8791f7277c8416b4e1409cdab22f9f3ad29ecb4525df33daa3547af2215d68a6"
+      "hash": "8791f7277c8416b4e1409cdab22f9f3ad29ecb4525df33daa3547af2215d68a6",
+      "pub": "9f4af4438717b61dc667b90593d073686a30f20946d1b3cffa511c749f019507"
     },
     {
       "name": "atuvi",
-      "hash": "f0e4d18e7011d34e044807debc6c2e22ca6b9dee7738fc4aa0a3a8acdf2daabf"
+      "hash": "f0e4d18e7011d34e044807debc6c2e22ca6b9dee7738fc4aa0a3a8acdf2daabf",
+      "pub": "dc622589847f153fec2018ce4cc3385bfaeda3dca75d18ad235f556338ed97f2"
     },
     {
       "name": "yisekk",
-      "hash": "fd3b7d02c70a894aed99052282dd91b86809f42e31ac893951e976f9972bde05"
+      "hash": "fd3b7d02c70a894aed99052282dd91b86809f42e31ac893951e976f9972bde05",
+      "pub": "8531311496b6640652cfdac7b30ba14539b91744556ae911a99a3955a8bb5445"
     },
     {
       "name": "xixa",
-      "hash": "8bc58acc40fef628599013e36dc0ee749b939c946b7d42df4a0309af55f9724f"
+      "hash": "8bc58acc40fef628599013e36dc0ee749b939c946b7d42df4a0309af55f9724f",
+      "pub": "24bb75ef66bd2646e0ad20bf0d1113c71be1d8d9e6601da96cd589375e43fde8"
     }
-  ]
+  ],
+  "presence": "https://toda-la-lecce-default-rtdb.firebaseio.com"
 }
