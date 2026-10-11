@@ -1,0 +1,128 @@
+'use strict';
+
+/**
+ * Presencia del plantel: quién más de TL App está en la misma sala.
+ *
+ * Punto de encuentro: una Realtime Database de Firebase (gratis) cuya dirección
+ * viene en `access.json` (campo `presence`). Cada app, mientras está en una sala,
+ * escribe un casillero firmado
+ *
+ *     rooms/<huella de la sala>/<pid> = { n: nick, t: hora, s: firma }
+ *
+ * y lee los de los demás. Un casillero cuenta SÓLO si la firma coincide con la
+ * llave pública que tiene ese pid en la lista del plantel: lo que escriba cualquiera
+ * sin la clave se descarta. Lo que viaja es la huella (ilegible) de la sala, el nick
+ * y la firma; nunca la clave.
+ */
+
+const identity = require('./identity');
+
+const EVERY_MS = 25000;
+/** Un casillero sigue vivo mientras su hora siga cambiando: se mide con el reloj PROPIO. */
+const ALIVE_MS = 90000;
+const PRUNE_MS = 6 * 3600 * 1000;
+const TIMEOUT_MS = 8000;
+const ALLOWED_HOST = /(^|\.)(firebaseio\.com|firebasedatabase\.app)$/i;
+
+const seen = new Map(); // `${fp}|${pid}` → { t, at }
+let lastFp = null;
+let me = null; // { key, id } para no derivar de nuevo en cada latido
+
+/** La dirección sólo vale si es https y de Firebase: viene de un archivo público. */
+function cleanUrl(raw) {
+  try {
+    const u = new URL(String(raw));
+    if (u.protocol !== 'https:' || !ALLOWED_HOST.test(u.hostname)) return null;
+    return `${u.protocol}//${u.host}`;
+  } catch { return null; }
+}
+
+async function call(url, method, body) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+  try {
+    const res = await fetch(url, {
+      method,
+      signal: controller.signal,
+      headers: body ? { 'content-type': 'application/json' } : undefined,
+      body: body ? JSON.stringify(body) : undefined
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return method === 'GET' ? await res.json() : null;
+  } finally { clearTimeout(timer); }
+}
+
+function idOf(key) {
+  if (!me || me.key !== key) me = { key, id: identity.fromKey(key) };
+  return me.id;
+}
+
+const signedText = (fp, nick, t) => `${fp}|${nick}|${t}`;
+
+/**
+ * Un latido. `ctx` = { url, key, roster, fp, nick, selfName }.
+ *  - url: dirección de la base (access.json)
+ *  - key: la clave guardada de ESTA persona
+ *  - roster: [{ name, pub }] de access.json
+ * Devuelve { everyMs, peers } o null si no hay nada que hacer.
+ */
+async function beat(ctx) {
+  const base = cleanUrl(ctx && ctx.url);
+  if (!base || !ctx.key) return null;
+  let id;
+  try { id = idOf(ctx.key); } catch { return null; }
+
+  // Si se salió de una sala, se retira el casillero de la anterior (si falla, vence solo).
+  if (lastFp && lastFp !== ctx.fp) {
+    const old = lastFp;
+    lastFp = null;
+    call(`${base}/rooms/${old}/${id.pid}.json`, 'DELETE').catch(() => {});
+  }
+  if (!ctx.fp || !ctx.nick) return null;
+  lastFp = ctx.fp;
+
+  const t = Date.now();
+  const nick = String(ctx.nick).slice(0, 40);
+  await call(`${base}/rooms/${ctx.fp}/${id.pid}.json`, 'PUT', { n: nick, t, s: id.sign(signedText(ctx.fp, nick, t)) });
+  const room = (await call(`${base}/rooms/${ctx.fp}.json`, 'GET')) || {};
+
+  const byPid = new Map();
+  for (const u of ctx.roster || []) if (u && u.pub && /^[0-9a-f]{64}$/i.test(u.pub)) byPid.set(identity.pidOf(u.pub), u);
+
+  const now = Date.now();
+  const peers = [];
+  for (const [pid, entry] of Object.entries(room)) {
+    if (!entry || typeof entry !== 'object') continue;
+    if (pid === id.pid) continue;
+    // Casilleros viejísimos de otros: se barren para que la base no crezca.
+    if (typeof entry.t === 'number' && now - entry.t > PRUNE_MS) {
+      call(`${base}/rooms/${ctx.fp}/${pid}.json`, 'DELETE').catch(() => {});
+      continue;
+    }
+    const member = byPid.get(pid);
+    if (!member) continue;
+    if (typeof entry.n !== 'string' || typeof entry.t !== 'number' || typeof entry.s !== 'string') continue;
+    if (!identity.verify(member.pub, signedText(ctx.fp, entry.n, entry.t), entry.s)) continue;
+    const k = `${ctx.fp}|${pid}`;
+    const prev = seen.get(k);
+    if (!prev || prev.t !== entry.t) seen.set(k, { t: entry.t, at: now });
+    if (now - seen.get(k).at > ALIVE_MS) continue;
+    peers.push({ nick: entry.n, name: member.name, vip: false, cosmetics: { gradient: 'oro' } });
+  }
+  // Se olvidan los que ya no aparecen.
+  for (const k of seen.keys()) if (k.startsWith(`${ctx.fp}|`) && !(k.slice(ctx.fp.length + 1) in room)) seen.delete(k);
+
+  // Uno mismo, para que la fila propia también lleve el aura del plantel.
+  peers.push({ nick, self: true, name: ctx.selfName || '', vip: false, cosmetics: { gradient: 'oro' } });
+  return { everyMs: EVERY_MS, peers };
+}
+
+/** Al cerrar la app: retira el casillero de la sala actual (si falla, vence solo). */
+function leave(ctx) {
+  const base = cleanUrl(ctx && ctx.url);
+  if (!base || !ctx.key || !lastFp) return;
+  try { call(`${base}/rooms/${lastFp}/${idOf(ctx.key).pid}.json`, 'DELETE').catch(() => {}); } catch { /* nada */ }
+  lastFp = null;
+}
+
+module.exports = { leave, beat, cleanUrl, signedText, EVERY_MS, ALIVE_MS };

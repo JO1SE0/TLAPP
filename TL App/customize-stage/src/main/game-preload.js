@@ -4114,10 +4114,14 @@ function auraStyle(look) {
 /** Las variables que puede dejar puestas `applyPeerLook`, para poder sacarlas. */
 const PEER_LOOK_VARS = ['--tvm-vip-bg', '--tvm-vip-bg-hi', '--tvm-vip-edge', '--tvm-vip-name'];
 
+let selfClub = null;
+
 function setPeers(list) {
   peers = new Map();
+  selfClub = null;
   for (const peer of list || []) {
     const nick = String((peer && peer.nick) || '').trim();
+    if (peer && peer.self) { selfClub = { name: String(peer.name || '') }; continue; }
     if (nick) peers.set(nick, peer);
   }
   const doc = gameDocument();
@@ -4136,7 +4140,9 @@ function selfPeer() {
   const nick = myNick();
   if (!nick) return null;
   const looks = (state.config.vip && state.config.vip.cosmetics) || null;
-  return { nick, vip: isVipNow(), cosmetics: isVipNow() ? looks : null };
+  // Si el plantel te verificó, tu fila lleva el aura dorada (salvo que un VIP elija otra).
+  const cosmetics = isVipNow() && looks ? looks : selfClub ? { gradient: 'oro' } : null;
+  return { nick, vip: isVipNow(), cosmetics, name: selfClub ? selfClub.name : '' };
 }
 
 /**
@@ -4183,6 +4189,7 @@ function paintPeers(doc) {
     }
 
     marks.vip.hidden = !peer.vip;
+    marks.logo.title = peer.name ? `Toda la Lecce · ${peer.name}` : 'Está jugando con TL App';
     /*
      * Quién de los que están en la cancha es amigo tuyo.
      *

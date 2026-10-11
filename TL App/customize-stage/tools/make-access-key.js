@@ -12,6 +12,8 @@
  *   node make-access-key.js notice "texto"  publica un aviso que le aparece a todos al abrir la app
  *   node make-access-key.js notice "Título" "texto"   lo mismo, con título
  *   node make-access-key.js notice clear    saca el aviso
+ *   node make-access-key.js pubs claves.txt  completa la llave pública de cada persona leyendo un txt con sus claves
+ *   node make-access-key.js presence <url>   fija la base de presencia (Firebase) para las insignias; "off" la quita
  *
  * La clave en claro se muestra UNA vez al agregar: pasásela a la persona y no se
  * guarda en ningún lado. En el JSON sólo queda el hash. Después hay que subir el
@@ -21,7 +23,7 @@
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
-const { hashKey } = require('../src/main/access');
+const { hashKey, fromKey } = require('../src/main/identity');
 
 const FILE = path.resolve(__dirname, '..', '..', '..', 'access.json');
 
@@ -59,7 +61,7 @@ if (cmd === 'notice') {
 } else if (cmd === 'add' && name) {
   if (j.users.some((u) => u.name.toLowerCase() === name.toLowerCase())) { console.error(`Ya existe "${name}". Sacalo primero para generar otra clave.`); process.exit(1); }
   const key = newKey();
-  j.users.push({ name, hash: hashKey(key) });
+  j.users.push({ name, hash: hashKey(key), pub: fromKey(key).pub });
   write(j);
   console.log(`\nClave de ${name}:  ${key}\n(se muestra una sola vez; pasásela por privado)\n`);
 } else if (cmd === 'remove' && name) {
@@ -67,10 +69,30 @@ if (cmd === 'notice') {
   j.users = j.users.filter((u) => u.name.toLowerCase() !== name.toLowerCase());
   write(j);
   console.log(before === j.users.length ? `No encontré a "${name}".` : `Listo, "${name}" ya no tiene acceso.`);
+} else if (cmd === 'pubs' && name) {
+  const text = fs.readFileSync(path.resolve(name), 'utf8');
+  const keys = [...new Set(text.match(/TL-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}/gi) || [])];
+  const byHash = new Map(j.users.map((u) => [String(u.hash).toLowerCase(), u]));
+  let done = 0;
+  const unmatched = [];
+  for (const k of keys) {
+    const u = byHash.get(hashKey(k));
+    if (u) { u.pub = fromKey(k).pub; done += 1; } else unmatched.push(k.slice(0, 7) + '…');
+  }
+  write(j);
+  console.log(`Claves leídas: ${keys.length} · llaves agregadas: ${done}`);
+  if (unmatched.length) console.log(`Sin coincidencia (${unmatched.length}): ${unmatched.join(', ')}`);
+  const missing = j.users.filter((u) => !u.pub).map((u) => u.name);
+  if (missing.length) console.log(`Siguen sin llave: ${missing.join(', ')}`);
+} else if (cmd === 'presence' && name) {
+  if (name === 'off') { delete j.presence; write(j); console.log('Presencia desactivada.'); }
+  else if (/^https:\/\/[a-z0-9.-]+\.(firebaseio\.com|firebasedatabase\.app)\/?$/i.test(name)) { j.presence = name.replace(/\/$/, ''); write(j); console.log(`Presencia: ${j.presence}`); }
+  else { console.error('La dirección debe ser https://…firebaseio.com o …firebasedatabase.app'); process.exit(1); }
 } else if (cmd === 'list') {
   console.log(`Lista ${j.enabled ? 'ACTIVA' : 'desactivada'} — ${j.users.length} persona(s):`);
   if (j.announcement) console.log(`Aviso actual: ${j.announcement.title ? `${j.announcement.title} — ` : ''}${j.announcement.text}`);
-  j.users.forEach((u) => console.log(' -', u.name));
+  if (j.presence) console.log(`Presencia: ${j.presence}`);
+  j.users.forEach((u) => console.log(' -', u.name, u.pub ? '' : '(sin llave: no verá/mostrará insignia)'));
 } else if (cmd === 'enable' || cmd === 'disable') {
   j.enabled = cmd === 'enable';
   write(j);

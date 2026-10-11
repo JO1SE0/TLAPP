@@ -22,6 +22,7 @@
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+const identity = require('./identity');
 
 const ACCESS_URL = 'https://raw.githubusercontent.com/JO1SE0/TLAPP/main/access.json';
 const FILE = 'access-state.json';
@@ -35,6 +36,9 @@ let saved = { key: '', enabled: null, name: '', validatedAt: 0 };
 let status = { state: 'ok', name: '', reason: '', notice: null };
 /** Último anuncio del capitán que se pudo leer (se conserva si después no hay conexión). */
 let notice = null;
+/** Plantel con llave pública y dirección de la base de presencia (de access.json). */
+let roster = [];
+let presence = '';
 let timer = null;
 let onChange = () => {};
 
@@ -89,6 +93,10 @@ async function evaluate(key) {
 
   if (list) {
     notice = cleanNotice(list.announcement);
+    roster = (Array.isArray(list.users) ? list.users : [])
+      .filter((u) => u && /^[0-9a-f]{64}$/i.test(String(u.pub || '')))
+      .map((u) => ({ name: String(u.name || '').slice(0, 40), pub: String(u.pub).toLowerCase() }));
+    presence = typeof list.presence === 'string' ? list.presence : '';
     const enabled = list.enabled === true;
     saved.enabled = enabled;
     if (!enabled) { saved.validatedAt = Date.now(); persist(); return set({ state: 'ok', name: saved.name, reason: '' }); }
@@ -132,4 +140,9 @@ const isLocked = () => status.state === 'locked';
 const submit = async (key) => { await evaluate(String(key || '')); return status; };
 const recheck = async () => { await evaluate(null); return status; };
 
-module.exports = { init, get, isLocked, submit, recheck, hashKey, normalize, ACCESS_URL };
+/** Clave guardada de esta persona (sólo si entró con una válida). */
+const getKey = () => (status.state === 'ok' && saved.key && saved.enabled ? saved.key : '');
+const getRoster = () => roster;
+const presenceUrl = () => presence;
+
+module.exports = { getKey, getRoster, presenceUrl, init, get, isLocked, submit, recheck, hashKey, normalize, ACCESS_URL };

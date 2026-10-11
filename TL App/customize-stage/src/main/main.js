@@ -20,6 +20,7 @@ const discord = require('./discord');
 const updater = require('./updater');
 const access = require('./access');
 const panel = require('./panel');
+const presence = require('./presence');
 const avatars = require('./avatars');
 const countries = require('./countries');
 const gamePatch = require('./game-patch');
@@ -2714,15 +2715,17 @@ async function beatPresence() {
    * Sólo se comparte una huella anónima de sala para aplicar las marcas del
    * cliente. No se publica el nombre de la sala ni preferencias sociales.
    */
-  const res = await panel.beat({
-    install: getInstallId(),
-    version: app.getVersion(),
-    os: `${os.type()} ${os.release()}`,
-    profile: cfg.vip.discord,
-    room: panel.roomFingerprint(roomInfo.room),
-    nick: roomInfo.nick,
-    cosmetics: myCosmetics()
-  });
+  let res = null;
+  try {
+    res = await presence.beat({
+      url: access.presenceUrl(),
+      key: access.getKey(),
+      roster: access.getRoster(),
+      fp: panel.roomFingerprint(roomInfo.room),
+      nick: roomInfo.nick,
+      selfName: access.get().name || ''
+    });
+  } catch { res = null; }
   if (!res) return;
 
   // El servidor decide el ritmo: así se puede aflojar sin sacar una versión.
@@ -3454,6 +3457,7 @@ function rememberVolume(volume) {
 // cambio se guarda en el acto en vez de esperar a un temporizador que ya no va
 // a correr.
 app.on('before-quit', saveVolumeNow);
+app.on('before-quit', () => { try { presence.leave({ url: access.presenceUrl(), key: access.getKey() }); } catch { /* vence solo */ } });
 
 /** Alguien recién llegó y necesita saber qué está sonando. */
 listen('music:want-state', (e) => {
