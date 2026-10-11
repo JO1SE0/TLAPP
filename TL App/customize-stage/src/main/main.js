@@ -3205,7 +3205,7 @@ function pushDiscordPresence() {
   const place = PRESENCE_PLACES[presenceInfo.place] ? presenceInfo.place : 'menu';
   const room = cfg.showRoom && presenceInfo.room ? String(presenceInfo.room).slice(0, 100) : '';
   discord.setActivity({
-    details: 'Toda la lechita',
+    details: 'TL App',
     state: room
       ? `HaxBall · ${PRESENCE_PLACES[place]} · ${room}`
       : `HaxBall · ${PRESENCE_PLACES[place]}`
