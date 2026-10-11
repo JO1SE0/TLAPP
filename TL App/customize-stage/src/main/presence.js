@@ -24,6 +24,7 @@ const PRUNE_MS = 6 * 3600 * 1000;
 const TIMEOUT_MS = 8000;
 const ALLOWED_HOST = /(^|\.)(firebaseio\.com|firebasedatabase\.app)$/i;
 
+let why = '';
 const seen = new Map(); // `${fp}|${pid}` → { t, at }
 let lastFp = null;
 let me = null; // { key, id } para no derivar de nuevo en cada latido
@@ -68,9 +69,11 @@ const signedText = (fp, nick, t) => `${fp}|${nick}|${t}`;
  */
 async function beat(ctx) {
   const base = cleanUrl(ctx && ctx.url);
+  why = !base ? 'sin dirección de presencia en access.json (todavía no la bajó o no es válida)'
+    : !ctx.key ? 'sin clave guardada (no entró con clave válida)' : '';
   if (!base || !ctx.key) return null;
   let id;
-  try { id = idOf(ctx.key); } catch { return null; }
+  try { id = idOf(ctx.key); } catch { why = 'clave no válida'; return null; }
 
   // Si se salió de una sala, se retira el casillero de la anterior (si falla, vence solo).
   if (lastFp && lastFp !== ctx.fp) {
@@ -78,7 +81,8 @@ async function beat(ctx) {
     lastFp = null;
     call(`${base}/rooms/${old}/${id.pid}.json`, 'DELETE').catch(() => {});
   }
-  if (!ctx.fp || !ctx.nick) return null;
+  if (!ctx.fp || !ctx.nick) { why = `sin sala o sin nick (sala=${ctx.fp ? 'sí' : 'no'}, nick=${ctx.nick ? 'sí' : 'no'})`; return null; }
+  why = '';
   lastFp = ctx.fp;
 
   const t = Date.now();
@@ -125,4 +129,4 @@ function leave(ctx) {
   lastFp = null;
 }
 
-module.exports = { leave, beat, cleanUrl, signedText, EVERY_MS, ALIVE_MS };
+module.exports = { why: () => why, leave, beat, cleanUrl, signedText, EVERY_MS, ALIVE_MS };

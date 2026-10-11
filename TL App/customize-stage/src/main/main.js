@@ -2732,7 +2732,12 @@ async function beatPresence() {
     const msg = String(err && err.message);
     if (msg !== lastPresenceError) { lastPresenceError = msg; recordFatal('presencia (insignia)', err); }
   }
-  if (!res) return;
+  if (!res) {
+    const w = presence.why();
+    if (w && w !== lastPresenceError) { lastPresenceError = w; recordFatal('presencia (insignia): no se envió', new Error(w)); }
+    return;
+  }
+  lastPresenceError = '';
 
   // El servidor decide el ritmo: así se puede aflojar sin sacar una versión.
   if (res.everyMs !== presenceEveryMs) {
