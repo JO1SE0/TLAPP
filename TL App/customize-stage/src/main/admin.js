@@ -24,7 +24,8 @@ const cleanText = (v, n) => String(v == null ? '' : v).replace(/\r/g, '').trim()
 function applyAction(cur, action, myPub) {
   const doc = {
     enabled: cur.enabled === true,
-    users: cur.users.map((u) => ({ name: u.name, hash: u.hash, pub: u.pub })),
+    users: cur.users.map((u) => ({ name: u.name, hash: u.hash, pub: u.pub, epoch: Number(u.epoch) || 0 })),
+    removed: (cur.removed || []).slice(),
     notices: cur.notices.slice(),
     minVersion: cur.minVersion || '',
     minMessage: cur.minMessage || ''
@@ -34,9 +35,10 @@ function applyAction(cur, action, myPub) {
     case 'addUser': {
       const name = cleanText(action.name, 30);
       if (!name) throw new Error('Falta el nombre.');
-      if (doc.users.some((u) => String(u.name).toLowerCase() === name.toLowerCase())) throw new Error(`Ya existe "${name}".`);
+      const taken = (u) => String(u.name).toLowerCase() === name.toLowerCase();
+      if (doc.users.some(taken) || doc.removed.some(taken)) throw new Error(`Ya existe "${name}" (si la quitaste, reactivala desde "Quitados").`);
       const key = newKey();
-      doc.users.push({ name, hash: identity.hashKey(key), pub: identity.fromKey(key).pub });
+      doc.users.push({ name, hash: identity.hashKey(key), pub: identity.fromKey(key).pub, epoch: 0 });
       extra = { key, name };
       break;
     }
@@ -45,6 +47,31 @@ function applyAction(cur, action, myPub) {
       if (!target) throw new Error('No encontré a esa persona.');
       if (target.pub === myPub) throw new Error('No podés sacarte a vos mismo.');
       doc.users = doc.users.filter((u) => u !== target);
+      doc.removed = [...doc.removed.filter((u) => u.name !== target.name), { name: target.name, hash: target.hash, pub: target.pub, epoch: target.epoch, at: Date.now() }].slice(-100);
+      break;
+    }
+    case 'restoreUser': {
+      const back = doc.removed.find((u) => String(u.name).toLowerCase() === String(action.name || '').toLowerCase());
+      if (!back) throw new Error('No encontré a esa persona entre los quitados.');
+      doc.removed = doc.removed.filter((u) => u !== back);
+      doc.users.push({ name: back.name, hash: back.hash, pub: back.pub, epoch: (Number(back.epoch) || 0) + 1 });
+      break;
+    }
+    case 'changeKey': {
+      const target = doc.users.find((u) => String(u.name).toLowerCase() === String(action.name || '').toLowerCase());
+      if (!target) throw new Error('No encontré a esa persona.');
+      if (target.pub === myPub) throw new Error('Tu clave de capitán no se cambia desde acá.');
+      const key = newKey();
+      target.hash = identity.hashKey(key);
+      target.pub = identity.fromKey(key).pub;
+      target.epoch = (Number(target.epoch) || 0) + 1;
+      extra = { key, name: target.name };
+      break;
+    }
+    case 'resetDevice': {
+      const target = doc.users.find((u) => String(u.name).toLowerCase() === String(action.name || '').toLowerCase());
+      if (!target) throw new Error('No encontré a esa persona.');
+      target.epoch = (Number(target.epoch) || 0) + 1;
       break;
     }
     case 'setEnabled':
@@ -88,6 +115,15 @@ async function run(action) {
   if (!url || !key) throw new Error('No hay conexión con la base de datos del club.');
   const id = identity.fromKey(key);
   const cur = access.getEffective();
+  const alertPid = (name) => {
+    const u = cur.users.find((x) => String(x.name).toLowerCase() === String((action && action.name) || '').toLowerCase());
+    return u && u.pub ? identity.pidOf(u.pub) : null;
+  };
+  if (action && action.type === 'dismissAlert') {
+    const pid = alertPid();
+    if (pid) await presence.call(`${url}/alerts/${pid}.json`, 'DELETE');
+    return { doc: cur, extra: null };
+  }
   const { doc, extra } = applyAction(cur, action, id.pub);
   doc.seq = (cur.seq || 0) + 1;
   doc.ts = Date.now();
@@ -95,7 +131,27 @@ async function run(action) {
   const raw = { p, s: id.sign(p) };
   await presence.call(`${url}/admin/state.json`, 'PUT', raw);
   await access.adoptAdmin(raw);
+  // Liberada la PC o cambiada la clave, la alerta ya no corresponde.
+  if (action.type === 'resetDevice' || action.type === 'changeKey') {
+    const pid = alertPid();
+    if (pid) presence.call(`${url}/alerts/${pid}.json`, 'DELETE').catch(() => {});
+  }
   return { doc: access.getEffective(), extra };
 }
 
-module.exports = { run, applyAction };
+/** Alertas de «esta clave se usó desde otra PC», ya verificadas contra la llave de cada persona. */
+async function readAlerts() {
+  const url = presence.cleanUrl(access.presenceUrl());
+  if (!url) return [];
+  const data = (await presence.call(`${url}/alerts.json`, 'GET')) || {};
+  const out = [];
+  for (const u of access.getRoster()) {
+    const e = data[identity.pidOf(u.pub)];
+    if (e && typeof e.d === 'string' && typeof e.t === 'number' && typeof e.s === 'string' && identity.verify(u.pub, `alert|${e.d}|${e.t}`, e.s)) {
+      out.push({ name: u.name, at: e.t });
+    }
+  }
+  return out.sort((x, y) => y.at - x.at);
+}
+
+module.exports = { run, applyAction, readAlerts };

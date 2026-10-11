@@ -2732,12 +2732,16 @@ handle('presence:roster', async () => liveRoster);
 handle('admin:get', async () => {
   if (!access.isCaptain()) return null;
   await beatOnline();
-  return { doc: access.getEffective(), members: liveRoster || [], version: app.getVersion() };
+  let alerts = [];
+  try { alerts = await admin.readAlerts(); } catch { /* sin alertas */ }
+  return { doc: access.getEffective(), members: liveRoster || [], version: app.getVersion(), alerts };
 });
 handle('admin:do', async (_e, action) => {
   const res = await admin.run(action);
   await beatOnline();
-  return { ...res, members: liveRoster || [] };
+  let alerts = [];
+  try { alerts = await admin.readAlerts(); } catch { /* sin alertas */ }
+  return { ...res, members: liveRoster || [], alerts };
 });
 (function startOnline() {
   const run = () => { accessReady.then(beatOnline).catch(() => {}); };

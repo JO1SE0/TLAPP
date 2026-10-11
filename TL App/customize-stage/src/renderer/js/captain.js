@@ -44,9 +44,15 @@
     paint();
     try {
       const r = await window.tvm.admin.do(action);
-      data = { doc: r.doc, members: r.members, version: data ? data.version : '' };
+      data = { doc: r.doc, members: r.members, alerts: r.alerts || [], version: data ? data.version : '' };
       return r;
     } catch (e) { flash(e.message || String(e), true); return null; } finally { busy = false; paint(); }
+  }
+
+  async function newKey(name) {
+    if (!window.confirm(`¿Cambiar la clave de ${name}? La actual deja de funcionar y tenés que pasarle la nueva.`)) return;
+    const r = await act({ type: 'changeKey', name });
+    if (r && r.extra) { lastKey = r.extra; tab = 'plantel'; paint(); }
   }
 
   function latestVersion() {
@@ -61,6 +67,20 @@
     const latest = latestVersion();
     const online = members.filter((m) => m.online).length;
     const old = members.filter((m) => m.version && latest && cmp(m.version, latest) < 0).length;
+    for (const al of data.alerts || []) {
+      const box = el('div', 'cap__alert');
+      box.append(el('b', null, '⚠'), el('span', null, `${al.name} intentó entrar con su clave desde otra PC (${ago(al.at)}).`));
+      const free = el('button', 'cap__btn cap__btn--sm', 'Liberar PC'); free.type = 'button'; free.disabled = busy;
+      free.title = 'Permite que la clave se use en otra PC (la primera que entre se queda con ella).';
+      free.addEventListener('click', async () => { if (await act({ type: 'resetDevice', name: al.name })) flash(`PC de ${al.name} liberada.`); });
+      const nk = el('button', 'cap__btn cap__btn--sm', 'Clave nueva'); nk.type = 'button'; nk.disabled = busy;
+      nk.title = 'Anula la clave actual y genera otra (por si la compartió).';
+      nk.addEventListener('click', () => newKey(al.name));
+      const no = el('button', 'cap__btn cap__btn--sm cap__btn--ghost', 'Descartar'); no.type = 'button'; no.disabled = busy;
+      no.addEventListener('click', () => act({ type: 'dismissAlert', name: al.name }));
+      box.append(free, nk, no);
+      root.append(box);
+    }
     root.append(el('p', 'cap__sum', `${members.length} personas · ${online} conectadas · ${old} con versión vieja${latest ? ` (última vista: v${latest})` : ''}`));
 
     const table = el('div', 'cap__table');
@@ -75,14 +95,23 @@
       state.title = m.lastSeen ? new Date(m.lastSeen).toLocaleString('es-AR') : '';
       const outdated = m.version && latest && cmp(m.version, latest) < 0;
       const ver = el('span', `cap__ver${outdated ? ' is-old' : ''}`, m.version ? `v${m.version}${outdated ? ' ⚠' : ''}` : '—');
-      const del = el('button', 'cap__btn cap__btn--ghost', 'Quitar');
+      const acts = el('span', 'cap__acts');
+      const free = el('button', 'cap__btn cap__btn--ghost cap__btn--sm', 'Liberar PC');
+      free.type = 'button'; free.disabled = m.self || busy;
+      free.title = 'Que pueda usar su clave en otra PC.';
+      free.addEventListener('click', async () => { if (await act({ type: 'resetDevice', name: m.name })) flash(`PC de ${m.name} liberada.`); });
+      const nk = el('button', 'cap__btn cap__btn--ghost cap__btn--sm', 'Clave nueva');
+      nk.type = 'button'; nk.disabled = m.self || busy;
+      nk.addEventListener('click', () => newKey(m.name));
+      const del = el('button', 'cap__btn cap__btn--ghost cap__btn--sm', 'Quitar');
       del.type = 'button';
       del.disabled = m.self || busy;
       del.addEventListener('click', async () => {
         if (!window.confirm(`¿Quitarle el acceso a ${m.name}? Dejará de poder usar la app.`)) return;
         await act({ type: 'removeUser', name: m.name });
       });
-      row.append(name, state, ver, del);
+      acts.append(free, nk, del);
+      row.append(name, state, ver, acts);
       table.append(row);
     }
     root.append(table);
@@ -103,6 +132,20 @@
       paint();
     });
     root.append(form);
+
+    const gone = (data.doc.removed || []);
+    if (gone.length) {
+      root.append(el('h3', 'cap__h', 'Quitados'));
+      for (const u of gone) {
+        const row = el('div', 'cap__notice');
+        row.append(el('span', null, `${u.name} · quitado ${ago(u.at)}`));
+        const back = el('button', 'cap__btn cap__btn--sm', 'Reactivar'); back.type = 'button'; back.disabled = busy;
+        back.title = 'Vuelve a tener acceso con la misma clave de antes, en una PC libre.';
+        back.addEventListener('click', async () => { if (await act({ type: 'restoreUser', name: u.name })) flash(`${u.name} reactivado.`); });
+        row.append(back);
+        root.append(row);
+      }
+    }
 
     if (lastKey) {
       const k = el('div', 'cap__key');

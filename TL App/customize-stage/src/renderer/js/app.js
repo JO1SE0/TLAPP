@@ -306,7 +306,8 @@ const GATE_TEXT = {
     offline: 'No se pudo verificar la clave: hace falta conexión.', expired: 'Hace más de 3 días que no se verifica tu acceso. Conectate a internet.',
     help: 'Si no tenés clave, pedísela al capitán.',
     outdated: 'Hay una versión nueva y obligatoria de TL App.', outdatedSub: 'Actualizá para seguir usando la app.', update: 'Actualizar ahora', updating: 'Buscando actualización…',
-    noUpdate: 'Todavía no hay una actualización disponible. Probá en unos minutos.'
+    noUpdate: 'Todavía no hay una actualización disponible. Probá en unos minutos.',
+    'other-pc': 'Tu clave ya está en uso en otra PC.', otherSub: 'Cada clave sirve para una sola computadora. Pedile al capitán que la libere y esta pantalla se abre sola.'
   },
   en: {
     title: 'Team access', sub: 'Enter your personal key to use TL App.', ph: 'TL-XXXX-XXXX-XXXX', go: 'Enter', checking: 'Checking…',
@@ -314,7 +315,8 @@ const GATE_TEXT = {
     offline: 'Could not verify the key: a connection is required.', expired: 'Your access has not been verified for over 3 days. Please go online.',
     help: 'No key? Ask the captain.',
     outdated: 'A new, mandatory version of TL App is available.', outdatedSub: 'Update to keep using the app.', update: 'Update now', updating: 'Checking for updates…',
-    noUpdate: 'No update is available yet. Try again in a few minutes.'
+    noUpdate: 'No update is available yet. Try again in a few minutes.',
+    'other-pc': 'Your key is already in use on another PC.', otherSub: 'Each key works on a single computer. Ask the captain to release it and this screen will open by itself.'
   }
 };
 
@@ -370,13 +372,15 @@ function showGate(reason, extra) {
     });
   }
   const outdated = reason === 'outdated';
+  const otherPc = reason === 'other-pc';
   gate.classList.toggle('is-outdated', outdated);
-  gate.querySelector('.gate__title').textContent = outdated ? tx.outdated : tx.title;
-  gate.querySelector('.gate__sub').textContent = outdated ? (extra || tx.outdatedSub) : tx.sub;
+  gate.classList.toggle('is-info', otherPc);
+  gate.querySelector('.gate__title').textContent = outdated ? tx.outdated : otherPc ? tx['other-pc'] : tx.title;
+  gate.querySelector('.gate__sub').textContent = outdated ? (extra || tx.outdatedSub) : otherPc ? tx.otherSub : tx.sub;
   gate.querySelector('.gate__input').placeholder = tx.ph;
   gate.querySelector('.gate__btn').textContent = outdated ? tx.update : tx.go;
-  gate.querySelector('.gate__msg').textContent = outdated ? '' : (tx[reason] || '');
-  gate.querySelector('.gate__help').textContent = outdated ? '' : tx.help;
+  gate.querySelector('.gate__msg').textContent = outdated || otherPc ? '' : (tx[reason] || '');
+  gate.querySelector('.gate__help').textContent = outdated || otherPc ? '' : tx.help;
   gate.hidden = false;
   document.body.classList.add('is-gated');
   setTimeout(() => { const i = gate.querySelector('.gate__input'); if (i) i.focus(); }, 50);
@@ -2485,51 +2489,6 @@ $('#actJoin').addEventListener('click', () => {
   if (state.selected) joinRoom(state.selected);
 });
 $('#actAutoJoin').addEventListener('click', toggleAutoJoin);
-/* ── Plantel en vivo ──────────────────────────────────────────
- * La lista del riel pasa a mostrar a quien del club tiene la app abierta (punto
- * verde) y, abajo del nombre, la sala en la que está. Si no hay presencia (sin red o
- * sin lista) queda la lista fija de siempre. */
-const rosterStatic = $('.roster__list') ? $('.roster__list').innerHTML : '';
-function paintRoster(list) {
-  const ul = $('.roster__list');
-  if (!ul) return;
-  if (!Array.isArray(list)) { ul.innerHTML = rosterStatic; return; }
-  ul.textContent = '';
-  list = list.filter((m) => m.online);
-  const MAX = 12;
-  if (!list.length) {
-    const li = document.createElement('li');
-    li.className = 'is-live is-none';
-    li.textContent = t('roster.none');
-    ul.append(li);
-    return;
-  }
-  for (const m of list.slice(0, MAX)) {
-    const li = document.createElement('li');
-    li.className = 'is-live' + (m.self ? ' is-self' : '');
-    const n = document.createElement('span');
-    n.className = 'rn';
-    n.textContent = m.name;
-    li.append(n);
-    if (m.room) {
-      const r = document.createElement('em');
-      r.textContent = m.room;
-      li.append(r);
-    }
-    ul.append(li);
-  }
-  if (list.length > MAX) {
-    const li = document.createElement('li');
-    li.className = 'is-live is-none';
-    li.textContent = `+${list.length - MAX}`;
-    ul.append(li);
-  }
-}
-if (window.tvm.presence) {
-  window.tvm.presence.onRoster(paintRoster);
-  window.tvm.presence.roster().then((l) => { if (l) paintRoster(l); }).catch(() => {});
-}
-
 const capBtnEl = $('#captainBtn');
 if (capBtnEl) capBtnEl.addEventListener('click', () => { if (window.TLCaptain) window.TLCaptain.open(); });
 

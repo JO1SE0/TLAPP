@@ -16,7 +16,8 @@ window.TL_NEWS = {
       'Menú de salas: botones para ocultar las salas con clave y las llenas.',
       'Música en el menú, con tus propias canciones, y efectos de sonido al pasar por los botones.',
       'Resolución ajustable con barra del 25 al 100 %.',
-      'Discord: ahora todos aparecen con la misma aplicación.'
+      'Discord: ahora todos aparecen con la misma aplicación.',
+      'Cada clave se usa en una sola PC: si necesitás cambiar de computadora, pedile al capitán que te la libere.'
     ],
     en: [
       'Squad badge: members who sign in with their key show the crest, a golden name and “Toda la Lecce · name” in rooms.',
@@ -24,7 +25,8 @@ window.TL_NEWS = {
       'Room menu: buttons to hide password-protected and full rooms.',
       'Menu music, with your own songs, and sound effects on buttons.',
       'Adjustable resolution with a 25–100 % slider.',
-      'Discord: everyone now shows up under the same application.'
+      'Discord: everyone now shows up under the same application.',
+      'Each key works on a single PC: if you switch computers, ask the captain to release it.'
     ]
   }
 };

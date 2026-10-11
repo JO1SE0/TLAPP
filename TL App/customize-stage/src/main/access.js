@@ -33,7 +33,7 @@ const RECHECK_MS = 60 * 60 * 1000;
 const DAY = 24 * 3600 * 1000;
 
 let dir = null;
-let saved = { key: '', enabled: null, name: '', validatedAt: 0, admin: null };
+let saved = { key: '', enabled: null, name: '', validatedAt: 0, admin: null, device: '' };
 let status = { state: 'ok', name: '', reason: '', notice: null };
 /** Último anuncio del capitán que se pudo leer (se conserva si después no hay conexión). */
 let notice = null;
@@ -45,7 +45,7 @@ let appVersion = '0.0.0';
 /** Última lista de GitHub que se pudo leer, para reevaluar sin volver a bajarla. */
 let lastList = null;
 /** Lo que manda: la lista oficial firmada por el capitán si la hay, y si no access.json. */
-let eff = { enabled: false, users: [], notices: [], minVersion: '', minMessage: '', captains: [], legacyNotice: null, seq: 0, source: 'github' };
+let eff = { enabled: false, users: [], notices: [], minVersion: '', minMessage: '', captains: [], legacyNotice: null, seq: 0, source: 'github', removed: [] };
 const ADMIN_POLL_MS = 60 * 1000;
 const NOTICE_TICK_MS = 30 * 1000;
 const HEX64 = /^[0-9a-f]{64}$/i;
@@ -60,7 +60,8 @@ function load() {
     const j = JSON.parse(fs.readFileSync(path.join(dir, FILE), 'utf8'));
     saved = { key: String(j.key || ''), enabled: j.enabled === true ? true : j.enabled === false ? false : null,
       name: String(j.name || ''), validatedAt: Number(j.validatedAt) || 0,
-      admin: j.admin && typeof j.admin.p === 'string' && typeof j.admin.s === 'string' ? { p: j.admin.p, s: j.admin.s } : null };
+      admin: j.admin && typeof j.admin.p === 'string' && typeof j.admin.s === 'string' ? { p: j.admin.p, s: j.admin.s } : null,
+      device: /^[0-9a-f]{16}$/.test(String(j.device || '')) ? String(j.device) : '' };
   } catch { /* primera vez */ }
 }
 
@@ -131,14 +132,15 @@ function rebuild(list) {
       notices: Array.isArray(d.notices) ? d.notices : [],
       minVersion: typeof d.minVersion === 'string' ? d.minVersion : '',
       minMessage: typeof d.minMessage === 'string' ? d.minMessage : '',
-      captains, legacyNotice: null, seq: d.seq, source: 'captain'
+      captains, legacyNotice: null, seq: d.seq, source: 'captain',
+      removed: Array.isArray(d.removed) ? d.removed : []
     };
   } else {
     eff = {
       enabled: base.enabled === true,
       users: Array.isArray(base.users) ? base.users : [],
       notices: [], minVersion: '', minMessage: '', captains,
-      legacyNotice: cleanNotice(base.announcement), seq: 0, source: 'github'
+      legacyNotice: cleanNotice(base.announcement), seq: 0, source: 'github', removed: []
     };
   }
   roster = eff.users.filter((u) => u && HEX64.test(String(u.pub || ''))).map((u) => ({ name: String(u.name || '').slice(0, 40), pub: String(u.pub).toLowerCase() }));
@@ -212,6 +214,45 @@ function set(next) {
   if (changed) onChange(status);
 }
 
+/* ── Una clave, una PC ────────────────────────────────────────
+ * La primera PC que usa una clave deja en Firebase `devices/<pid>` (firmado con esa clave).
+ * Si después otra PC con la misma clave ve que ya hay una registrada, se bloquea y deja
+ * una alerta para el capitán, que puede liberarla (`epoch` + 1) o cambiar la clave.
+ * El capitán no se ata a una PC (así nunca se queda afuera de su propio panel).
+ * Es una barrera del lado del cliente, como la lista: frena el uso compartido
+ * normal, no a quien edite la app. Sin conexión con Firebase, deja pasar. */
+let lastDev = null;
+function deviceId() {
+  if (!saved.device) { saved.device = crypto.randomBytes(8).toString('hex'); persist(); }
+  return saved.device;
+}
+
+async function deviceCheck(me, candidate) {
+  const url = presenceMod.cleanUrl(presence);
+  if (!url || isCaptainKey(candidate)) return true;
+  const epoch = Number(me.epoch) || 0;
+  const norm = normalize(candidate);
+  if (lastDev && lastDev.key === norm && lastDev.epoch === epoch && Date.now() - lastDev.at < 10 * 60 * 1000) return true;
+  try {
+    const id = identity.fromKey(candidate);
+    const mine = deviceId();
+    const rec = await presenceMod.call(`${url}/devices/${id.pid}.json`, 'GET');
+    const valid = rec && typeof rec.d === 'string' && Number.isInteger(rec.e) && typeof rec.t === 'number' && typeof rec.s === 'string' &&
+      identity.verify(id.pub, `dev|${rec.d}|${rec.e}|${rec.t}`, rec.s);
+    if (valid && rec.e === epoch && rec.d !== mine) {
+      const t = Date.now();
+      presenceMod.call(`${url}/alerts/${id.pid}.json`, 'PUT', { d: mine, t, s: id.sign(`alert|${mine}|${t}`) }).catch(() => {});
+      return false;
+    }
+    if (!(valid && rec.e === epoch && rec.d === mine)) {
+      const t = Date.now();
+      await presenceMod.call(`${url}/devices/${id.pid}.json`, 'PUT', { d: mine, e: epoch, t, s: id.sign(`dev|${mine}|${epoch}|${t}`) });
+    }
+    lastDev = { key: norm, epoch, at: Date.now() };
+    return true;
+  } catch { return true; }
+}
+
 /** «ok», salvo que la app sea más vieja que la versión mínima que pidió el capitán (él no se bloquea). */
 function allow(name, candidate) {
   if (eff.minVersion && cmpVersion(appVersion, eff.minVersion) < 0 && !isCaptainKey(candidate || saved.key)) {
@@ -239,7 +280,13 @@ async function evaluate(key, opts) {
     const h = candidate ? hashKey(candidate) : '';
     const me = h && users.find((u) => u && String(u.hash).toLowerCase() === h);
     if (me) {
-      saved = { key: normalize(candidate), enabled: true, name: String(me.name || ''), validatedAt: Date.now(), admin: saved.admin };
+      if (!(await deviceCheck(me, candidate))) {
+        // Se guarda la clave (sin darla por validada): cuando el capitán libere la PC, entra sola.
+        saved = { ...saved, key: normalize(candidate), name: String(me.name || ''), validatedAt: 0 };
+        persist();
+        return set({ state: 'locked', name: '', reason: 'other-pc' });
+      }
+      saved = { key: normalize(candidate), enabled: true, name: String(me.name || ''), validatedAt: Date.now(), admin: saved.admin, device: saved.device };
       persist();
       return allow(saved.name, candidate);
     }
@@ -291,7 +338,7 @@ const presenceUrl = () => presence;
 /** Copia de lo que rige hoy (para el panel del capitán). */
 const getEffective = () => JSON.parse(JSON.stringify({
   enabled: eff.enabled, users: eff.users, notices: eff.notices, minVersion: eff.minVersion, minMessage: eff.minMessage,
-  seq: eff.seq, source: eff.source, captains: eff.captains
+  seq: eff.seq, source: eff.source, captains: eff.captains, removed: eff.removed
 }));
 const isCaptain = () => !!status.captain;
 /** El capitán acaba de publicar: se adopta al instante, sin esperar el próximo minuto. */
