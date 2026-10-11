@@ -64,7 +64,7 @@ const PANEL_TABS = {
   ],
   ajustes: [
     { id: 'rendimiento', label: 'tab.perf', hint: 'tab.perfHint',
-      secs: ['perfil', 'graficos', 'red', 'avanzado'] },
+      secs: ['perfil', 'respuesta', 'graficos', 'red', 'avanzado'] },
     { id: 'juego', label: 'tab.game', hint: 'tab.gameHint',
       secs: ['teclas', 'cliente', 'audio', 'identidades', 'discord', 'actualizaciones', 'config'] }
   ]
@@ -84,7 +84,7 @@ const MODAL_SECS = {
 
   // Lo de Rendimiento se muda a Configuración; las líneas y tamaños, a la cancha.
   if (perfPage) {
-    for (const id of ['perfil', 'graficos', 'red', 'teclas', 'avanzado']) {
+    for (const id of ['perfil', 'respuesta', 'graficos', 'red', 'teclas', 'avanzado']) {
       const sec = $(`[data-sec="${id}"]`, perfPage);
       if (sec) settingsPage.append(sec);
     }
@@ -3961,6 +3961,37 @@ function renderPitchMirror() {
       : 'Izquierda y derecha se cambian junto con la vista: seguís manejando con la cancha y no contra ella.'));
   }
 }
+
+/* Respuesta de teclas: avisa si las «Teclas filtro» de Windows están prendidas. */
+async function checkKeyResponse() {
+  const en = isEn();
+  $('#respTitle').textContent = en ? 'Key response' : 'Respuesta de teclas';
+  $('#respCheck').textContent = en ? 'Check again' : 'Revisar de nuevo';
+  $('#respOpen').textContent = en ? 'Open Windows keyboard settings' : 'Abrir ajustes de teclado de Windows';
+  $('#respHelp').textContent = en
+    ? 'To measure any change, turn on “Input latency” in the overlay (Rendering) and compare the milliseconds.'
+    : 'Para medir cualquier cambio, prendé «Latencia de entrada» en el overlay y compará los milisegundos.';
+  let r = null;
+  try { r = await tvm.perfKeys.check(); } catch (e) { r = null; }
+  const st = $('#respStatus');
+  const open = $('#respOpen');
+  open.hidden = true;
+  if (!r || r.supported === false) {
+    st.textContent = en ? 'This check is only available on Windows.' : 'Esta revisión sólo existe en Windows.';
+  } else if (r.unknown) {
+    st.textContent = en ? 'Could not read the Windows setting.' : 'No pude leer el ajuste de Windows.';
+  } else if (r.filterKeys) {
+    st.textContent = en
+      ? 'Windows “Filter Keys” is ON: it adds a delay to every key. Turn it off.'
+      : 'Las «Teclas filtro» de Windows están ENCENDIDAS: agregan un retardo a cada tecla. Conviene apagarlas.';
+    open.hidden = false;
+  } else {
+    st.textContent = en ? 'Windows “Filter Keys” is off. Nothing slows your keys.' : 'Las «Teclas filtro» de Windows están apagadas: nada frena tus teclas.';
+  }
+}
+$('#respCheck').addEventListener('click', checkKeyResponse);
+$('#respOpen').addEventListener('click', () => { try { tvm.perfKeys.openSettings(); } catch (e) { /* sin permiso */ } });
+setTimeout(checkKeyResponse, 1500);
 
 function renderPitch() {
   const lang = isEn() ? 'en' : 'es';

@@ -2210,6 +2210,11 @@ function watchChatLog(doc) {
   chatDoc = doc || null;
   if (!doc) return false;
 
+  // Con el chat oculto nadie lee las líneas: no se gasta trabajo marcándolas
+  // (menos DOM tocado por mensaje mientras se juega). Al mostrarlo otra vez,
+  // `refreshChatWatcher` vuelve a engancharlo.
+  if (state.config && state.config.appearance && state.config.appearance.hideChat) return true;
+
   const log = doc.querySelector('.log-contents');
   if (!log) return false; // fuera de la sala no hay chat todavía
 

@@ -208,7 +208,7 @@ function applyBootFlags(perf) {
   // Va con el unlock: si el unlock no se aplica, esto tampoco tiene sentido.
   if (unlockFpsSupported() && perf.unlockFps) disabledFeatures.push('FrameRateThrottling');
   // Windows pausa el render cuando cree que otra ventana tapa la nuestra.
-  if (perf.noOcclusionPause) disabledFeatures.push('CalculateNativeWinOcclusion');
+  if (perf.noOcclusionPause) disabledFeatures.push('CalculateNativeWinOcclusion', 'IntensiveWakeUpThrottling');
   app.commandLine.appendSwitch('disable-features', disabledFeatures.join(','));
 
   if (perf.disableBackgroundThrottling) {
@@ -268,6 +268,10 @@ function applyBootFlags(perf) {
    * nada. Sólo empeoraba la interfaz.
    */
   app.commandLine.appendSwitch('disable-background-media-suspend');
+
+  // El cliente manda varios avisos por segundo al proceso principal (telemetría,
+  // presencia, estadísticas): sin esto Chromium frena los que considera "demasiados".
+  app.commandLine.appendSwitch('disable-ipc-flooding-protection');
 }
 
 function applyRuntimeFlags(perf) {
@@ -3070,6 +3074,20 @@ handle('shell:openExternal', (_e, url) => {
   return shell.openExternal(url);
 });
 handle('shell:openPath', (_e, target) => shell.openPath(target));
+
+/* Respuesta de teclas: ¿Windows tiene las «Teclas filtro» prendidas? Agregan un
+   retardo real entre que apretás y que el juego se entera. Sólo se LEE el
+   registro; abrir los ajustes de Windows lo decide el jugador. */
+handle('perf:keys', () => new Promise((resolve) => {
+  if (process.platform !== 'win32') return resolve({ supported: false });
+  require('child_process').execFile('reg', ['query', 'HKCU\\Control Panel\\Accessibility\\Keyboard Response', '/v', 'Flags'], { timeout: 4000, windowsHide: true }, (err, out) => {
+    if (err) return resolve({ supported: true, filterKeys: false, unknown: true });
+    const m = /Flags\s+REG_SZ\s+(\d+)/i.exec(String(out || ''));
+    const flags = m ? parseInt(m[1], 10) : 0;
+    resolve({ supported: true, filterKeys: (flags & 1) === 1, flags });
+  });
+}));
+handle('perf:keysettings', () => shell.openExternal('ms-settings:easeofaccess-keyboard'));
 
 /* Salas -------------------------------------------------------------- */
 handle('rooms:list', () => roomlist.fetchRooms(geo));

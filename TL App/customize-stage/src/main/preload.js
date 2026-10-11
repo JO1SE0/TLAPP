@@ -69,6 +69,10 @@ contextBridge.exposeInMainWorld('tvm', {
     openExternal: (url) => call('shell:openExternal', url),
     openPath: (target) => call('shell:openPath', target)
   },
+  perfKeys: {
+    check: () => call('perf:keys'),
+    openSettings: () => call('perf:keysettings')
+  },
 
   window: {
     minimize: () => ipcRenderer.send('win:action', 'minimize'),

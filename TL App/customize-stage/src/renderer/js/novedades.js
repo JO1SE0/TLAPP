@@ -19,6 +19,8 @@ window.TL_NEWS = {
       'Música en el menú, con tus propias canciones, y efectos de sonido al pasar por los botones.',
       'Resolución ajustable con barra del 25 al 100 %.',
       'Discord: ahora todos aparecen con la misma aplicación.',
+      'Ajustes favoritos: tocá la estrella ☆ de cualquier ajuste y queda arriba del índice del panel.',
+      'Respuesta de teclas: avisa si las «Teclas filtro» de Windows están prendidas (agregan retardo) y abre sus ajustes.',
       'Cada clave se usa en una sola PC: si necesitás cambiar de computadora, pedile a miclo que te la libere.'
     ],
     en: [
@@ -30,6 +32,8 @@ window.TL_NEWS = {
       'Menu music, with your own songs, and sound effects on buttons.',
       'Adjustable resolution with a 25–100 % slider.',
       'Discord: everyone now shows up under the same application.',
+      'Favourite settings: tap the star ☆ on any setting and it is pinned above the panel index.',
+      'Key response: warns if Windows “Filter Keys” is on (it adds delay) and opens its settings.',
       'Each key works on a single PC: if you switch computers, ask miclo to release it.'
     ]
   }

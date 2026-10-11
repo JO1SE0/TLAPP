@@ -4901,3 +4901,13 @@ input[type="color"].is-unset { opacity: .45; }
 .cap__mcard p { margin: 0; }
 #captainBtn.has-alert { position: relative; }
 #captainBtn.has-alert::after { content: ""; position: absolute; top: 7px; left: 26px; width: 9px; height: 9px; border-radius: 50%; background: #ff4d4d; box-shadow: 0 0 0 2px rgb(10 20 38 / 90%), 0 0 8px #ff4d4d; }
+
+
+/* ── Ajustes favoritos ── */
+.favstar { margin-left: 6px; padding: 0 4px; border: 0; background: transparent; color: var(--text-faint); font-size: 14px; line-height: 1; cursor: pointer; opacity: .35; vertical-align: middle; }
+.row:hover .favstar, .favstar.is-on { opacity: 1; }
+.favstar.is-on { color: var(--accent-hi, var(--accent)); }
+.favstar:hover { color: var(--accent); }
+.pnav__favs { display: flex; flex-direction: column; gap: 2px; margin-bottom: 10px; }
+.row.is-flash { animation: favFlash 1.8s ease-out; }
+@keyframes favFlash { 0%, 40% { background: var(--accent-soft); box-shadow: 0 0 0 2px var(--accent); } 100% { background: transparent; box-shadow: none; } }
