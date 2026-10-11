@@ -2708,6 +2708,8 @@ function myCosmetics() {
   return out.gradient || out.font ? out : null;
 }
 
+let lastPresenceError = '';
+
 async function beatPresence() {
   const cfg = store.get();
 
@@ -2725,7 +2727,11 @@ async function beatPresence() {
       nick: roomInfo.nick,
       selfName: access.get().name || ''
     });
-  } catch { res = null; }
+  } catch (err) {
+    res = null;
+    const msg = String(err && err.message);
+    if (msg !== lastPresenceError) { lastPresenceError = msg; recordFatal('presencia (insignia)', err); }
+  }
   if (!res) return;
 
   // El servidor decide el ritmo: así se puede aflojar sin sacar una versión.

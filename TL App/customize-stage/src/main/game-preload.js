@@ -4189,7 +4189,9 @@ function paintPeers(doc) {
     }
 
     marks.vip.hidden = !peer.vip;
-    marks.logo.title = peer.name ? `Toda la Lecce · ${peer.name}` : 'Está jugando con TL App';
+    const tip = peer.name ? `Toda la Lecce · ${peer.name}` : 'Está jugando con TL App';
+    marks.logo.title = tip;
+    if (peer.name) name.title = tip;
     /*
      * Quién de los que están en la cancha es amigo tuyo.
      *
