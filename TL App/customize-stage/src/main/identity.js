@@ -18,6 +18,10 @@ const SPKI_PREFIX = Buffer.from('302a300506032b6570032100', 'hex');
 
 const normalizeKey = (k) => String(k || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
 
+/** Node 14 (Electron 13) no conoce 'base64url': se arma a mano. */
+const b64url = (buf) => buf.toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+const fromB64url = (s) => Buffer.from(String(s).replace(/-/g, '+').replace(/_/g, '/'), 'base64');
+
 /** Hash que va en `users[].hash` (el que decide si una clave entra). */
 const hashKey = (k) => crypto.createHash('sha256').update(`tl-app:${normalizeKey(k)}`).digest('hex');
 
@@ -35,7 +39,7 @@ function fromKey(key) {
   return {
     pub,
     pid: pidOf(pub),
-    sign: (text) => crypto.sign(null, Buffer.from(String(text)), priv).toString('base64url')
+    sign: (text) => b64url(crypto.sign(null, Buffer.from(String(text)), priv))
   };
 }
 
@@ -44,7 +48,7 @@ function verify(pubHex, text, signature) {
   try {
     if (!/^[0-9a-f]{64}$/i.test(String(pubHex))) return false;
     const key = crypto.createPublicKey({ key: Buffer.concat([SPKI_PREFIX, Buffer.from(pubHex, 'hex')]), format: 'der', type: 'spki' });
-    return crypto.verify(null, Buffer.from(String(text)), key, Buffer.from(String(signature), 'base64url'));
+    return crypto.verify(null, Buffer.from(String(text)), key, fromB64url(signature));
   } catch { return false; }
 }
 
