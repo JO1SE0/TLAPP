@@ -1230,9 +1230,29 @@ function setWindowFullscreen(fullscreen) {
     repaintWindowSoon();
     mainWindow.focus();
   }, 120);
+
+  // Red de seguridad: con la transición ya terminada, el estado que ve la interfaz tiene que ser
+  // el real. Si quedó cruzado (driver lento, dos cambios pisándose), se corrige y se repinta.
+  setTimeout(() => {
+    if (!mainWindow || mainWindow.isDestroyed()) return;
+    if (mainWindow.isFullScreen() !== windowFullscreen) {
+      windowFullscreen = mainWindow.isFullScreen();
+      emitWindowState();
+    }
+    repaintWindowSoon();
+  }, 1200);
 }
 
+/**
+ * F11 mantenido apretado repite el evento, y dos cambios de pantalla completa pisándose en una
+ * ventana sin marco es lo que deja a algunas PCs congeladas o con la imagen rota. Se ignora todo lo
+ * que llegue mientras la transición anterior no terminó.
+ */
+let fullscreenLockUntil = 0;
 function toggleWindowFullscreen() {
+  const now = Date.now();
+  if (now < fullscreenLockUntil) return;
+  fullscreenLockUntil = now + 600;
   setWindowFullscreen(!windowFullscreen);
 }
 
@@ -1420,7 +1440,7 @@ function createWindow() {
 
   mainWindow.webContents.on('before-input-event', (event, input) => {
     if (input.key === 'F11' && input.type === 'keyDown') {
-      toggleWindowFullscreen();
+      if (!input.isAutoRepeat) toggleWindowFullscreen();
       event.preventDefault();
     }
   });

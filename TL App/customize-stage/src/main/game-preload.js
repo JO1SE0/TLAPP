@@ -2438,7 +2438,8 @@ function onKeyDown(event) {
    */
   if (event.key === 'F11') {
     event.preventDefault();
-    ipcRenderer.send('win:action', 'fullscreen');
+    // Mantenerla apretada repite el evento: sólo cuenta la primera pulsación.
+    if (!event.repeat) ipcRenderer.send('win:action', 'fullscreen');
     return;
   }
 
