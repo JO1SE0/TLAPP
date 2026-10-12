@@ -5022,3 +5022,8 @@ html[data-music-playing="on"]:not([data-animations="off"]):not([data-music-glow=
 
 /* 5 · Al refrescar la lista de salas, las viejas se apagan hasta que llegan las nuevas */
 html:not([data-animations="off"]) .rtable.is-loading .rrow { opacity: 0.35; transition: opacity 0.18s ease; }
+
+/* Claves de prueba: cartelito con el tiempo que queda y atajos de duración en el panel del capitán. */
+.trialchip { position: fixed; left: 14px; bottom: 14px; z-index: 90; padding: 5px 12px; border-radius: 999px; font-size: 11.5px; font-weight: 700; letter-spacing: .03em; color: var(--accent-mid); background: rgb(var(--bg-0-rgb) / 82%); border: 1px solid var(--accent-line); pointer-events: none; }
+html[data-stage="game"] .trialchip { display: none; }
+.cap__presets { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }

@@ -304,6 +304,7 @@ const GATE_TEXT = {
     title: 'Acceso del equipo', sub: 'Poné tu clave personal para usar TL App.', ph: 'TL-XXXX-XXXX-XXXX', go: 'Entrar', checking: 'Verificando…',
     'need-key': '', 'bad-key': 'Esa clave no está en la lista.', revoked: 'Tu acceso fue quitado. No podés usar la app.',
     offline: 'No se pudo verificar la clave: hace falta conexión.', expired: 'Hace más de 3 días que no se verifica tu acceso. Conectate a internet.',
+    'trial-ended': 'Tu prueba de TL App terminó. Pedile a miclo una clave nueva para seguir.',
     help: 'Si no tenés clave, pedísela a miclo.',
     outdated: 'Hay una versión nueva y obligatoria de TL App.', outdatedSub: 'Actualizá para seguir usando la app.', update: 'Actualizar ahora', updating: 'Buscando actualización…',
     noUpdate: 'Todavía no hay una actualización disponible. Probá en unos minutos.',
@@ -315,6 +316,7 @@ const GATE_TEXT = {
     title: 'Team access', sub: 'Enter your personal key to use TL App.', ph: 'TL-XXXX-XXXX-XXXX', go: 'Enter', checking: 'Checking…',
     'need-key': '', 'bad-key': 'That key is not on the list.', revoked: 'Your access was removed. You cannot use the app.',
     offline: 'Could not verify the key: a connection is required.', expired: 'Your access has not been verified for over 3 days. Please go online.',
+    'trial-ended': 'Your TL App trial has ended. Ask miclo for a new key to keep going.',
     help: 'No key? Ask miclo.',
     outdated: 'A new, mandatory version of TL App is available.', outdatedSub: 'Update to keep using the app.', update: 'Update now', updating: 'Checking for updates…',
     noUpdate: 'No update is available yet. Try again in a few minutes.',
@@ -583,6 +585,34 @@ setInterval(showNoticeIfReady, 2500);
 
 let welcomePending = false;
 let wasLocked = false;
+/** Cartelito para quien usa una clave de prueba: cuánto le queda. Se actualiza cada medio minuto. */
+let trialTimer = 0;
+function paintTrialChip(st) {
+  const end = st && st.trialEnd ? st.trialEnd : 0;
+  let chip = document.getElementById('trialChip');
+  if (!end) {
+    if (chip) chip.remove();
+    if (trialTimer) { clearInterval(trialTimer); trialTimer = 0; }
+    return;
+  }
+  if (!chip) {
+    chip = document.createElement('div');
+    chip.id = 'trialChip';
+    chip.className = 'trialchip';
+    document.body.append(chip);
+  }
+  const draw = () => {
+    const mins = Math.max(0, Math.ceil((end - Date.now()) / 60000));
+    const d = Math.floor(mins / 1440);
+    const h = Math.floor((mins % 1440) / 60);
+    const left = d ? `${d} d ${h} h` : h ? `${h} h ${mins % 60} min` : `${mins} min`;
+    chip.textContent = isEn() ? `Trial · ${left} left` : `Prueba · quedan ${left}`;
+  };
+  draw();
+  if (trialTimer) clearInterval(trialTimer);
+  trialTimer = setInterval(draw, 30000);
+}
+
 function onAccess(st) {
   state.access = st;
   if (st && st.state === 'ok' && wasLocked) {
@@ -603,6 +633,7 @@ function onAccess(st) {
   if (gate && !forceActive) { gate.hidden = true; document.body.classList.remove('is-gated'); }
   const capBtn = $('#captainBtn');
   if (capBtn) capBtn.hidden = !(st && st.captain);
+  paintTrialChip(st);
   showUrgentIfAny();
   if (welcomePending) { welcomePending = false; startWelcome(); }
   setTimeout(showNoticeIfReady, 900);

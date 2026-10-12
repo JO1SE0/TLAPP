@@ -2777,7 +2777,9 @@ handle('admin:get', async () => {
   let attempts = [];
   try { alerts = await admin.readAlerts(); } catch { /* sin alertas */ }
   try { attempts = await admin.readAttempts(); } catch { /* sin datos */ }
-  return { doc: access.getEffective(), members: liveRoster || [], version: app.getVersion(), alerts, attempts, undo: admin.undoInfo() };
+  let trials = [];
+  try { trials = await admin.readTrials(); } catch { /* sin datos */ }
+  return { doc: access.getEffective(), members: liveRoster || [], version: app.getVersion(), alerts, attempts, trials, undo: admin.undoInfo() };
 });
 handle('admin:person', async (_e, name) => {
   if (!access.isCaptain()) throw new Error('Sólo el capitán puede hacer esto.');
@@ -2800,7 +2802,9 @@ handle('admin:do', async (_e, action) => {
   let attempts = [];
   try { alerts = await admin.readAlerts(); } catch { /* sin alertas */ }
   try { attempts = await admin.readAttempts(); } catch { /* sin datos */ }
-  return { ...res, members: liveRoster || [], alerts, attempts, undo: admin.undoInfo() };
+  let trials = [];
+  try { trials = await admin.readTrials(); } catch { /* sin datos */ }
+  return { ...res, members: liveRoster || [], alerts, attempts, trials, undo: admin.undoInfo() };
 });
 (function startOnline() {
   const run = () => { accessReady.then(beatOnline).catch(() => {}); };

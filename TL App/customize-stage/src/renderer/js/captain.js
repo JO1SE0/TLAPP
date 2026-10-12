@@ -22,6 +22,19 @@
     return `hace ${Math.round(s / 86400)} d`;
   };
   const when = (ms) => new Date(ms).toLocaleString('es-AR', { dateStyle: 'short', timeStyle: 'short' });
+  /** «90 min» → «1 h 30 min», «1440» → «1 día». */
+  const fmtDur = (mins) => {
+    const m = Math.max(0, Math.round(mins));
+    const d = Math.floor(m / 1440);
+    const h = Math.floor((m % 1440) / 60);
+    const mm = m % 60;
+    const parts = [];
+    if (d) parts.push(`${d} ${d === 1 ? 'día' : 'días'}`);
+    if (h) parts.push(`${h} h`);
+    if (mm && !d) parts.push(`${mm} min`);
+    return parts.join(' ') || '0 min';
+  };
+  const UNITS = [['minutos', 1], ['horas', 60], ['días', 1440]];
 
   const store = {
     get(k, d) { try { const v = localStorage.getItem(k); return v == null ? d : v; } catch (e) { return d; } },
@@ -114,7 +127,7 @@
     paint();
     try {
       const r = await window.tvm.admin.do(action);
-      data = { doc: r.doc, members: r.members, alerts: r.alerts || [], attempts: r.attempts || [], undo: r.undo || null, version: data ? data.version : '' };
+      data = { doc: r.doc, members: r.members, alerts: r.alerts || [], attempts: r.attempts || [], trials: r.trials || [], undo: r.undo || null, version: data ? data.version : '' };
       return r;
     } catch (e) { flash(e.message || String(e), true); return null; } finally { busy = false; paint(); }
   }
@@ -188,7 +201,7 @@
     for (const m of members) {
       const row = el('div', 'cap__row');
       const name = el('span', 'cap__name');
-      name.append(el('i', `cap__dot${m.online ? ' is-on' : ''}`), document.createTextNode(m.name + (m.self ? ' (vos)' : '')));
+      name.append(el('i', `cap__dot${m.online ? ' is-on' : ''}`), document.createTextNode(m.name + (m.self ? ' (vos)' : '') + (m.trial ? ' · PRUEBA' : '')));
       name.classList.add('is-link');
       name.title = 'Ver la ficha';
       name.addEventListener('click', () => { person = m.name; personData = null; paint(); loadPerson(m.name); });
@@ -242,6 +255,76 @@
     });
     root.append(form);
 
+    // ── Claves de prueba ──
+    root.append(el('h3', 'cap__h', 'Claves de prueba'));
+    root.append(el('p', 'cap__muted', 'Para que alguien pruebe la app un rato: la clave vence sola. El tiempo empieza a contar la primera vez que la use, no se muestra con la insignia del club y no cuenta como plantel.'));
+    const tform = el('form', 'cap__form');
+    const tname = el('input', 'cap__input');
+    tname.placeholder = 'Nombre (ej: Prueba Juan)';
+    tname.maxLength = 30;
+    const tnum = el('input', 'cap__input');
+    tnum.type = 'number'; tnum.min = '1'; tnum.step = '1'; tnum.value = '2';
+    tnum.style.maxWidth = '84px';
+    const tunit = el('select', 'cap__input');
+    for (const [label, mult] of UNITS) { const o = el('option', null, label); o.value = String(mult); tunit.append(o); }
+    tunit.value = '60';
+    tunit.style.maxWidth = '110px';
+    const presets = el('div', 'cap__presets');
+    for (const [label, mins] of [['30 min', 30], ['2 h', 120], ['1 día', 1440], ['3 días', 4320], ['7 días', 10080]]) {
+      const b = el('button', 'cap__btn cap__btn--ghost cap__btn--sm', label); b.type = 'button';
+      b.addEventListener('click', () => {
+        const unit = mins % 1440 === 0 ? 1440 : mins % 60 === 0 ? 60 : 1;
+        tunit.value = String(unit); tnum.value = String(mins / unit);
+      });
+      presets.append(b);
+    }
+    const tadd = el('button', 'cap__btn', 'Generar clave de prueba');
+    tadd.type = 'submit'; tadd.disabled = busy;
+    tform.append(tname, tnum, tunit, tadd);
+    tform.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!tname.value.trim()) return;
+      const minutes = Math.round(Number(tnum.value) * Number(tunit.value));
+      const r = await act({ type: 'addTrial', name: tname.value, minutes });
+      if (r && r.extra) lastKey = r.extra;
+      paint();
+    });
+    root.append(tform, presets);
+
+    const trials = data.trials || [];
+    if (trials.length) {
+      root.append(el('h3', 'cap__h', 'Pruebas en curso'));
+      for (const t of trials) {
+        const row = el('div', 'cap__notice');
+        let status;
+        if (!t.start) status = `todavía no la usó · dura ${fmtDur(t.minutes)}`;
+        else if (Date.now() >= t.end) status = `venció ${ago(t.end)} (duraba ${fmtDur(t.minutes)})`;
+        else status = `quedan ${fmtDur((t.end - Date.now()) / 60000)} de ${fmtDur(t.minutes)}`;
+        row.append(el('span', null, `${t.name} · ${status}`));
+        const n = el('input', 'cap__input'); n.type = 'number'; n.min = '1'; n.step = '1'; n.style.maxWidth = '70px';
+        const u = el('select', 'cap__input'); for (const [label, mult] of UNITS) { const o = el('option', null, label); o.value = String(mult); u.append(o); }
+        const best = t.minutes % 1440 === 0 ? 1440 : t.minutes % 60 === 0 ? 60 : 1;
+        u.value = String(best); n.value = String(t.minutes / best);
+        const save = el('button', 'cap__btn cap__btn--sm', 'Cambiar tiempo'); save.type = 'button'; save.disabled = busy;
+        save.title = 'Cuenta desde el primer uso: si la ya venció, alargarla la reactiva.';
+        save.addEventListener('click', async () => {
+          if (await act({ type: 'setTrial', name: t.name, minutes: Math.round(Number(n.value) * Number(u.value)) })) flash(`Prueba de ${t.name} actualizada.`);
+        });
+        const perm = el('button', 'cap__btn cap__btn--ghost cap__btn--sm', 'Hacer permanente'); perm.type = 'button'; perm.disabled = busy;
+        perm.addEventListener('click', async () => {
+          if (!await typedConfirm(`¿Pasar a ${t.name} a acceso común sin vencimiento? Pasa a contar como plantel (con la insignia).`, 'PERMANENTE')) return;
+          if (await act({ type: 'setTrial', name: t.name, minutes: 0 })) flash(`${t.name} ya no es de prueba.`);
+        });
+        const del = el('button', 'cap__btn cap__btn--ghost cap__btn--sm', 'Quitar'); del.type = 'button'; del.disabled = busy;
+        del.addEventListener('click', async () => {
+          if (!await typedConfirm(`¿Quitar la prueba de ${t.name}?`, 'QUITAR')) return;
+          await act({ type: 'removeUser', name: t.name });
+        });
+        row.append(n, u, save, perm, del);
+        root.append(row);
+      }
+    }
+
     const gone = (data.doc.removed || []);
     if (gone.length) {
       root.append(el('h3', 'cap__h', 'Quitados'));
@@ -258,7 +341,7 @@
 
     if (lastKey) {
       const k = el('div', 'cap__key');
-      k.append(el('div', null, `Clave de ${lastKey.name} — se muestra una sola vez, pasásela por privado:`));
+      k.append(el('div', null, lastKey.minutes ? `Clave de prueba de ${lastKey.name} (dura ${fmtDur(lastKey.minutes)} desde que la use) — se muestra una sola vez, pasásela por privado:` : `Clave de ${lastKey.name} — se muestra una sola vez, pasásela por privado:`));
       const code = el('code', null, lastKey.key);
       const copy = el('button', 'cap__btn', 'Copiar');
       copy.type = 'button';

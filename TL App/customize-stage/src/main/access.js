@@ -33,7 +33,7 @@ const RECHECK_MS = 60 * 60 * 1000;
 const DAY = 24 * 3600 * 1000;
 
 let dir = null;
-let saved = { key: '', enabled: null, name: '', validatedAt: 0, admin: null, device: '' };
+let saved = { key: '', enabled: null, name: '', validatedAt: 0, admin: null, device: '', trialKey: '', trialStart: 0, trialMins: 0 };
 let status = { state: 'ok', name: '', reason: '', notice: null };
 /** Último anuncio del capitán que se pudo leer (se conserva si después no hay conexión). */
 let notice = null;
@@ -61,7 +61,8 @@ function load() {
     saved = { key: String(j.key || ''), enabled: j.enabled === true ? true : j.enabled === false ? false : null,
       name: String(j.name || ''), validatedAt: Number(j.validatedAt) || 0,
       admin: j.admin && typeof j.admin.p === 'string' && typeof j.admin.s === 'string' ? { p: j.admin.p, s: j.admin.s } : null,
-      device: /^[0-9a-f]{16}$/.test(String(j.device || '')) ? String(j.device) : '', failed: Number(j.failed) || 0 };
+      device: /^[0-9a-f]{16}$/.test(String(j.device || '')) ? String(j.device) : '', failed: Number(j.failed) || 0,
+      trialKey: String(j.trialKey || ''), trialStart: Number(j.trialStart) || 0, trialMins: Number(j.trialMins) || 0 };
   } catch { /* primera vez */ }
 }
 
@@ -145,7 +146,7 @@ function rebuild(list) {
       legacyNotice: cleanNotice(base.announcement), seq: 0, source: 'github', removed: [], forceUpdate: false, history: []
     };
   }
-  roster = eff.users.filter((u) => u && HEX64.test(String(u.pub || ''))).map((u) => ({ name: String(u.name || '').slice(0, 40), pub: String(u.pub).toLowerCase() }));
+  roster = eff.users.filter((u) => u && HEX64.test(String(u.pub || ''))).map((u) => ({ name: String(u.name || '').slice(0, 40), pub: String(u.pub).toLowerCase(), trial: Number(u.trial) > 0 }));
   presence = typeof base.presence === 'string' ? base.presence : '';
 }
 
@@ -213,9 +214,10 @@ function set(next) {
   next.minVersion = eff.minVersion || '';
   next.captain = next.state === 'ok' && isCaptainKey(saved.key);
   next.forceUpdate = eff.forceUpdate === true;
+  next.trialEnd = next.state === 'ok' && saved.trialMins && saved.trialStart ? saved.trialStart + saved.trialMins * MIN : 0;
   const changed = next.state !== status.state || next.reason !== status.reason || next.name !== status.name ||
-    JSON.stringify([next.notice, next.urgent, next.minVersion, next.captain, next.minMessage, next.forceUpdate]) !==
-    JSON.stringify([status.notice, status.urgent, status.minVersion, status.captain, status.minMessage, status.forceUpdate]);
+    JSON.stringify([next.notice, next.urgent, next.minVersion, next.captain, next.minMessage, next.forceUpdate, next.trialEnd]) !==
+    JSON.stringify([status.notice, status.urgent, status.minVersion, status.captain, status.minMessage, status.forceUpdate, status.trialEnd]);
   status = next;
   if (changed) onChange(status);
 }
@@ -228,6 +230,8 @@ function set(next) {
  * Es una barrera del lado del cliente, como la lista: frena el uso compartido
  * normal, no a quien edite la app. Sin conexión con Firebase, deja pasar. */
 let lastDev = null;
+/** Cuándo se registró por primera vez la PC de la clave (la hora del servidor, firmada): arranca las pruebas. */
+let devFirst = null;
 function deviceId() {
   if (!saved.device) { saved.device = crypto.randomBytes(8).toString('hex'); persist(); }
   return saved.device;
@@ -257,9 +261,11 @@ async function deviceCheck(me, candidate) {
     if (!(valid && rec.e === epoch && rec.d === mine)) {
       const t = Date.now();
       await presenceMod.call(`${url}/devices/${id.pid}.json`, 'PUT', { d: mine, e: epoch, t, s: id.sign(`dev|${mine}|${epoch}|${t}`) });
+      devFirst = { key: norm, t };
     } else if (await ownAlert(url, id, epoch)) {
       return 'shared'; // soy la PC dueña, pero otra intentó usar mi clave: los dos quedan frenados
     }
+    if (valid && rec.e === epoch && rec.d === mine) devFirst = { key: norm, t: rec.t };
     lastDev = { key: norm, epoch, at: Date.now() };
     return 'ok';
   } catch { return 'ok'; }
@@ -279,6 +285,30 @@ function reportAttempt() {
   saved.failed = (Number(saved.failed) || 0) + 1;
   persist();
   presenceMod.call(`${url}/attempts/${deviceId()}.json`, 'PUT', { n: saved.failed, t: Date.now() }).catch(() => {});
+}
+
+/* ── Claves de prueba ─────────────────────────────────────────
+ * Una clave con `trial` (minutos) en la lista del capitán sirve ese tiempo, contado desde la
+ * primera vez que se usó (la hora del registro de su PC en Firebase, o la local si no hay red).
+ * Al vencer, la app se bloquea con «trial-ended». Es una barrera del lado del cliente, igual
+ * que el resto: alguien que cambie la hora de su PC o edite la app la puede saltear.
+ * Los de prueba no llevan la insignia del plantel (ver `trial` en presence.js). */
+const MIN = 60 * 1000;
+
+/** Arranque y fin de la prueba de esta clave, o null si no es de prueba. */
+function trialInfo(me, norm) {
+  const mins = Number(me && me.trial) || 0;
+  if (mins <= 0) return null;
+  let start = saved.trialKey === norm && saved.trialStart ? saved.trialStart : 0;
+  const srv = devFirst && devFirst.key === norm ? devFirst.t : 0;
+  if (srv && (!start || srv < start)) start = srv;
+  if (!start) start = Date.now();
+  return { start, mins, end: start + mins * MIN };
+}
+
+/** ¿La prueba guardada ya venció? (sin red: sólo con lo último que se supo) */
+function trialExpired() {
+  return !!(saved.trialMins && saved.trialStart && Date.now() >= saved.trialStart + saved.trialMins * MIN);
 }
 
 /** «ok», salvo que la app sea más vieja que la versión mínima que pidió el capitán (él no se bloquea). */
@@ -316,7 +346,14 @@ async function evaluate(key, opts) {
         lastDev = null;
         return set({ state: 'locked', name: '', reason: dev });
       }
-      saved = { key: normalize(candidate), enabled: true, name: String(me.name || ''), validatedAt: Date.now(), admin: saved.admin, device: saved.device, failed: saved.failed };
+      const tr = trialInfo(me, normalize(candidate));
+      saved = { key: normalize(candidate), enabled: true, name: String(me.name || ''), validatedAt: Date.now(), admin: saved.admin, device: saved.device, failed: saved.failed,
+        trialKey: tr ? normalize(candidate) : '', trialStart: tr ? tr.start : 0, trialMins: tr ? tr.mins : 0 };
+      if (tr && Date.now() >= tr.end) {
+        saved.validatedAt = 0;
+        persist();
+        return set({ state: 'locked', name: '', reason: 'trial-ended' });
+      }
       persist();
       return allow(saved.name, candidate);
     }
@@ -330,6 +367,7 @@ async function evaluate(key, opts) {
   if (saved.enabled === null) return set({ state: 'ok', name: '', reason: '' }); // nunca se supo que estuviera activa
   const graceMs = DEFAULT_GRACE_DAYS * DAY;
   if (saved.key && saved.validatedAt && Date.now() - saved.validatedAt < graceMs) {
+    if (trialExpired()) return set({ state: 'locked', name: '', reason: 'trial-ended' });
     return allow(saved.name, candidate);
   }
   return set({ state: 'locked', name: '', reason: key != null ? 'offline' : saved.key ? 'expired' : 'need-key' });
@@ -362,7 +400,11 @@ function init(userDataDir, cb, version) {
   };
   const t2 = setInterval(() => { poll().catch(() => {}); }, ADMIN_POLL_MS);
   // …y cada medio minuto se recalcula qué aviso toca según la hora, sin red.
-  const t3 = setInterval(() => { if (lastList) set({ ...status }); }, NOTICE_TICK_MS);
+  const t3 = setInterval(() => {
+    // Una prueba vencida corta la sesión sin esperar la revisión de la hora.
+    if (status.state === 'ok' && trialExpired()) { evaluate(null, { skipGithub: true }).catch(() => {}); return; }
+    if (lastList) set({ ...status });
+  }, NOTICE_TICK_MS);
   if (t2.unref) t2.unref();
   if (t3.unref) t3.unref();
   return first;

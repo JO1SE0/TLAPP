@@ -104,7 +104,8 @@ async function beat(ctx) {
       continue;
     }
     const member = byPid.get(pid);
-    if (!member) continue;
+    // Las claves de prueba no son del plantel: no llevan insignia ni aura.
+    if (!member || member.trial) continue;
     if (typeof entry.n !== 'string' || typeof entry.t !== 'number' || typeof entry.s !== 'string') continue;
     if (!identity.verify(member.pub, signedText(ctx.fp, entry.n, entry.t), entry.s)) continue;
     const k = `${ctx.fp}|${pid}`;
@@ -117,7 +118,8 @@ async function beat(ctx) {
   for (const k of seen.keys()) if (k.startsWith(`${ctx.fp}|`) && !(k.slice(ctx.fp.length + 1) in room)) seen.delete(k);
 
   // Uno mismo, para que la fila propia también lleve el aura del plantel.
-  peers.push({ nick, self: true, name: ctx.selfName || '', vip: false, cosmetics: { gradient: 'oro' } });
+  const selfEntry = byPid.get(id.pid);
+  if (!(selfEntry && selfEntry.trial)) peers.push({ nick, self: true, name: ctx.selfName || '', vip: false, cosmetics: { gradient: 'oro' } });
   return { everyMs: EVERY_MS, peers };
 }
 
@@ -190,11 +192,11 @@ async function online(ctx) {
       ok = identity.verify(u.pub, onlineText(r, v, x, e.t), e.s);
       if (ok) {
         const alive = self || (!x && Math.abs(now - e.t) <= ONLINE_ALIVE_MS);
-        out.push({ name: u.name, room: alive ? r : '', lastRoom: r, version: self ? clean(ctx.version, 20) : v, lastSeen: self ? Date.now() : e.t, online: alive, self });
+        out.push({ name: u.name, room: alive ? r : '', lastRoom: r, version: self ? clean(ctx.version, 20) : v, lastSeen: self ? Date.now() : e.t, online: alive, self, trial: !!u.trial });
         continue;
       }
     }
-    out.push({ name: u.name, room: '', lastRoom: '', version: self ? clean(ctx.version, 20) : '', lastSeen: self ? Date.now() : 0, online: self, self });
+    out.push({ name: u.name, room: '', lastRoom: '', version: self ? clean(ctx.version, 20) : '', lastSeen: self ? Date.now() : 0, online: self, self, trial: !!u.trial });
   }
   out.sort((a, b) => (b.self - a.self) || (b.online - a.online) || a.name.localeCompare(b.name, 'es'));
   out.prevSelf = prevSelf;

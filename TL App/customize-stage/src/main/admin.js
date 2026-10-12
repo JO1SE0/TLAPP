@@ -18,6 +18,10 @@ function newKey() {
   return `TL-${part()}-${part()}-${part()}`;
 }
 
+const TRIAL_MAX_MIN = 30 * 24 * 60;
+
+const fmtMin = (m) => (m % 1440 === 0 ? `${m / 1440} d` : m % 60 === 0 ? `${m / 60} h` : m > 90 ? `${Math.round(m / 60)} h` : `${m} min`);
+
 const cleanText = (v, n) => String(v == null ? '' : v).replace(/\r/g, '').trim().slice(0, n);
 
 const fmtDate = (ms) => new Date(ms).toLocaleString('es-AR', { dateStyle: 'short', timeStyle: 'short' });
@@ -27,6 +31,8 @@ function describe(action, extra) {
   const n = String(action.name || '');
   switch (action.type) {
     case 'addUser': return { text: `Agregó a ${extra ? extra.name : n}`, who: extra ? extra.name : n };
+    case 'addTrial': return { text: `Creó una clave de prueba para ${extra ? extra.name : n} (${fmtMin(Math.round(Number(action.minutes)) || 0)})`, who: extra ? extra.name : n };
+    case 'setTrial': return { text: Math.round(Number(action.minutes)) === 0 ? `Pasó a ${n} de prueba a acceso común` : `Cambió la prueba de ${n} a ${fmtMin(Math.round(Number(action.minutes)) || 0)}`, who: n };
     case 'removeUser': return { text: `Quitó a ${n}`, who: n };
     case 'restoreUser': return { text: `Reactivó a ${n}`, who: n };
     case 'changeKey': return { text: `Cambió la clave de ${n}`, who: n };
@@ -55,7 +61,7 @@ const undoInfo = () => (undoSnap && Date.now() - undoSnap.at < UNDO_MS ? { label
 function applyAction(cur, action, myPub) {
   const doc = {
     enabled: cur.enabled === true,
-    users: cur.users.map((u) => ({ name: u.name, hash: u.hash, pub: u.pub, epoch: Number(u.epoch) || 0, banned: Array.isArray(u.banned) ? u.banned.slice(-5) : [] })),
+    users: cur.users.map((u) => ({ name: u.name, hash: u.hash, pub: u.pub, epoch: Number(u.epoch) || 0, banned: Array.isArray(u.banned) ? u.banned.slice(-5) : [], ...(Number(u.trial) > 0 ? { trial: Number(u.trial) } : {}) })),
     removed: (cur.removed || []).slice(),
     notices: cur.notices.slice(),
     minVersion: cur.minVersion || '',
@@ -75,19 +81,42 @@ function applyAction(cur, action, myPub) {
       extra = { key, name };
       break;
     }
+    case 'addTrial': {
+      const name = cleanText(action.name, 30);
+      if (!name) throw new Error('Falta el nombre.');
+      const minutes = Math.round(Number(action.minutes));
+      if (!Number.isFinite(minutes) || minutes < 5 || minutes > TRIAL_MAX_MIN) throw new Error('El tiempo de prueba tiene que ir de 5 minutos a 30 días.');
+      const taken = (u) => String(u.name).toLowerCase() === name.toLowerCase();
+      if (doc.users.some(taken) || doc.removed.some(taken)) throw new Error(`Ya existe "${name}" (si la quitaste, reactivala desde "Quitados").`);
+      const key = newKey();
+      doc.users.push({ name, hash: identity.hashKey(key), pub: identity.fromKey(key).pub, epoch: 0, trial: minutes });
+      extra = { key, name, minutes };
+      break;
+    }
+    case 'setTrial': {
+      const target = doc.users.find((u) => String(u.name).toLowerCase() === String(action.name || '').toLowerCase());
+      if (!target) throw new Error('No encontré a esa persona.');
+      if (!(Number(target.trial) > 0)) throw new Error('Esa persona no tiene una clave de prueba.');
+      const minutes = Math.round(Number(action.minutes));
+      // 0 = la prueba pasa a ser un acceso común (sin vencimiento).
+      if (minutes === 0) { delete target.trial; break; }
+      if (!Number.isFinite(minutes) || minutes < 5 || minutes > TRIAL_MAX_MIN) throw new Error('El tiempo de prueba tiene que ir de 5 minutos a 30 días.');
+      target.trial = minutes;
+      break;
+    }
     case 'removeUser': {
       const target = doc.users.find((u) => String(u.name).toLowerCase() === String(action.name || '').toLowerCase());
       if (!target) throw new Error('No encontré a esa persona.');
       if (target.pub === myPub) throw new Error('No podés sacarte a vos mismo.');
       doc.users = doc.users.filter((u) => u !== target);
-      doc.removed = [...doc.removed.filter((u) => u.name !== target.name), { name: target.name, hash: target.hash, pub: target.pub, epoch: target.epoch, banned: target.banned || [], at: Date.now() }].slice(-100);
+      doc.removed = [...doc.removed.filter((u) => u.name !== target.name), { name: target.name, hash: target.hash, pub: target.pub, epoch: target.epoch, banned: target.banned || [], trial: target.trial || 0, at: Date.now() }].slice(-100);
       break;
     }
     case 'restoreUser': {
       const back = doc.removed.find((u) => String(u.name).toLowerCase() === String(action.name || '').toLowerCase());
       if (!back) throw new Error('No encontré a esa persona entre los quitados.');
       doc.removed = doc.removed.filter((u) => u !== back);
-      doc.users.push({ name: back.name, hash: back.hash, pub: back.pub, epoch: (Number(back.epoch) || 0) + 1, banned: back.banned || [] });
+      doc.users.push({ name: back.name, hash: back.hash, pub: back.pub, epoch: (Number(back.epoch) || 0) + 1, banned: back.banned || [], ...(Number(back.trial) > 0 ? { trial: Number(back.trial) } : {}) });
       break;
     }
     case 'changeKey': {
@@ -240,4 +269,22 @@ async function readPerson(name) {
   return { name: u.name, deviceSince: since, releases: Number(u.epoch) || 0, banned: Array.isArray(u.banned) ? u.banned.length : 0 };
 }
 
-module.exports = { run, applyAction, readAlerts, readAttempts, clearAttempts, readPerson, undoInfo };
+/** Pruebas en curso: { name, minutes, start, end } (start = 0 si todavía no usó la clave). */
+async function readTrials() {
+  const url = presence.cleanUrl(access.presenceUrl());
+  const cur = access.getEffective();
+  const out = [];
+  for (const u of cur.users) {
+    const minutes = Number(u.trial) || 0;
+    if (minutes <= 0) continue;
+    let start = 0;
+    try {
+      const rec = url ? await presence.call(`${url}/devices/${identity.pidOf(u.pub)}.json`, 'GET') : null;
+      if (rec && typeof rec.t === 'number' && rec.e === (Number(u.epoch) || 0) && identity.verify(u.pub, `dev|${rec.d}|${rec.e}|${rec.t}`, rec.s)) start = rec.t;
+    } catch { /* sin dato */ }
+    out.push({ name: u.name, minutes, start, end: start ? start + minutes * 60000 : 0 });
+  }
+  return out;
+}
+
+module.exports = { readTrials, run, applyAction, readAlerts, readAttempts, clearAttempts, readPerson, undoInfo };
