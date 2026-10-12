@@ -9,7 +9,7 @@ const haxball = require('./haxball-settings');
 const FILE = 'config.json';
 
 const DEFAULTS = {
-  version: 23,
+  version: 24,
   general: {
     gameUrl: 'https://www.haxball.com/play',
     nickname: '',
@@ -758,9 +758,14 @@ function migrate(stored) {
   // con otro nombre. Se vuelve a la de siempre.
   if (!(next.version >= 23) && next.discord) next.discord.appId = DEFAULTS.discord.appId;
 
+  // v24: «Modo daltónico» (aro punteado en los azules) le aparecía prendido a gente que nunca lo
+  // eligió, con configs que venían de instalaciones viejas. Se apaga una sola vez; quien lo
+  // quiera lo vuelve a prender en Fichas y queda así.
+  if (!(next.version >= 24) && next.pitch) next.pitch.teamRings = false;
+
   if (next.vip) next.vip.discord = null;
   delete next.privacy;
-  next.version = 23;
+  next.version = 24;
   return next;
 }
 
