@@ -4817,6 +4817,10 @@ input[type="color"].is-unset { opacity: .45; }
 
 /* Aviso del capitán */
 .gate.notice { z-index: 100001; background: rgb(3 6 14 / 78%); }
+/* El cartel nunca pasa del alto de la ventana: la lista se desplaza y el botón queda siempre a la vista. */
+.gate.notice .gate__card { max-height: 88vh; box-sizing: border-box; }
+.gate.notice .gate__card > * { flex: none; }
+.gate.notice .gate__card > .news__list, .gate.notice .gate__card > .notice__text { flex: 0 1 auto; min-height: 0; overflow-y: auto; padding-right: 6px; }
 .news__list { margin: 0 0 14px; padding: 0; list-style: none; max-width: 100%; text-align: left; display: flex; flex-direction: column; gap: 9px; }
 .news__list li { position: relative; padding-left: 18px; font-size: 14px; line-height: 1.45; color: #f4f0df; overflow-wrap: anywhere; }
 .news__list li::before { content: ""; position: absolute; left: 3px; top: .55em; width: 6px; height: 6px; transform: rotate(45deg); background: #d0b878; }

@@ -568,6 +568,11 @@ function showNewsIfReady() {
   card.append(img, h, ul, btn);
   box.append(card);
   document.body.append(box);
+  // Escape o un clic afuera también lo cierran, por si la ventana es chica.
+  const onKey = (e) => { if (e.key === 'Escape') btn.click(); };
+  document.addEventListener('keydown', onKey, true);
+  new MutationObserver((_m, ob) => { if (!box.isConnected) { document.removeEventListener('keydown', onKey, true); ob.disconnect(); } }).observe(document.body, { childList: true });
+  box.addEventListener('mousedown', (e) => { if (e.target === box) btn.click(); });
   setTimeout(() => btn.focus(), 50);
 }
 setInterval(showNewsIfReady, 3000);
