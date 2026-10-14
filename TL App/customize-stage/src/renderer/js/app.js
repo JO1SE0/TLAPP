@@ -9461,24 +9461,54 @@ function paintClubNow(list) {
   const en = isEn();
   const members = (Array.isArray(list) ? list : []).filter((m) => m && !m.trial);
   const online = members.filter((m) => m.online);
+  const off = members.filter((m) => !m.online);
   const count = $('#clubNowCount');
   if (count) count.textContent = en ? `${online.length} online` : `${online.length} conectados`;
+  const k = $('#kpiOnline');
+  if (k) k.textContent = String(online.length);
 
-  const rows = members.map((m) => {
-    const row = document.createElement('div');
-    row.className = 'clubnow__row' + (m.online ? ' is-on' : '');
-    const dot = document.createElement('i');
-    dot.className = 'clubnow__dot';
+  const nodes = [];
+  for (const m of online) {
+    const card = document.createElement('div');
+    card.className = 'cn__card' + (m.self ? ' is-self' : '');
+    const av = document.createElement('span');
+    av.className = 'cn__av';
+    av.textContent = (m.name || '?').trim().charAt(0).toUpperCase();
+    const live = document.createElement('i');
+    live.className = 'cn__live';
+    av.append(live);
+    const txt = document.createElement('div');
+    txt.className = 'cn__txt';
     const name = document.createElement('b');
-    name.textContent = m.name + (m.self ? (en ? ' (you)' : ' (vos)') : '') + (m.ext ? (en ? ' · outside the club' : ' · ajeno al club') : '');
+    name.textContent = m.name + (m.self ? (en ? ' (you)' : ' (vos)') : '') + (m.ext ? (en ? ' · outside' : ' · ajeno') : '');
     const where = document.createElement('span');
-    where.className = 'clubnow__where';
-    if (m.online) where.textContent = m.room ? (en ? `in “${m.room}”` : `en «${m.room}»`) : (en ? 'in the menu' : 'en el menú');
-    else where.textContent = m.lastSeen ? (en ? 'last seen ' : 'visto ') + new Date(m.lastSeen).toLocaleDateString(en ? 'en' : 'es', { day: 'numeric', month: 'short' }) : (en ? 'never seen' : 'sin conexión');
-    row.append(dot, name, where);
-    return row;
-  });
-  host.replaceChildren(...rows);
+    where.textContent = m.room ? (en ? `in “${m.room}”` : `en «${m.room}»`) : (en ? 'in the menu' : 'en el menú');
+    if (m.room) where.classList.add('is-room');
+    txt.append(name, where);
+    card.append(av, txt);
+    nodes.push(card);
+  }
+  if (!online.length) {
+    const none = document.createElement('p');
+    none.className = 'note';
+    none.textContent = en ? 'Nobody connected right now.' : 'No hay nadie conectado ahora.';
+    nodes.push(none);
+  }
+  if (off.length) {
+    const wrap = document.createElement('div');
+    wrap.className = 'cn__off';
+    const label = document.createElement('span');
+    label.textContent = en ? 'Offline' : 'Desconectados';
+    wrap.append(label);
+    for (const m of off) {
+      const chip = document.createElement('em');
+      chip.textContent = m.name + (m.ext ? (en ? ' · outside' : ' · ajeno') : '');
+      chip.title = m.lastSeen ? (en ? 'last seen ' : 'visto ') + new Date(m.lastSeen).toLocaleDateString(en ? 'en' : 'es', { day: 'numeric', month: 'short' }) : (en ? 'never seen' : 'sin conexión');
+      wrap.append(chip);
+    }
+    nodes.push(wrap);
+  }
+  host.replaceChildren(...nodes);
 }
 if (window.tvm.presence && window.tvm.presence.onRoster) {
   window.tvm.presence.onRoster(paintClubNow);
@@ -9501,45 +9531,83 @@ async function loadClubRank() {
   paintClubRank();
 }
 
+let clubRankKey = 'goals';
+
 function paintClubRank() {
   const host = $('#clubRankList');
-  if (!host) return;
+  const podium = $('#clubPodium');
+  if (!host || !podium) return;
   const en = isEn();
   const stateEl = $('#clubRankState');
   const note = $('#clubRankNote');
   if (note) note.textContent = en
     ? 'Numbers are measured by each member’s own app and signed with their key. Only matches played to the end count.'
     : 'Cada número lo mide la app de cada jugador y viaja firmado con su clave. Sólo cuentan los partidos jugados hasta el final.';
+  for (const b of $$('#clubRankSeg button')) b.classList.toggle('is-on', b.dataset.key === clubRankKey);
+
   if (!clubRank) {
     host.replaceChildren();
+    podium.replaceChildren();
     if (stateEl) stateEl.textContent = en ? 'unavailable' : 'sin datos';
     return;
   }
-  const key = $('#clubRankSort').value || 'goals';
-  const value = (m) => key === 'gpm' ? (m.matches ? m.goals / m.matches : 0) : m[key];
+
+  const gpm = (m) => (m.matches ? m.goals / m.matches : 0);
+  const value = (m) => (clubRankKey === 'gpm' ? gpm(m) : m[clubRankKey]);
+  const fmt = (v) => (clubRankKey === 'gpm' ? v.toFixed(2) : String(v));
   const rows = clubRank.slice().sort((a, b) => (value(b) - value(a)) || (b.goals - a.goals) || a.name.localeCompare(b.name, 'es'));
   if (stateEl) stateEl.textContent = en ? `${rows.length} players` : `${rows.length} jugadores`;
 
-  const head = document.createElement('div');
-  head.className = 'cr__row cr__row--head';
-  for (const h of ['#', en ? 'Player' : 'Jugador', en ? 'G' : 'G', en ? 'A' : 'A', en ? 'GP' : 'PJ', en ? 'OG' : 'GC', en ? 'Time' : 'Tiempo']) {
-    const c = document.createElement('span'); c.textContent = h; head.append(c);
-  }
-  const hours = (sec) => sec >= 3600 ? `${(sec / 3600).toFixed(1)} h` : `${Math.round(sec / 60)} min`;
-  const nodes = rows.map((m, i) => {
-    const row = document.createElement('div');
-    row.className = 'cr__row' + (m.self ? ' is-self' : '');
-    for (const v of [i + 1, m.name + (m.ext ? (en ? ' · outside' : ' · ajeno') : ''), m.goals, m.assists, m.matches, m.ownGoals, hours(m.seconds)]) {
-      const c = document.createElement('span'); c.textContent = String(v); row.append(c);
-    }
+  const kp = (id, v) => { const e = $(id); if (e) e.textContent = String(v); };
+  kp('#kpiPlayers', rows.length);
+  kp('#kpiGoals', rows.reduce((n, m) => n + m.goals, 0));
+  kp('#kpiMatches', rows.reduce((n, m) => n + m.matches, 0));
+
+  const unit = { goals: en ? 'goals' : 'goles', assists: en ? 'assists' : 'asist.', matches: en ? 'matches' : 'partidos', gpm: en ? 'goals/match' : 'gol/partido' }[clubRankKey];
+  const mk = (tag, cls, txt) => { const e = document.createElement(tag); if (cls) e.className = cls; if (txt !== undefined) e.textContent = txt; return e; };
+  const label = (m) => m.name + (m.ext ? (en ? ' · outside' : ' · ajeno') : '');
+
+  // Podio: los tres primeros, el primero más alto.
+  const top = rows.filter((m) => value(m) > 0).slice(0, 3);
+  const order = top.length === 3 ? [1, 0, 2] : top.map((_, i) => i);
+  podium.replaceChildren(...order.map((i) => {
+    const m = top[i];
+    const card = mk('div', `pod pod--${i + 1}${m.self ? ' is-self' : ''}`);
+    card.append(
+      mk('span', 'pod__rank', i === 0 ? '1' : String(i + 1)),
+      mk('span', 'pod__av', (m.name || '?').trim().charAt(0).toUpperCase()),
+      mk('b', 'pod__name', label(m)),
+      mk('span', 'pod__val', fmt(value(m))),
+      mk('span', 'pod__unit', unit),
+      mk('span', 'pod__sub', `${m.goals} G · ${m.assists} A · ${m.matches} ${en ? 'GP' : 'PJ'}`)
+    );
+    return card;
+  }));
+
+  // El resto, con una barra proporcional al líder.
+  const max = Math.max(1e-9, ...rows.map(value));
+  const head = mk('div', 'cr__row cr__row--head');
+  for (const h of ['#', en ? 'Player' : 'Jugador', '', en ? 'G' : 'G', en ? 'A' : 'A', en ? 'GP' : 'PJ', en ? 'OG' : 'GC']) head.append(mk('span', '', h));
+  const start = top.length;
+  const nodes = rows.slice(start).map((m, n) => {
+    const row = mk('div', 'cr__row' + (m.self ? ' is-self' : ''));
+    const bar = mk('span', 'cr__bar2');
+    const fill = mk('i');
+    fill.style.width = `${Math.max(2, Math.round((value(m) / max) * 100))}%`;
+    bar.append(fill);
+    row.append(mk('span', 'cr__pos', String(start + n + 1)), mk('span', 'cr__name', label(m)), bar,
+      mk('span', clubRankKey === 'goals' ? 'is-key' : '', String(m.goals)),
+      mk('span', clubRankKey === 'assists' ? 'is-key' : '', String(m.assists)),
+      mk('span', clubRankKey === 'matches' ? 'is-key' : '', String(m.matches)),
+      mk('span', '', String(m.ownGoals)));
     return row;
   });
-  host.replaceChildren(head, ...nodes);
+  host.replaceChildren(...(nodes.length ? [head, ...nodes] : []));
 }
-if ($('#clubRankSort')) {
-  $('#clubRankSort').addEventListener('change', paintClubRank);
-  $('#clubRankRefresh').addEventListener('click', loadClubRank);
+for (const b of $$('#clubRankSeg button')) {
+  b.addEventListener('click', () => { clubRankKey = b.dataset.key; paintClubRank(); });
 }
+if ($('#clubRankRefresh')) $('#clubRankRefresh').addEventListener('click', loadClubRank);
 
 /* ── Informes de partido ─────────────────────────────────────────────────────
  * La app registra cada partido en vivo (una muestra por segundo, sin tocar el

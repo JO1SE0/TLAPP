@@ -1382,52 +1382,52 @@
            CLUB: quién está conectado, estadísticas de todos e informes
            ═══════════════════════════════════════════════════════════════ -->
       <section class="page" data-page="club">
-        <div class="page__inner">
-          <header class="pagehead">
-            <h1 data-i18n="club.title">Club</h1>
-            <p data-i18n="club.subtitle">Quién está conectado, cómo viene cada uno y los informes de partido.</p>
+        <div class="page__inner club">
+          <header class="club__hero">
+            <span class="club__eyebrow">Toda la Lecce</span>
+            <h1 class="club__title" data-i18n="club.title">Club</h1>
+            <div class="club__kpis">
+              <div class="kpi"><b id="kpiOnline">0</b><span data-i18n="club.kpiOnline">conectados</span></div>
+              <div class="kpi"><b id="kpiPlayers">0</b><span data-i18n="club.kpiPlayers">jugadores</span></div>
+              <div class="kpi"><b id="kpiGoals">0</b><span data-i18n="club.kpiGoals">goles</span></div>
+              <div class="kpi"><b id="kpiMatches">0</b><span data-i18n="club.kpiMatches">partidos</span></div>
+            </div>
           </header>
 
-          <section class="sec" data-sec="clubrank" id="clubRankSec">
-            <header class="sec__head">
-              <h2 class="sec__title" data-i18n="clubrank.title">Estadísticas del club</h2>
-              <span class="statusline" id="clubRankState">—</span>
+          <section class="csec" id="clubNowSec">
+            <header class="csec__head">
+              <h2 data-i18n="clubnow.title">Club conectado</h2>
+              <span class="csec__tag" id="clubNowCount">—</span>
             </header>
-            <div class="sec__body">
-              <div class="cr__bar">
-                <select id="clubRankSort">
-                  <option value="goals">Goles</option>
-                  <option value="assists">Asistencias</option>
-                  <option value="matches">Partidos</option>
-                  <option value="gpm">Goles por partido</option>
-                  <option value="seconds">Tiempo jugado</option>
-                </select>
-                <button class="btn btn--ghost btn--sm" id="clubRankRefresh" type="button">Actualizar</button>
+            <div class="clubnow" id="clubNowList"></div>
+          </section>
+
+          <section class="csec" id="clubRankSec">
+            <header class="csec__head">
+              <h2 data-i18n="clubrank.title">Estadísticas del club</h2>
+              <span class="csec__tag" id="clubRankState">—</span>
+            </header>
+            <div class="cr__bar">
+              <div class="seg" id="clubRankSeg" role="tablist">
+                <button type="button" class="is-on" data-key="goals">Goleadores</button>
+                <button type="button" data-key="assists">Asistidores</button>
+                <button type="button" data-key="matches">Partidos</button>
+                <button type="button" data-key="gpm">Gol / partido</button>
               </div>
-              <div class="cr__table" id="clubRankList"></div>
-              <p class="note" id="clubRankNote"></p>
+              <button class="btn btn--ghost btn--sm" id="clubRankRefresh" type="button">Actualizar</button>
             </div>
+            <div class="podium" id="clubPodium"></div>
+            <div class="cr__table" id="clubRankList"></div>
+            <p class="note" id="clubRankNote"></p>
           </section>
 
-          <section class="sec" data-sec="informes" id="reportsSec" hidden>
-            <header class="sec__head">
-              <h2 class="sec__title" data-i18n="reports.title">Informes de partido</h2>
-              <span class="statusline" id="reportsCount">—</span>
+          <section class="csec" id="reportsSec" hidden>
+            <header class="csec__head">
+              <h2 data-i18n="reports.title">Informes de partido</h2>
+              <span class="csec__tag" id="reportsCount">—</span>
             </header>
-            <div class="sec__body">
-              <p class="note" id="reportsHelp"></p>
-              <div class="rep__list" id="reportsList"></div>
-            </div>
-          </section>
-
-          <section class="sec" data-sec="clubnow" id="clubNowSec">
-            <header class="sec__head">
-              <h2 class="sec__title" data-i18n="clubnow.title">Club conectado</h2>
-              <span class="statusline" id="clubNowCount">—</span>
-            </header>
-            <div class="sec__body">
-              <div class="clubnow" id="clubNowList"></div>
-            </div>
+            <p class="note" id="reportsHelp"></p>
+            <div class="rep__list" id="reportsList"></div>
           </section>
         </div>
       </section>
