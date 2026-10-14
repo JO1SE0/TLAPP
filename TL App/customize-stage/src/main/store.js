@@ -83,6 +83,10 @@ const DEFAULTS = {
     pageTransition: 'fade',
     /** Densidad de los menús: compact | normal | comfy. Sólo espaciado, no toca el juego. */
     density: 'normal',
+    /** Estructura de la interfaz: classic | top (barra superior) | dock (dock flotante). */
+    layout: 'classic',
+    /** Alto de las filas de la lista de salas: dense | normal | large. */
+    roomRows: 'normal',
     /** El escudo "respira" en la barra lateral y la pantalla de inicio. */
     crestBreath: true,
     /** Cortina con el escudo al entrar a una sala. */

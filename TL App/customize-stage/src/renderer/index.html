@@ -892,6 +892,19 @@
             </div>
           </section>
 
+          <section class="sec" data-sec="interfaz">
+            <header class="sec__head"><h2 class="sec__title" id="layTitle">Interfaz</h2></header>
+            <p class="sec__desc" id="layDesc"></p>
+            <div class="sec__body">
+              <div class="laycards" id="layoutCards"></div>
+              <div class="row">
+                <div class="row__text"><span class="row__label" id="rowsLabel">Filas de la lista de salas</span></div>
+                <div class="row__ctl"><div class="chips" id="rowsChips"></div></div>
+              </div>
+              <div class="row"><div class="row__ctl"><button class="btn btn--ghost" id="layReset" type="button" hidden>Volver a la clásica</button></div></div>
+            </div>
+          </section>
+
           <section class="sec" data-sec="densidad">
             <header class="sec__head"><h2 class="sec__title" id="denTitle">Densidad de la interfaz</h2></header>
             <p class="sec__desc" id="denDesc"></p>
@@ -1481,6 +1494,12 @@
           <div class="searchbar">
             <svg data-icon viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.8"/><path d="M16.1 16.1 20.2 20.2"/></svg>
             <input type="text" id="replaySearch" data-i18n-placeholder="replays.search" placeholder="Buscar por nombre…" />
+          </div>
+
+          <div class="rtoolbar replaytools">
+            <div class="chips" id="replayChips"></div>
+            <select id="replaySort" class="sortselect"></select>
+            <span class="rcount" id="replayCount"></span>
           </div>
 
           <div class="replaylist" id="replayList"></div>

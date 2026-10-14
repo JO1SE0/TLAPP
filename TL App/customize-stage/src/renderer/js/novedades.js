@@ -11,6 +11,8 @@ window.TL_NEWS = {
   title: { es: 'Qué hay de nuevo', en: "What's new" },
   items: {
     es: [
+      'Nuevo: Interfaz elegible (Personalización → Estilo): Clásica (la de siempre, por defecto), Barra superior o Dock flotante. Podés volver a la clásica cuando quieras. También: filas de la lista de salas densa/normal/amplia.',
+      'Replays rediseñadas: tarjetas con fecha y resultado del análisis, agrupadas por día, con filtros (hoy, semana, con análisis) y orden (más goles, más largos). La lista de salas muestra un esqueleto mientras carga y los ajustes tienen migas de pan.',
       'Cartel de música en la cancha (F7): ahora tiene ♥ para fijar la canción que suena y ☰ para abrir tu lista de canciones fijadas y cambiar de tema sin salir de la partida.',
       'Nuevo: Mezclador de volúmenes (Configuración → Cliente y audio) con la música del menú, YouTube Music, gol y golpe en un solo lugar.',
       'Lista de salas: las salas donde hay gente del club conectada se resaltan con una insignia 👥 y el número de compañeros (pasá el mouse para ver los nombres).',
@@ -34,6 +36,8 @@ window.TL_NEWS = {
       'Cada clave se usa en una sola PC: si cambiás de computadora, pedile a miclo que te la libere.'
     ],
     en: [
+      'New: selectable interface (Personalization → Style): Classic (the usual, default), Top bar or Floating dock. Go back to Classic any time. Also: dense/normal/roomy room-list rows.',
+      'Replays redesigned: cards with date and analysis summary, grouped by day, with filters (today, week, analysed) and sorting (most goals, longest). The room list shows a skeleton while loading and settings have breadcrumbs.',
       'In-game music overlay (F7): new ♥ to pin the current song and ☰ to open your pinned list and switch songs without leaving the match.',
       'New: Volume mixer (Settings → Client & audio) with menu music, YouTube Music, goal and kick sounds in one place.',
       'Room list: rooms with connected club members are highlighted with a 👥 badge and the number of teammates (hover for their names).',

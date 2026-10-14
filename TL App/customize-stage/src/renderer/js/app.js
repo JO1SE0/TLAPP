@@ -68,7 +68,7 @@ const TAB_ICONS = {
 const PANEL_TABS = {
   aspecto: [
     { id: 'estilo', label: 'tab.style', hint: 'tab.styleHint',
-      secs: ['tema', 'acento', 'densidad', 'animaciones', 'looks', 'menubg'] },
+      secs: ['tema', 'acento', 'interfaz', 'densidad', 'animaciones', 'looks', 'menubg'] },
     { id: 'cancha', label: 'tab.pitch', hint: 'tab.pitchHint',
       secs: ['cancha', 'acabado', 'trazos', 'replays'] },
     { id: 'fichas', label: 'tab.discs', hint: 'tab.discsHint',
@@ -859,6 +859,8 @@ function applyConfig(config) {
   }
   const rd = document.documentElement.dataset;
   rd.pageTrans = config.appearance.pageTransition || 'fade';
+  { const rr = config.appearance.roomRows; const prev = rd.roomRows; if (rr === 'dense' || rr === 'large') rd.roomRows = rr; else delete rd.roomRows; if (prev !== rd.roomRows) { try { if (roomParts) paintRoomWindow(true); } catch (e) { /* aún no hay lista */ } } }
+  if (config.appearance.layout === 'top' || config.appearance.layout === 'dock') rd.layout = config.appearance.layout; else delete rd.layout;
   if (config.appearance.density === 'compact' || config.appearance.density === 'comfy') rd.density = config.appearance.density; else delete rd.density;
   const flag = (k, name) => { if (config.appearance[k] === false) rd[name] = 'off'; else delete rd[name]; };
   flag('crestBreath', 'crestBreath');
@@ -2207,7 +2209,8 @@ function visibleRooms() {
  *
  * Todas las salas siguen estando: lo que cambia es cuántas hay dibujadas a la
  * vez, no cuántas se pueden ver. */
-const ROW_H = 32;
+const ROW_HEIGHTS = { dense: 26, normal: 32, large: 46 };
+const rowH = () => ROW_HEIGHTS[document.documentElement.dataset.roomRows] || 32;
 /** Filas de más arriba y abajo del borde, para que el scroll no muestre huecos. */
 const OVERSCAN = 6;
 
@@ -2271,6 +2274,7 @@ function paintRoomWindow(force = false) {
   }
 
   const height = container.clientHeight || 420;
+  const ROW_H = rowH();
   const window_ = Math.ceil(height / ROW_H) + OVERSCAN * 2;
   /* El tope importa: si la lista se achica (una búsqueda, por ejemplo) mientras
      estabas abajo de todo, el scroll que quedó guardado apunta más allá del
@@ -2301,12 +2305,29 @@ function showRoomsMessage(node) {
   rows.replaceChildren(...(node ? [node] : []));
 }
 
+/** Filas grises que laten mientras llega la lista: se ve la forma de lo que viene. */
+function roomSkeleton() {
+  const h = rowH();
+  const n = Math.min(24, Math.max(6, Math.ceil(((roomParts && roomParts.container.clientHeight) || 420) / h)));
+  const wrap = document.createElement('div');
+  wrap.className = 'rskel';
+  wrap.setAttribute('aria-hidden', 'true');
+  wrap.style.setProperty('--rh', `${h}px`);
+  for (let i = 0; i < n; i++) {
+    const row = document.createElement('div');
+    row.className = 'rskel__row';
+    row.innerHTML = '<i></i><i></i><i></i><i></i><i></i>';
+    wrap.append(row);
+  }
+  return wrap;
+}
+
 function renderRooms() {
   const summary = $('#roomsSummary');
 
   if (state.rooms.loading && !state.rooms.list.length) {
     summary.textContent = t('rooms.loading');
-    showRoomsMessage(null);
+    showRoomsMessage(roomSkeleton());
     return;
   }
   if (state.rooms.error) {
@@ -4348,6 +4369,7 @@ function paintAudio() {
   try { paintGameExtras(); } catch (e) { /* adorno */ }
   try { paintAnimations(); } catch (e) { /* adorno */ }
   try { paintDensity(); } catch (e) { /* adorno */ }
+  try { paintLayout(); } catch (e) { /* adorno */ }
   try { paintMixer(); } catch (e) { /* adorno */ }
   const ap = (state.config && state.config.appearance) || {};
   const vol = typeof ap.musicVolume === 'number' ? ap.musicVolume : 0.35;
@@ -5634,13 +5656,74 @@ async function loadReplays() {
   renderReplays();
 }
 
+/* Filtro y orden de la biblioteca: sólo viven en memoria, arrancan en «todos / más nuevos». */
+const replayUi = { filter: 'all', sort: 'new', sig: '' };
+const REPLAY_FILTERS = [
+  ['all', 'Todos', 'All'], ['today', 'Hoy', 'Today'], ['week', 'Esta semana', 'This week'], ['digest', 'Con análisis', 'Analysed']
+];
+const REPLAY_SORTS = [
+  ['new', 'Más nuevos', 'Newest'], ['old', 'Más viejos', 'Oldest'], ['goals', 'Más goles', 'Most goals'], ['long', 'Más largos', 'Longest']
+];
+
+function paintReplayTools() {
+  const en = isEn();
+  const sig = `${replayUi.filter}|${replayUi.sort}|${en}`;
+  if (replayUi.sig === sig) return;
+  replayUi.sig = sig;
+  $('#replayChips').replaceChildren(...REPLAY_FILTERS.map((f) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'chip' + (f[0] === replayUi.filter ? ' is-active' : '');
+    b.dataset.rf = f[0];
+    b.textContent = en ? f[2] : f[1];
+    return b;
+  }));
+  $('#replaySort').replaceChildren(...REPLAY_SORTS.map((o) => {
+    const opt = document.createElement('option');
+    opt.value = o[0];
+    opt.textContent = en ? o[2] : o[1];
+    opt.selected = o[0] === replayUi.sort;
+    return opt;
+  }));
+}
+
+/** «Hoy», «Ayer» o el día de la semana con la fecha, para los títulos de grupo. */
+function replayDayLabel(ms) {
+  const en = isEn();
+  const d = new Date(ms);
+  const start = (x) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
+  const diff = Math.round((start(new Date()) - start(d)) / 86400000);
+  if (diff <= 0) return en ? 'Today' : 'Hoy';
+  if (diff === 1) return en ? 'Yesterday' : 'Ayer';
+  const text = d.toLocaleDateString(en ? 'en-GB' : 'es-AR', { weekday: 'long', day: 'numeric', month: 'long' });
+  return text.charAt(0).toUpperCase() + text.slice(1);
+}
+
 function renderReplays() {
   const { folder, items, error } = state.replays;
+  const en = isEn();
   $('#replayFolder').textContent = folder;
   $('#replayFolder').title = folder;
+  paintReplayTools();
 
   const query = $('#replaySearch').value.trim().toLowerCase();
-  const filtered = query ? items.filter((r) => r.name.toLowerCase().includes(query)) : items;
+  const now = Date.now();
+  const dayStart = new Date(new Date().setHours(0, 0, 0, 0)).getTime();
+  let filtered = items;
+  if (query) filtered = filtered.filter((r) => r.name.toLowerCase().includes(query));
+  if (replayUi.filter === 'today') filtered = filtered.filter((r) => r.updatedAt >= dayStart);
+  else if (replayUi.filter === 'week') filtered = filtered.filter((r) => now - r.updatedAt < 7 * 86400000);
+  else if (replayUi.filter === 'digest') filtered = filtered.filter((r) => r.digest);
+
+  const byDate = replayUi.sort === 'new' || replayUi.sort === 'old';
+  if (replayUi.sort === 'old') filtered = [...filtered].sort((a, b) => a.updatedAt - b.updatedAt);
+  else if (replayUi.sort === 'goals') filtered = [...filtered].sort((a, b) => ((b.digest && b.digest.goals) || -1) - ((a.digest && a.digest.goals) || -1));
+  else if (replayUi.sort === 'long') filtered = [...filtered].sort((a, b) => ((b.digest && b.digest.seconds) || -1) - ((a.digest && a.digest.seconds) || -1));
+  else filtered = [...filtered].sort((a, b) => b.updatedAt - a.updatedAt);
+
+  const count = $('#replayCount');
+  const total = items.reduce((n, r) => n + (r.size || 0), 0);
+  count.textContent = items.length ? `${filtered.length}/${items.length} · ${formatBytes(total)}` : '';
 
   const list = $('#replayList');
   list.replaceChildren();
@@ -5650,17 +5733,37 @@ function renderReplays() {
     return;
   }
   if (!filtered.length) {
+    const filtering = query || replayUi.filter !== 'all';
     list.append(emptyState(
-      query ? t('rooms.noResults') : t('replays.empty'),
-      query ? t('rooms.noResultsText') : t('replays.emptyText')
+      filtering ? t('rooms.noResults') : t('replays.empty'),
+      filtering ? t('rooms.noResultsText') : t('replays.emptyText')
     ));
     return;
   }
 
+  const frag = document.createDocumentFragment();
+  let lastDay = '';
   filtered.forEach((replay, index) => {
+    if (byDate) {
+      const label = replayDayLabel(replay.updatedAt);
+      if (label !== lastDay) {
+        lastDay = label;
+        const h = document.createElement('h3');
+        h.className = 'replay__day';
+        h.textContent = label;
+        frag.append(h);
+      }
+    }
     const row = document.createElement('article');
     row.className = 'replay';
     row.style.setProperty('--n', index);
+
+    const when = new Date(replay.updatedAt);
+    const date = document.createElement('div');
+    date.className = 'replay__date';
+    date.innerHTML = '<b></b><span></span>';
+    date.firstChild.textContent = String(when.getDate());
+    date.lastChild.textContent = when.toLocaleDateString(en ? 'en-GB' : 'es-AR', { month: 'short' }).replace('.', '');
 
     const body = document.createElement('div');
     body.className = 'replay__body';
@@ -5670,7 +5773,7 @@ function renderReplays() {
     name.title = replay.name;
     const meta = document.createElement('div');
     meta.className = 'replay__meta';
-    meta.textContent = `${formatDate(replay.updatedAt)} · ${formatBytes(replay.size)} · ${replay.format}`;
+    meta.textContent = `${when.toLocaleTimeString(en ? 'en-GB' : 'es-AR', { hour: '2-digit', minute: '2-digit' })} · ${formatBytes(replay.size)} · ${replay.format}`;
     body.append(name, meta);
 
     /*
@@ -5679,14 +5782,15 @@ function renderReplays() {
      * deje de ser nombres y fechas: «14 goles · 22:40» dice cuál era ésta.
      */
     if (replay.digest) {
-      const tag = document.createElement('div');
-      tag.className = 'replay__digest';
-      tag.textContent = [
-        t(replay.digest.goals === 1 ? 'replays.goals1' : 'replays.goalsN', { n: replay.digest.goals }),
-        formatDuration(replay.digest.seconds),
-        replay.digest.matches > 1 ? t('replays.matchesN', { n: replay.digest.matches }) : ''
-      ].filter(Boolean).join(' · ');
-      body.append(tag);
+      const tags = document.createElement('div');
+      tags.className = 'replay__digest';
+      const mk = (text) => { const c = document.createElement('span'); c.className = 'rchip'; c.textContent = text; return c; };
+      tags.append(
+        mk(t(replay.digest.goals === 1 ? 'replays.goals1' : 'replays.goalsN', { n: replay.digest.goals })),
+        mk(formatDuration(replay.digest.seconds))
+      );
+      if (replay.digest.matches > 1) tags.append(mk(t('replays.matchesN', { n: replay.digest.matches })));
+      body.append(tags);
     }
 
     const actions = document.createElement('div');
@@ -5705,10 +5809,22 @@ function renderReplays() {
     // y sin manera de que acompañara al resto de los iconos.
     actions.append(more, actionButton(t('replays.play'), () => playReplay(replay), 'primary', ICONS.play));
 
-    row.append(body, actions);
-    list.append(row);
+    row.append(date, body, actions);
+    frag.append(row);
   });
+  list.append(frag);
 }
+
+$('#replayChips').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-rf]');
+  if (!b) return;
+  replayUi.filter = b.dataset.rf;
+  renderReplays();
+});
+$('#replaySort').addEventListener('change', (e) => {
+  replayUi.sort = e.target.value;
+  renderReplays();
+});
 
 /**
  * Los dibujos de los botones que se arman desde acá.
@@ -9998,9 +10114,103 @@ function renderTabBar(page) {
   all.append(mk(isEn() ? 'Open all' : 'Abrir todo', true), mk(isEn() ? 'Close all' : 'Cerrar todo', false));
   bar.replaceChildren(...(secs.length > 1 ? [...chips, all] : []));
   bar.hidden = secs.length < 2;
+
+  /* Migas de pan: «Personalización › Estilo». Dicen dónde estás y la primera
+     te lleva arriba de todo sin scrollear a mano. */
+  const head = $('.pagehead', inner);
+  const h1 = head && $('h1', head);
+  const tab = PANEL_TABS[page].find((x) => x.id === cur);
+  if (h1 && tab) {
+    let crumbs = $('.crumbs', inner);
+    if (!crumbs) {
+      crumbs = document.createElement('nav');
+      crumbs.className = 'crumbs';
+      crumbs.setAttribute('aria-label', 'breadcrumb');
+      head.prepend(crumbs);
+    }
+    const first = document.createElement('button');
+    first.type = 'button';
+    first.className = 'crumbs__a';
+    first.textContent = h1.textContent.trim();
+    first.addEventListener('click', () => inner.scrollIntoView({ block: 'start', behavior: 'smooth' }));
+    const sep = document.createElement('span');
+    sep.className = 'crumbs__sep';
+    sep.textContent = '›';
+    const last = document.createElement('span');
+    last.className = 'crumbs__now';
+    last.textContent = t(tab.label);
+    crumbs.replaceChildren(first, sep, last);
+  }
 }
 
 initCollapsibles();
+
+
+/* ── Interfaz: la estructura de todo el cliente ──────────────────────────────
+ * Tres maneras de armar el mismo cliente. Es un atributo en la raíz
+ * (`data-layout`) y reglas de CSS: no hay JS corriendo ni nada que repintar
+ * por cuadro. «Clásico» es la de siempre y la que arranca por defecto. */
+const LAYOUTS = [
+  { id: 'classic', es: 'Clásica', en: 'Classic',
+    desD: 'Menú lateral a la izquierda. La de siempre.', desE: 'Side menu on the left. The usual one.' },
+  { id: 'top', es: 'Barra superior', en: 'Top bar',
+    desD: 'Pestañas arriba y todo el ancho para el contenido.', desE: 'Tabs on top and the full width for content.' },
+  { id: 'dock', es: 'Dock flotante', en: 'Floating dock',
+    desD: 'Una píldora abajo al centro, con los íconos.', desE: 'A pill at the bottom centre, icons only.' }
+];
+function paintLayout() {
+  const host = $('#layoutCards');
+  if (!host || !state.config) return;
+  const en = isEn();
+  $('#layTitle').textContent = en ? 'Interface layout' : 'Interfaz';
+  $('#layDesc').textContent = en
+    ? 'Changes how the whole client is laid out. It starts on Classic and you can come back any time.'
+    : 'Cambia cómo se arma todo el cliente. Arranca en Clásica y podés volver cuando quieras.';
+  const cur = state.config.appearance.layout || 'classic';
+  const sig = `${cur}|${en}`;
+  if (host.dataset.sig !== sig) {
+    host.dataset.sig = sig;
+    host.replaceChildren(...LAYOUTS.map((l) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'laycard' + (l.id === cur ? ' is-active' : '');
+      b.dataset.lay = l.id;
+      b.innerHTML = `<span class="laycard__prev laycard__prev--${l.id}" aria-hidden="true"><i class="lp-bar"></i><i class="lp-main"></i><i class="lp-side"></i></span>`;
+      const t = document.createElement('b');
+      t.textContent = en ? l.en : l.es;
+      const d = document.createElement('small');
+      d.textContent = en ? l.desE : l.desD;
+      b.append(t, d);
+      return b;
+    }));
+  }
+  const rr = state.config.appearance.roomRows || 'normal';
+  $('#rowsLabel').textContent = en ? 'Room list rows' : 'Filas de la lista de salas';
+  const rhost = $('#rowsChips');
+  if (rhost.dataset.sig !== `${rr}|${en}`) {
+    rhost.dataset.sig = `${rr}|${en}`;
+    rhost.replaceChildren(...[['dense', 'Densa', 'Dense'], ['normal', 'Normal', 'Normal'], ['large', 'Amplia', 'Roomy']].map((d) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'chip' + (d[0] === rr ? ' is-active' : '');
+      b.dataset.rows = d[0];
+      b.textContent = en ? d[2] : d[1];
+      return b;
+    }));
+  }
+  const back = $('#layReset');
+  back.textContent = en ? 'Back to Classic' : 'Volver a la clásica';
+  back.hidden = cur === 'classic';
+}
+$('#layoutCards').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-lay]');
+  if (b) patchConfig({ appearance: { layout: b.dataset.lay } });
+});
+$('#rowsChips').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-rows]');
+  if (b) patchConfig({ appearance: { roomRows: b.dataset.rows } });
+});
+$('#layReset').addEventListener('click', () => patchConfig({ appearance: { layout: 'classic' } }));
 
 
 /* Densidad de la interfaz: sólo espaciado de menús (CSS por `data-density`). */
