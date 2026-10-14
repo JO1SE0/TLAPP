@@ -136,15 +136,14 @@ function rebuild(list) {
       captains, legacyNotice: null, seq: d.seq, source: 'captain',
       removed: Array.isArray(d.removed) ? d.removed : [],
       forceUpdate: d.forceUpdate === true,
-      history: Array.isArray(d.history) ? d.history : [],
-      music: Array.isArray(d.music) ? d.music.filter((m) => m && /^[\w-]{11}$/.test(String(m.id))).slice(0, 80).map((m) => ({ id: String(m.id), title: String(m.title || '').slice(0, 90), by: String(m.by || '').slice(0, 40) })) : []
+      history: Array.isArray(d.history) ? d.history : []
     };
   } else {
     eff = {
       enabled: base.enabled === true,
       users: Array.isArray(base.users) ? base.users : [],
       notices: [], minVersion: '', minMessage: '', captains,
-      legacyNotice: cleanNotice(base.announcement), seq: 0, source: 'github', removed: [], forceUpdate: false, history: [], music: []
+      legacyNotice: cleanNotice(base.announcement), seq: 0, source: 'github', removed: [], forceUpdate: false, history: []
     };
   }
   roster = eff.users.filter((u) => u && HEX64.test(String(u.pub || ''))).map((u) => ({ name: String(u.name || '').slice(0, 40), pub: String(u.pub).toLowerCase(), trial: Number(u.trial) > 0, rep: u.rep === true, ext: u.ext === true }));
@@ -448,9 +447,8 @@ const presenceUrl = () => presence;
 /** Copia de lo que rige hoy (para el panel del capitán). */
 const getEffective = () => JSON.parse(JSON.stringify({
   enabled: eff.enabled, users: eff.users, notices: eff.notices, minVersion: eff.minVersion, minMessage: eff.minMessage,
-  seq: eff.seq, source: eff.source, captains: eff.captains, removed: eff.removed, forceUpdate: eff.forceUpdate, history: eff.history, music: eff.music
+  seq: eff.seq, source: eff.source, captains: eff.captains, removed: eff.removed, forceUpdate: eff.forceUpdate, history: eff.history
 }));
-const getMusic = () => (status.state === 'ok' && !status.external ? (eff.music || []).slice() : []);
 const isCaptain = () => !!status.captain;
 const canReports = () => !!status.reports;
 const isExternal = () => !!status.external;
@@ -463,4 +461,4 @@ async function adoptAdmin(raw) {
   await evaluate(null, { skipGithub: true });
 }
 
-module.exports = { getMusic, getEffective, isCaptain, canReports, isExternal, adoptAdmin, getKey, getRoster, presenceUrl, init, get, isLocked, submit, recheck, hashKey, normalize, ACCESS_URL };
+module.exports = { getEffective, isCaptain, canReports, isExternal, adoptAdmin, getKey, getRoster, presenceUrl, init, get, isLocked, submit, recheck, hashKey, normalize, ACCESS_URL };

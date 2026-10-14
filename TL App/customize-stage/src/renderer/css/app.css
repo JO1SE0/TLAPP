@@ -5217,11 +5217,3 @@ html[data-stage="game"] .trialchip { display: none; }
 #app[data-view="club"] .panel__body,
 #app[data-view="club"] .panel__pages { flex: 0 1 auto; height: auto; min-height: 0; }
 #app[data-view="club"] .page[data-page="club"] .page__inner { max-width: none; padding: 52px 22px 24px; }
-
-.cm__add { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
-.cm__add .field { flex: 1 1 200px; min-width: 0; }
-.cm__list { display: flex; flex-direction: column; gap: 8px; }
-.cm__row { display: flex; align-items: center; gap: 8px; border: 1px solid var(--line); border-radius: 14px; padding: 10px 14px; background: var(--surface); }
-.cm__info { flex: 1; min-width: 0; display: flex; flex-direction: column; }
-.cm__info b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.cm__info span { font-size: 12px; opacity: .6; }

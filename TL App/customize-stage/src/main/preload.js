@@ -236,8 +236,6 @@ contextBridge.exposeInMainWorld('tvm', {
     login: () => call('music:login'),
     logout: () => call('music:logout'),
     home: () => call('music:home'),
-    club: () => call('club:music'),
-    play: (id) => call('music:play', id),
     reload: () => call('music:reload'),
     onState: (cb) => on('music:state', cb),
     /**
