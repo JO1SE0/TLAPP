@@ -178,18 +178,40 @@
   }
 
   /*
-   * Palo: el «tong» de un caño de acero golpeado por una pelota. Un golpe seco
-   * (ruido corto filtrado alto) más parciales inarmónicos que se apagan a
-   * distinta velocidad: el grave dura, los agudos mueren rápido. `strength`
-   * (0..1) cambia el volumen y el brillo del golpe.
+   * Palo: el golpe de una pelota contra un caño de acero hueco. Cuatro capas:
+   *  · un golpe seco grave (el cuerpo del impacto, ~90 Hz que cae rápido),
+   *  · un «clac» corto de ruido filtrado medio (el contacto),
+   *  · el tono del caño, grave y largo (~210 Hz) con parciales inarmónicos de
+   *    tubo (2.76×, 5.40×, 8.93×) que se apagan cada uno a su ritmo,
+   *  · y cada parcial doblado con otro apenas desafinado: ese batido es el
+   *    brillo «metálico» que le da el aire de cosa dura y gruesa.
+   * Todo pasa por un pasabajos para que no quede agudo ni chillón.
+   * `strength` (0..1) cambia volumen y dureza.
    */
   function postRecipe(ctx, out, t, strength) {
-    const k = Math.min(1, Math.max(0.15, strength));
-    const base = 640 + 120 * k + Math.random() * 30;
-    noise(ctx, out, t, 0.035, 0.55 * k, 3200, 0.9);
-    const parts = [[1, 0.5, 0.42], [2.76, 0.32, 0.26], [5.4, 0.2, 0.14], [8.93, 0.1, 0.07]];
+    const k = Math.min(1, Math.max(0.2, strength));
+    const lp = ctx.createBiquadFilter();
+    lp.type = 'lowpass';
+    lp.frequency.value = 1900 + 1500 * k;
+    lp.Q.value = 0.6;
+    // Las capas suman fuerte: se baja el conjunto para que no sature.
+    const trim = ctx.createGain();
+    trim.gain.value = 0.5;
+    lp.connect(trim);
+    trim.connect(out);
+
+    // Cuerpo del impacto.
+    tone(ctx, lp, t, 120 + 40 * k, 0.16, 'sine', 0.9 * k, 62);
+    // Contacto: ruido en banda media, no agudo.
+    noise(ctx, lp, t, 0.05, 0.6 * k, 900 + 500 * k, 0.8);
+
+    const base = 190 + 35 * k + Math.random() * 12;
+    const parts = [[1, 0.62, 0.9], [2.76, 0.4, 0.55], [5.4, 0.24, 0.34], [8.93, 0.12, 0.2]];
     for (const [ratio, vol, dur] of parts) {
-      tone(ctx, out, t, base * ratio, dur * (0.7 + 0.5 * k), 'sine', vol * k);
+      const f = base * ratio;
+      tone(ctx, lp, t, f, dur * (0.75 + 0.5 * k), 'sine', vol * k);
+      // El mellizo desafinado: el batido da el brillo metálico.
+      tone(ctx, lp, t, f * 1.0065, dur * (0.7 + 0.45 * k), 'sine', vol * 0.7 * k);
     }
   }
 

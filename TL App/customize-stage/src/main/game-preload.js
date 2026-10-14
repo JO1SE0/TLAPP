@@ -5650,11 +5650,6 @@ function postCheck(f, room, match, prevVx, prevVy, advanced) {
   const before = Math.sqrt(prevVx * prevVx + prevVy * prevVy);
   if (before < POST_MIN_SPEED) return;
 
-  const nowSpeed = Math.sqrt(memory.vx * memory.vx + memory.vy * memory.vy);
-  // Un golpe de palo cambia el rumbo o come velocidad; la fricción sola no.
-  const aligned = nowSpeed > 0.001 ? (prevVx * memory.vx + prevVy * memory.vy) / (before * nowSpeed) : -1;
-  if (aligned > 0.9 && nowSpeed > before * 0.75) return;
-
   if (match !== postState.match) findPosts(f, room, match);
   if (!postState.discs.length) return;
 
@@ -5664,21 +5659,41 @@ function postCheck(f, room, match, prevVx, prevVy, advanced) {
   const world = match[f.world];
   const ball = world[f.discs][0];
   const ballR = (f.radius && ball[f.radius]) || DEFAULT_BALL_RADIUS;
+  // Cuánto pudo moverse en este cuadro: el choque ocurrió dentro de ese tramo.
+  const travel = before * advanced;
+  const dvx = memory.vx - prevVx;
+  const dvy = memory.vy - prevVy;
+
   for (let i = 0; i < postState.discs.length; i++) {
     const pos = postState.discs[i][f.pos];
     // Quieto: si se movió, no era un palo.
     if (Math.abs(pos.x - postState.x[i]) > 0.01 || Math.abs(pos.y - postState.y[i]) > 0.01) continue;
     const dx = memory.x - pos.x;
     const dy = memory.y - pos.y;
-    const reach = ballR + postState.r[i] + POST_SLACK + before * advanced;
-    if (dx * dx + dy * dy > reach * reach) continue;
+    const reach = ballR + postState.r[i] + 2 + travel;
+    const d2 = dx * dx + dy * dy;
+    if (d2 > reach * reach || d2 < 0.0001) continue;
+
+    /*
+     * No alcanza con estar cerca: pasar rozando no suena. Un choque con un
+     * palo (que no se mueve) hace dos cosas medibles a la vez:
+     *   · la pelota VENÍA acercándose al palo (velocidad previa hacia él), y
+     *   · el cambio de velocidad la empuja AL REVÉS, alejándola, y con fuerza.
+     * Pasar de largo no cumple ninguna: la velocidad casi no cambia.
+     */
+    const d = Math.sqrt(d2);
+    const nx = dx / d;
+    const ny = dy / d;
+    const approaching = prevVx * nx + prevVy * ny;   // < 0: iba hacia el palo
+    const pushed = dvx * nx + dvy * ny;              // > 0: el choque la aleja
+    if (approaching > -0.03 || pushed < Math.max(0.07, before * 0.35)) continue;
 
     // Si alguien la tocó en estos mismos milisegundos, fue una patada.
     const last = tracker.touches[tracker.touches.length - 1];
-    if (last && tracker.clock - last.at < 60) return;
+    if (last && tracker.clock - last.at < 80) return;
 
     postState.lastAt = now;
-    safe(playPostSound, Math.min(1, before / 1.2));
+    safe(playPostSound, Math.min(1, pushed / 0.7));
     return;
   }
 }
