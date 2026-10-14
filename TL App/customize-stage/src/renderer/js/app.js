@@ -60,7 +60,7 @@ const PANEL_TABS = {
     { id: 'fichas', label: 'tab.discs', hint: 'tab.discsHint',
       secs: ['jugador', 'pelota', 'fichaslook', 'nombres'] },
     { id: 'partida', label: 'tab.ingame', hint: 'tab.ingameHint',
-      secs: ['chatlook', 'partida', 'teclashud', 'overlay', 'musica', 'sonidos', 'lista'] }
+      secs: ['chatlook', 'statslook', 'partida', 'teclashud', 'overlay', 'musica', 'sonidos', 'lista'] }
   ],
   ajustes: [
     { id: 'rendimiento', label: 'tab.perf', hint: 'tab.perfHint',
@@ -8416,7 +8416,16 @@ const LOOK_SECTIONS = {
   lookChat: [
     { key: 'chatScale', type: 'range', label: 'look.chatScale', min: 0.7, max: 1.8, step: 0.05 },
     { key: 'chatBg', type: 'range', label: 'look.chatBg', min: 0, max: 0.9, step: 0.05, original: -1 },
+    { key: 'chatOpacity', type: 'range', label: 'look.chatOpacity', min: 0.15, max: 1, step: 0.05 },
     { key: 'chatFont', type: 'select', label: 'look.chatFont', options: FONT_OPTIONS }
+  ],
+  lookSound: [
+    { key: 'postSound', type: 'switch', label: 'look.postSound', desc: 'look.postSoundHelp' },
+    { key: 'postSoundVolume', type: 'range', label: 'look.postSoundVolume', min: 0, max: 1, step: 0.05, showIf: (v) => v.postSound }
+  ],
+  lookStats: [
+    { key: 'statsStyle', type: 'select', label: 'look.statsStyle', options: [['default', 'look.opt.none'], ['minimal', 'look.stats.minimal'], ['glass', 'look.stats.glass'], ['solid', 'look.stats.solid'], ['pill', 'look.stats.pill']] },
+    { key: 'statsOpacity', type: 'range', label: 'look.statsOpacity', min: 0.1, max: 1, step: 0.05 }
   ],
   lookMenu: [
     { key: 'menuBg', type: 'select', label: 'look.menuBg', options: [['none', 'look.opt.none'], ['club', 'look.menu.club'], ['aurora', 'look.menu.aurora'], ['grid', 'look.menu.grid'], ['sunset', 'look.menu.sunset'], ['stripes', 'look.menu.stripes'], ['noir', 'look.menu.noir'], ['field', 'look.menu.field'], ['dots', 'look.menu.dots'], ['neon', 'look.menu.neon'], ['waves', 'look.menu.waves']] }
@@ -8427,7 +8436,7 @@ const LOOK_DEFAULTS = {
   texture: 'none', pitchLight: 'none', softShadows: false, crest: false, crestOpacity: 0.18, crestSize: 0.45, lineColor: '', postColor: '',
   discStyle: 'default', ballStyle: 'default', ballColor: '', lineGlow: false, discOutline: '', ballOutline: '', ringStyle: 'default', ringColor: '',
   selfTrail: false, selfTrailColor: '', nameScale: 1, nameColor: '', nameOutline: false, nameFont: 'default',
-  chatScale: 1, chatBg: -1, chatFont: 'default', menuBg: 'none'
+  chatScale: 1, chatBg: -1, chatFont: 'default', chatOpacity: 1, postSound: true, postSoundVolume: 0.7, statsOpacity: 1, statsStyle: 'default', menuBg: 'none'
 };
 
 function lookValue(key) {
@@ -9431,3 +9440,39 @@ boot()
     toast(err.message, 'err');
   })
   .finally(hideSplash);
+
+
+/* ── Club conectado ──────────────────────────────────────────────────────────
+ * Quién del club tiene la app abierta y en qué sala está. Los datos ya viajan
+ * (el pulso de presencia cada 30 s): acá sólo se pintan, y sólo cuando llega
+ * una lista nueva. Nada corre por cuadro ni por temporizador propio.
+ */
+function paintClubNow(list) {
+  const host = $('#clubNowList');
+  if (!host) return;
+  const en = isEn();
+  const members = (Array.isArray(list) ? list : []).filter((m) => m && !m.trial);
+  const online = members.filter((m) => m.online);
+  const count = $('#clubNowCount');
+  if (count) count.textContent = en ? `${online.length} online` : `${online.length} conectados`;
+
+  const rows = members.map((m) => {
+    const row = document.createElement('div');
+    row.className = 'clubnow__row' + (m.online ? ' is-on' : '');
+    const dot = document.createElement('i');
+    dot.className = 'clubnow__dot';
+    const name = document.createElement('b');
+    name.textContent = m.name + (m.self ? (en ? ' (you)' : ' (vos)') : '');
+    const where = document.createElement('span');
+    where.className = 'clubnow__where';
+    if (m.online) where.textContent = m.room ? (en ? `in “${m.room}”` : `en «${m.room}»`) : (en ? 'in the menu' : 'en el menú');
+    else where.textContent = m.lastSeen ? (en ? 'last seen ' : 'visto ') + new Date(m.lastSeen).toLocaleDateString(en ? 'en' : 'es', { day: 'numeric', month: 'short' }) : (en ? 'never seen' : 'sin conexión');
+    row.append(dot, name, where);
+    return row;
+  });
+  host.replaceChildren(...rows);
+}
+if (window.tvm.presence && window.tvm.presence.onRoster) {
+  window.tvm.presence.onRoster(paintClubNow);
+  if (window.tvm.presence.roster) window.tvm.presence.roster().then(paintClubNow).catch(() => {});
+}

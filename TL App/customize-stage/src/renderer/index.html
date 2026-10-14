@@ -976,6 +976,16 @@
             </div>
           </section>
 
+          <section class="sec" data-sec="statslook">
+            <header class="sec__head">
+              <h2 class="sec__title" data-i18n="look.stats.title">Cuadro de FPS y ping</h2>
+              <span class="tag" data-i18n="skin.tag">Sólo lo ves vos</span>
+            </header>
+            <div class="sec__body">
+              <div class="rows" id="lookStats"></div>
+            </div>
+          </section>
+
           <section class="sec" data-sec="menubg">
             <header class="sec__head">
               <h2 class="sec__title" data-i18n="look.menu.title">Fondo del menú</h2>
@@ -1242,6 +1252,7 @@
               <span class="tag" data-i18n="skin.tag">Sólo lo ves vos</span>
             </header>
             <div class="sec__body">
+              <div class="rows" id="lookSound"></div>
               <div class="row">
                 <div class="row__text"><span class="row__label" id="goalSfxLabel">Sonido de gol incluido</span></div>
                 <div class="row__ctl"><div class="chips" id="goalSfxChips"></div></div>
@@ -1358,6 +1369,16 @@
               <span class="statusline" id="discordStatus">—</span>
             </header>
             <div class="sec__body" id="discordSwitches"></div>
+          </section>
+
+          <section class="sec" data-sec="clubnow" id="clubNowSec">
+            <header class="sec__head">
+              <h2 class="sec__title" data-i18n="clubnow.title">Club conectado</h2>
+              <span class="statusline" id="clubNowCount">—</span>
+            </header>
+            <div class="sec__body">
+              <div class="clubnow" id="clubNowList"></div>
+            </div>
           </section>
 
         </div>

@@ -177,5 +177,37 @@
     } catch (e) { return false; }
   }
 
-  return { STYLES, play, has: (s) => !!RECIPES[s] };
+  /*
+   * Palo: el «tong» de un caño de acero golpeado por una pelota. Un golpe seco
+   * (ruido corto filtrado alto) más parciales inarmónicos que se apagan a
+   * distinta velocidad: el grave dura, los agudos mueren rápido. `strength`
+   * (0..1) cambia el volumen y el brillo del golpe.
+   */
+  function postRecipe(ctx, out, t, strength) {
+    const k = Math.min(1, Math.max(0.15, strength));
+    const base = 640 + 120 * k + Math.random() * 30;
+    noise(ctx, out, t, 0.035, 0.55 * k, 3200, 0.9);
+    const parts = [[1, 0.5, 0.42], [2.76, 0.32, 0.26], [5.4, 0.2, 0.14], [8.93, 0.1, 0.07]];
+    for (const [ratio, vol, dur] of parts) {
+      tone(ctx, out, t, base * ratio, dur * (0.7 + 0.5 * k), 'sine', vol * k);
+    }
+  }
+
+  /* Gancho de volumen/contexto compartido con `play`. */
+  function playPost(volume, strength, AC) {
+    const Ctor = AC || (typeof AudioContext !== 'undefined' ? AudioContext : null);
+    if (!Ctor) return false;
+    try {
+      if (!shared) shared = new Ctor();
+      const ctx = shared;
+      if (ctx.state === 'suspended' && ctx.resume) ctx.resume();
+      const master = ctx.createGain();
+      master.gain.value = Math.min(1, Math.max(0, volume));
+      master.connect(ctx.destination);
+      postRecipe(ctx, master, ctx.currentTime + 0.005, strength);
+      return true;
+    } catch (e) { return false; }
+  }
+
+  return { STYLES, play, playPost, has: (s) => !!RECIPES[s] };
 });

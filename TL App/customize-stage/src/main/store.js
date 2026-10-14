@@ -457,6 +457,13 @@ const DEFAULTS = {
     chatScale: 1,
     chatBg: -1,
     chatFont: 'default',
+    /** Opacidad de todo el chat y del cuadro de FPS/ping. */
+    chatOpacity: 1,
+    statsOpacity: 1,
+    statsStyle: 'default',
+    /** Sonido del palo cuando la pelota le pega. */
+    postSound: true,
+    postSoundVolume: 0.7,
     /** Fondo de los menús: `none` · `club` · `aurora` · `grid`. */
     menuBg: 'none'
   },

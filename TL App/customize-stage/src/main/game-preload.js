@@ -597,7 +597,31 @@ function applyClientStyles(doc) {
     chatFamily ? `${CHAT} p, .chatbox-view .chatbox-view-contents > .input input { font-family: ${chatFamily} !important; }` : ''
   ].join('\n    ');
 
+  /*
+   * Opacidad de todo el chat y cuadro de FPS/ping (abajo a la izquierda).
+   * Son reglas de CSS estáticas: no hay nada que correr por cuadro. El chat
+   * vuelve a verse entero mientras se escribe, para no escribir a ciegas.
+   */
+  const chatOpacity = clampNum(vis.chatOpacity, 0.15, 1, 1);
+  const statsOpacity = clampNum(vis.statsOpacity, 0.1, 1, 1);
+  const statsStyle = String(vis.statsStyle || 'default');
+  const STATS = '.game-view .stats-view, .stats-view';
+  const STATS_STYLES = {
+    minimal: `${STATS} { background: transparent !important; box-shadow: none !important; border: 0 !important; text-shadow: 0 0 3px #000, 0 1px 2px #000; }`,
+    glass: `${STATS} { background: rgba(10, 14, 24, .35) !important; border: 1px solid rgba(255,255,255,.14) !important; border-radius: 10px !important; backdrop-filter: blur(4px); }`,
+    solid: `${STATS} { background: rgba(8, 12, 22, .88) !important; border: 1px solid rgba(255,255,255,.08) !important; border-radius: 6px !important; }`,
+    pill: `${STATS} { background: rgba(8, 12, 22, .7) !important; border-radius: 999px !important; padding-left: 12px !important; padding-right: 12px !important; }`
+  };
+  const hudCss = [
+    chatOpacity < 1
+      ? `html .chatbox-view { opacity: ${chatOpacity.toFixed(2)}; transition: opacity .15s; }\n    html .chatbox-view:focus-within { opacity: 1; }`
+      : '',
+    STATS_STYLES[statsStyle] || '',
+    statsOpacity < 1 ? `${STATS} { opacity: ${statsOpacity.toFixed(2)}; }` : ''
+  ].filter(Boolean).join('\n    ');
+
   style.textContent = `
+    ${hudCss}
     .tvm-link {
       color: ${p.blue} !important;
       text-decoration: underline;
@@ -1641,10 +1665,33 @@ async function watchReplayView(doc) {
     ipcRenderer.send('game:toggle-stats', { analyze: true });
   });
 
+  /*
+   * ◀⚽ / ⚽▶: al gol anterior o al siguiente.
+   *
+   * La lista de goles sale de `analyzeReplay` (simula la grabación sin
+   * dibujarla) y se hace UNA sola vez por grabación, recién cuando se aprieta
+   * el primer botón: abrir un replay no cuesta nada. Después cada clic es un
+   * salto, que usa el mismo `seekReplay` que el carrete.
+   */
+  const goalBar = doc.createElement('div');
+  goalBar.className = 'tvm-speeds tvm-goalnav';
+  for (const dir of [-1, 1]) {
+    const b = doc.createElement('button');
+    b.type = 'button';
+    b.textContent = dir < 0 ? '◀ Gol' : 'Gol ▶';
+    b.title = dir < 0 ? 'Ir al gol anterior' : 'Ir al gol siguiente';
+    b.addEventListener('click', (event) => {
+      event.preventDefault();
+      safe(jumpToGoal, dir);
+    });
+    goalBar.append(b);
+  }
+
   // Antes del cronómetro: los botones de velocidad quedan todos juntos y la
   // barra de tiempo no se corre de lugar.
   const time = controls.querySelector('[data-hook="time"]');
   controls.insertBefore(bar, time);
+  controls.insertBefore(goalBar, time);
   controls.insertBefore(stats, time);
 
   const paint = () => {
@@ -5549,6 +5596,102 @@ function cardPayload(card) {
   return { players: filas.slice(0, 12), teams: equipos, seconds: Math.round(total / 1000) };
 }
 
+/* ── El palo suena ───────────────────────────────────────────────────────────
+ *
+ * HaxBall no hace ruido cuando la pelota pega en un palo, así que se detecta
+ * desde la velocidad que ya calcula `ballWasHit` (cero costo extra de lectura):
+ * si en este cuadro la pelota cambió de rumbo o frenó de golpe, estando pegada
+ * a un disco QUIETO que no es de ningún jugador, fue el palo.
+ *
+ * Los palos se buscan UNA vez por partido (discos que no son la pelota ni de
+ * un jugador, que no se mueven). Por cuadro son un par de restas con cuatro
+ * discos, sin memoria nueva, y recién ahí se mira nada más si la pelota venía
+ * con velocidad. Un enfriamiento de 90 ms evita el doble sonido de un rebote
+ * que toca los dos palos.
+ */
+const postState = { match: null, discs: [], x: [], y: [], r: [], lastAt: 0 };
+const POST_MIN_SPEED = 0.12;   // px/ms: por debajo es un roce, no un golpe
+const POST_SLACK = 3;          // holgura de contacto en px
+const POST_COOLDOWN_MS = 90;
+
+function findPosts(f, room, match) {
+  postState.match = match;
+  postState.discs.length = 0;
+  postState.x.length = 0;
+  postState.y.length = 0;
+  postState.r.length = 0;
+  const world = match[f.world];
+  const list = world && world[f.discs];
+  if (!list || !f.radius) return;
+
+  const players = room[f.players] || [];
+  for (let i = 1; i < list.length && postState.discs.length < 12; i++) {
+    const d = list[i];
+    const pos = d && d[f.pos];
+    const r = d && d[f.radius];
+    if (!pos || !(r > 0)) continue;
+    let isPlayer = false;
+    for (let j = 0; j < players.length; j++) {
+      if (players[j] && players[j][f.disc] === d) { isPlayer = true; break; }
+    }
+    if (isPlayer) continue;
+    postState.discs.push(d);
+    postState.x.push(pos.x);
+    postState.y.push(pos.y);
+    postState.r.push(r);
+  }
+}
+
+function postCheck(f, room, match, prevVx, prevVy, advanced) {
+  if (!(advanced > 0) || advanced > 60) return;
+  const memory = tracker.ball;
+  if (!memory.seen) return;
+
+  const before = Math.sqrt(prevVx * prevVx + prevVy * prevVy);
+  if (before < POST_MIN_SPEED) return;
+
+  const nowSpeed = Math.sqrt(memory.vx * memory.vx + memory.vy * memory.vy);
+  // Un golpe de palo cambia el rumbo o come velocidad; la fricción sola no.
+  const aligned = nowSpeed > 0.001 ? (prevVx * memory.vx + prevVy * memory.vy) / (before * nowSpeed) : -1;
+  if (aligned > 0.9 && nowSpeed > before * 0.75) return;
+
+  if (match !== postState.match) findPosts(f, room, match);
+  if (!postState.discs.length) return;
+
+  const now = Date.now();
+  if (now - postState.lastAt < POST_COOLDOWN_MS) return;
+
+  const world = match[f.world];
+  const ball = world[f.discs][0];
+  const ballR = (f.radius && ball[f.radius]) || DEFAULT_BALL_RADIUS;
+  for (let i = 0; i < postState.discs.length; i++) {
+    const pos = postState.discs[i][f.pos];
+    // Quieto: si se movió, no era un palo.
+    if (Math.abs(pos.x - postState.x[i]) > 0.01 || Math.abs(pos.y - postState.y[i]) > 0.01) continue;
+    const dx = memory.x - pos.x;
+    const dy = memory.y - pos.y;
+    const reach = ballR + postState.r[i] + POST_SLACK + before * advanced;
+    if (dx * dx + dy * dy > reach * reach) continue;
+
+    // Si alguien la tocó en estos mismos milisegundos, fue una patada.
+    const last = tracker.touches[tracker.touches.length - 1];
+    if (last && tracker.clock - last.at < 60) return;
+
+    postState.lastAt = now;
+    safe(playPostSound, Math.min(1, before / 1.2));
+    return;
+  }
+}
+
+function playPostSound(strength) {
+  const vis = state.config.visual || {};
+  if (!goalSfx || !goalSfx.playPost || vis.postSound === false) return;
+  const lv = gameSoundLevel();
+  if (lv <= 0) return;
+  const vol = Math.min(1, Math.max(0, Number(vis.postSoundVolume)));
+  goalSfx.playPost((Number.isFinite(vol) ? vol : 0.7) * lv, strength);
+}
+
 function resetTracker() {
   tracker.clock = 0;
   tracker.lastAt = 0;
@@ -7504,7 +7647,10 @@ function onGameTick(view, room) {
    */
   // El resultado ya no decide el autor (ver abajo): se la llama por su efecto,
   // que es mantener al día por dónde y a qué velocidad venía la pelota.
+  const prevVx = tracker.ball.vx;
+  const prevVy = tracker.ball.vy;
   ballWasHit(tracker, f, match, advanced);
+  if ((state.config.visual || {}).postSound !== false) postCheck(f, room, match, prevVx, prevVy, advanced);
 
   // La ficha del partido: posesión y distancia se cobran por cuadro.
   cardTick(tracker.card, f, room, advanced);
@@ -8304,6 +8450,45 @@ function seekReplay(ms) {
   if (target < Number(player[R.clock])) player[R.rewind]();
   player[R.seek] = target;
   return true;
+}
+
+/** Goles de la grabación abierta, calculados una vez (ver `jumpToGoal`). */
+let goalNav = { player: null, goals: null };
+
+/** Salta al gol anterior (-1) o al siguiente (1) de la grabación abierta. */
+function jumpToGoal(dir) {
+  const it = replayPlayer();
+  if (!it) return;
+  const { R, player } = it;
+
+  if (goalNav.player !== player || !goalNav.goals) {
+    notify('Buscando los goles…', 'ok');
+    const summary = analyzeReplay();
+    if (!summary || !summary.ok) {
+      notify((summary && summary.reason) || 'No se pudieron buscar los goles', 'err');
+      return;
+    }
+    goalNav = { player, goals: summary.goals.map((g) => Number(g.at)).filter(Number.isFinite) };
+  }
+
+  const goals = goalNav.goals;
+  if (!goals.length) return notify('No hay goles en esta grabación', 'err');
+
+  // Cada gol se mira desde unos segundos antes, igual que en el carrete.
+  const now = Number(player[R.clock]) || 0;
+  let target = -1;
+  if (dir > 0) {
+    target = goals.findIndex((at) => at - REEL_BEFORE_MS > now + 500);
+  } else {
+    for (let i = goals.length - 1; i >= 0; i--) {
+      if (goals[i] - REEL_BEFORE_MS < now - 2500) { target = i; break; }
+    }
+  }
+  if (target < 0) return notify(dir > 0 ? 'No hay más goles adelante' : 'No hay goles antes', 'ok');
+
+  safe(stopReel);
+  seekReplay(goals[target] - REEL_BEFORE_MS);
+  notify(`Gol ${target + 1} de ${goals.length}`, 'ok');
 }
 
 /**

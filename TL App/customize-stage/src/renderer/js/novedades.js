@@ -7,10 +7,14 @@
  * mismo, nadie vuelve a ver el cartel.
  */
 window.TL_NEWS = {
-  id: 'v1.0.50',
+  id: 'v1.0.51',
   title: { es: 'Qué hay de nuevo', en: "What's new" },
   items: {
     es: [
+      'Nuevo: el palo suena (un «tong» metálico) cuando la pelota le pega. Se puede apagar o bajar el volumen.',
+      'Nuevo: botones ◀ Gol / Gol ▶ en las replays para ir al gol anterior o siguiente.',
+      'Nuevo: opacidad del chat y estilo/opacidad del cuadro de FPS y ping.',
+      'Nuevo: en Cuenta, «Club conectado» muestra quién del club está usando la app y en qué sala.',
       'Insignia del plantel: quien entra con su clave se ve con el escudo y el nombre dorado en las salas.',
       'Nuevo: animaciones del menú (Personalización → Estilo): transiciones, escudo que respira, cortina al entrar a una sala, interruptores con rebote y filas en cascada. Todo se puede apagar.',
       'Nuevo: partículas en 5 estilos, fondo con la música y 4 temas (Papel, Retro CRT, Cyberpunk, Mármol).',
@@ -22,6 +26,10 @@ window.TL_NEWS = {
       'Cada clave se usa en una sola PC: si cambiás de computadora, pedile a miclo que te la libere.'
     ],
     en: [
+      'New: goalposts make a metallic clang when the ball hits them. Can be turned off or lowered.',
+      'New: ◀ Goal / Goal ▶ buttons in replays to jump to the previous or next goal.',
+      'New: chat opacity and FPS/ping box style and opacity.',
+      'New: in Account, “Club online” shows which club members are using the app and in which room.',
       'Squad badge: members who sign in with their key show the crest and a golden name in rooms.',
       'New: menu animations (Personalization → Style): transitions, breathing crest, curtain when entering a room, bouncy switches and cascading rows. All can be turned off.',
       'New: particles in 5 styles, background with the music and 4 themes (Paper, Retro CRT, Cyberpunk, Marble).',
