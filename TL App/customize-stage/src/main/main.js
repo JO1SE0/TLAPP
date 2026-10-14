@@ -3644,6 +3644,39 @@ listen('music:cmd', (_e, payload) => {
   ytmusic.command(String(payload && payload.kind || ''), payload ? payload.value : undefined);
 });
 
+/* ── Canciones fijadas (desde el cartel de la cancha) ─────────────────── */
+const PIN_MAX = 30;
+const VIDEO_ID = /^[\w-]{11}$/;
+function savePins(pins) {
+  broadcastConfig(store.set({ music: { pins: { __replace: pins } } }));
+}
+function currentPins() {
+  const list = store.get().music.pins;
+  return Array.isArray(list) ? list.filter((p) => p && VIDEO_ID.test(String(p.id))) : [];
+}
+listen('music:pin', () => {
+  const now = ytmusic.state();
+  if (!VIDEO_ID.test(String(now.videoId || ''))) return;
+  const pins = currentPins();
+  const i = pins.findIndex((p) => p.id === now.videoId);
+  if (i >= 0) pins.splice(i, 1);
+  else {
+    pins.unshift({ id: now.videoId, title: String(now.title || '').slice(0, 70), artist: String(now.artist || '').slice(0, 40) });
+    pins.length = Math.min(pins.length, PIN_MAX);
+  }
+  savePins(pins);
+});
+listen('music:unpin', (_e, id) => {
+  const pins = currentPins().filter((p) => p.id !== String(id || ''));
+  savePins(pins);
+});
+listen('music:play', (_e, id) => {
+  if (!store.get().music.enabled) return;
+  const pins = currentPins();
+  if (!pins.some((p) => p.id === String(id || ''))) return;
+  ytmusic.playVideo(id);
+});
+
 handle('music:login', () => ytmusic.login(mainWindow));
 handle('music:logout', () => ytmusic.logout());
 handle('music:home', () => { ytmusic.goHome(); return { ok: true }; });

@@ -10529,6 +10529,7 @@ const startKeystrokeDrag = makeDragger(
 let musicEl = null;
 /** Los nodos que se repintan. Se guardan para no volver a buscarlos. */
 let musicParts = null;
+let musicListOpen = false;
 let musicMoving = false;
 /** El reloj del tiempo transcurrido. Sólo gira con algo sonando. */
 let musicTicker = null;
@@ -10598,6 +10599,9 @@ const MUSIC_ICONS = {
     fill: 'M4.4 9.4h3.3L12 5.9v12.2L7.7 14.6H4.4z',
     stroke: 'M15.2 10.2l4.4 3.6M19.6 10.2l-4.4 3.6'
   },
+  heart: { fill: 'M12 20.2s-7.4-4.6-7.4-10.1A4.1 4.1 0 0 1 12 7.7a4.1 4.1 0 0 1 7.4 2.4c0 5.5-7.4 10.1-7.4 10.1z' },
+  heartOff: { stroke: 'M12 20.2s-7.4-4.6-7.4-10.1A4.1 4.1 0 0 1 12 7.7a4.1 4.1 0 0 1 7.4 2.4c0 5.5-7.4 10.1-7.4 10.1z' },
+  list: { stroke: 'M5 7h14M5 12h14M5 17h9' },
   note: {
     fill: 'M9 17.2a2.6 2.6 0 1 1-1.4-2.3V6.6l9.8-2v10.6a2.6 2.6 0 1 1-1.4-2.3V7.9L9 9.2z'
   }
@@ -10764,6 +10768,26 @@ function ensureMusicStyle() {
     #tvm-music button:hover { background: rgba(var(--fg), .12); color: rgb(var(--fg)); }
     #tvm-music button:active { transform: scale(.9); }
     #tvm-music .tvm-m-skip { width: ${u(28)}; height: ${u(28)}; }
+    #tvm-music .tvm-m-pin.is-on { color: rgb(var(--acc2)); }
+    #tvm-music .tvm-m-list {
+      position: absolute; left: 0; top: 100%; margin-top: ${u(6)};
+      width: ${u(280)}; max-height: ${u(230)}; overflow-y: auto; pointer-events: auto;
+      padding: ${u(4)}; border-radius: ${u(8)};
+      background: rgba(var(--bg), .94); border: 1px solid rgba(var(--fg), .1);
+      box-shadow: 0 ${u(16)} ${u(34)} ${u(-16)} rgba(0, 0, 0, .8);
+      scrollbar-width: thin;
+    }
+    #tvm-music .tvm-m-empty { padding: ${u(10)}; font-size: ${u(12)}; color: rgba(var(--fg), .6); }
+    #tvm-music .tvm-m-item {
+      display: flex; align-items: center; gap: ${u(6)}; padding: ${u(6)} ${u(8)};
+      border-radius: ${u(5)}; cursor: pointer;
+    }
+    #tvm-music .tvm-m-item:hover { background: rgba(var(--fg), .1); }
+    #tvm-music .tvm-m-item.is-now { background: rgba(var(--acc), .2); }
+    #tvm-music .tvm-m-itext { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+    #tvm-music .tvm-m-itext b { font-size: ${u(12.5)}; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    #tvm-music .tvm-m-itext span { font-size: ${u(11)}; color: rgba(var(--fg), .6); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    #tvm-music .tvm-m-del { width: ${u(22)}; height: ${u(22)}; font-size: ${u(11)}; }
     #tvm-music .tvm-m-play {
       width: ${u(34)}; height: ${u(34)};
       background: rgb(var(--fg)); color: rgb(var(--bg));
@@ -11053,7 +11077,13 @@ function buildMusicHud() {
     vrail.addEventListener('pointercancel', drop);
   });
 
-  controls.append(prev, play, next, vol);
+  const pinBtn = makeButton('tvm-m-skip tvm-m-pin', 'Fijar esta canción', MUSIC_ICONS.heartOff, 15,
+    () => ipcRenderer.send('music:pin'));
+  const listBtn = makeButton('tvm-m-skip', 'Mis canciones', MUSIC_ICONS.list, 15, () => {
+    musicListOpen = !musicListOpen;
+    renderMusicList();
+  });
+  controls.append(prev, play, next, pinBtn, listBtn, vol);
 
   /*
    * Y la rueda del mouse sobre el cartel, que es como se le baja el volumen a
@@ -11073,14 +11103,63 @@ function buildMusicHud() {
   document.body.append(musicEl);
 
   musicParts = {
-    art, title, artist, fill, elapsed, total, play, speaker, bubble,
+    art, title, artist, fill, elapsed, total, play, speaker, bubble, pinBtn, listBtn,
     artSrc: null, playIcon: null, speakerIcon: null
   };
+  musicListSig = '';
+  renderMusicList();
   placeMusicHud();
   // Rehacerlo mientras se está acomodando no puede apagarle el modo mover:
   // cambiar el tamaño desde el panel rehace el cartel entero.
   setMusicMoveMode(musicMoving);
   paintMusicHud();
+}
+
+/** La lista de canciones fijadas, desplegada debajo del cartel. */
+function renderMusicList() {
+  if (!musicEl || !musicParts) return;
+  let box = musicEl.querySelector('.tvm-m-list');
+  if (box) box.remove();
+  const pins = (state.config.music && Array.isArray(state.config.music.pins)) ? state.config.music.pins : [];
+  const cur = String((musicNow && musicNow.videoId) || '');
+  // El corazón se rellena si la canción de ahora ya está fijada.
+  if (musicParts.pinBtn) {
+    const on = pins.some((x) => x.id === cur);
+    musicParts.pinBtn.replaceChildren(musicIcon(on ? MUSIC_ICONS.heart : MUSIC_ICONS.heartOff, Math.round(15 * musicScale())));
+    musicParts.pinBtn.classList.toggle('is-on', on);
+  }
+  if (!musicListOpen) return;
+  box = document.createElement('div');
+  box.className = 'tvm-m-list';
+  box.addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); });
+  box.addEventListener('wheel', (e) => { e.stopPropagation(); }, { passive: true });
+  if (!pins.length) {
+    const empty = document.createElement('div');
+    empty.className = 'tvm-m-empty';
+    empty.textContent = 'Tocá el corazón para fijar la canción que suena.';
+    box.append(empty);
+  }
+  for (const pin of pins) {
+    const row = document.createElement('div');
+    row.className = 'tvm-m-item' + (pin.id === cur ? ' is-now' : '');
+    const text = document.createElement('div');
+    text.className = 'tvm-m-itext';
+    const t = document.createElement('b');
+    t.textContent = pin.title || 'Sin título';
+    const a = document.createElement('span');
+    a.textContent = pin.artist || '';
+    text.append(t, a);
+    const del = document.createElement('button');
+    del.type = 'button';
+    del.className = 'tvm-m-del';
+    del.title = 'Quitar';
+    del.textContent = '✕';
+    del.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); ipcRenderer.send('music:unpin', pin.id); focusPitch(); });
+    row.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); ipcRenderer.send('music:play', pin.id); focusPitch(); });
+    row.append(text, del);
+    box.append(row);
+  }
+  musicEl.append(box);
 }
 
 function placeMusicHud() {
@@ -11096,8 +11175,13 @@ function setMusicText(el, text) {
 }
 
 /** Todo lo que cambia de tema a tema. La barrita la lleva `syncMusicProgressAnimation`. */
+let musicListSig = '';
 function paintMusicHud() {
   if (!musicEl || !musicParts) return;
+  // El corazón y la lista sólo se rehacen si cambió el tema o las fijadas.
+  const pinsNow = (state.config.music && Array.isArray(state.config.music.pins)) ? state.config.music.pins : [];
+  const sig = `${musicNow.videoId || ''}|${pinsNow.map((x) => x.id).join(',')}`;
+  if (sig !== musicListSig) { musicListSig = sig; renderMusicList(); }
   const nothing = !musicNow.title;
 
   setMusicText(musicParts.title, nothing ? 'YouTube Music' : musicNow.title);

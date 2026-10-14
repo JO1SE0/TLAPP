@@ -1059,6 +1059,13 @@ function goHome() {
   contents.loadURL(HOME).catch(() => { /* ya se está yendo a otro lado */ });
 }
 
+/** Reproduce una canción puntual (id de 11 caracteres) en el reproductor. */
+function playVideo(id) {
+  if (!alive() || !/^[\w-]{11}$/.test(String(id || ''))) return false;
+  contents.loadURL('https://music.youtube.com/watch?v=' + id).catch(() => { /* navegó a otra cosa */ });
+  return true;
+}
+
 function reload() {
   if (!alive()) return;
   contents.reload();
@@ -1234,6 +1241,7 @@ module.exports = {
   visible,
   command,
   goHome,
+  playVideo,
   reload,
   login,
   logout,

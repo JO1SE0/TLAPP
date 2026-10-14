@@ -378,6 +378,8 @@ const DEFAULTS = {
      * apenas carga (ver `rememberVolume` en main.js).
      */
     volume: 1,
+    /** Canciones fijadas desde el cartel: [{ id, title, artist }], hasta 30. */
+    pins: [],
     /** El cartel sobre la cancha: lo que se ve mientras jugás. */
     hud: {
       enabled: false,
