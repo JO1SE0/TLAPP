@@ -5596,153 +5596,6 @@ function cardPayload(card) {
   return { players: filas.slice(0, 12), teams: equipos, seconds: Math.round(total / 1000) };
 }
 
-/* ── El palo suena ───────────────────────────────────────────────────────────
- *
- * HaxBall no hace ruido cuando la pelota pega en un palo, así que se detecta
- * desde la velocidad que ya calcula `ballWasHit` (cero costo extra de lectura):
- * si en este cuadro la pelota cambió de rumbo o frenó de golpe, estando pegada
- * a un disco QUIETO que no es de ningún jugador, fue el palo.
- *
- * Los palos se buscan UNA vez por partido (discos que no son la pelota ni de
- * un jugador, que no se mueven). Por cuadro son un par de restas con cuatro
- * discos, sin memoria nueva, y recién ahí se mira nada más si la pelota venía
- * con velocidad. Un enfriamiento de 90 ms evita el doble sonido de un rebote
- * que toca los dos palos.
- */
-const postState = { match: null, discs: [], x: [], y: [], r: [], lastAt: 0, n: 0, idle: 0, px: [0, 0, 0, 0], py: [0, 0, 0, 0], st: [1, 1, 1, 1] };
-const POST_STEP_MS = 1000 / 60;   // HaxBall avanza la física a 60 pasos por segundo
-const POST_COOLDOWN_MS = 90;
-
-function findPosts(f, room, match) {
-  postState.match = match;
-  postState.n = 0;
-  postState.discs.length = 0;
-  postState.x.length = 0;
-  postState.y.length = 0;
-  postState.r.length = 0;
-  const world = match[f.world];
-  const list = world && world[f.discs];
-  if (!list || !f.radius) return;
-
-  const players = room[f.players] || [];
-  for (let i = 1; i < list.length && postState.discs.length < 12; i++) {
-    const d = list[i];
-    const pos = d && d[f.pos];
-    const r = d && d[f.radius];
-    if (!pos || !(r > 0)) continue;
-    let isPlayer = false;
-    for (let j = 0; j < players.length; j++) {
-      if (players[j] && players[j][f.disc] === d) { isPlayer = true; break; }
-    }
-    if (isPlayer) continue;
-    postState.discs.push(d);
-    postState.x.push(pos.x);
-    postState.y.push(pos.y);
-    postState.r.push(r);
-  }
-}
-
-/*
- * Cómo se detecta. Se miran las últimas cuatro posiciones de la pelota, una por
- * cada paso de física que se llegó a ver (p0 p1 p2 p3), y el choque se busca
- * ENTRE p1 y p2:
- *
- *   · p0→p1 es lo que traía: tiene que venir hacia el palo y estar cerca;
- *   · p2→p3 es lo que lleva después: la pelota cambió de rumbo o de ritmo.
- *
- * El paso del medio (p1→p2) no se usa: es donde HaxBall acomoda la pelota
- * contra el palo y la medición ahí sale contaminada. Y así no importa que a
- * veces el cuadro de pantalla se salte justo el paso del contacto, que era lo
- * que hacía fallar a la versión anterior.
- *
- * La velocidad se mide por PASO de física y no por milisegundo de pantalla: a
- * 144 FPS la mayoría de los cuadros no traen un paso nuevo, y medida en ms la
- * velocidad saltaba entre 0 y el doble (falsos avisos y golpes sin sonar).
- */
-function postCheck(f, room, match, advanced) {
-  const ps = postState;
-  if (!(advanced > 0) || advanced > 80) { ps.n = 0; return; }
-  const at = ballPos(f, match);
-  if (!at) return;
-  if (match !== ps.match) findPosts(f, room, match);
-
-  ps.idle += advanced;
-  // Cuadro sin paso de física nuevo: la pelota no se movió.
-  if (ps.n > 0 && at.x === ps.px[3] && at.y === ps.py[3]) return;
-
-  const steps = Math.max(1, Math.round(ps.idle / POST_STEP_MS));
-  ps.idle = 0;
-  for (let i = 0; i < 3; i++) { ps.px[i] = ps.px[i + 1]; ps.py[i] = ps.py[i + 1]; ps.st[i] = ps.st[i + 1]; }
-  ps.px[3] = at.x; ps.py[3] = at.y; ps.st[3] = steps;
-  if (ps.n < 4) ps.n++;
-  if (ps.n < 4 || !ps.discs.length) return;
-  // Pasos juntados de más: la medición ya no es de fiar.
-  if (ps.st[1] > 2 || ps.st[2] > 3 || ps.st[3] > 2) return;
-
-  const now = Date.now();
-  if (now - ps.lastAt < POST_COOLDOWN_MS) return;
-
-  // Velocidades por paso: lo que traía y lo que lleva.
-  const ix = (ps.px[1] - ps.px[0]) / ps.st[1];
-  const iy = (ps.py[1] - ps.py[0]) / ps.st[1];
-  const ox = (ps.px[3] - ps.px[2]) / ps.st[3];
-  const oy = (ps.py[3] - ps.py[2]) / ps.st[3];
-  const inSpeed = Math.sqrt(ix * ix + iy * iy);
-  const outSpeed = Math.sqrt(ox * ox + oy * oy);
-  if (inSpeed < 0.5) return;                   // venía despacio: un roce, no un golpe
-
-  // ¿Cambió de rumbo o de ritmo? Pasar de largo no cambia ninguna de las dos.
-  const cos = outSpeed > 0.01 ? (ix * ox + iy * oy) / (inSpeed * outSpeed) : -1;
-  const slowed = outSpeed < inSpeed * 0.45;
-  if (cos > 0.93 && !slowed) return;
-
-  const world = match[f.world];
-  const ball = world[f.discs][0];
-  const ballR = (f.radius && ball[f.radius]) || DEFAULT_BALL_RADIUS;
-  const gap = ps.st[2];                          // pasos del medio
-
-  for (let i = 0; i < ps.discs.length; i++) {
-    const pos = ps.discs[i][f.pos];
-    // Quieto: si se movió, no era un palo.
-    if (Math.abs(pos.x - ps.x[i]) > 0.01 || Math.abs(pos.y - ps.y[i]) > 0.01) continue;
-    const touch = ballR + ps.r[i];
-
-    // p1 tiene que estar a una distancia desde la que el paso del medio llega al palo.
-    const ex = ps.px[1] - pos.x;
-    const ey = ps.py[1] - pos.y;
-    const d1 = Math.sqrt(ex * ex + ey * ey);
-    if (d1 < 0.0001 || d1 > touch + inSpeed * gap + 1) continue;
-    // Y p2 sigue pegada: no es una pelota que se fue lejos.
-    const fx = ps.px[2] - pos.x;
-    const fy = ps.py[2] - pos.y;
-    const d2 = Math.sqrt(fx * fx + fy * fy);
-    if (d2 > touch + Math.max(inSpeed, outSpeed) * gap + 3) continue;
-
-    // Venía de frente al palo y ahora se aleja de él.
-    const approach = (ix * ex + iy * ey) / d1;           // < 0: iba hacia el palo
-    const away = (ox * fx + oy * fy) / (d2 || 1);        // > 0: ahora se aleja
-    if (approach > -0.4 || away < 0.1) continue;
-
-    // Una patada pegada en este mismo instante no es el palo.
-    const last = tracker.touches[tracker.touches.length - 1];
-    if (last && tracker.clock - last.at < 50) return;
-
-    ps.lastAt = now;
-    const change = Math.sqrt((ox - ix) * (ox - ix) + (oy - iy) * (oy - iy));
-    safe(playPostSound, Math.min(1, Math.max(0.35, change / 8)));
-    return;
-  }
-}
-
-function playPostSound(strength) {
-  const vis = state.config.visual || {};
-  if (!goalSfx || !goalSfx.playPost || vis.postSound === false) return;
-  const lv = gameSoundLevel();
-  if (lv <= 0) return;
-  const vol = Math.min(1, Math.max(0, Number(vis.postSoundVolume)));
-  goalSfx.playPost((Number.isFinite(vol) ? vol : 0.7) * lv, strength);
-}
-
 /* ── Bitácora del partido (para el informe) ──────────────────────────────────
  *
  * Todo lo que pide el informe de un partido oficial: quiénes jugaron, quién
@@ -7898,7 +7751,6 @@ function onGameTick(view, room) {
   // El resultado ya no decide el autor (ver abajo): se la llama por su efecto,
   // que es mantener al día por dónde y a qué velocidad venía la pelota.
   ballWasHit(tracker, f, match, advanced);
-  if ((state.config.visual || {}).postSound !== false) postCheck(f, room, match, advanced);
 
   // La ficha del partido: posesión y distancia se cobran por cuadro.
   cardTick(tracker.card, f, room, advanced);
@@ -10826,6 +10678,52 @@ function ensureMusicStyle() {
     }
     #tvm-music .tvm-m-play:hover { background: rgb(var(--fg)); color: rgb(var(--bg)); transform: scale(1.06); }
     #tvm-music .tvm-m-play:active { transform: scale(.94); }
+
+    /* Estilo club: vidrio oscuro, filo dorado a la izquierda, tapa grande con brillo
+       y play en degradé. Sólo colores, sombras y radios: nada que cueste en la partida. */
+    #tvm-music {
+      border-radius: ${u(14)};
+      border: 1px solid rgba(var(--acc2), .28);
+      background:
+        linear-gradient(100deg, rgba(var(--amb), .34), rgba(var(--amb), 0) 60%),
+        linear-gradient(180deg, rgba(var(--fg), .05), rgba(var(--fg), 0) 40%),
+        rgba(var(--bg), .92);
+      box-shadow:
+        0 1px 0 rgba(255, 255, 255, .08) inset,
+        0 0 ${u(22)} ${u(-8)} rgba(var(--acc2), .35),
+        0 ${u(18)} ${u(36)} ${u(-16)} rgba(0, 0, 0, .85);
+      padding: ${u(9)} ${u(14)} ${u(9)} ${u(9)};
+      overflow: visible;
+    }
+    #tvm-music::before {
+      content: ''; position: absolute; left: 0; top: ${u(12)}; bottom: ${u(12)};
+      width: ${u(3)}; border-radius: 0 ${u(3)} ${u(3)} 0;
+      background: linear-gradient(180deg, rgb(var(--acc2)), rgb(var(--acc)));
+    }
+    #tvm-music.is-compact::before { display: none; }
+    #tvm-music .tvm-m-art {
+      width: ${u(54)}; height: ${u(54)}; border-radius: ${u(10)};
+      box-shadow:
+        0 0 0 1px rgba(var(--acc2), .35),
+        0 ${u(8)} ${u(18)} ${u(-6)} rgba(var(--acc), .55);
+    }
+    #tvm-music .tvm-m-eq { border-radius: ${u(4)}; background: rgba(0, 0, 0, .7); }
+    #tvm-music .tvm-m-info { width: ${u(184)}; }
+    #tvm-music .tvm-m-title { font-size: ${u(13.5)}; font-weight: 750; }
+    #tvm-music .tvm-m-artist { color: rgba(var(--acc2), .85); font-weight: 550; letter-spacing: .02em; }
+    #tvm-music .tvm-m-rail { height: ${u(4)}; border-radius: ${u(2)}; }
+    #tvm-music .tvm-m-fill { border-radius: ${u(2)}; }
+    #tvm-music button { border-radius: 50%; }
+    #tvm-music .tvm-m-play {
+      width: ${u(38)}; height: ${u(38)};
+      background: linear-gradient(135deg, rgb(var(--acc2)), rgb(var(--acc)));
+      color: #101418;
+      box-shadow: 0 ${u(4)} ${u(12)} ${u(-3)} rgba(var(--acc2), .7);
+    }
+    #tvm-music .tvm-m-play:hover { background: linear-gradient(135deg, rgb(var(--acc2)), rgb(var(--acc))); color: #101418; transform: scale(1.08); }
+    #tvm-music .tvm-m-list { border-radius: ${u(12)}; border-color: rgba(var(--acc2), .25); }
+    #tvm-music .tvm-m-item { border-radius: ${u(8)}; }
+    #tvm-music .tvm-m-item.is-now { background: rgba(var(--acc2), .18); }
 
     /* El volumen: altavoz, barra con perilla y el porcentaje mientras se toca. */
     #tvm-music .tvm-m-vol { display: flex; align-items: center; gap: ${u(2)}; margin-left: ${u(2)}; }

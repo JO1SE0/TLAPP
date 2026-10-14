@@ -8522,8 +8522,6 @@ const LOOK_SECTIONS = {
     { key: 'chatFont', type: 'select', label: 'look.chatFont', options: FONT_OPTIONS }
   ],
   lookSound: [
-    { key: 'postSound', type: 'switch', label: 'look.postSound', desc: 'look.postSoundHelp' },
-    { key: 'postSoundVolume', type: 'range', label: 'look.postSoundVolume', min: 0, max: 1, step: 0.05, showIf: (v) => v.postSound }
   ],
   lookStats: [
     { key: 'statsStyle', type: 'select', label: 'look.statsStyle', options: [['default', 'look.opt.none'], ['minimal', 'look.stats.minimal'], ['glass', 'look.stats.glass'], ['solid', 'look.stats.solid'], ['pill', 'look.stats.pill']] },
@@ -8538,7 +8536,7 @@ const LOOK_DEFAULTS = {
   texture: 'none', pitchLight: 'none', softShadows: false, crest: false, crestOpacity: 0.18, crestSize: 0.45, lineColor: '', postColor: '',
   discStyle: 'default', ballStyle: 'default', ballColor: '', lineGlow: false, discOutline: '', ballOutline: '', ringStyle: 'default', ringColor: '',
   selfTrail: false, selfTrailColor: '', nameScale: 1, nameColor: '', nameOutline: false, nameFont: 'default',
-  chatScale: 1, chatBg: -1, chatFont: 'default', chatOpacity: 1, postSound: true, postSoundVolume: 0.7, statsOpacity: 1, statsStyle: 'default', menuBg: 'none'
+  chatScale: 1, chatBg: -1, chatFont: 'default', chatOpacity: 1, statsOpacity: 1, statsStyle: 'default', menuBg: 'none'
 };
 
 function lookValue(key) {
@@ -10048,10 +10046,7 @@ const MIX_CHANNELS = [
   { id: 'goalown', es: 'Tu sonido de gol', en: 'Your goal sound', def: 0.7,
     get: (c) => c.vip && c.vip.goalVolume, set: (v) => ({ vip: { goalVolume: v } }) },
   { id: 'hit', es: 'Sonido de golpe', en: 'Kick sound', def: 0.7,
-    get: (c) => c.vip && c.vip.hitVolume, set: (v) => ({ vip: { hitVolume: v } }) },
-  { id: 'post', es: 'Sonido del palo', en: 'Post sound', def: 0.7,
-    get: (c) => c.visual && c.visual.postSoundVolume, set: (v) => ({ visual: { postSoundVolume: v } }),
-    preview: () => { const v = Number((state.config.visual || {}).postSoundVolume); if (window.TLGoalSfx && window.TLGoalSfx.playPost) window.TLGoalSfx.playPost(Number.isFinite(v) ? v : 0.7, 0.8); } }
+    get: (c) => c.vip && c.vip.hitVolume, set: (v) => ({ vip: { hitVolume: v } }) }
 ];
 
 function paintMixer() {

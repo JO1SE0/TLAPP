@@ -466,8 +466,6 @@ const DEFAULTS = {
     statsOpacity: 1,
     statsStyle: 'default',
     /** Sonido del palo cuando la pelota le pega. */
-    postSound: true,
-    postSoundVolume: 0.7,
     /** Fondo de los menús: `none` · `club` · `aurora` · `grid`. */
     menuBg: 'none'
   },

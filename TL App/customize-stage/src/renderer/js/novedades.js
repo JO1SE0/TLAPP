@@ -11,9 +11,8 @@ window.TL_NEWS = {
   title: { es: 'Qué hay de nuevo', en: "What's new" },
   items: {
     es: [
-      'Palo: detección rehecha (mide por pasos de física, no por cuadros de pantalla) y sonido nuevo de caño de acero que resuena. Podés probarlo con ▶ en el Mezclador de volúmenes. Ventana de Música más grande y ordenada.',
       'Cartel de música en la cancha (F7): ahora tiene ♥ para fijar la canción que suena y ☰ para abrir tu lista de canciones fijadas y cambiar de tema sin salir de la partida.',
-      'Nuevo: Mezclador de volúmenes (Configuración → Cliente y audio) con la música del menú, YouTube Music, gol, golpe y palo en un solo lugar.',
+      'Nuevo: Mezclador de volúmenes (Configuración → Cliente y audio) con la música del menú, YouTube Music, gol y golpe en un solo lugar.',
       'Lista de salas: las salas donde hay gente del club conectada se resaltan con una insignia 👥 y el número de compañeros (pasá el mouse para ver los nombres).',
       'Nuevo: densidad de la interfaz (Personalización → Estilo): compacta, normal o cómoda. Cambia el espaciado de los menús, no toca el juego.',
       'Configuración y Personalización más ordenadas: cada sección se puede plegar tocando su título (se recuerda), hay atajos arriba de cada solapa para saltar a una sección y botones «Abrir todo / Cerrar todo». Cabeceras con estilo Club.',
@@ -21,7 +20,6 @@ window.TL_NEWS = {
       'Configuración rediseñada: 7 solapas con íconos (perfil rápido, gráficos, red, controles, cliente y audio, cuentas y sistema) y cabeceras con los colores del club.',
       'Panel del capitán: ahora se pueden marcar personas como «ajenas al club» (no ven conectados ni estadísticas y nadie del club las ve).',
       'Nuevo botón «Club» en el menú de la izquierda: estadísticas del club (goles, asistencias y partidos de todos, firmadas por cada app) e informes de partido (sólo capitán y quien él habilite) listos para copiar como texto o imagen.',
-      'Nuevo: el palo suena (un «tong» metálico) cuando la pelota le pega. Se puede apagar o bajar el volumen.',
       'Nuevo: botones ◀ Gol / Gol ▶ en las replays para ir al gol anterior o siguiente.',
       'Nuevo: opacidad del chat y estilo/opacidad del cuadro de FPS y ping.',
       'Nuevo: en Cuenta, «Club conectado» muestra quién del club está usando la app y en qué sala.',
@@ -36,9 +34,8 @@ window.TL_NEWS = {
       'Cada clave se usa en una sola PC: si cambiás de computadora, pedile a miclo que te la libere.'
     ],
     en: [
-      'Post: detection rebuilt (measured per physics step, not per screen frame) and a new ringing steel-pipe sound. Try it with ▶ in the Volume mixer. Music window larger and tidier.',
       'In-game music overlay (F7): new ♥ to pin the current song and ☰ to open your pinned list and switch songs without leaving the match.',
-      'New: Volume mixer (Settings → Client & audio) with menu music, YouTube Music, goal, kick and post sounds in one place.',
+      'New: Volume mixer (Settings → Client & audio) with menu music, YouTube Music, goal and kick sounds in one place.',
       'Room list: rooms with connected club members are highlighted with a 👥 badge and the number of teammates (hover for their names).',
       'New: interface density (Personalization → Style): compact, normal or comfortable. Only menu spacing, the game is untouched.',
       'Settings and Personalization are easier to scan: tap a section title to fold it (remembered), shortcut chips at the top of each tab jump to a section, plus “Open all / Close all”. Club-style headers.',
@@ -46,7 +43,6 @@ window.TL_NEWS = {
       'Settings redesigned: 7 tabs with icons (quick profile, graphics, network, controls, client & audio, accounts and system) and club-coloured headers.',
       'Captain panel: people can now be marked as “outside the club” (they see no online list or stats, and nobody in the club sees them).',
       'New “Club” button in the left menu: club stats (everyone’s goals, assists and matches, signed by each app) and match reports (captain only, delegable) ready to copy as text or image.',
-      'New: goalposts make a metallic clang when the ball hits them. Can be turned off or lowered.',
       'New: ◀ Goal / Goal ▶ buttons in replays to jump to the previous or next goal.',
       'New: chat opacity and FPS/ping box style and opacity.',
       'New: in Account, “Club online” shows which club members are using the app and in which room.',
