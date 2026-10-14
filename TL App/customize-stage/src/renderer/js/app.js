@@ -1440,6 +1440,7 @@ function buildPanelNav() {
       list.append(btn);
     }
     applyTab(activa);
+    renderTabBar(activa);
     $('#settingsSearchClear').hidden = true;
     return;
   }
@@ -1511,7 +1512,7 @@ function goToSection(page, sec) {
     const el = $(`[data-sec="${sec}"]`);
     if (!el) return;
     if (el.dataset.modal) openSecModal(sec);
-    else el.scrollIntoView({ block: 'start' });
+    else { setSecOpen(el, true); el.scrollIntoView({ block: 'start' }); }
   });
 }
 
@@ -9878,3 +9879,93 @@ function paintMusicClose() {
 $('#musicClose').addEventListener('click', () => setView('play'));
 $('#rail').addEventListener('click', paintMusicClose);
 $('#musicHudOpen').addEventListener('click', paintMusicClose);
+
+
+/* ── Secciones plegables y barra de la solapa ────────────────────────────────
+ * Cada sección se puede cerrar tocando su título (se recuerda), y arriba de la
+ * solapa hay una fila de atajos para saltar a cualquiera sin scrollear. Sólo
+ * clases y CSS estático: no suma trabajo al juego. */
+function secOpenMap() {
+  if (!window.__secOpen) {
+    try { window.__secOpen = JSON.parse(localStorage.getItem('tl_sec_open') || '{}') || {}; } catch (e) { window.__secOpen = {}; }
+  }
+  return window.__secOpen;
+}
+
+function saveSecOpen() {
+  try { localStorage.setItem('tl_sec_open', JSON.stringify(secOpenMap())); } catch (e) { /* nada */ }
+}
+
+/** Por defecto: la primera sección de cada solapa abierta, el resto cerradas. */
+function secDefaultOpen(sec) {
+  if (sec.classList.contains('sec--feature')) return true;
+  const mates = $$(`.page__inner > .sec[data-tab="${sec.dataset.tab}"]`, sec.closest('.page'));
+  return mates.length <= 2 || mates[0] === sec;
+}
+
+function setSecOpen(sec, open, remember) {
+  sec.classList.toggle('is-collapsed', !open);
+  if (remember) { secOpenMap()[sec.dataset.sec] = open; saveSecOpen(); }
+}
+
+function initCollapsibles() {
+  const map = secOpenMap();
+  for (const name of NAV_PAGES) {
+    const page = navPage(name);
+    if (!page || !PANEL_TABS[name]) continue;
+    for (const sec of $$('.page__inner > .sec[data-tab]', page)) {
+      if (sec.dataset.modal) continue;
+      const head = $('.sec__head', sec);
+      if (!head || head.dataset.fold) continue;
+      head.dataset.fold = '1';
+      const chev = document.createElement('span');
+      chev.className = 'sec__chev';
+      chev.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6.5 9.5 5.5 5.5 5.5-5.5"/></svg>';
+      head.append(chev);
+      const open = sec.dataset.sec in map ? map[sec.dataset.sec] !== false : secDefaultOpen(sec);
+      setSecOpen(sec, open);
+      head.addEventListener('click', (e) => {
+        if (e.target.closest('button, input, select, a, label, .toggle, .hint')) return;
+        setSecOpen(sec, sec.classList.contains('is-collapsed'), true);
+      });
+    }
+  }
+}
+
+function renderTabBar(page) {
+  const el = navPage(page);
+  if (!el || !PANEL_TABS[page]) return;
+  const inner = $('.page__inner', el);
+  let bar = $('.tabbar', inner);
+  if (!bar) {
+    bar = document.createElement('div');
+    bar.className = 'tabbar';
+    const head = $('.pagehead', inner);
+    if (head) head.after(bar); else inner.prepend(bar);
+  }
+  const cur = currentTab(page);
+  const secs = $$('.page__inner > .sec[data-tab]', el).filter((sec) => sec.dataset.tab === cur && !sec.dataset.modal && !sec.hidden);
+  const chips = secs.map((sec) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'tabbar__chip';
+    b.textContent = secTitle(sec);
+    b.addEventListener('click', () => { setSecOpen(sec, true, true); sec.scrollIntoView({ block: 'start', behavior: 'smooth' }); });
+    return b;
+  });
+  const all = document.createElement('div');
+  all.className = 'tabbar__all';
+  const mk = (txt, open) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'tabbar__fold';
+    b.textContent = txt;
+    b.addEventListener('click', () => { for (const sec of secs) setSecOpen(sec, open, true); });
+    return b;
+  };
+  all.append(mk(isEn() ? 'Open all' : 'Abrir todo', true), mk(isEn() ? 'Close all' : 'Cerrar todo', false));
+  bar.replaceChildren(...(secs.length > 1 ? [...chips, all] : []));
+  bar.hidden = secs.length < 2;
+}
+
+initCollapsibles();
