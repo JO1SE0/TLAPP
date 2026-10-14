@@ -68,7 +68,7 @@ const TAB_ICONS = {
 const PANEL_TABS = {
   aspecto: [
     { id: 'estilo', label: 'tab.style', hint: 'tab.styleHint',
-      secs: ['tema', 'acento', 'animaciones', 'looks', 'menubg'] },
+      secs: ['tema', 'acento', 'densidad', 'animaciones', 'looks', 'menubg'] },
     { id: 'cancha', label: 'tab.pitch', hint: 'tab.pitchHint',
       secs: ['cancha', 'acabado', 'trazos', 'replays'] },
     { id: 'fichas', label: 'tab.discs', hint: 'tab.discsHint',
@@ -859,6 +859,7 @@ function applyConfig(config) {
   }
   const rd = document.documentElement.dataset;
   rd.pageTrans = config.appearance.pageTransition || 'fade';
+  if (config.appearance.density === 'compact' || config.appearance.density === 'comfy') rd.density = config.appearance.density; else delete rd.density;
   const flag = (k, name) => { if (config.appearance[k] === false) rd[name] = 'off'; else delete rd[name]; };
   flag('crestBreath', 'crestBreath');
   flag('roomCurtain', 'roomCurtain');
@@ -4316,6 +4317,7 @@ $('#npNext').addEventListener('click', () => window.TLMusic && window.TLMusic.ne
 function paintAudio() {
   try { paintGameExtras(); } catch (e) { /* adorno */ }
   try { paintAnimations(); } catch (e) { /* adorno */ }
+  try { paintDensity(); } catch (e) { /* adorno */ }
   const ap = (state.config && state.config.appearance) || {};
   const vol = typeof ap.musicVolume === 'number' ? ap.musicVolume : 0.35;
   $('#audMusic').classList.toggle('is-off', ap.music === false);
@@ -9969,3 +9971,30 @@ function renderTabBar(page) {
 }
 
 initCollapsibles();
+
+
+/* Densidad de la interfaz: sólo espaciado de menús (CSS por `data-density`). */
+const DENSITIES = [['compact', 'Compacta', 'Compact'], ['normal', 'Normal', 'Normal'], ['comfy', 'Cómoda', 'Comfortable']];
+function paintDensity() {
+  const host = $('#denChips');
+  if (!host || !state.config) return;
+  const en = isEn();
+  $('#denTitle').textContent = en ? 'Interface density' : 'Densidad de la interfaz';
+  $('#denDesc').textContent = en
+    ? 'Tighter or roomier menus. Compact fits more settings on screen. The game is not affected.'
+    : 'Menús más apretados o más aireados. Compacta muestra más ajustes por pantalla. No afecta al juego.';
+  $('#denLabel').textContent = en ? 'Menu spacing' : 'Espaciado de los menús';
+  const cur = state.config.appearance.density || 'normal';
+  host.replaceChildren(...DENSITIES.map((d) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'chip' + (d[0] === cur ? ' is-active' : '');
+    b.dataset.den = d[0];
+    b.textContent = en ? d[2] : d[1];
+    return b;
+  }));
+}
+$('#denChips').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-den]');
+  if (b) patchConfig({ appearance: { density: b.dataset.den } });
+});

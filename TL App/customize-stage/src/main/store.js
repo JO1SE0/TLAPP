@@ -81,6 +81,8 @@ const DEFAULTS = {
     sparkCount: 40,
     /** Transición entre pantallas del menú: off | fade | slide | zoom. */
     pageTransition: 'fade',
+    /** Densidad de los menús: compact | normal | comfy. Sólo espaciado, no toca el juego. */
+    density: 'normal',
     /** El escudo "respira" en la barra lateral y la pantalla de inicio. */
     crestBreath: true,
     /** Cortina con el escudo al entrar a una sala. */

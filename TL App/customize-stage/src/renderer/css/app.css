@@ -5299,3 +5299,24 @@ html[data-stage="game"] .trialchip { display: none; }
 .panel:not(.is-searching) .page .sec.is-collapsed { padding-bottom: 8px; }
 .panel:not(.is-searching) .page .sec.is-collapsed .sec__head { margin-bottom: 0; padding-bottom: 12px; border-bottom-color: transparent; }
 .panel.is-searching .sec__chev, .panel.is-searching .tabbar { display: none; }
+
+/* ── Densidad de la interfaz ─────────────────────────────────── */
+html[data-density="compact"] .row { min-height: 40px; padding: 5px 12px; }
+html[data-density="compact"] .row__label { font-size: 13.5px; }
+html[data-density="compact"] .row__desc { font-size: 11.5px; line-height: 1.35; }
+html[data-density="compact"] .sec { padding: 14px 20px 6px; }
+html[data-density="compact"] .sec + .sec, html[data-density="compact"] .launch + .sec { margin-top: 12px; }
+html[data-density="compact"] .sec__head { padding-bottom: 9px; }
+html[data-density="compact"] .sec__title { font-size: 16px; }
+html[data-density="compact"] .pnav__tab { padding-top: 7px; padding-bottom: 7px; }
+html[data-density="compact"] .pnav__tab small { display: none; }
+html[data-density="compact"] .railitem { height: 34px; }
+html[data-density="compact"] .page[data-page="aspecto"] .pagehead,
+html[data-density="compact"] .page[data-page="ajustes"] .pagehead { padding: 14px 20px; }
+
+html[data-density="comfy"] .row { min-height: 64px; padding: 14px 16px; }
+html[data-density="comfy"] .row__label { font-size: 15.5px; }
+html[data-density="comfy"] .row__desc { font-size: 13px; }
+html[data-density="comfy"] .sec { padding: 28px 30px 16px; }
+html[data-density="comfy"] .sec + .sec, html[data-density="comfy"] .launch + .sec { margin-top: 26px; }
+html[data-density="comfy"] .railitem { height: 44px; }

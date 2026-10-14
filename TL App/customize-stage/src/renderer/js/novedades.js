@@ -11,6 +11,7 @@ window.TL_NEWS = {
   title: { es: 'Qué hay de nuevo', en: "What's new" },
   items: {
     es: [
+      'Nuevo: densidad de la interfaz (Personalización → Estilo): compacta, normal o cómoda. Cambia el espaciado de los menús, no toca el juego.',
       'Configuración y Personalización más ordenadas: cada sección se puede plegar tocando su título (se recuerda), hay atajos arriba de cada solapa para saltar a una sección y botones «Abrir todo / Cerrar todo». Cabeceras con estilo Club.',
       'Nuevo: botón «Música» en el menú de la izquierda (junto a Club, Personalización y Configuración). Es YouTube Music dentro de la app: cada uno entra con su cuenta, elige lo que quiere y lo escucha, también dentro de una sala.',
       'Configuración rediseñada: 7 solapas con íconos (perfil rápido, gráficos, red, controles, cliente y audio, cuentas y sistema) y cabeceras con los colores del club.',
@@ -31,6 +32,7 @@ window.TL_NEWS = {
       'Cada clave se usa en una sola PC: si cambiás de computadora, pedile a miclo que te la libere.'
     ],
     en: [
+      'New: interface density (Personalization → Style): compact, normal or comfortable. Only menu spacing, the game is untouched.',
       'Settings and Personalization are easier to scan: tap a section title to fold it (remembered), shortcut chips at the top of each tab jump to a section, plus “Open all / Close all”. Club-style headers.',
       'New: “Music” button in the left menu (next to Club, Personalization and Settings). It is YouTube Music inside the app: everyone logs in with their own account, picks what they want and listens, also inside a room.',
       'Settings redesigned: 7 tabs with icons (quick profile, graphics, network, controls, client & audio, accounts and system) and club-coloured headers.',
