@@ -860,7 +860,7 @@ function applyConfig(config) {
   const rd = document.documentElement.dataset;
   rd.pageTrans = config.appearance.pageTransition || 'fade';
   { const rr = config.appearance.roomRows; const prev = rd.roomRows; if (rr === 'dense' || rr === 'large') rd.roomRows = rr; else delete rd.roomRows; if (prev !== rd.roomRows) { try { if (roomParts) paintRoomWindow(true); } catch (e) { /* aún no hay lista */ } } }
-  if (config.appearance.layout === 'top' || config.appearance.layout === 'dock') rd.layout = config.appearance.layout; else delete rd.layout;
+  if (['top', 'dock', 'mini', 'right', 'island', 'bottom'].includes(config.appearance.layout)) rd.layout = config.appearance.layout; else delete rd.layout;
   if (config.appearance.density === 'compact' || config.appearance.density === 'comfy') rd.density = config.appearance.density; else delete rd.density;
   const flag = (k, name) => { if (config.appearance[k] === false) rd[name] = 'off'; else delete rd[name]; };
   flag('crestBreath', 'crestBreath');
@@ -10156,7 +10156,15 @@ const LAYOUTS = [
   { id: 'top', es: 'Barra superior', en: 'Top bar',
     desD: 'Pestañas arriba y todo el ancho para el contenido.', desE: 'Tabs on top and the full width for content.' },
   { id: 'dock', es: 'Dock flotante', en: 'Floating dock',
-    desD: 'Una píldora abajo al centro, con los íconos.', desE: 'A pill at the bottom centre, icons only.' }
+    desD: 'Una píldora abajo al centro, con los íconos.', desE: 'A pill at the bottom centre, icons only.' },
+  { id: 'island', es: 'Isla', en: 'Island',
+    desD: 'Una píldora vertical flotando a la izquierda.', desE: 'A vertical pill floating on the left.' },
+  { id: 'bottom', es: 'Barra inferior', en: 'Bottom bar',
+    desD: 'Pestañas con nombre abajo, como en el celular.', desE: 'Labelled tabs at the bottom, phone style.' },
+  { id: 'mini', es: 'Íconos', en: 'Icons only',
+    desD: 'El menú de siempre pero angosto, sólo íconos.', desE: 'The usual side menu, narrow, icons only.' },
+  { id: 'right', es: 'Lateral derecho', en: 'Right side',
+    desD: 'La clásica, pero con el menú a la derecha.', desE: 'The classic, with the menu on the right.' }
 ];
 function paintLayout() {
   const host = $('#layoutCards');

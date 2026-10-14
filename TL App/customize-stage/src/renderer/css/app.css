@@ -5375,18 +5375,20 @@ html[data-layout="top"] .app[data-stage="game"][data-view="musica"] .rail {
   position: relative; left: auto; right: auto; top: auto; transform: none;
 }
 
-/* ── Dock flotante ── */
+/* ── Dock flotante ──
+   Flota ENCIMA del contenido (no ocupa una franja propia: la franja quedaba con
+   el fondo plano y se veía el corte con el fondo del menú). Los contenidos
+   reservan abajo el lugar del dock con padding. */
 html[data-layout="dock"] { --rail-w: 0px; }
-html[data-layout="dock"] .shell { flex-direction: column; }
 html[data-layout="dock"] .rail {
-  order: 2; align-self: center; flex: 0 0 auto;
+  position: absolute; left: 50%; right: auto; top: auto; bottom: 14px; z-index: 45;
   width: auto; flex-direction: row; align-items: center; gap: 4px;
-  margin: 2px 0 12px; padding: 6px 10px;
+  padding: 6px 10px; margin: 0;
   border: 1px solid var(--line-hi); border-radius: 20px;
   background: var(--panel);
   box-shadow: 0 14px 34px -14px rgb(0 0 0 / 70%), 0 0 0 1px rgb(var(--accent-rgb) / 14%);
+  transform: translateX(-50%);
 }
-html[data-layout="dock"] .body { order: 1; }
 html[data-layout="dock"] .roster,
 html[data-layout="dock"] .rail__hr,
 html[data-layout="dock"] .rail__sp { display: none; }
@@ -5398,10 +5400,10 @@ html[data-layout="dock"] .railitem span { display: none; }
 html[data-layout="dock"] .railitem svg { width: 20px; height: 20px; }
 html[data-layout="dock"] .railitem.is-active { box-shadow: none; background: var(--accent-soft); color: var(--text); }
 html[data-layout="dock"] .railitem:hover { transform: translateY(-2px); }
-html[data-layout="dock"] .app[data-stage="game"] .rail {
-  position: absolute; left: 50%; right: auto; top: auto; bottom: 12px; margin: 0; z-index: 45;
-  transform: translate(-50%, 160%);
-}
+html[data-layout="dock"] .browser__shell,
+html[data-layout="dock"] .page__inner { padding-bottom: 96px; }
+html[data-layout="dock"] .panel { padding-bottom: 92px; }
+html[data-layout="dock"] .app[data-stage="game"] .rail { transform: translate(-50%, 170%); }
 html[data-layout="dock"] .app[data-stage="game"] .railedge {
   left: 0; right: 0; top: auto; bottom: 0; width: auto; height: 14px;
   align-items: flex-end; justify-content: center;
@@ -5410,8 +5412,117 @@ html[data-layout="dock"] .railedge i { width: 52px; height: 3px; border-radius: 
 html[data-layout="dock"] .app[data-stage="game"] .railedge:hover ~ .rail,
 html[data-layout="dock"] .app[data-stage="game"] .rail:hover { transform: translate(-50%, 0); }
 html[data-layout="dock"] .app[data-stage="game"][data-view="musica"] .rail {
-  position: relative; left: auto; bottom: auto; margin: 2px 0 12px; transform: none;
+  position: relative; left: auto; bottom: auto; align-self: center; margin: 2px 0 12px; transform: none;
 }
+html[data-layout="dock"] .app[data-stage="game"][data-view="musica"] .shell { flex-direction: column; }
+
+/* ── Isla: píldora vertical flotante a la izquierda ── */
+html[data-layout="island"] { --rail-w: 0px; }
+html[data-layout="island"] .rail {
+  position: absolute; left: 14px; right: auto; top: 50%; bottom: auto; z-index: 45;
+  width: 58px; height: auto; flex-direction: column; align-items: center; gap: 4px;
+  padding: 10px 7px; margin: 0;
+  border: 1px solid var(--line-hi); border-radius: 22px;
+  background: var(--panel);
+  box-shadow: 0 14px 34px -14px rgb(0 0 0 / 70%), 0 0 0 1px rgb(var(--accent-rgb) / 14%);
+  transform: translateY(-50%);
+}
+html[data-layout="island"] .roster,
+html[data-layout="island"] .rail__hr,
+html[data-layout="island"] .rail__sp { display: none; }
+html[data-layout="island"] .railitem {
+  width: 44px; height: 44px; flex: 0 0 auto; flex-direction: column; justify-content: center;
+  gap: 0; padding: 0; border-radius: 14px;
+}
+html[data-layout="island"] .railitem span { display: none; }
+html[data-layout="island"] .railitem svg { width: 20px; height: 20px; }
+html[data-layout="island"] .railitem.is-active { box-shadow: none; background: var(--accent-soft); color: var(--text); }
+html[data-layout="island"] .railitem:hover { transform: translateX(2px); }
+html[data-layout="island"] .browser__shell,
+html[data-layout="island"] .page__inner { padding-left: 88px; padding-right: 88px; }
+html[data-layout="island"] .panel { padding-left: 88px; }
+html[data-layout="island"] .app[data-stage="game"] .rail { transform: translate(-170%, -50%); }
+html[data-layout="island"] .app[data-stage="game"] .railedge:hover ~ .rail,
+html[data-layout="island"] .app[data-stage="game"] .rail:hover { transform: translate(0, -50%); }
+html[data-layout="island"] .app[data-stage="game"][data-view="musica"] .rail {
+  position: relative; left: auto; top: auto; align-self: center; margin: 0 0 0 12px; transform: none;
+}
+
+/* ── Barra inferior: pestañas con nombre abajo, ancho completo ── */
+html[data-layout="bottom"] { --rail-w: 0px; }
+html[data-layout="bottom"] .shell { flex-direction: column; }
+html[data-layout="bottom"] .body { order: 1; }
+html[data-layout="bottom"] .rail {
+  order: 2; width: auto; height: 56px; flex-direction: row; align-items: center; justify-content: center;
+  gap: 6px; padding: 0 14px; overflow: hidden;
+  border-right: 0; border-top: 1px solid var(--line-hi); background: var(--bg-0);
+}
+html[data-layout="bottom"] .roster,
+html[data-layout="bottom"] .rail__hr,
+html[data-layout="bottom"] .rail__sp { display: none; }
+html[data-layout="bottom"] .railitem {
+  width: auto; height: 42px; flex: 0 0 auto; flex-direction: column; justify-content: center;
+  gap: 3px; padding: 0 18px; font-size: 10px; border-radius: 10px;
+}
+html[data-layout="bottom"] .railitem svg { width: 18px; height: 18px; }
+html[data-layout="bottom"] .railitem.is-active { box-shadow: inset 0 3px 0 var(--accent); }
+html[data-layout="bottom"] .app[data-stage="game"] .rail {
+  position: absolute; left: 0; right: 0; top: auto; bottom: 0; width: auto; transform: translateY(100%);
+}
+html[data-layout="bottom"] .app[data-stage="game"] .railedge {
+  left: 0; right: 0; top: auto; bottom: 0; width: auto; height: 14px;
+  align-items: flex-end; justify-content: center;
+}
+html[data-layout="bottom"] .railedge i { width: 52px; height: 3px; border-radius: 3px 3px 0 0; }
+html[data-layout="bottom"] .app[data-stage="game"] .railedge:hover ~ .rail,
+html[data-layout="bottom"] .app[data-stage="game"] .rail:hover { transform: translateY(0); }
+html[data-layout="bottom"] .app[data-stage="game"][data-view="musica"] .rail {
+  position: relative; left: auto; right: auto; bottom: auto; transform: none;
+}
+
+/* ── Íconos: el menú de siempre pero angosto, sólo íconos ── */
+html[data-layout="mini"] { --rail-w: 64px; }
+html[data-layout="mini"] .rail { align-items: center; padding: 14px 6px; }
+html[data-layout="mini"] .roster { display: none; }
+html[data-layout="mini"] .railitem {
+  width: 46px; height: 46px; justify-content: center; gap: 0; padding: 0; border-radius: 13px;
+}
+html[data-layout="mini"] .railitem span { display: none; }
+html[data-layout="mini"] .railitem.is-active { box-shadow: none; background: var(--accent-soft); color: var(--text); }
+html[data-layout="mini"] .rail__hr { width: 30px; }
+
+/* ── Lateral derecho: la clásica, espejada ── */
+html[data-layout="right"] { --rail-w: 0px; }
+html[data-layout="right"] .shell { flex-direction: row-reverse; }
+html[data-layout="right"] .rail { width: 164px; border-right: 0; border-left: 1px solid var(--line-hi); }
+html[data-layout="right"] .railitem.is-active { box-shadow: inset -3px 0 0 var(--accent); }
+html[data-layout="right"] .app[data-stage="game"] .rail {
+  left: auto; right: 0; transform: translateX(100%);
+}
+html[data-layout="right"] .app[data-stage="game"] .railedge {
+  left: auto; right: 0; justify-content: flex-end;
+}
+html[data-layout="right"] .railedge i { border-radius: 3px 0 0 3px; }
+html[data-layout="right"] .app[data-stage="game"] .railedge:hover ~ .rail,
+html[data-layout="right"] .app[data-stage="game"] .rail:hover { transform: translateX(0); }
+html[data-layout="right"] .app[data-stage="game"][data-view="musica"] .rail {
+  position: relative; right: auto; transform: none;
+}
+
+/* La barra de arriba en pantalla completa: la zona sensible por encima del riel
+   (si no, el riel arriba la tapaba y la barra no bajaba nunca), la barra por
+   encima del riel al bajar, y una marquita que avisa que ahí hay algo. */
+html[data-layout="top"] .hotzone { z-index: 47; }
+html[data-layout="top"] .app[data-fullscreen="true"] .topbar { z-index: 50; }
+html[data-layout="top"] .app[data-fullscreen="true"][data-stage="game"] .railedge { top: 7px; }
+.app[data-fullscreen="true"] .hotzone::after {
+  content: ''; position: absolute; left: 50%; top: 0; width: 64px; height: 3px; margin-left: -32px;
+  border-radius: 0 0 3px 3px; background: var(--accent); opacity: .55; box-shadow: 0 0 12px var(--accent);
+}
+.app[data-fullscreen="true"] .hotzone:hover::after,
+.app[data-fullscreen="true"][data-topbar-collapsed="true"] .hotzone::after { display: none; }
+.app[data-fullscreen="true"] .hotzone:hover ~ .topbar,
+.app[data-fullscreen="true"] .topbar:hover { box-shadow: 0 18px 40px -16px rgb(0 0 0 / 75%); }
 
 /* ── Las tarjetas del selector ── */
 .laycards { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 12px; width: 100%; }
@@ -5440,6 +5551,16 @@ html[data-layout="dock"] .app[data-stage="game"][data-view="musica"] .rail {
 .laycard__prev--top .lp-side { display: none; }
 .laycard__prev--top .lp-bar { left: 5px; right: 5px; top: 5px; height: 10px; }
 .laycard__prev--top .lp-main { left: 5px; right: 5px; top: 20px; bottom: 5px; }
+/* isla */
+.laycard__prev--island .lp-side, .laycard__prev--bottom .lp-side, .laycard__prev--mini .lp-side, .laycard__prev--right .lp-side { display: none; }
+.laycard__prev--island .lp-bar { left: 8px; top: 50%; width: 11px; height: 34px; margin-top: -17px; border-radius: 6px; }
+.laycard__prev--island .lp-main { left: 26px; right: 5px; top: 5px; bottom: 5px; }
+.laycard__prev--bottom .lp-bar { left: 5px; right: 5px; bottom: 5px; height: 10px; }
+.laycard__prev--bottom .lp-main { left: 5px; right: 5px; top: 5px; bottom: 20px; }
+.laycard__prev--mini .lp-bar { left: 5px; top: 5px; bottom: 5px; width: 8px; }
+.laycard__prev--mini .lp-main { left: 18px; right: 5px; top: 5px; bottom: 5px; }
+.laycard__prev--right .lp-bar { right: 5px; top: 5px; bottom: 5px; width: 14px; left: auto; }
+.laycard__prev--right .lp-main { left: 5px; right: 24px; top: 5px; bottom: 5px; }
 /* dock */
 .laycard__prev--dock .lp-side { display: none; }
 .laycard__prev--dock .lp-bar { left: 50%; bottom: 6px; width: 46px; height: 11px; margin-left: -23px; border-radius: 6px; }
