@@ -5456,3 +5456,192 @@ html[data-animations="off"] .rskel { animation: none; }
 }
 :where(.chips) > .chip:hover { color: var(--text); border-color: var(--accent-line); }
 :where(.chips) > .chip.is-active { color: var(--accent-text); background: var(--accent-soft); border-color: var(--accent); }
+
+/* ── Replays: ★ fijar, marcador y línea de goles ── */
+.replay__star {
+  width: 32px; height: 32px; flex: 0 0 auto; border-radius: 9px; font-size: 17px; line-height: 1;
+  color: var(--text-faint); background: transparent; border: 1px solid transparent; cursor: pointer;
+}
+.replay__star:hover { color: var(--accent-text); background: var(--accent-soft); }
+.replay__star.is-on { color: var(--accent-text); }
+.rchip--score { font-variant-numeric: tabular-nums; letter-spacing: .04em; color: var(--text); background: var(--surface-hi); border-color: var(--line-hi); }
+.rline { position: relative; height: 5px; margin-top: 8px; border-radius: 3px; background: var(--line-hi); max-width: 340px; }
+.rline i { position: absolute; top: -2px; width: 3px; height: 9px; margin-left: -1px; border-radius: 2px; }
+.rline i.is-red { background: #ef5a5a; }
+.rline i.is-blue { background: #4d8ef0; }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Interfaces sin menú lateral: Consola (Inicio de mosaicos), Comando (paleta
+   Ctrl+K) y Radial (botón en abanico). Afuera de una sala el riel de siempre
+   no se dibuja en las dos primeras; adentro sigue existiendo, angosto, para
+   volver a salir con el borde.
+   ═══════════════════════════════════════════════════════════════════════════ */
+html[data-layout="consola"], html[data-layout="comando"], html[data-layout="radial"] { --rail-w: 0px; }
+html[data-layout="consola"] .app:not([data-stage="game"]) .rail,
+html[data-layout="comando"] .app:not([data-stage="game"]) .rail { display: none; }
+html[data-layout="consola"] .rail,
+html[data-layout="comando"] .rail { width: 64px; align-items: center; padding: 14px 6px; }
+html[data-layout="consola"] .roster, html[data-layout="comando"] .roster,
+html[data-layout="radial"] .roster, html[data-layout="radial"] .rail__hr, html[data-layout="radial"] .rail__sp { display: none; }
+html[data-layout="consola"] .railitem, html[data-layout="comando"] .railitem {
+  width: 46px; height: 46px; justify-content: center; gap: 0; padding: 0; border-radius: 13px;
+}
+html[data-layout="consola"] .railitem span, html[data-layout="comando"] .railitem span { display: none; }
+html[data-layout="consola"] .railitem.is-active, html[data-layout="comando"] .railitem.is-active { box-shadow: none; background: var(--accent-soft); color: var(--text); }
+
+/* La barra de arriba que baja con el mouse (pantalla completa): la zona
+   sensible por encima de todo lo nuevo y la barra por encima del Inicio y la
+   paleta. Nada nuevo se dibuja en los 8 px de arriba. */
+html[data-layout="consola"] .hotzone, html[data-layout="comando"] .hotzone, html[data-layout="radial"] .hotzone { z-index: 47; }
+html[data-layout="consola"] .app[data-fullscreen="true"] .topbar,
+html[data-layout="comando"] .app[data-fullscreen="true"] .topbar,
+html[data-layout="radial"] .app[data-fullscreen="true"] .topbar { z-index: 60; }
+
+/* ── Inicio (Consola) ── */
+.hub {
+  position: absolute; inset: 0; z-index: 42; overflow: auto;
+  display: flex; align-items: center; justify-content: center; padding: 28px;
+  background: radial-gradient(70% 60% at 50% 0%, rgb(var(--accent-rgb) / 14%), transparent 70%), var(--bg-0);
+}
+.hub[hidden] { display: none; }
+.hub__inner { width: min(980px, 100%); margin: auto; }
+.hub__eyebrow { font-size: 11px; font-weight: 800; letter-spacing: .26em; text-transform: uppercase; color: var(--accent-text); }
+.hub__head h1 { margin: 8px 0 4px; font-size: 40px; font-weight: 800; letter-spacing: -.03em; }
+.hub__head p { color: var(--text-dim); font-size: 14px; }
+.hub__grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-top: 28px; }
+.tile {
+  position: relative; display: flex; flex-direction: column; justify-content: flex-end; gap: 14px;
+  min-height: 150px; padding: 20px; text-align: left; cursor: pointer; color: var(--text);
+  border-radius: 20px; border: 1px solid var(--line-hi);
+  background: linear-gradient(160deg, rgb(var(--accent-rgb) / 7%), transparent 55%), var(--surface);
+  transition: transform .16s var(--ease), border-color .16s, box-shadow .16s;
+}
+.tile:hover, .tile:focus-visible {
+  transform: translateY(-3px); border-color: var(--accent);
+  box-shadow: 0 16px 34px -18px rgb(0 0 0 / 75%), 0 0 0 1px var(--accent);
+  outline: none;
+}
+.tile:active { transform: translateY(0) scale(.985); }
+.tile__ico {
+  width: 46px; height: 46px; border-radius: 14px; display: grid; place-items: center;
+  color: var(--accent-text-on); background: linear-gradient(145deg, var(--accent), rgb(var(--accent-rgb) / 70%));
+}
+.tile__ico svg { width: 22px; height: 22px; }
+.tile__txt { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.tile__txt b { font-size: 19px; font-weight: 800; letter-spacing: -.02em; }
+.tile__txt small { font-size: 12px; color: var(--text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tile kbd {
+  position: absolute; top: 16px; right: 16px; min-width: 22px; padding: 2px 7px; border-radius: 7px; text-align: center;
+  font: 700 11px var(--font); color: var(--text-dim); background: var(--bg-0); border: 1px solid var(--line-hi);
+}
+.tile--wide { grid-column: 1 / -1; flex-direction: row; align-items: center; justify-content: flex-start; min-height: 88px; }
+.hub__hint { margin-top: 22px; font-size: 11.5px; color: var(--text-faint); }
+html:not([data-animations="off"]) .hub:not([hidden]) .tile { animation: tileIn .38s var(--ease) both; animation-delay: calc(var(--i, 0) * 45ms); }
+@keyframes tileIn { from { opacity: 0; transform: translateY(14px) scale(.97); } to { opacity: 1; transform: none; } }
+@media (max-width: 760px) { .hub__grid { grid-template-columns: repeat(2, 1fr); } .hub__head h1 { font-size: 30px; } }
+
+.hubbtn {
+  position: absolute; left: 14px; bottom: 14px; z-index: 43; padding: 9px 16px; border-radius: 99px; cursor: pointer;
+  font: 700 12px var(--font); color: var(--accent-text); background: var(--bg-1); border: 1px solid var(--accent-line);
+  box-shadow: 0 10px 24px -12px rgb(0 0 0 / 70%);
+}
+.hubbtn:hover { background: var(--accent-soft); }
+.hubbtn[hidden], .cmdpill[hidden] { display: none; }
+
+/* ── Paleta (Comando) ── */
+.cmdpill {
+  position: absolute; left: 50%; top: 14px; z-index: 43; transform: translateX(-50%);
+  display: flex; align-items: center; gap: 9px; padding: 7px 8px 7px 14px; border-radius: 99px; cursor: pointer;
+  font: 650 12px var(--font); color: var(--text-dim); background: var(--bg-1); border: 1px solid var(--line-hi);
+  box-shadow: 0 10px 24px -12px rgb(0 0 0 / 70%);
+}
+.cmdpill:hover { color: var(--text); border-color: var(--accent-line); }
+.cmdpill svg { width: 14px; height: 14px; }
+.cmdpill kbd { padding: 2px 7px; border-radius: 99px; font: 700 10px var(--font); color: var(--accent-text); background: var(--accent-soft); }
+html[data-layout="comando"] .browser__shell, html[data-layout="comando"] .page__inner { padding-top: 60px; }
+html[data-layout="comando"] .panel { padding-top: 58px; }
+.cmdk { position: fixed; inset: 0; z-index: 90; display: flex; justify-content: center; align-items: flex-start; padding-top: 16vh; }
+.cmdk[hidden] { display: none; }
+.cmdk__scrim { position: absolute; inset: 0; background: rgb(0 0 0 / 55%); }
+.cmdk__card {
+  position: relative; width: min(620px, 92vw); border-radius: 18px; overflow: hidden;
+  background: var(--bg-1); border: 1px solid var(--accent-line); box-shadow: 0 30px 70px -20px rgb(0 0 0 / 85%);
+}
+.cmdk__input {
+  width: 100%; padding: 18px 20px; font-size: 16px; color: var(--text); background: transparent;
+  border: 0; border-bottom: 1px solid var(--line-hi); outline: none; box-shadow: none;
+}
+.cmdk__list { list-style: none; margin: 0; padding: 6px; max-height: 52vh; overflow-y: auto; }
+.cmdk__item { display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-radius: 10px; cursor: pointer; }
+.cmdk__item.is-on { background: var(--accent-soft); box-shadow: inset 3px 0 0 var(--accent); }
+.cmdk__item b { flex: 1; min-width: 0; font-size: 13.5px; font-weight: 650; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cmdk__item small { font-size: 11px; color: var(--text-faint); white-space: nowrap; }
+.cmdk__ico { width: 18px; height: 18px; color: var(--accent-text); flex: 0 0 auto; }
+.cmdk__ico svg { width: 18px; height: 18px; }
+.cmdk__empty { padding: 18px; text-align: center; color: var(--text-dim); font-size: 13px; }
+
+/* ── Radial: botón en la esquina que abre los destinos en abanico ── */
+html[data-layout="radial"] .rail {
+  position: absolute; left: auto; top: auto; right: 26px; bottom: 26px; z-index: 45;
+  width: 56px; height: 56px; padding: 0; margin: 0; border: 0; border-radius: 50%; overflow: visible;
+  background: linear-gradient(145deg, var(--accent), rgb(var(--accent-rgb) / 72%));
+  box-shadow: 0 14px 30px -10px rgb(0 0 0 / 75%), 0 0 0 4px rgb(var(--accent-rgb) / 18%);
+  transform: none;
+}
+html[data-layout="radial"] .rail::before {
+  content: '+'; position: absolute; inset: 0; display: grid; place-items: center;
+  font: 300 32px/1 var(--font); color: var(--accent-text-on); transition: transform .22s var(--ease); pointer-events: none;
+}
+html[data-layout="radial"] .rail:hover::before, html[data-layout="radial"] .rail:focus-within::before { transform: rotate(45deg); }
+/* Un puente invisible, para que el mouse pueda subir del botón a las opciones sin que se cierre. */
+html[data-layout="radial"] .rail::after { content: ''; position: absolute; right: -8px; bottom: -8px; width: 72px; height: 72px; z-index: -1; }
+html[data-layout="radial"] .rail:hover::after, html[data-layout="radial"] .rail:focus-within::after { right: -30px; bottom: -30px; width: 310px; height: 310px; }
+html[data-layout="radial"] .railitem {
+  position: absolute; right: 8px; bottom: 8px; width: 40px; height: 40px; padding: 0; gap: 0; flex: none;
+  justify-content: center; border-radius: 50%; color: var(--text);
+  background: var(--bg-1); border: 1px solid var(--accent-line); box-shadow: 0 8px 18px -8px rgb(0 0 0 / 70%);
+  opacity: 0; pointer-events: none; transform: scale(.4);
+  transition: transform .22s var(--ease), opacity .16s;
+}
+html[data-layout="radial"] .railitem span { display: none; }
+html[data-layout="radial"] .railitem svg { width: 18px; height: 18px; }
+html[data-layout="radial"] .railitem.is-active { background: var(--accent-soft); border-color: var(--accent); }
+html[data-layout="radial"] .rail:hover .railitem, html[data-layout="radial"] .rail:focus-within .railitem { opacity: 1; pointer-events: auto; transform: translate(var(--dx, 0), var(--dy, 0)); }
+html[data-layout="radial"] .railitem:nth-of-type(1) { --dx: -140px; --dy: 0px; }
+html[data-layout="radial"] .railitem:nth-of-type(2) { --dx: -133px; --dy: -43px; }
+html[data-layout="radial"] .railitem:nth-of-type(4) { --dx: -113px; --dy: -82px; }
+html[data-layout="radial"] .railitem:nth-of-type(5) { --dx: -82px; --dy: -113px; }
+html[data-layout="radial"] .railitem:nth-of-type(6) { --dx: -43px; --dy: -133px; }
+html[data-layout="radial"] .railitem:nth-of-type(7) { --dx: 0px; --dy: -140px; }
+html[data-layout="radial"] .browser__shell, html[data-layout="radial"] .page__inner { padding-bottom: 96px; }
+html[data-layout="radial"] .panel { padding-bottom: 92px; }
+html[data-layout="radial"] .app[data-stage="game"] .rail { transform: translate(260%, 260%); }
+html[data-layout="radial"] .app[data-stage="game"] .railedge {
+  left: auto; top: auto; right: 0; bottom: 0; width: 44px; height: 44px; align-items: flex-end; justify-content: flex-end;
+}
+html[data-layout="radial"] .railedge i { width: 26px; height: 3px; border-radius: 3px 0 0 0; }
+html[data-layout="radial"] .app[data-stage="game"] .railedge:hover ~ .rail,
+html[data-layout="radial"] .app[data-stage="game"] .rail:hover { transform: none; }
+
+/* ── Barra de estado ── */
+.statusbar {
+  flex: 0 0 auto; height: 26px; display: flex; align-items: center; gap: 16px; padding: 0 16px;
+  font-size: 11px; font-weight: 600; color: var(--text-dim); font-variant-numeric: tabular-nums;
+  background: var(--bg-0); border-top: 1px solid var(--line);
+}
+.statusbar[hidden] { display: none; }
+.statusbar__sp { flex: 1; }
+.statusbar__club.is-live { color: #5cd68a; }
+.app[data-stage="game"] .statusbar { display: none; }
+
+/* Vistas previas de las tres nuevas */
+.laycard__prev--consola .lp-side, .laycard__prev--consola .lp-bar, .laycard__prev--consola .lp-main { display: block; border-radius: 4px; }
+.laycard__prev--consola .lp-bar { left: 6px; top: 6px; width: 30%; height: 26px; }
+.laycard__prev--consola .lp-main { left: 36%; top: 6px; width: 30%; height: 26px; background: var(--accent); opacity: .5; }
+.laycard__prev--consola .lp-side { display: block; left: 67%; top: 6px; right: 6px; height: 26px; background: var(--accent); opacity: .85; }
+.laycard__prev--comando .lp-side { display: none; }
+.laycard__prev--comando .lp-bar { left: 50%; top: 6px; width: 54px; height: 9px; margin-left: -27px; border-radius: 6px; }
+.laycard__prev--comando .lp-main { left: 5px; right: 5px; top: 22px; bottom: 5px; }
+.laycard__prev--radial .lp-side { display: none; }
+.laycard__prev--radial .lp-bar { right: 8px; bottom: 8px; width: 16px; height: 16px; border-radius: 50%; left: auto; }
+.laycard__prev--radial .lp-main { left: 5px; right: 5px; top: 5px; bottom: 5px; }

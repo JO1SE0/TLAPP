@@ -853,7 +853,12 @@ function applyConfig(config) {
   const rd = document.documentElement.dataset;
   rd.pageTrans = config.appearance.pageTransition || 'fade';
   { const rr = config.appearance.roomRows; const prev = rd.roomRows; if (rr === 'dense' || rr === 'large') rd.roomRows = rr; else delete rd.roomRows; if (prev !== rd.roomRows) { try { if (roomParts) paintRoomWindow(true); } catch (e) { /* aún no hay lista */ } } }
-  if (['top', 'dock', 'mini', 'right', 'island', 'bottom'].includes(config.appearance.layout)) rd.layout = config.appearance.layout; else delete rd.layout;
+  if (LAYOUT_IDS.includes(config.appearance.layout)) rd.layout = config.appearance.layout; else delete rd.layout;
+  if (state.layoutSeen !== rd.layout) {
+    state.layoutSeen = rd.layout;
+    /* Consola arranca en el Inicio; al salir de ella el Inicio se cierra. */
+    try { openHub(rd.layout === 'consola'); } catch (e) { /* aún no está armado */ }
+  }
   if (config.appearance.density === 'compact' || config.appearance.density === 'comfy') rd.density = config.appearance.density; else delete rd.density;
   const flag = (k, name) => { if (config.appearance[k] === false) rd[name] = 'off'; else delete rd[name]; };
   flag('crestBreath', 'crestBreath');
@@ -1826,6 +1831,7 @@ function openPanel(open) {
 }
 
 function setView(name) {
+  if (state.hub) openHub(false);
   state.view = name;
   $('#app').dataset.view = name;
   document.documentElement.dataset.view = name;
@@ -1914,6 +1920,8 @@ function setStage(kind) {
   // El fondo ambiental se apaga cuando hay cancha detrás, no cuando estás en la
   // pestaña Salas: con los paneles encima son cosas distintas.
   document.documentElement.dataset.stage = kind;
+  if (kind === 'game' && state.hub) openHub(false);
+  paintNavExtras();
   if (kind === 'browser') {
     // Fuera de una sala no hay nombre que mostrar: si quedara guardado, la
     // próxima sala arrancaría con el nombre de la anterior.
@@ -2318,6 +2326,7 @@ function renderRooms() {
     players: state.rooms.totalPlayers.toLocaleString('es-AR'),
     rooms: state.rooms.totalRooms.toLocaleString('es-AR')
   });
+  try { paintStatusBar(); if (state.hub) paintHub(); } catch (e) { /* adorno */ }
 
   const list = visibleRooms();
 
@@ -4344,7 +4353,7 @@ function paintAudio() {
   try { paintGameExtras(); } catch (e) { /* adorno */ }
   try { paintAnimations(); } catch (e) { /* adorno */ }
   try { paintDensity(); } catch (e) { /* adorno */ }
-  try { paintLayout(); } catch (e) { /* adorno */ }
+  try { paintLayout(); paintStatusBar(); } catch (e) { /* adorno */ }
   try { paintMixer(); } catch (e) { /* adorno */ }
   const ap = (state.config && state.config.appearance) || {};
   const vol = typeof ap.musicVolume === 'number' ? ap.musicVolume : 0.35;
@@ -5332,7 +5341,7 @@ async function loadReplays() {
 /* Filtro y orden de la biblioteca: sólo viven en memoria, arrancan en «todos / más nuevos». */
 const replayUi = { filter: 'all', sort: 'new', sig: '' };
 const REPLAY_FILTERS = [
-  ['all', 'Todos', 'All'], ['today', 'Hoy', 'Today'], ['week', 'Esta semana', 'This week'], ['digest', 'Con análisis', 'Analysed']
+  ['all', 'Todos', 'All'], ['today', 'Hoy', 'Today'], ['week', 'Esta semana', 'This week'], ['digest', 'Con análisis', 'Analysed'], ['fav', '★ Favoritos', '★ Favourites']
 ];
 const REPLAY_SORTS = [
   ['new', 'Más nuevos', 'Newest'], ['old', 'Más viejos', 'Oldest'], ['goals', 'Más goles', 'Most goals'], ['long', 'Más largos', 'Longest']
@@ -5372,6 +5381,16 @@ function replayDayLabel(ms) {
   return text.charAt(0).toUpperCase() + text.slice(1);
 }
 
+/** Replays fijados (★): se guardan sólo en esta PC, por ruta. */
+function replayPins() {
+  try { return new Set(JSON.parse(localStorage.getItem('tl_replay_pins') || '[]')); } catch (e) { return new Set(); }
+}
+function toggleReplayPin(path) {
+  const pins = replayPins();
+  if (pins.has(path)) pins.delete(path); else pins.add(path);
+  try { localStorage.setItem('tl_replay_pins', JSON.stringify([...pins])); } catch (e) { /* sin almacenamiento */ }
+}
+
 function renderReplays() {
   const { folder, items, error } = state.replays;
   const en = isEn();
@@ -5387,12 +5406,19 @@ function renderReplays() {
   if (replayUi.filter === 'today') filtered = filtered.filter((r) => r.updatedAt >= dayStart);
   else if (replayUi.filter === 'week') filtered = filtered.filter((r) => now - r.updatedAt < 7 * 86400000);
   else if (replayUi.filter === 'digest') filtered = filtered.filter((r) => r.digest);
+  else if (replayUi.filter === 'fav') filtered = filtered.filter((r) => replayPins().has(r.path));
 
   const byDate = replayUi.sort === 'new' || replayUi.sort === 'old';
+  const pins = replayPins();
   if (replayUi.sort === 'old') filtered = [...filtered].sort((a, b) => a.updatedAt - b.updatedAt);
   else if (replayUi.sort === 'goals') filtered = [...filtered].sort((a, b) => ((b.digest && b.digest.goals) || -1) - ((a.digest && a.digest.goals) || -1));
   else if (replayUi.sort === 'long') filtered = [...filtered].sort((a, b) => ((b.digest && b.digest.seconds) || -1) - ((a.digest && a.digest.seconds) || -1));
   else filtered = [...filtered].sort((a, b) => b.updatedAt - a.updatedAt);
+
+  /* Los fijados van primero, en su propio grupo, cuando la lista está por fecha. */
+  if (byDate && pins.size && replayUi.filter !== 'fav') {
+    filtered = [...filtered.filter((r) => pins.has(r.path)), ...filtered.filter((r) => !pins.has(r.path))];
+  }
 
   const count = $('#replayCount');
   const total = items.reduce((n, r) => n + (r.size || 0), 0);
@@ -5418,7 +5444,7 @@ function renderReplays() {
   let lastDay = '';
   filtered.forEach((replay, index) => {
     if (byDate) {
-      const label = replayDayLabel(replay.updatedAt);
+      const label = pins.has(replay.path) && replayUi.filter !== 'fav' ? (en ? '★ My best' : '★ Mis mejores') : replayDayLabel(replay.updatedAt);
       if (label !== lastDay) {
         lastDay = label;
         const h = document.createElement('h3');
@@ -5457,13 +5483,28 @@ function renderReplays() {
     if (replay.digest) {
       const tags = document.createElement('div');
       tags.className = 'replay__digest';
-      const mk = (text) => { const c = document.createElement('span'); c.className = 'rchip'; c.textContent = text; return c; };
+      const mk = (text, cls) => { const c = document.createElement('span'); c.className = 'rchip' + (cls ? ` ${cls}` : ''); c.textContent = text; return c; };
+      const d = replay.digest;
+      if (Number.isFinite(d.red) && Number.isFinite(d.blue) && d.goals) tags.append(mk(`${d.red} – ${d.blue}`, 'rchip--score'));
       tags.append(
-        mk(t(replay.digest.goals === 1 ? 'replays.goals1' : 'replays.goalsN', { n: replay.digest.goals })),
-        mk(formatDuration(replay.digest.seconds))
+        mk(t(d.goals === 1 ? 'replays.goals1' : 'replays.goalsN', { n: d.goals })),
+        mk(formatDuration(d.seconds))
       );
-      if (replay.digest.matches > 1) tags.append(mk(t('replays.matchesN', { n: replay.digest.matches })));
+      if (d.matches > 1) tags.append(mk(t('replays.matchesN', { n: d.matches })));
       body.append(tags);
+      /* La línea del partido: una marca por gol, roja o azul, donde cayó. */
+      if (Array.isArray(d.marks) && d.marks.length) {
+        const line = document.createElement('div');
+        line.className = 'rline';
+        line.setAttribute('aria-hidden', 'true');
+        for (const m of d.marks) {
+          const tick = document.createElement('i');
+          tick.className = m[1] === 0 ? 'is-red' : 'is-blue';
+          tick.style.left = `${(m[0] * 100).toFixed(1)}%`;
+          line.append(tick);
+        }
+        body.append(line);
+      }
     }
 
     const actions = document.createElement('div');
@@ -5480,7 +5521,13 @@ function renderReplays() {
     );
     // El ▶ de antes era un carácter de texto: de otra familia, de otro peso
     // y sin manera de que acompañara al resto de los iconos.
-    actions.append(more, actionButton(t('replays.play'), () => playReplay(replay), 'primary', ICONS.play));
+    const star = document.createElement('button');
+    star.type = 'button';
+    star.className = 'replay__star' + (pins.has(replay.path) ? ' is-on' : '');
+    star.textContent = pins.has(replay.path) ? '★' : '☆';
+    star.title = en ? 'Pin to the top' : 'Fijar arriba';
+    star.addEventListener('click', () => { toggleReplayPin(replay.path); renderReplays(); });
+    actions.append(star, more, actionButton(t('replays.play'), () => playReplay(replay), 'primary', ICONS.play));
 
     row.append(date, body, actions);
     frag.append(row);
@@ -9339,6 +9386,8 @@ function paintClubNow(list) {
   if (count) count.textContent = en ? `${online.length} online` : `${online.length} conectados`;
   const k = $('#kpiOnline');
   if (k) k.textContent = String(online.length);
+  state.clubOnline = online.length;
+  try { paintStatusBar(); if (state.hub) paintHub(); } catch (e) { /* adorno */ }
 
   const nodes = [];
   for (const m of online) {
@@ -9813,8 +9862,15 @@ const LAYOUTS = [
   { id: 'mini', es: 'Íconos', en: 'Icons only',
     desD: 'El menú de siempre pero angosto, sólo íconos.', desE: 'The usual side menu, narrow, icons only.' },
   { id: 'right', es: 'Lateral derecho', en: 'Right side',
-    desD: 'La clásica, pero con el menú a la derecha.', desE: 'The classic, with the menu on the right.' }
+    desD: 'La clásica, pero con el menú a la derecha.', desE: 'The classic, with the menu on the right.' },
+  { id: 'consola', es: 'Consola', en: 'Console',
+    desD: 'Sin menú: un Inicio con mosaicos grandes, como una consola.', desE: 'No menu: a Home with big tiles, like a console.' },
+  { id: 'comando', es: 'Comando', en: 'Command',
+    desD: 'Sin menú: una paleta (Ctrl+K) para ir a cualquier lado.', desE: 'No menu: a palette (Ctrl+K) to go anywhere.' },
+  { id: 'radial', es: 'Radial', en: 'Radial',
+    desD: 'Un botón en la esquina que abre los destinos en abanico.', desE: 'A corner button that fans the destinations out.' }
 ];
+const LAYOUT_IDS = ['top', 'dock', 'mini', 'right', 'island', 'bottom', 'consola', 'comando', 'radial'];
 function paintLayout() {
   const host = $('#layoutCards');
   if (!host || !state.config) return;
@@ -9855,6 +9911,22 @@ function paintLayout() {
       return b;
     }));
   }
+  $('#statusLabel').textContent = en ? 'Status bar (bottom)' : 'Barra de estado (abajo)';
+  const sb = state.config.appearance.statusBar === true;
+  const shost = $('#statusChips');
+  if (shost.dataset.sig !== `${sb}|${en}`) {
+    shost.dataset.sig = `${sb}|${en}`;
+    shost.replaceChildren(...[[false, 'Apagada', 'Off'], [true, 'Prendida', 'On']].map((d) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'chip' + (d[0] === sb ? ' is-active' : '');
+      b.dataset.sb = String(d[0]);
+      b.textContent = en ? d[2] : d[1];
+      return b;
+    }));
+  }
+  /* Los íconos del menú no dicen nada sin la etiqueta: se las damos de tooltip. */
+  for (const b of $$('#rail .railitem')) { const sp = b.querySelector('span'); if (sp && sp.textContent.trim()) b.title = sp.textContent.trim(); }
   const back = $('#layReset');
   back.textContent = en ? 'Back to Classic' : 'Volver a la clásica';
   back.hidden = cur === 'classic';
@@ -9867,7 +9939,261 @@ $('#rowsChips').addEventListener('click', (e) => {
   const b = e.target.closest('[data-rows]');
   if (b) patchConfig({ appearance: { roomRows: b.dataset.rows } });
 });
+$('#statusChips').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-sb]');
+  if (b) patchConfig({ appearance: { statusBar: b.dataset.sb === 'true' } });
+});
 $('#layReset').addEventListener('click', () => patchConfig({ appearance: { layout: 'classic' } }));
+
+
+/* ── Barra de estado ─────────────────────────────────────────────────────────
+ * Una línea abajo con lo que ya sabe el cliente: cuántos del club están
+ * conectados, cuánta gente hay en HaxBall y la hora. Apagada no existe (ni el
+ * nodo ni el temporizador); prendida se repinta cuando llega un dato nuevo y
+ * cada 30 s por la hora. Dentro de una sala se esconde: ahí abajo hay cancha. */
+let statusTimer = 0;
+function paintStatusBar() {
+  const on = !!(state.config && state.config.appearance.statusBar === true);
+  let bar = $('#statusbar');
+  if (!on) {
+    if (bar) bar.hidden = true;
+    clearInterval(statusTimer);
+    statusTimer = 0;
+    return;
+  }
+  if (!bar) {
+    bar = document.createElement('footer');
+    bar.id = 'statusbar';
+    bar.className = 'statusbar';
+    bar.innerHTML = '<span class="statusbar__club"></span><span class="statusbar__rooms"></span><span class="statusbar__sp"></span><span class="statusbar__clock"></span>';
+    $('#app').append(bar);
+  }
+  bar.hidden = false;
+  const en = isEn();
+  const n = state.clubOnline;
+  const club = bar.querySelector('.statusbar__club');
+  club.textContent = typeof n === 'number' ? `● ${n} ${en ? 'of the club online' : 'del club conectados'}` : '';
+  club.classList.toggle('is-live', typeof n === 'number' && n > 0);
+  const r = state.rooms;
+  bar.querySelector('.statusbar__rooms').textContent = r && r.totalRooms
+    ? `${Number(r.totalPlayers).toLocaleString('es-AR')} ${en ? 'players' : 'jugadores'} · ${Number(r.totalRooms).toLocaleString('es-AR')} ${en ? 'rooms' : 'salas'}`
+    : '';
+  bar.querySelector('.statusbar__clock').textContent = new Date().toLocaleTimeString(en ? 'en-GB' : 'es-AR', { hour: '2-digit', minute: '2-digit' });
+  if (!statusTimer) statusTimer = setInterval(paintStatusBar, 30000);
+}
+
+/* ── Navegación alternativa: Inicio (Consola) y paleta (Comando) ─────────────
+ * Dos interfaces sin menú lateral. Las dos hacen lo mismo que el menú de
+ * siempre —llaman al clic del botón del riel, que es quien sabe cambiar de
+ * pantalla— así que no hay una segunda lógica de navegación que mantener. */
+const NAV_DESTS = [
+  { view: 'play', es: 'Salas', en: 'Rooms' },
+  { view: 'replays', es: 'Replays', en: 'Replays' },
+  { view: 'club', es: 'Club', en: 'Club' },
+  { view: 'aspecto', es: 'Personalización', en: 'Personalization' },
+  { view: 'ajustes', es: 'Configuración', en: 'Settings' }
+];
+function layoutIs(id) { return document.documentElement.dataset.layout === id; }
+function navIcon(view) {
+  const src = document.querySelector(`#rail [data-view="${view}"] svg`);
+  return src ? src.cloneNode(true) : document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+}
+function goView(view) {
+  const b = document.querySelector(`#rail [data-view="${view}"]`);
+  if (b) b.click();
+}
+state.hub = false;
+state.clubOnline = null;
+
+function hubSub(view, en) {
+  if (view === 'play') {
+    const r = state.rooms;
+    return r && r.totalRooms ? `${Number(r.totalPlayers).toLocaleString('es-AR')} ${en ? 'players' : 'jugadores'} · ${Number(r.totalRooms).toLocaleString('es-AR')} ${en ? 'rooms' : 'salas'}` : (en ? 'Find a room' : 'Buscá una sala');
+  }
+  if (view === 'replays') {
+    const n = state.replays && Array.isArray(state.replays.items) ? state.replays.items.length : null;
+    return n === null ? (en ? 'Your library' : 'Tu biblioteca') : `${n} replays`;
+  }
+  if (view === 'club') return typeof state.clubOnline === 'number' ? `${state.clubOnline} ${en ? 'online' : 'conectados'}` : (en ? 'Stats and roster' : 'Estadísticas y plantel');
+  if (view === 'aspecto') return en ? 'Theme, colours and layout' : 'Tema, colores e interfaz';
+  return en ? 'Client, network and controls' : 'Cliente, red y controles';
+}
+
+function paintHub() {
+  const grid = $('#hubGrid');
+  if (!grid || !state.config) return;
+  const en = isEn();
+  $('#hubTitle').textContent = en ? 'Home' : 'Inicio';
+  const nick = state.config.general && state.config.general.nickname;
+  $('#hubSub').textContent = nick ? (en ? `Welcome, ${nick}` : `Bienvenido, ${nick}`) : (en ? 'Pick where to go' : 'Elegí a dónde ir');
+  $('#hubHint').textContent = en ? 'Arrow keys + Enter, or numbers 1–5. Esc to go back.' : 'Flechas y Enter, o los números 1 a 5. Esc para volver.';
+  const tiles = [];
+  const last = $('#lastRoom');
+  if (last && !last.hidden) {
+    tiles.push({ wide: true, title: en ? 'Back to your last room' : 'Volver a tu última sala', sub: ($('#lastRoomName').textContent || '').trim(), icon: last.querySelector('svg') && last.querySelector('svg').cloneNode(true), run: () => last.click() });
+  }
+  NAV_DESTS.forEach((d, i) => tiles.push({ title: en ? d.en : d.es, sub: hubSub(d.view, en), icon: navIcon(d.view), key: String(i + 1), run: () => goView(d.view) }));
+  const cap = $('#captainBtn');
+  if (cap && !cap.hidden) tiles.push({ title: en ? 'Captain' : 'Capitán', sub: en ? 'Club admin' : 'Administración del club', icon: cap.querySelector('svg') && cap.querySelector('svg').cloneNode(true), run: () => cap.click() });
+  grid.replaceChildren(...tiles.map((tile, i) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'tile' + (tile.wide ? ' tile--wide' : '');
+    b.style.setProperty('--i', String(i));
+    const ico = document.createElement('span');
+    ico.className = 'tile__ico';
+    if (tile.icon) ico.append(tile.icon);
+    const txt = document.createElement('span');
+    txt.className = 'tile__txt';
+    const t1 = document.createElement('b');
+    t1.textContent = tile.title;
+    const t2 = document.createElement('small');
+    t2.textContent = tile.sub || '';
+    txt.append(t1, t2);
+    b.append(ico, txt);
+    if (tile.key) { const k = document.createElement('kbd'); k.textContent = tile.key; b.append(k); b.dataset.key = tile.key; }
+    b.addEventListener('click', () => { tile.run(); });
+    return b;
+  }));
+}
+
+function openHub(on) {
+  const hub = $('#hub');
+  if (!hub) return;
+  state.hub = !!on && layoutIs('consola') && state.stage !== 'game';
+  hub.hidden = !state.hub;
+  document.documentElement.dataset.hub = state.hub ? 'on' : 'off';
+  if (state.hub) {
+    paintHub();
+    if (!(state.replays && Array.isArray(state.replays.items))) { try { loadReplays(); } catch (e) { /* sin lista */ } }
+    const first = $('#hubGrid button');
+    if (first) first.focus({ preventScroll: true });
+  }
+  paintNavExtras();
+}
+
+/** El botón «Inicio» (Consola) y la pastilla de la paleta (Comando). */
+function paintNavExtras() {
+  const en = isEn();
+  const outside = state.stage !== 'game';
+  const hb = $('#hubBtn');
+  if (hb) {
+    hb.hidden = !(layoutIs('consola') && !state.hub && outside);
+    hb.textContent = en ? '⌂  Home' : '⌂  Inicio';
+  }
+  const cp = $('#cmdPill');
+  if (cp) {
+    cp.hidden = !(layoutIs('comando') && outside);
+    $('#cmdPillText').textContent = en ? 'Go to…' : 'Ir a…';
+  }
+}
+$('#hubBtn').addEventListener('click', () => openHub(true));
+$('#cmdPill').addEventListener('click', () => openCmd(true));
+
+/* La paleta. Filtra por lo que escribas (sin tildes ni mayúsculas). */
+const cmdState = { open: false, items: [], idx: 0 };
+const fold = (x) => String(x || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+
+function cmdEntries() {
+  const en = isEn();
+  const out = NAV_DESTS.map((d) => ({ label: en ? d.en : d.es, hint: en ? 'Go to' : 'Ir a', icon: navIcon(d.view), run: () => goView(d.view) }));
+  const last = $('#lastRoom');
+  if (last && !last.hidden) out.unshift({ label: en ? 'Back to your last room' : 'Volver a tu última sala', hint: ($('#lastRoomName').textContent || '').trim(), icon: last.querySelector('svg') && last.querySelector('svg').cloneNode(true), run: () => last.click() });
+  out.push({ label: en ? 'Create a room' : 'Crear sala', hint: en ? 'Action' : 'Acción', run: () => { goView('play'); const c = $('#actCreate'); if (c) c.click(); } });
+  out.push({ label: en ? 'Open replays folder' : 'Abrir carpeta de replays', hint: en ? 'Action' : 'Acción', run: () => { tvm.replays.openFolder(); } });
+  out.push({ label: en ? 'Toggle full screen' : 'Pantalla completa', hint: 'F11', run: () => { tvm.window.toggleFullscreen(); } });
+  const cur = (state.config && state.config.appearance.layout) || 'classic';
+  for (const l of LAYOUTS) {
+    if (l.id === cur) continue;
+    out.push({ label: `${en ? 'Interface' : 'Interfaz'}: ${en ? l.en : l.es}`, hint: en ? 'Change layout' : 'Cambiar interfaz', run: () => patchConfig({ appearance: { layout: l.id } }) });
+  }
+  return out;
+}
+
+function paintCmd() {
+  const q = fold($('#cmdkInput').value.trim());
+  cmdState.items = cmdEntries().filter((e) => !q || fold(`${e.label} ${e.hint}`).includes(q));
+  cmdState.idx = Math.min(cmdState.idx, Math.max(0, cmdState.items.length - 1));
+  const list = $('#cmdkList');
+  if (!cmdState.items.length) {
+    const li = document.createElement('li');
+    li.className = 'cmdk__empty';
+    li.textContent = isEn() ? 'Nothing found' : 'No hay nada con eso';
+    list.replaceChildren(li);
+    return;
+  }
+  list.replaceChildren(...cmdState.items.map((e, i) => {
+    const li = document.createElement('li');
+    li.className = 'cmdk__item' + (i === cmdState.idx ? ' is-on' : '');
+    li.dataset.i = String(i);
+    const ico = document.createElement('span');
+    ico.className = 'cmdk__ico';
+    if (e.icon) ico.append(e.icon);
+    const lab = document.createElement('b');
+    lab.textContent = e.label;
+    const hint = document.createElement('small');
+    hint.textContent = e.hint || '';
+    li.append(ico, lab, hint);
+    return li;
+  }));
+  const on = list.querySelector('.is-on');
+  if (on) on.scrollIntoView({ block: 'nearest' });
+}
+
+function openCmd(on) {
+  cmdState.open = !!on;
+  $('#cmdk').hidden = !on;
+  if (on) {
+    $('#cmdkInput').value = '';
+    $('#cmdkInput').placeholder = isEn() ? 'Where to? Type a destination or an action…' : '¿A dónde? Escribí un destino o una acción…';
+    cmdState.idx = 0;
+    paintCmd();
+    $('#cmdkInput').focus();
+  }
+}
+function runCmd(i) {
+  const e = cmdState.items[i];
+  if (!e) return;
+  openCmd(false);
+  e.run();
+}
+$('#cmdkInput').addEventListener('input', () => { cmdState.idx = 0; paintCmd(); });
+$('#cmdkScrim').addEventListener('mousedown', () => openCmd(false));
+$('#cmdkList').addEventListener('click', (e) => {
+  const li = e.target.closest('[data-i]');
+  if (li) runCmd(Number(li.dataset.i));
+});
+$('#cmdkInput').addEventListener('keydown', (e) => {
+  if (e.key === 'ArrowDown') { e.preventDefault(); cmdState.idx = Math.min(cmdState.items.length - 1, cmdState.idx + 1); paintCmd(); }
+  else if (e.key === 'ArrowUp') { e.preventDefault(); cmdState.idx = Math.max(0, cmdState.idx - 1); paintCmd(); }
+  else if (e.key === 'Enter') { e.preventDefault(); runCmd(cmdState.idx); }
+});
+
+window.addEventListener('keydown', (e) => {
+  if (cmdState.open && e.key === 'Escape') { e.preventDefault(); openCmd(false); return; }
+  if (layoutIs('comando') && (e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 'k') {
+    e.preventDefault();
+    openCmd(!cmdState.open);
+    return;
+  }
+  if (!state.hub) return;
+  if (e.key === 'Escape') { e.preventDefault(); openHub(false); return; }
+  const tiles = $$('#hubGrid .tile');
+  if (!tiles.length) return;
+  const at = tiles.indexOf(document.activeElement);
+  const cols = tiles.length > 1 && getComputedStyle($('#hubGrid')).gridTemplateColumns.split(' ').length || 1;
+  let next = -1;
+  if (e.key === 'ArrowRight') next = at + 1;
+  else if (e.key === 'ArrowLeft') next = at - 1;
+  else if (e.key === 'ArrowDown') next = at + cols;
+  else if (e.key === 'ArrowUp') next = at - cols;
+  else if (/^[1-9]$/.test(e.key) && !e.ctrlKey && !e.altKey && !e.metaKey) {
+    const t = tiles.find((x) => x.dataset.key === e.key);
+    if (t) { e.preventDefault(); t.click(); }
+    return;
+  }
+  if (next >= 0) { e.preventDefault(); tiles[Math.max(0, Math.min(tiles.length - 1, next))].focus(); }
+}, true);
 
 
 /* Densidad de la interfaz: sólo espaciado de menús (CSS por `data-density`). */

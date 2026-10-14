@@ -128,11 +128,24 @@ function digest(file) {
   const entry = get(file);
   if (!entry) return null;
   const s = entry.summary;
+  const seconds = s.seconds || 0;
+  const goals = Array.isArray(s.goals) ? s.goals : [];
+  /* Dónde cayó cada gol, como fracción de la grabación y de qué equipo, para la
+     línea de la tarjeta. Tope de 60: es un dibujito, no el detalle. */
+  const marks = seconds > 0
+    ? goals.filter((g) => g && Number.isFinite(g.at)).slice(0, 60).map((g) => [
+      Math.round(Math.min(1, Math.max(0, g.at / 1000 / seconds)) * 1000) / 1000,
+      g.team === 'Red' ? 0 : 1
+    ])
+    : [];
   return {
     analyzedAt: entry.analyzedAt,
-    goals: (s.goals || []).length,
+    goals: goals.length,
+    red: goals.filter((g) => g && g.team === 'Red').length,
+    blue: goals.filter((g) => g && g.team === 'Blue').length,
+    marks,
     matches: (s.matches || []).length,
-    seconds: s.seconds || 0
+    seconds
   };
 }
 

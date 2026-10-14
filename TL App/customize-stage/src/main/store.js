@@ -87,6 +87,8 @@ const DEFAULTS = {
     layout: 'classic',
     /** Alto de las filas de la lista de salas: dense | normal | large. */
     roomRows: 'normal',
+    /** Barra fina de estado abajo (hora, club conectado, jugadores online). Apagada por defecto. */
+    statusBar: false,
     /** El escudo "respira" en la barra lateral y la pantalla de inicio. */
     crestBreath: true,
     /** Cortina con el escudo al entrar a una sala. */

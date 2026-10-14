@@ -11,8 +11,8 @@ window.TL_NEWS = {
   title: { es: 'Qué hay de nuevo', en: "What's new" },
   items: {
     es: [
-      'Nuevo: Interfaz elegible (Personalización → Estilo): Clásica (la de siempre, por defecto), Barra superior, Dock flotante, Isla, Barra inferior, Íconos o Lateral derecho. Podés volver a la clásica cuando quieras. También: filas de la lista de salas densa/normal/amplia.',
-      'Replays rediseñadas: tarjetas con fecha y resultado del análisis, agrupadas por día, con filtros (hoy, semana, con análisis) y orden (más goles, más largos). La lista de salas muestra un esqueleto mientras carga y los ajustes tienen migas de pan.',
+      'Nuevo: Interfaz elegible (Personalización → Estilo): Clásica (la de siempre, por defecto), Barra superior, Dock flotante, Isla, Barra inferior, Íconos, Lateral derecho y tres que cambian todo: Consola (Inicio con mosaicos), Comando (paleta Ctrl+K) y Radial (botón en abanico). Podés volver a la clásica cuando quieras. También: filas de la lista de salas densa/normal/amplia.',
+      'Replays rediseñadas: ★ para fijar tus mejores, marcador y una línea con los goles de cada equipo, tarjetas con fecha y resultado del análisis, agrupadas por día, con filtros (hoy, semana, con análisis) y orden (más goles, más largos). La lista de salas muestra un esqueleto mientras carga los ajustes tienen migas de pan y hay una barra de estado opcional (Personalización → Estilo → Interfaz).',
       'Nuevo: Mezclador de volúmenes (Configuración → Cliente y audio) con la música del menú, gol y golpe en un solo lugar.',
       'Lista de salas: las salas donde hay gente del club conectada se resaltan con una insignia 👥 y el número de compañeros (pasá el mouse para ver los nombres).',
       'Nuevo: densidad de la interfaz (Personalización → Estilo): compacta, normal o cómoda. Cambia el espaciado de los menús, no toca el juego.',
@@ -34,8 +34,8 @@ window.TL_NEWS = {
       'Cada clave se usa en una sola PC: si cambiás de computadora, pedile a miclo que te la libere.'
     ],
     en: [
-      'New: selectable interface (Personalization → Style): Classic (the usual, default), Top bar, Floating dock, Island, Bottom bar, Icons only or Right side. Go back to Classic any time. Also: dense/normal/roomy room-list rows.',
-      'Replays redesigned: cards with date and analysis summary, grouped by day, with filters (today, week, analysed) and sorting (most goals, longest). The room list shows a skeleton while loading and settings have breadcrumbs.',
+      'New: selectable interface (Personalization → Style): Classic (the usual, default), Top bar, Floating dock, Island, Bottom bar, Icons only, Right side and three that change everything: Console (tile Home), Command (Ctrl+K palette) and Radial (fan button). Go back to Classic any time. Also: dense/normal/roomy room-list rows.',
+      'Replays redesigned: ★ to pin your best, score and a goals timeline per team, cards with date and analysis summary, grouped by day, with filters (today, week, analysed) and sorting (most goals, longest). The room list shows a skeleton while loading settings have breadcrumbs and there is an optional status bar (Personalization → Style → Interface).',
       'New: Volume mixer (Settings → Client & audio) with menu music, goal and kick sounds in one place.',
       'Room list: rooms with connected club members are highlighted with a 👥 badge and the number of teammates (hover for their names).',
       'New: interface density (Personalization → Style): compact, normal or comfortable. Only menu spacing, the game is untouched.',

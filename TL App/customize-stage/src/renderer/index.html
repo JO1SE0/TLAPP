@@ -646,6 +646,26 @@
         </div>
       </div>
 
+      <!-- ═══ Inicio (interfaz «Consola») y paleta (interfaz «Comando») ═══
+           Dos maneras de moverse que reemplazan al menú lateral. Los arma
+           `app.js` (ver «Navegación alternativa»); acá sólo está el lugar. -->
+      <div class="hub" id="hub" hidden>
+        <div class="hub__inner">
+          <header class="hub__head">
+            <span class="hub__eyebrow">Toda la Lecce</span>
+            <h1 id="hubTitle">Inicio</h1>
+            <p id="hubSub"></p>
+          </header>
+          <div class="hub__grid" id="hubGrid"></div>
+          <p class="hub__hint" id="hubHint"></p>
+        </div>
+      </div>
+      <button class="hubbtn" id="hubBtn" type="button" hidden></button>
+      <button class="cmdpill" id="cmdPill" type="button" hidden>
+        <svg data-icon viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.8"/><path d="M16.1 16.1 20.2 20.2"/></svg>
+        <span id="cmdPillText">Ir a…</span><kbd>Ctrl K</kbd>
+      </button>
+
       <!-- ═══ Panel ═══════════════════════════════════════════════════
            Rendimiento, Aspecto, Replays y Ajustes no son pantallas aparte:
            se abren como una tarjeta centrada por encima de lo que haya
@@ -840,6 +860,10 @@
               <div class="row">
                 <div class="row__text"><span class="row__label" id="rowsLabel">Filas de la lista de salas</span></div>
                 <div class="row__ctl"><div class="chips" id="rowsChips"></div></div>
+              </div>
+              <div class="row">
+                <div class="row__text"><span class="row__label" id="statusLabel">Barra de estado</span></div>
+                <div class="row__ctl"><div class="chips" id="statusChips"></div></div>
               </div>
               <div class="row"><div class="row__ctl"><button class="btn btn--ghost" id="layReset" type="button" hidden>Volver a la clásica</button></div></div>
             </div>
@@ -1759,6 +1783,13 @@
 
   <div class="toasts" id="toasts"></div>
 
+  <div class="cmdk" id="cmdk" hidden>
+  <div class="cmdk__scrim" id="cmdkScrim"></div>
+  <div class="cmdk__card" role="dialog" aria-modal="true">
+    <input class="cmdk__input" id="cmdkInput" type="text" autocomplete="off" spellcheck="false" />
+    <ul class="cmdk__list" id="cmdkList"></ul>
+  </div>
+</div>
   <script src="js/i18n.js"></script>
   <script src="js/look-shim.js"></script>
   <script src="../main/look.js"></script>
