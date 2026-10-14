@@ -4620,7 +4620,7 @@ function drawBall(ctx, x, y, r, indice) {
     handled = drawBallInner(ctx, x, y, r, indice);
   } finally {
     // Lo que sigue en el juego es el `stroke()` de este mismo disco.
-    if (indice === 0 && (visual.lines || visual.ballOutline || visual.ballGlow || visual.ballColor || visual.ballStyle !== 'default')) {
+    if (indice === 0 && (visual.lines || visual.ballOutline || visual.ballColor || visual.ballStyle !== 'default')) {
       pend.on = true; pend.kind = 'ball'; pend.k = 1; pend.x = x; pend.y = y; pend.r = r;
     } else if (indice > 0 && visual.lines) {
       pend.on = true; pend.kind = 'post'; pend.k = 1; pend.x = x; pend.y = y; pend.r = r;
@@ -8899,7 +8899,7 @@ let flatGraphicsEnabled = false;
 const visual = {
   pitchLine: 1, discLine: 1, ballLine: 1, ballSize: 1, discSize: 1, lines: false, sizes: false,
   texture: 'none', crest: false, crestOpacity: 0.18, crestSize: 0.45,
-  lineColor: '', postColor: '', discOutline: '', ballOutline: '', ballGlow: '', ballGlowSize: 1,
+  lineColor: '', postColor: '', discOutline: '', ballOutline: '',
   discStyle: 'default', ballStyle: 'default', ringStyle: 'default', ringColor: '', light: '', shadows: false, ballColor: '', lineGlow: false,
   selfTrail: false, selfTrailColor: '',
   nameScale: 1, nameColor: '', nameOutline: false, nameFont: 'default',
@@ -8936,8 +8936,6 @@ function syncCanvasHotFlags() {
   visual.postColor = lookfx.safeColor(cfg.postColor);
   visual.discOutline = lookfx.safeColor(cfg.discOutline);
   visual.ballOutline = lookfx.safeColor(cfg.ballOutline);
-  visual.ballGlow = lookfx.safeColor(cfg.ballGlow);
-  visual.ballGlowSize = clampNum(cfg.ballGlowSize, 0.3, 2, 1);
   visual.discStyle = ['sphere', 'glass', 'neon', 'metal', 'bubble', 'target', 'stripes', 'gem', 'cartoon', 'dots'].includes(cfg.discStyle) ? cfg.discStyle : 'default';
   visual.light = ['vignette', 'spot', 'corners'].includes(cfg.pitchLight) ? cfg.pitchLight : '';
   visual.shadows = !!cfg.softShadows;
@@ -8952,7 +8950,7 @@ function syncCanvasHotFlags() {
   visual.nameColor = lookfx.safeColor(cfg.nameColor);
   visual.nameOutline = !!cfg.nameOutline;
   visual.nameFont = FONT_FAMILIES[cfg.nameFont] ? cfg.nameFont : 'default';
-  visual.discFx = visual.shadows || visual.discStyle !== 'default' || visual.ballStyle !== 'default' || !!visual.ballColor || !!visual.discOutline || !!visual.ballOutline || !!visual.ballGlow;
+  visual.discFx = visual.shadows || visual.discStyle !== 'default' || visual.ballStyle !== 'default' || !!visual.ballColor || !!visual.discOutline || !!visual.ballOutline;
   visual.names = visual.nameScale !== 1 || !!visual.nameColor || visual.nameOutline || visual.nameFont !== 'default';
 }
 
@@ -9183,14 +9181,11 @@ function installCanvasHooks(doc) {
       let overlay = false;
       let ballFx = false;
       let glow = '';
-      let ballGlow = '';
       if (pend.on) {
         if (pend.kind === 'ball') {
           mul = visual.ballLine;
           color = visual.ballOutline;
           ballFx = visual.ballStyle !== 'default' || !!visual.ballColor;
-          // Brillo de color alrededor del aro de la pelota (ver abajo).
-          ballGlow = visual.ballGlow;
         } else if (pend.kind === 'disc') {
           mul = visual.discLine;
           color = visual.discOutline;
@@ -9226,36 +9221,6 @@ function installCanvasHooks(doc) {
           origStroke.apply(this, args);
           this.globalAlpha = a0 * 0.35;
           this.lineWidth = w0 * mul * 2;
-          origStroke.apply(this, args);
-        } finally {
-          ownDraw--;
-          this.lineWidth = w0;
-          this.strokeStyle = s0;
-          this.globalAlpha = a0;
-        }
-      }
-      if (ballGlow) {
-        /*
-         * Brillo del aro de la pelota: tres pasadas del mismo trazo, cada una
-         * más ancha y más tenue, y encima la línea normal. Es la misma idea que
-         * el neón de las líneas (sin `shadowBlur`, que cuesta más) y sólo se
-         * hace para UN disco por cuadro.
-         */
-        const w0 = this.lineWidth;
-        const s0 = this.strokeStyle;
-        const a0 = this.globalAlpha;
-        const k = visual.ballGlowSize;
-        ownDraw++;
-        try {
-          this.strokeStyle = ballGlow;
-          this.globalAlpha = a0 * 0.10;
-          this.lineWidth = w0 * mul + 12 * k;
-          origStroke.apply(this, args);
-          this.globalAlpha = a0 * 0.22;
-          this.lineWidth = w0 * mul + 7 * k;
-          origStroke.apply(this, args);
-          this.globalAlpha = a0 * 0.5;
-          this.lineWidth = w0 * mul + 3 * k;
           origStroke.apply(this, args);
         } finally {
           ownDraw--;

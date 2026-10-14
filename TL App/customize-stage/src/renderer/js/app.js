@@ -8462,9 +8462,7 @@ const LOOK_SECTIONS = {
     { key: 'discOutline', type: 'color', label: 'look.discOutline' },
     { key: 'ballStyle', type: 'select', label: 'look.ballStyle', options: [['default', 'look.opt.none'], ['soccer', 'look.bs.soccer'], ['neon', 'look.bs.neon'], ['gold', 'look.bs.gold'], ['beach', 'look.bs.beach'], ['eight', 'look.bs.eight'], ['star', 'look.bs.star']] },
     { key: 'ballColor', type: 'color', label: 'look.ballColor' },
-    { key: 'ballOutline', type: 'color', label: 'look.ballOutline', desc: 'look.ballOutlineHelp' },
-    { key: 'ballGlow', type: 'color', label: 'look.ballGlow', desc: 'look.ballGlowHelp' },
-    { key: 'ballGlowSize', type: 'range', label: 'look.ballGlowSize', min: 0.3, max: 2, step: 0.1, showIf: (v) => !!v.ballGlow },
+    { key: 'ballOutline', type: 'color', label: 'look.ballOutline' },
     { key: 'ringStyle', type: 'select', label: 'look.ringStyle', desc: 'look.ringHelp', options: [['default', 'look.opt.simple'], ['double', 'look.ring.double'], ['dashed', 'look.ring.dashed'], ['crown', 'look.ring.crown'], ['glow', 'look.ring.glow'], ['dots', 'look.ring.dots'], ['arrow', 'look.ring.arrow']] },
     { key: 'ringColor', type: 'color', label: 'look.ringColor' },
     { key: 'selfTrail', type: 'switch', label: 'look.selfTrail', desc: 'look.selfTrailHelp' },
@@ -8497,7 +8495,7 @@ const LOOK_SECTIONS = {
 
 const LOOK_DEFAULTS = {
   texture: 'none', pitchLight: 'none', softShadows: false, crest: false, crestOpacity: 0.18, crestSize: 0.45, lineColor: '', postColor: '',
-  discStyle: 'default', ballStyle: 'default', ballColor: '', lineGlow: false, discOutline: '', ballOutline: '', ballGlow: '', ballGlowSize: 1, ringStyle: 'default', ringColor: '',
+  discStyle: 'default', ballStyle: 'default', ballColor: '', lineGlow: false, discOutline: '', ballOutline: '', ringStyle: 'default', ringColor: '',
   selfTrail: false, selfTrailColor: '', nameScale: 1, nameColor: '', nameOutline: false, nameFont: 'default',
   chatScale: 1, chatBg: -1, chatFont: 'default', chatOpacity: 1, postSound: true, postSoundVolume: 0.7, statsOpacity: 1, statsStyle: 'default', menuBg: 'none'
 };

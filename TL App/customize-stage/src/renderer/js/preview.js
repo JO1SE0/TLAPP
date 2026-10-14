@@ -313,18 +313,6 @@
     ctx.fill();
     const ballTint = L.safeColor(V.ballColor);
     if ((ballStyle !== 'default' || ballTint) && L.ballOverlay) L.ballOverlay(ctx, ballStyle, -122, 26, br, null, ballTint);
-    const bGlow = L.safeColor(V.ballGlow);
-    if (bGlow) {
-      const k = num(V.ballGlowSize, 0.3, 2, 1);
-      ctx.save();
-      ctx.strokeStyle = bGlow;
-      for (const [w, a] of [[12, 0.1], [7, 0.22], [3, 0.5]]) {
-        ctx.globalAlpha = a;
-        ctx.lineWidth = 2 * ballLine + w * k;
-        ctx.stroke();
-      }
-      ctx.restore();
-    }
     ctx.lineWidth = 2 * ballLine;
     ctx.strokeStyle = ballOutline;
     ctx.stroke();
