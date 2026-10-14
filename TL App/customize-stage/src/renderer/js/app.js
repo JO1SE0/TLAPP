@@ -81,7 +81,7 @@ const PANEL_TABS = {
     { id: 'graficos', group: 'tabg.perf', label: 'tab.gfx', hint: 'tab.gfxHint', secs: ['graficos'] },
     { id: 'red', group: 'tabg.perf', label: 'tab.net', hint: 'tab.netHint', secs: ['red', 'avanzado'] },
     { id: 'controles', group: 'tabg.game', label: 'tab.controls', hint: 'tab.controlsHint', secs: ['teclas'] },
-    { id: 'cliente', group: 'tabg.game', label: 'tab.client', hint: 'tab.clientHint', secs: ['cliente', 'audio'] },
+    { id: 'cliente', group: 'tabg.game', label: 'tab.client', hint: 'tab.clientHint', secs: ['cliente', 'mezclador', 'audio'] },
     { id: 'cuentas', group: 'tabg.game', label: 'tab.accounts', hint: 'tab.accountsHint', secs: ['identidades', 'discord'] },
     { id: 'sistema', group: 'tabg.game', label: 'tab.system', hint: 'tab.systemHint', secs: ['actualizaciones', 'config'] }
   ]
@@ -4348,6 +4348,7 @@ function paintAudio() {
   try { paintGameExtras(); } catch (e) { /* adorno */ }
   try { paintAnimations(); } catch (e) { /* adorno */ }
   try { paintDensity(); } catch (e) { /* adorno */ }
+  try { paintMixer(); } catch (e) { /* adorno */ }
   const ap = (state.config && state.config.appearance) || {};
   const vol = typeof ap.musicVolume === 'number' ? ap.musicVolume : 0.35;
   $('#audMusic').classList.toggle('is-off', ap.music === false);
@@ -9931,7 +9932,7 @@ function saveSecOpen() {
 
 /** Por defecto: la primera sección de cada solapa abierta, el resto cerradas. */
 function secDefaultOpen(sec) {
-  if (sec.classList.contains('sec--feature')) return true;
+  if (sec.classList.contains('sec--feature') || sec.dataset.sec === 'mezclador') return true;
   const mates = $$(`.page__inner > .sec[data-tab="${sec.dataset.tab}"]`, sec.closest('.page'));
   return mates.length <= 2 || mates[0] === sec;
 }
@@ -10029,3 +10030,66 @@ $('#denChips').addEventListener('click', (e) => {
   const b = e.target.closest('[data-den]');
   if (b) patchConfig({ appearance: { density: b.dataset.den } });
 });
+
+
+/* ── Mezclador de volúmenes ──────────────────────────────────────────────────
+ * Todos los volúmenes en un solo lugar. No hay lógica nueva: cada deslizador
+ * escribe en la misma clave de config que ya usaba su control de siempre. */
+const MIX_CHANNELS = [
+  { id: 'menu', es: 'Música del menú', en: 'Menu music', def: 0.35,
+    get: (c) => c.appearance.musicVolume,
+    live: (v) => { const c = state.config.appearance; if (window.TLMusic) window.TLMusic.configure(c.music !== false, v, c.musicClub !== false); },
+    set: (v) => ({ appearance: { musicVolume: v, music: true } }) },
+  { id: 'ytm', es: 'YouTube Music', en: 'YouTube Music', def: 1, needsPlayer: true,
+    get: (c) => (state.music && typeof state.music.volume === 'number' ? state.music.volume : c.music && c.music.volume),
+    live: (v) => { tvm.music.cmd('volume', v).catch(() => {}); } },
+  { id: 'goalsfx', es: 'Sonido de gol incluido', en: 'Built-in goal sound', def: 0.7,
+    get: (c) => c.appearance.goalSfxVolume, set: (v) => ({ appearance: { goalSfxVolume: v } }) },
+  { id: 'goalown', es: 'Tu sonido de gol', en: 'Your goal sound', def: 0.7,
+    get: (c) => c.vip && c.vip.goalVolume, set: (v) => ({ vip: { goalVolume: v } }) },
+  { id: 'hit', es: 'Sonido de golpe', en: 'Kick sound', def: 0.7,
+    get: (c) => c.vip && c.vip.hitVolume, set: (v) => ({ vip: { hitVolume: v } }) },
+  { id: 'post', es: 'Sonido del palo', en: 'Post sound', def: 0.7,
+    get: (c) => c.visual && c.visual.postSoundVolume, set: (v) => ({ visual: { postSoundVolume: v } }) }
+];
+
+function paintMixer() {
+  const host = $('#mixList');
+  if (!host || !state.config) return;
+  const en = isEn();
+  $('#mixTitle').textContent = en ? 'Volume mixer' : 'Mezclador de volúmenes';
+  $('#mixDesc').textContent = en
+    ? 'Every volume in one place. They are the same values as in each section.'
+    : 'Todos los volúmenes en un solo lugar. Son los mismos valores que en cada sección.';
+  if (!host.children.length) {
+    for (const ch of MIX_CHANNELS) {
+      const row = document.createElement('div');
+      row.className = 'row';
+      row.dataset.mix = ch.id;
+      row.innerHTML = '<div class="row__text"><span class="row__label"></span></div><div class="row__ctl"><input type="range" min="0" max="1" step="0.01" /><b class="row__val"></b></div>';
+      const input = row.querySelector('input');
+      const val = row.querySelector('.row__val');
+      input.addEventListener('input', () => {
+        syncRangeFill(input);
+        val.textContent = `${Math.round(Number(input.value) * 100)}%`;
+        if (ch.live) ch.live(Number(input.value));
+      });
+      input.addEventListener('change', () => { if (ch.set) patchConfig(ch.set(Number(input.value))); });
+      host.append(row);
+    }
+  }
+  for (const ch of MIX_CHANNELS) {
+    const row = host.querySelector(`[data-mix="${ch.id}"]`);
+    const input = row.querySelector('input');
+    row.querySelector('.row__label').textContent = en ? ch.en : ch.es;
+    // Sin tocar el que se está arrastrando.
+    if (document.activeElement === input) continue;
+    const raw = Number(ch.get(state.config));
+    const v = Number.isFinite(raw) ? Math.min(1, Math.max(0, raw)) : ch.def;
+    input.value = String(v);
+    input.disabled = !!ch.needsPlayer && !state.musicOpen;
+    row.title = input.disabled ? (en ? 'Open the Music tab first' : 'Abrí primero la pestaña Música') : '';
+    syncRangeFill(input);
+    row.querySelector('.row__val').textContent = `${Math.round(v * 100)}%`;
+  }
+}

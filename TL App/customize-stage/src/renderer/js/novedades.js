@@ -11,6 +11,7 @@ window.TL_NEWS = {
   title: { es: 'Qué hay de nuevo', en: "What's new" },
   items: {
     es: [
+      'Nuevo: Mezclador de volúmenes (Configuración → Cliente y audio) con la música del menú, YouTube Music, gol, golpe y palo en un solo lugar.',
       'Lista de salas: las salas donde hay gente del club conectada se resaltan con una insignia 👥 y el número de compañeros (pasá el mouse para ver los nombres).',
       'Nuevo: densidad de la interfaz (Personalización → Estilo): compacta, normal o cómoda. Cambia el espaciado de los menús, no toca el juego.',
       'Configuración y Personalización más ordenadas: cada sección se puede plegar tocando su título (se recuerda), hay atajos arriba de cada solapa para saltar a una sección y botones «Abrir todo / Cerrar todo». Cabeceras con estilo Club.',
@@ -33,6 +34,7 @@ window.TL_NEWS = {
       'Cada clave se usa en una sola PC: si cambiás de computadora, pedile a miclo que te la libere.'
     ],
     en: [
+      'New: Volume mixer (Settings → Client & audio) with menu music, YouTube Music, goal, kick and post sounds in one place.',
       'Room list: rooms with connected club members are highlighted with a 👥 badge and the number of teammates (hover for their names).',
       'New: interface density (Personalization → Style): compact, normal or comfortable. Only menu spacing, the game is untouched.',
       'Settings and Personalization are easier to scan: tap a section title to fold it (remembered), shortcut chips at the top of each tab jump to a section, plus “Open all / Close all”. Club-style headers.',
