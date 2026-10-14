@@ -430,6 +430,9 @@ const DEFAULTS = {
     /** Contorno de las fichas y de la pelota. Vacío = como viene. */
     discOutline: '',
     ballOutline: '',
+    /** Brillo de color alrededor del aro de la pelota. */
+    ballGlow: '',
+    ballGlowSize: 1,
     /** Aspecto de la pelota: `default` · `soccer` · `neon` · `gold` · `beach` · `eight` · `star`. */
     ballStyle: 'default',
     /** Color de la pelota (se multiplica sobre su relleno). Vacío = como viene. */
