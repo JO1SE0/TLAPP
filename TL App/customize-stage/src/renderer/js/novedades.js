@@ -11,6 +11,7 @@ window.TL_NEWS = {
   title: { es: 'Qué hay de nuevo', en: "What's new" },
   items: {
     es: [
+      'Nuevo: el aro de todas las fichas se puede pintar de otro color y llevar un brillo de color regulable (Personalización → Fichas y pelota → Fichas y aro).',
       'Nuevo: aro de la pelota con color propio y brillo de color regulable (Personalización → Fichas y pelota).',
       'Configuración rediseñada: 7 solapas con íconos (perfil rápido, gráficos, red, controles, cliente y audio, cuentas y sistema) y cabeceras con los colores del club.',
       'Panel del capitán: ahora se pueden marcar personas como «ajenas al club» (no ven conectados ni estadísticas y nadie del club las ve).',
@@ -30,6 +31,7 @@ window.TL_NEWS = {
       'Cada clave se usa en una sola PC: si cambiás de computadora, pedile a miclo que te la libere.'
     ],
     en: [
+      'New: the ring around every disc can be recoloured and given an adjustable colour glow (Personalization → Discs & ball → Discs & ring).',
       'New: ball ring with its own colour and an adjustable colour glow (Personalization → Discs & ball).',
       'Settings redesigned: 7 tabs with icons (quick profile, graphics, network, controls, client & audio, accounts and system) and club-coloured headers.',
       'Captain panel: people can now be marked as “outside the club” (they see no online list or stats, and nobody in the club sees them).',
