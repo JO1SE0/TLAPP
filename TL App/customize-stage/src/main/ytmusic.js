@@ -368,6 +368,8 @@ let artFor = '';
 let artData = '';
 
 const state = {
+  /** Por qué no cargó (vacío si anda). La interfaz lo muestra en vez de una pantalla negra. */
+  error: '',
   /** ¿Hay reproductor montado y cargado? Sin esto la interfaz muestra el cartel. */
   ready: false,
   /** `null` mientras no se sepa (todavía no cargó). */
@@ -655,9 +657,36 @@ function open(win, bounds) {
     // Antes de cargar: si no, el primer cuadro sale con el tamaño de fábrica.
     view.setBounds(sanitize(bounds || LEJOS));
 
+    let lastConsoleError = '';
+    contents.on('console-message', (_e, level, message) => {
+      if (level >= 3) lastConsoleError = String(message || '').slice(0, 160);
+    });
+    contents.on('did-fail-load', (_e, code, desc, url, isMainFrame) => {
+      if (!isMainFrame || code === -3) return;   // -3: se canceló por otra navegación
+      state.ready = false;
+      state.error = `${desc || 'error'} (${code})`;
+      emit();
+    });
+    contents.on('render-process-gone', (_e, details) => {
+      state.ready = false;
+      state.error = 'El motor de la página se cerró (' + ((details && details.reason) || '?') + ')';
+      emit();
+    });
     contents.on('did-finish-load', () => {
       state.ready = true;
+      if (state.error) { state.error = ''; }
       emit();
+      // Si a los 8 s la app de YouTube Music no armó nada, es una pantalla en
+      // negro: se dice por qué en vez de dejarla muda.
+      setTimeout(() => {
+        if (!alive()) return;
+        contents.executeJavaScript("(function(){var a=document.querySelector('ytmusic-app');return !!(a&&a.children&&a.children.length)&&document.body.innerText.length>40;})()", false)
+          .then((ok) => {
+            if (ok || !alive() || state.error) return;
+            state.error = 'YouTube Music no arrancó en este motor' + (lastConsoleError ? ': ' + lastConsoleError : '');
+            emit();
+          }).catch(() => {});
+      }, 8000);
       applySavedVolume();
       applyAudioOnlyMode();
     });

@@ -5271,6 +5271,8 @@ function musicBounds() {
    * corriera, abrir el dock desde la pestaña Música no mostraría el dock.
    */
   if (state.friendsOpen || state.profileOpen) return null;
+  // Con error la vista se esconde para que se vea el cartel que lo explica.
+  if (state.music && state.music.error) return null;
 
   const box = $('#musicFrame').getBoundingClientRect();
   if (!box.width || !box.height) return null;
@@ -5330,8 +5332,11 @@ function unmountMusic() {
 function paintMusicStage() {
   const on = !!musicCfg().enabled;
   $('#mstage').dataset.on = String(on);
+  const failed = on && !!(state.music && state.music.error);
   $('#musicFrame').hidden = !on;
   $('#musicOff').hidden = on;
+  $('#musicErr').hidden = !failed;
+  if (failed) $('#musicErrText').textContent = state.music.error;
 
   const now = state.music;
   const signed = !!(now && now.signedIn === true);
@@ -5369,6 +5374,7 @@ function syncMusic() {
 tvm.music.onState((next) => {
   state.music = next;
   paintMusicStage();
+  syncMusicBounds();
 });
 
 $('#musicEnable').addEventListener('click', async () => {
@@ -9857,3 +9863,6 @@ function openReport(r) {
   wrap.addEventListener('mousedown', (e) => { if (e.target === wrap) wrap.remove(); });
   document.body.append(wrap);
 }
+
+$('#musicRetry').addEventListener('click', () => { if (state.music) state.music.error = ''; paintMusicStage(); syncMusicBounds(); tvm.music.reload(); });
+$('#musicExternal').addEventListener('click', () => { tvm.app.openExternal('https://music.youtube.com/').catch(() => {}); });

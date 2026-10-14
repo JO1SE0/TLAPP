@@ -662,7 +662,7 @@
         <header class="mstage__bar">
           <div class="mstage__id">
             <svg data-icon viewBox="0 0 24 24"><path d="M9.2 18V6.4l10-1.8v11.1"/><ellipse cx="6.7" cy="18" rx="2.5" ry="2.2"/><ellipse cx="16.7" cy="15.7" rx="2.5" ry="2.2"/></svg>
-            <b>YouTube Music</b>
+            <span class="mstage__eyebrow">Toda la Lecce</span><b>YouTube Music</b>
             <span class="mstage__who" id="musicWho"></span>
           </div>
           <div class="mstage__acts">
@@ -676,6 +676,19 @@
 
         <!-- El hueco. Vacío a propósito: es una medida, no un contenedor. -->
         <div class="mstage__frame" id="musicFrame"></div>
+
+        <!-- No cargó: se dice por qué en vez de dejar una pantalla en negro. -->
+        <div class="mstage__off" id="musicErr" hidden>
+          <div class="mstage__card">
+            <svg data-icon viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.6"/><path d="M12 7.6v5.4M12 16.2v.1"/></svg>
+            <h2>YouTube Music no cargó</h2>
+            <p id="musicErrText"></p>
+            <div class="mstage__btns">
+              <button class="btn btn--primary" id="musicRetry" type="button">Reintentar</button>
+              <button class="btn btn--ghost" id="musicExternal" type="button">Abrir en el navegador</button>
+            </div>
+          </div>
+        </div>
 
         <!-- Apagada: la única pantalla que se ve hasta que alguien la prenda. -->
         <div class="mstage__off" id="musicOff" hidden>
