@@ -634,6 +634,11 @@ function onAccess(st) {
   const capBtn = $('#captainBtn');
   if (capBtn) capBtn.hidden = !(st && st.captain);
   paintTrialChip(st);
+  const clubBtn = $('#rail [data-view="club"]');
+  if (clubBtn) {
+    clubBtn.hidden = !!(st && st.external);
+    if (st && st.external && state.view === 'club') setView('play');
+  }
   const repSec = $('#reportsSec');
   if (repSec) repSec.hidden = !(st && st.reports);
   showUrgentIfAny();
@@ -9465,7 +9470,7 @@ function paintClubNow(list) {
     const dot = document.createElement('i');
     dot.className = 'clubnow__dot';
     const name = document.createElement('b');
-    name.textContent = m.name + (m.self ? (en ? ' (you)' : ' (vos)') : '');
+    name.textContent = m.name + (m.self ? (en ? ' (you)' : ' (vos)') : '') + (m.ext ? (en ? ' · outside the club' : ' · ajeno al club') : '');
     const where = document.createElement('span');
     where.className = 'clubnow__where';
     if (m.online) where.textContent = m.room ? (en ? `in “${m.room}”` : `en «${m.room}»`) : (en ? 'in the menu' : 'en el menú');
@@ -9524,7 +9529,7 @@ function paintClubRank() {
   const nodes = rows.map((m, i) => {
     const row = document.createElement('div');
     row.className = 'cr__row' + (m.self ? ' is-self' : '');
-    for (const v of [i + 1, m.name, m.goals, m.assists, m.matches, m.ownGoals, hours(m.seconds)]) {
+    for (const v of [i + 1, m.name + (m.ext ? (en ? ' · outside' : ' · ajeno') : ''), m.goals, m.assists, m.matches, m.ownGoals, hours(m.seconds)]) {
       const c = document.createElement('span'); c.textContent = String(v); row.append(c);
     }
     return row;

@@ -81,6 +81,9 @@ async function beat(ctx) {
     lastFp = null;
     call(`${base}/rooms/${old}/${id.pid}.json`, 'DELETE').catch(() => {});
   }
+  // Los ajenos al club ni dejan casillero en la sala ni ven a los del club.
+  const meEntry = (ctx.roster || []).find((u) => u && u.pub && /^[0-9a-f]{64}$/i.test(u.pub) && identity.pidOf(u.pub) === id.pid);
+  if (meEntry && meEntry.ext) return null;
   if (!ctx.fp || !ctx.nick) { why = `sin sala o sin nick (sala=${ctx.fp ? 'sí' : 'no'}, nick=${ctx.nick ? 'sí' : 'no'})`; return null; }
   why = '';
   lastFp = ctx.fp;
@@ -105,7 +108,7 @@ async function beat(ctx) {
     }
     const member = byPid.get(pid);
     // Las claves de prueba no son del plantel: no llevan insignia ni aura.
-    if (!member || member.trial) continue;
+    if (!member || member.trial || member.ext) continue;
     if (typeof entry.n !== 'string' || typeof entry.t !== 'number' || typeof entry.s !== 'string') continue;
     if (!identity.verify(member.pub, signedText(ctx.fp, entry.n, entry.t), entry.s)) continue;
     const k = `${ctx.fp}|${pid}`;
@@ -192,11 +195,18 @@ async function online(ctx) {
       ok = identity.verify(u.pub, onlineText(r, v, x, e.t), e.s);
       if (ok) {
         const alive = self || (!x && Math.abs(now - e.t) <= ONLINE_ALIVE_MS);
-        out.push({ name: u.name, room: alive ? r : '', lastRoom: r, version: self ? clean(ctx.version, 20) : v, lastSeen: self ? Date.now() : e.t, online: alive, self, trial: !!u.trial, rep: !!u.rep });
+        out.push({ name: u.name, room: alive ? r : '', lastRoom: r, version: self ? clean(ctx.version, 20) : v, lastSeen: self ? Date.now() : e.t, online: alive, self, trial: !!u.trial, rep: !!u.rep, ext: !!u.ext });
         continue;
       }
     }
-    out.push({ name: u.name, room: '', lastRoom: '', version: self ? clean(ctx.version, 20) : '', lastSeen: self ? Date.now() : 0, online: self, self, trial: !!u.trial, rep: !!u.rep });
+    out.push({ name: u.name, room: '', lastRoom: '', version: self ? clean(ctx.version, 20) : '', lastSeen: self ? Date.now() : 0, online: self, self, trial: !!u.trial, rep: !!u.rep, ext: !!u.ext });
+  }
+  // Los ajenos al club los ve sólo el capitán; y ellos no ven a nadie más que a sí mismos.
+  const mineEntry = (ctx.roster || []).find((u) => u && /^[0-9a-f]{64}$/i.test(u.pub || '') && identity.pidOf(u.pub) === id.pid);
+  const iAmExternal = !!(mineEntry && mineEntry.ext);
+  for (let i = out.length - 1; i >= 0; i--) {
+    const m = out[i];
+    if (iAmExternal ? !m.self : (m.ext && !ctx.captain)) out.splice(i, 1);
   }
   out.sort((a, b) => (b.self - a.self) || (b.online - a.online) || a.name.localeCompare(b.name, 'es'));
   out.prevSelf = prevSelf;
@@ -253,13 +263,14 @@ async function readStats(ctx) {
   const out = [];
   for (const u of ctx.roster || []) {
     if (!u || u.trial || !/^[0-9a-f]{64}$/i.test(u.pub || '')) continue;
+    if (u.ext && !ctx.captain) continue; // los ajenos al club sólo los ve el capitán
     const pid = identity.pidOf(u.pub);
     const e = data[pid];
     if (!e || typeof e !== 'object' || typeof e.sig !== 'string') continue;
     const [g, a, o, m, s] = [num(e.g), num(e.a), num(e.o), num(e.m), num(e.s)];
     const t = Number(e.t) || 0;
     if (!identity.verify(u.pub, statsText(g, a, o, m, s, t), e.sig)) continue;
-    out.push({ name: u.name, goals: g, assists: a, ownGoals: o, matches: m, seconds: s, updated: t, self: pid === id.pid });
+    out.push({ name: u.name, goals: g, assists: a, ownGoals: o, matches: m, seconds: s, updated: t, self: pid === id.pid, ext: !!u.ext });
   }
   return out;
 }

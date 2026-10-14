@@ -11,6 +11,7 @@ window.TL_NEWS = {
   title: { es: 'Qué hay de nuevo', en: "What's new" },
   items: {
     es: [
+      'Panel del capitán: ahora se pueden marcar personas como «ajenas al club» (no ven conectados ni estadísticas y nadie del club las ve).',
       'Nuevo botón «Club» en el menú de la izquierda: estadísticas del club (goles, asistencias y partidos de todos, firmadas por cada app) e informes de partido (sólo capitán y quien él habilite) listos para copiar como texto o imagen.',
       'Nuevo: el palo suena (un «tong» metálico) cuando la pelota le pega. Se puede apagar o bajar el volumen.',
       'Nuevo: botones ◀ Gol / Gol ▶ en las replays para ir al gol anterior o siguiente.',
@@ -27,6 +28,7 @@ window.TL_NEWS = {
       'Cada clave se usa en una sola PC: si cambiás de computadora, pedile a miclo que te la libere.'
     ],
     en: [
+      'Captain panel: people can now be marked as “outside the club” (they see no online list or stats, and nobody in the club sees them).',
       'New “Club” button in the left menu: club stats (everyone’s goals, assists and matches, signed by each app) and match reports (captain only, delegable) ready to copy as text or image.',
       'New: goalposts make a metallic clang when the ball hits them. Can be turned off or lowered.',
       'New: ◀ Goal / Goal ▶ buttons in replays to jump to the previous or next goal.',

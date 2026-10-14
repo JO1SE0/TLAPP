@@ -146,7 +146,7 @@ function rebuild(list) {
       legacyNotice: cleanNotice(base.announcement), seq: 0, source: 'github', removed: [], forceUpdate: false, history: []
     };
   }
-  roster = eff.users.filter((u) => u && HEX64.test(String(u.pub || ''))).map((u) => ({ name: String(u.name || '').slice(0, 40), pub: String(u.pub).toLowerCase(), trial: Number(u.trial) > 0, rep: u.rep === true }));
+  roster = eff.users.filter((u) => u && HEX64.test(String(u.pub || ''))).map((u) => ({ name: String(u.name || '').slice(0, 40), pub: String(u.pub).toLowerCase(), trial: Number(u.trial) > 0, rep: u.rep === true, ext: u.ext === true }));
   presence = typeof base.presence === 'string' ? base.presence : '';
 }
 
@@ -204,6 +204,17 @@ function isCaptainKey(key) {
   try { return !!key && eff.captains.includes(identity.fromKey(key).pub); } catch { return false; }
 }
 
+/** ¿Esta clave es de alguien ajeno al club? (el capitán nunca) */
+function isExternalKey(key) {
+  try {
+    if (!key) return false;
+    const pub = identity.fromKey(key).pub;
+    if (eff.captains.includes(pub)) return false;
+    const me = eff.users.find((u) => u && String(u.pub || '').toLowerCase() === pub);
+    return !!(me && me.ext === true);
+  } catch { return false; }
+}
+
 /** ¿Esta clave puede ver los informes? El capitán siempre; los demás si él se lo dio. */
 function reportsAllowed(key) {
   try {
@@ -226,10 +237,11 @@ function set(next) {
   next.captain = next.state === 'ok' && isCaptainKey(saved.key);
   next.forceUpdate = eff.forceUpdate === true;
   next.reports = next.state === 'ok' && reportsAllowed(saved.key);
+  next.external = next.state === 'ok' && isExternalKey(saved.key);
   next.trialEnd = next.state === 'ok' && saved.trialMins && saved.trialStart ? saved.trialStart + saved.trialMins * MIN : 0;
   const changed = next.state !== status.state || next.reason !== status.reason || next.name !== status.name ||
-    JSON.stringify([next.notice, next.urgent, next.minVersion, next.captain, next.minMessage, next.forceUpdate, next.trialEnd, next.reports]) !==
-    JSON.stringify([status.notice, status.urgent, status.minVersion, status.captain, status.minMessage, status.forceUpdate, status.trialEnd, status.reports]);
+    JSON.stringify([next.notice, next.urgent, next.minVersion, next.captain, next.minMessage, next.forceUpdate, next.trialEnd, next.reports, next.external]) !==
+    JSON.stringify([status.notice, status.urgent, status.minVersion, status.captain, status.minMessage, status.forceUpdate, status.trialEnd, status.reports, status.external]);
   status = next;
   if (changed) onChange(status);
 }
@@ -439,6 +451,7 @@ const getEffective = () => JSON.parse(JSON.stringify({
 }));
 const isCaptain = () => !!status.captain;
 const canReports = () => !!status.reports;
+const isExternal = () => !!status.external;
 /** El capitán acaba de publicar: se adopta al instante, sin esperar el próximo minuto. */
 async function adoptAdmin(raw) {
   if (!lastList) return;
@@ -448,4 +461,4 @@ async function adoptAdmin(raw) {
   await evaluate(null, { skipGithub: true });
 }
 
-module.exports = { getEffective, isCaptain, canReports, adoptAdmin, getKey, getRoster, presenceUrl, init, get, isLocked, submit, recheck, hashKey, normalize, ACCESS_URL };
+module.exports = { getEffective, isCaptain, canReports, isExternal, adoptAdmin, getKey, getRoster, presenceUrl, init, get, isLocked, submit, recheck, hashKey, normalize, ACCESS_URL };

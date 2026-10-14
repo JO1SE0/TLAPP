@@ -2755,7 +2755,8 @@ async function beatOnline() {
       key: access.getKey(),
       roster: access.getRoster(),
       room: roomInfo.name || '',
-      version: app.getVersion()
+      version: app.getVersion(),
+      captain: access.isCaptain()
     });
     if (list) {
       liveRoster = list;
@@ -2770,12 +2771,12 @@ async function beatOnline() {
   } catch { /* sin red o sin permisos: se queda lo último que se supo */ }
   onlineBusy = false;
 }
-handle('presence:roster', async () => liveRoster);
+handle('presence:roster', async () => (access.isExternal() ? [] : liveRoster));
 
 /* Ranking del club: cada app sube sus números y todos leen la carpeta entera. */
 let lastClubPush = 0;
 async function pushClubStats(force) {
-  if (!access.presenceUrl() || !access.getKey()) return;
+  if (!access.presenceUrl() || !access.getKey() || access.isExternal()) return;
   if (!force && Date.now() - lastClubPush < 120000) return;
   lastClubPush = Date.now();
   try {
@@ -2783,9 +2784,10 @@ async function pushClubStats(force) {
   } catch { /* sin red o sin permiso en la carpeta stats: se reintenta después */ }
 }
 handle('club:stats', async () => {
+  if (access.isExternal()) return null;
   await pushClubStats(false);
   try {
-    return await presence.readStats({ url: access.presenceUrl(), key: access.getKey(), roster: access.getRoster() });
+    return await presence.readStats({ url: access.presenceUrl(), key: access.getKey(), roster: access.getRoster(), captain: access.isCaptain() });
   } catch { return null; }
 });
 // Panel del capitán: estado vigente + estado de cada miembro, y las acciones.
