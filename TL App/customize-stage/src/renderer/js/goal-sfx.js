@@ -189,29 +189,61 @@
    * `strength` (0..1) cambia volumen y dureza.
    */
   function postRecipe(ctx, out, t, strength) {
-    const k = Math.min(1, Math.max(0.2, strength));
+    // El golpe de un caño de acero: ataque seco al instante y un "tonnng"
+    // que se queda sonando. La fuerza sólo cambia el volumen, no el timbre,
+    // para que todos los palos suenen igual de "palo".
+    const k = Math.min(1, Math.max(0.35, strength));
     const lp = ctx.createBiquadFilter();
     lp.type = 'lowpass';
-    lp.frequency.value = 1900 + 1500 * k;
-    lp.Q.value = 0.6;
-    // Las capas suman fuerte: se baja el conjunto para que no sature.
+    lp.frequency.value = 5200;
+    lp.Q.value = 0.5;
     const trim = ctx.createGain();
-    trim.gain.value = 0.5;
+    trim.gain.value = 0.3 * (0.55 + 0.45 * k);
     lp.connect(trim);
     trim.connect(out);
 
-    // Cuerpo del impacto.
-    tone(ctx, lp, t, 120 + 40 * k, 0.16, 'sine', 0.9 * k, 62);
-    // Contacto: ruido en banda media, no agudo.
-    noise(ctx, lp, t, 0.05, 0.6 * k, 900 + 500 * k, 0.8);
+    // Tono con ataque de 2 ms (el `tone` común sube en 20 ms y suena blando).
+    const ring = (freq, dur, vol) => {
+      const o = ctx.createOscillator();
+      const g = ctx.createGain();
+      o.type = 'sine';
+      o.frequency.value = freq;
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(vol, t + 0.002);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      o.connect(g); g.connect(lp);
+      o.start(t); o.stop(t + dur + 0.05);
+    };
 
-    const base = 190 + 35 * k + Math.random() * 12;
-    const parts = [[1, 0.62, 0.9], [2.76, 0.4, 0.55], [5.4, 0.24, 0.34], [8.93, 0.12, 0.2]];
+    // "Clank" del contacto: ráfaga cortísima de metal, sin graves.
+    const click = (dur, vol, freq, q) => {
+      const n = Math.max(1, Math.floor(ctx.sampleRate * dur));
+      const buf = ctx.createBuffer(1, n, ctx.sampleRate);
+      const d = buf.getChannelData(0);
+      for (let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / n);
+      const src = ctx.createBufferSource();
+      src.buffer = buf;
+      const f = ctx.createBiquadFilter();
+      f.type = 'bandpass'; f.frequency.value = freq; f.Q.value = q;
+      const g = ctx.createGain();
+      g.gain.value = vol;
+      src.connect(f); f.connect(g); g.connect(lp);
+      src.start(t); src.stop(t + dur + 0.02);
+    };
+    click(0.012, 0.9, 3200, 0.9);
+    click(0.03, 0.5, 1400, 1.2);
+
+    // Un toque de cuerpo para que no sea hueco, corto y no grave.
+    ring(150, 0.07, 0.35);
+
+    // Caño de acero: parciales inarmónicos de barra, cada uno con su gemelo
+    // apenas desafinado (el batido es el brillo metálico) y decaimiento largo.
+    const base = 410 + Math.random() * 30;
+    const parts = [[1, 0.75, 0.75], [2.76, 0.55, 0.55], [5.4, 0.34, 0.38], [8.93, 0.2, 0.24]];
     for (const [ratio, vol, dur] of parts) {
       const f = base * ratio;
-      tone(ctx, lp, t, f, dur * (0.75 + 0.5 * k), 'sine', vol * k);
-      // El mellizo desafinado: el batido da el brillo metálico.
-      tone(ctx, lp, t, f * 1.0065, dur * (0.7 + 0.45 * k), 'sine', vol * 0.7 * k);
+      ring(f, dur, vol);
+      ring(f * 1.006, dur * 0.9, vol * 0.7);
     }
   }
 

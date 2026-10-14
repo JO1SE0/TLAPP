@@ -5610,7 +5610,7 @@ function cardPayload(card) {
  * que toca los dos palos.
  */
 const postState = { match: null, discs: [], x: [], y: [], r: [], lastAt: 0 };
-const POST_MIN_SPEED = 0.12;   // px/ms: por debajo es un roce, no un golpe
+const POST_MIN_SPEED = 0.07;   // px/ms: por debajo es un roce, no un golpe
 const POST_SLACK = 3;          // holgura de contacto en px
 const POST_COOLDOWN_MS = 90;
 
@@ -5686,14 +5686,16 @@ function postCheck(f, room, match, prevVx, prevVy, advanced) {
     const ny = dy / d;
     const approaching = prevVx * nx + prevVy * ny;   // < 0: iba hacia el palo
     const pushed = dvx * nx + dvy * ny;              // > 0: el choque la aleja
-    if (approaching > -0.03 || pushed < Math.max(0.07, before * 0.35)) continue;
+    // Un choque real devuelve al menos lo que traía hacia el palo; pasar de
+    // largo casi no cambia la velocidad. Así entran también los roces fuertes.
+    if (approaching > -0.015 || pushed < Math.max(0.03, -approaching * 0.6)) continue;
 
     // Si alguien la tocó en estos mismos milisegundos, fue una patada.
     const last = tracker.touches[tracker.touches.length - 1];
-    if (last && tracker.clock - last.at < 80) return;
+    if (last && tracker.clock - last.at < 35) return;
 
     postState.lastAt = now;
-    safe(playPostSound, Math.min(1, pushed / 0.7));
+    safe(playPostSound, Math.min(1, pushed / 0.5));
     return;
   }
 }
