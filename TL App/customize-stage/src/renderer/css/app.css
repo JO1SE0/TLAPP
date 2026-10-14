@@ -5324,3 +5324,12 @@ html[data-density="comfy"] .railitem { height: 44px; }
 /* Salas con gente del club. Azul y no el acento: el acento ya lo usan la patrocinada y la fila marcada. */
 .rrow.is-club { background: linear-gradient(90deg, rgb(90 170 255 / 15%), transparent 70%); }
 .rrow__club { flex: none; margin-left: 8px; padding: 1px 8px; border-radius: 99px; font-size: 11px; font-weight: 800; line-height: 18px; color: #bfe0ff; background: rgb(90 170 255 / 18%); border: 1px solid rgb(90 170 255 / 45%); }
+
+/* ── Música: encabezado ordenado y ventana más grande ───────── */
+.mstage { width: min(1040px, calc(100% - 48px)); height: min(700px, calc(100% - 48px)); }
+.mstage__id { grid-template-columns: auto 1fr auto; grid-template-rows: auto auto; align-items: center; row-gap: 2px; }
+.mstage__id svg { grid-row: 1 / 3; }
+.mstage__eyebrow { grid-column: 2; grid-row: 1; align-self: end; }
+.mstage__id b { grid-column: 2; grid-row: 2; align-self: start; }
+.mstage__who { grid-column: 3; grid-row: 1 / 3; align-self: center; margin-left: 10px; padding: 3px 10px; border-radius: 99px; background: var(--accent-soft); color: var(--accent-text); font-weight: 700; }
+.mstage__who:empty { display: none; }

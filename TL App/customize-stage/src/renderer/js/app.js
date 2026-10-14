@@ -10050,7 +10050,8 @@ const MIX_CHANNELS = [
   { id: 'hit', es: 'Sonido de golpe', en: 'Kick sound', def: 0.7,
     get: (c) => c.vip && c.vip.hitVolume, set: (v) => ({ vip: { hitVolume: v } }) },
   { id: 'post', es: 'Sonido del palo', en: 'Post sound', def: 0.7,
-    get: (c) => c.visual && c.visual.postSoundVolume, set: (v) => ({ visual: { postSoundVolume: v } }) }
+    get: (c) => c.visual && c.visual.postSoundVolume, set: (v) => ({ visual: { postSoundVolume: v } }),
+    preview: () => { const v = Number((state.config.visual || {}).postSoundVolume); if (window.TLGoalSfx && window.TLGoalSfx.playPost) window.TLGoalSfx.playPost(Number.isFinite(v) ? v : 0.7, 0.8); } }
 ];
 
 function paintMixer() {
@@ -10075,6 +10076,15 @@ function paintMixer() {
         if (ch.live) ch.live(Number(input.value));
       });
       input.addEventListener('change', () => { if (ch.set) patchConfig(ch.set(Number(input.value))); });
+      if (ch.preview) {
+        const play = document.createElement('button');
+        play.type = 'button';
+        play.className = 'btn btn--ghost btn--sm';
+        play.textContent = '▶';
+        play.title = 'Probar';
+        play.addEventListener('click', () => ch.preview());
+        row.querySelector('.row__ctl').prepend(play);
+      }
       host.append(row);
     }
   }

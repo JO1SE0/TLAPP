@@ -11,6 +11,7 @@ window.TL_NEWS = {
   title: { es: 'Qué hay de nuevo', en: "What's new" },
   items: {
     es: [
+      'Palo: detección rehecha (mide por pasos de física, no por cuadros de pantalla) y sonido nuevo de caño de acero que resuena. Podés probarlo con ▶ en el Mezclador de volúmenes. Ventana de Música más grande y ordenada.',
       'Cartel de música en la cancha (F7): ahora tiene ♥ para fijar la canción que suena y ☰ para abrir tu lista de canciones fijadas y cambiar de tema sin salir de la partida.',
       'Nuevo: Mezclador de volúmenes (Configuración → Cliente y audio) con la música del menú, YouTube Music, gol, golpe y palo en un solo lugar.',
       'Lista de salas: las salas donde hay gente del club conectada se resaltan con una insignia 👥 y el número de compañeros (pasá el mouse para ver los nombres).',
@@ -35,6 +36,7 @@ window.TL_NEWS = {
       'Cada clave se usa en una sola PC: si cambiás de computadora, pedile a miclo que te la libere.'
     ],
     en: [
+      'Post: detection rebuilt (measured per physics step, not per screen frame) and a new ringing steel-pipe sound. Try it with ▶ in the Volume mixer. Music window larger and tidier.',
       'In-game music overlay (F7): new ♥ to pin the current song and ☰ to open your pinned list and switch songs without leaving the match.',
       'New: Volume mixer (Settings → Client & audio) with menu music, YouTube Music, goal, kick and post sounds in one place.',
       'Room list: rooms with connected club members are highlighted with a 👥 badge and the number of teammates (hover for their names).',

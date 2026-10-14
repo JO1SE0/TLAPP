@@ -5609,13 +5609,13 @@ function cardPayload(card) {
  * con velocidad. Un enfriamiento de 90 ms evita el doble sonido de un rebote
  * que toca los dos palos.
  */
-const postState = { match: null, discs: [], x: [], y: [], r: [], lastAt: 0 };
-const POST_MIN_SPEED = 0.07;   // px/ms: por debajo es un roce, no un golpe
-const POST_SLACK = 3;          // holgura de contacto en px
+const postState = { match: null, discs: [], x: [], y: [], r: [], lastAt: 0, n: 0, idle: 0, px: [0, 0, 0, 0], py: [0, 0, 0, 0], st: [1, 1, 1, 1] };
+const POST_STEP_MS = 1000 / 60;   // HaxBall avanza la física a 60 pasos por segundo
 const POST_COOLDOWN_MS = 90;
 
 function findPosts(f, room, match) {
   postState.match = match;
+  postState.n = 0;
   postState.discs.length = 0;
   postState.x.length = 0;
   postState.y.length = 0;
@@ -5642,60 +5642,94 @@ function findPosts(f, room, match) {
   }
 }
 
-function postCheck(f, room, match, prevVx, prevVy, advanced) {
-  if (!(advanced > 0) || advanced > 60) return;
-  const memory = tracker.ball;
-  if (!memory.seen) return;
+/*
+ * Cómo se detecta. Se miran las últimas cuatro posiciones de la pelota, una por
+ * cada paso de física que se llegó a ver (p0 p1 p2 p3), y el choque se busca
+ * ENTRE p1 y p2:
+ *
+ *   · p0→p1 es lo que traía: tiene que venir hacia el palo y estar cerca;
+ *   · p2→p3 es lo que lleva después: la pelota cambió de rumbo o de ritmo.
+ *
+ * El paso del medio (p1→p2) no se usa: es donde HaxBall acomoda la pelota
+ * contra el palo y la medición ahí sale contaminada. Y así no importa que a
+ * veces el cuadro de pantalla se salte justo el paso del contacto, que era lo
+ * que hacía fallar a la versión anterior.
+ *
+ * La velocidad se mide por PASO de física y no por milisegundo de pantalla: a
+ * 144 FPS la mayoría de los cuadros no traen un paso nuevo, y medida en ms la
+ * velocidad saltaba entre 0 y el doble (falsos avisos y golpes sin sonar).
+ */
+function postCheck(f, room, match, advanced) {
+  const ps = postState;
+  if (!(advanced > 0) || advanced > 80) { ps.n = 0; return; }
+  const at = ballPos(f, match);
+  if (!at) return;
+  if (match !== ps.match) findPosts(f, room, match);
 
-  const before = Math.sqrt(prevVx * prevVx + prevVy * prevVy);
-  if (before < POST_MIN_SPEED) return;
+  ps.idle += advanced;
+  // Cuadro sin paso de física nuevo: la pelota no se movió.
+  if (ps.n > 0 && at.x === ps.px[3] && at.y === ps.py[3]) return;
 
-  if (match !== postState.match) findPosts(f, room, match);
-  if (!postState.discs.length) return;
+  const steps = Math.max(1, Math.round(ps.idle / POST_STEP_MS));
+  ps.idle = 0;
+  for (let i = 0; i < 3; i++) { ps.px[i] = ps.px[i + 1]; ps.py[i] = ps.py[i + 1]; ps.st[i] = ps.st[i + 1]; }
+  ps.px[3] = at.x; ps.py[3] = at.y; ps.st[3] = steps;
+  if (ps.n < 4) ps.n++;
+  if (ps.n < 4 || !ps.discs.length) return;
+  // Pasos juntados de más: la medición ya no es de fiar.
+  if (ps.st[1] > 2 || ps.st[2] > 3 || ps.st[3] > 2) return;
 
   const now = Date.now();
-  if (now - postState.lastAt < POST_COOLDOWN_MS) return;
+  if (now - ps.lastAt < POST_COOLDOWN_MS) return;
+
+  // Velocidades por paso: lo que traía y lo que lleva.
+  const ix = (ps.px[1] - ps.px[0]) / ps.st[1];
+  const iy = (ps.py[1] - ps.py[0]) / ps.st[1];
+  const ox = (ps.px[3] - ps.px[2]) / ps.st[3];
+  const oy = (ps.py[3] - ps.py[2]) / ps.st[3];
+  const inSpeed = Math.sqrt(ix * ix + iy * iy);
+  const outSpeed = Math.sqrt(ox * ox + oy * oy);
+  if (inSpeed < 0.5) return;                   // venía despacio: un roce, no un golpe
+
+  // ¿Cambió de rumbo o de ritmo? Pasar de largo no cambia ninguna de las dos.
+  const cos = outSpeed > 0.01 ? (ix * ox + iy * oy) / (inSpeed * outSpeed) : -1;
+  const slowed = outSpeed < inSpeed * 0.45;
+  if (cos > 0.93 && !slowed) return;
 
   const world = match[f.world];
   const ball = world[f.discs][0];
   const ballR = (f.radius && ball[f.radius]) || DEFAULT_BALL_RADIUS;
-  // Cuánto pudo moverse en este cuadro: el choque ocurrió dentro de ese tramo.
-  const travel = before * advanced;
-  const dvx = memory.vx - prevVx;
-  const dvy = memory.vy - prevVy;
+  const gap = ps.st[2];                          // pasos del medio
 
-  for (let i = 0; i < postState.discs.length; i++) {
-    const pos = postState.discs[i][f.pos];
+  for (let i = 0; i < ps.discs.length; i++) {
+    const pos = ps.discs[i][f.pos];
     // Quieto: si se movió, no era un palo.
-    if (Math.abs(pos.x - postState.x[i]) > 0.01 || Math.abs(pos.y - postState.y[i]) > 0.01) continue;
-    const dx = memory.x - pos.x;
-    const dy = memory.y - pos.y;
-    const reach = ballR + postState.r[i] + 2 + travel;
-    const d2 = dx * dx + dy * dy;
-    if (d2 > reach * reach || d2 < 0.0001) continue;
+    if (Math.abs(pos.x - ps.x[i]) > 0.01 || Math.abs(pos.y - ps.y[i]) > 0.01) continue;
+    const touch = ballR + ps.r[i];
 
-    /*
-     * No alcanza con estar cerca: pasar rozando no suena. Un choque con un
-     * palo (que no se mueve) hace dos cosas medibles a la vez:
-     *   · la pelota VENÍA acercándose al palo (velocidad previa hacia él), y
-     *   · el cambio de velocidad la empuja AL REVÉS, alejándola, y con fuerza.
-     * Pasar de largo no cumple ninguna: la velocidad casi no cambia.
-     */
-    const d = Math.sqrt(d2);
-    const nx = dx / d;
-    const ny = dy / d;
-    const approaching = prevVx * nx + prevVy * ny;   // < 0: iba hacia el palo
-    const pushed = dvx * nx + dvy * ny;              // > 0: el choque la aleja
-    // Un choque real devuelve al menos lo que traía hacia el palo; pasar de
-    // largo casi no cambia la velocidad. Así entran también los roces fuertes.
-    if (approaching > -0.015 || pushed < Math.max(0.03, -approaching * 0.6)) continue;
+    // p1 tiene que estar a una distancia desde la que el paso del medio llega al palo.
+    const ex = ps.px[1] - pos.x;
+    const ey = ps.py[1] - pos.y;
+    const d1 = Math.sqrt(ex * ex + ey * ey);
+    if (d1 < 0.0001 || d1 > touch + inSpeed * gap + 1) continue;
+    // Y p2 sigue pegada: no es una pelota que se fue lejos.
+    const fx = ps.px[2] - pos.x;
+    const fy = ps.py[2] - pos.y;
+    const d2 = Math.sqrt(fx * fx + fy * fy);
+    if (d2 > touch + Math.max(inSpeed, outSpeed) * gap + 3) continue;
 
-    // Si alguien la tocó en estos mismos milisegundos, fue una patada.
+    // Venía de frente al palo y ahora se aleja de él.
+    const approach = (ix * ex + iy * ey) / d1;           // < 0: iba hacia el palo
+    const away = (ox * fx + oy * fy) / (d2 || 1);        // > 0: ahora se aleja
+    if (approach > -0.4 || away < 0.1) continue;
+
+    // Una patada pegada en este mismo instante no es el palo.
     const last = tracker.touches[tracker.touches.length - 1];
-    if (last && tracker.clock - last.at < 35) return;
+    if (last && tracker.clock - last.at < 50) return;
 
-    postState.lastAt = now;
-    safe(playPostSound, Math.min(1, pushed / 0.5));
+    ps.lastAt = now;
+    const change = Math.sqrt((ox - ix) * (ox - ix) + (oy - iy) * (oy - iy));
+    safe(playPostSound, Math.min(1, Math.max(0.35, change / 8)));
     return;
   }
 }
@@ -7863,10 +7897,8 @@ function onGameTick(view, room) {
    */
   // El resultado ya no decide el autor (ver abajo): se la llama por su efecto,
   // que es mantener al día por dónde y a qué velocidad venía la pelota.
-  const prevVx = tracker.ball.vx;
-  const prevVy = tracker.ball.vy;
   ballWasHit(tracker, f, match, advanced);
-  if ((state.config.visual || {}).postSound !== false) postCheck(f, room, match, prevVx, prevVy, advanced);
+  if ((state.config.visual || {}).postSound !== false) postCheck(f, room, match, advanced);
 
   // La ficha del partido: posesión y distancia se cobran por cuadro.
   cardTick(tracker.card, f, room, advanced);

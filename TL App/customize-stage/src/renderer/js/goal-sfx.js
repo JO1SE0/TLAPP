@@ -189,62 +189,85 @@
    * `strength` (0..1) cambia volumen y dureza.
    */
   function postRecipe(ctx, out, t, strength) {
-    // El golpe de un caño de acero: ataque seco al instante y un "tonnng"
-    // que se queda sonando. La fuerza sólo cambia el volumen, no el timbre,
-    // para que todos los palos suenen igual de "palo".
+    // Un caño de acero de verdad, no una campanita: se lo GOLPEA con un chasquido
+    // cortísimo y la barra suena sola, con parciales que no son armónicos y que
+    // se apagan a distinta velocidad (los agudos primero). Así cada golpe es
+    // "tonng" y no "ding". La fuerza sólo cambia el volumen, no el timbre.
     const k = Math.min(1, Math.max(0.35, strength));
+    const sr = ctx.sampleRate;
+
     const lp = ctx.createBiquadFilter();
     lp.type = 'lowpass';
-    lp.frequency.value = 5200;
+    lp.frequency.value = 6500;
     lp.Q.value = 0.5;
     const trim = ctx.createGain();
-    trim.gain.value = 0.3 * (0.55 + 0.45 * k);
+    trim.gain.value = 0.5 * (0.5 + 0.5 * k);
     lp.connect(trim);
     trim.connect(out);
 
-    // Tono con ataque de 2 ms (el `tone` común sube en 20 ms y suena blando).
-    const ring = (freq, dur, vol) => {
-      const o = ctx.createOscillator();
-      const g = ctx.createGain();
-      o.type = 'sine';
-      o.frequency.value = freq;
-      g.gain.setValueAtTime(0.0001, t);
-      g.gain.exponentialRampToValueAtTime(vol, t + 0.002);
-      g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-      o.connect(g); g.connect(lp);
-      o.start(t); o.stop(t + dur + 0.05);
-    };
-
-    // "Clank" del contacto: ráfaga cortísima de metal, sin graves.
-    const click = (dur, vol, freq, q) => {
-      const n = Math.max(1, Math.floor(ctx.sampleRate * dur));
-      const buf = ctx.createBuffer(1, n, ctx.sampleRate);
+    // Ruido repetible (siempre el mismo chasquido): suena igual de "palo" cada vez.
+    const noiseBuf = (seconds, seed) => {
+      const n = Math.max(2, Math.floor(sr * seconds));
+      const buf = ctx.createBuffer(1, n, sr);
       const d = buf.getChannelData(0);
-      for (let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / n);
-      const src = ctx.createBufferSource();
-      src.buffer = buf;
-      const f = ctx.createBiquadFilter();
-      f.type = 'bandpass'; f.frequency.value = freq; f.Q.value = q;
-      const g = ctx.createGain();
-      g.gain.value = vol;
-      src.connect(f); f.connect(g); g.connect(lp);
-      src.start(t); src.stop(t + dur + 0.02);
+      let st = seed >>> 0;
+      for (let i = 0; i < n; i++) {
+        st = (Math.imul(st, 1664525) + 1013904223) >>> 0;
+        d[i] = ((st / 4294967295) * 2 - 1) * (1 - i / n);
+      }
+      return buf;
     };
-    click(0.012, 0.9, 3200, 0.9);
-    click(0.03, 0.5, 1400, 1.2);
 
-    // Un toque de cuerpo para que no sea hueco, corto y no grave.
-    ring(150, 0.07, 0.35);
-
-    // Caño de acero: parciales inarmónicos de barra, cada uno con su gemelo
-    // apenas desafinado (el batido es el brillo metálico) y decaimiento largo.
-    const base = 410 + Math.random() * 30;
-    const parts = [[1, 0.75, 0.75], [2.76, 0.55, 0.55], [5.4, 0.34, 0.38], [8.93, 0.2, 0.24]];
-    for (const [ratio, vol, dur] of parts) {
-      const f = base * ratio;
-      ring(f, dur, vol);
-      ring(f * 1.006, dur * 0.9, vol * 0.7);
+    // El golpe: dos chasquidos, uno medio y otro más seco.
+    // 4 ms de chasquido y después silencio hasta 1,3 s: mantiene vivos a los
+    // filtros todo el tiempo que suena la barra (el motor los apaga antes si se
+    // quedan sin entrada).
+    const burst = ctx.createBufferSource();
+    // Se arma una vez por contexto y se reusa: son ~250 KB que no hace falta repetir.
+    if (!ctx.__tlPostBurst) {
+      ctx.__tlPostBurst = ctx.createBuffer(1, Math.floor(sr * 1.3), sr);
+      ctx.__tlPostBurst.getChannelData(0).set(noiseBuf(0.004, 12345).getChannelData(0));
     }
+    burst.buffer = ctx.__tlPostBurst;
+    burst.start(t);
+    const hit = ctx.createBufferSource();
+    hit.buffer = noiseBuf(0.006, 777);
+    const hitBp = ctx.createBiquadFilter();
+    hitBp.type = 'bandpass'; hitBp.frequency.value = 2800; hitBp.Q.value = 1;
+    const hitGain = ctx.createGain();
+    hitGain.gain.value = 0.62;
+    hit.connect(hitBp); hitBp.connect(hitGain); hitGain.connect(lp);
+    hit.start(t);
+
+    // La barra: modos de un caño libre-libre (1 · 2,76 · 5,4 · 8,9 …), cada uno
+    // un filtro muy resonante. [frecuencia, duración (s), ganancia calibrada].
+    const wobble = 1 + (Math.random() - 0.5) * 0.012;   // cada golpe, apenas distinto
+    const modes = [[330, 0.22, 900], [905, 0.15, 504], [1770, 0.09, 128], [2930, 0.05, 101], [4350, 0.032, 30]];
+    for (const [freq, tau, gain] of modes) {
+      const f = freq * wobble;
+      const bp = ctx.createBiquadFilter();
+      bp.type = 'bandpass';
+      bp.frequency.value = f;
+      bp.Q.value = Math.PI * f * tau;
+      // La ganancia va ANTES del filtro: el motor corta la cola del filtro cuando
+      // baja de cierto nivel relativo a su propia salida, y amplificando después
+      // quedaba cortada con el sonido todavía audible.
+      const g = ctx.createGain();
+      g.gain.value = gain * (sr === 48000 ? 1 : 0.95);
+      burst.connect(g); g.connect(bp); bp.connect(lp);
+    }
+
+    // El cuerpo del impacto: un "tump" corto, que baja de tono, sin ser grave.
+    const body = ctx.createOscillator();
+    const bodyGain = ctx.createGain();
+    body.type = 'sine';
+    body.frequency.setValueAtTime(130, t);
+    body.frequency.exponentialRampToValueAtTime(70, t + 0.08);
+    bodyGain.gain.setValueAtTime(0.0001, t);
+    bodyGain.gain.exponentialRampToValueAtTime(0.5, t + 0.003);
+    bodyGain.gain.exponentialRampToValueAtTime(0.0001, t + 0.16);
+    body.connect(bodyGain); bodyGain.connect(lp);
+    body.start(t); body.stop(t + 0.2);
   }
 
   /* Gancho de volumen/contexto compartido con `play`. */

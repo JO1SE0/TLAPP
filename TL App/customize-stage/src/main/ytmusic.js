@@ -106,6 +106,9 @@ const LOGIN_FALLBACK =
 /** Cada cuánto se le pregunta a la página qué está sonando. */
 const POLL_MS = 1000;
 
+/** Zoom de la página: la ventana de Música es más chica que una de navegador. */
+const ZOOM = 0.8;
+
 /** Las tapas son chicas; más que esto no es una tapa. */
 const ART_MAX_BYTES = 512 * 1024;
 
@@ -673,6 +676,9 @@ function open(win, bounds) {
       emit();
     });
     contents.on('did-finish-load', () => {
+      // La ventana de música es chica: a 100% la página sale ampliada y recortada.
+      // Con 80% YouTube Music dibuja la misma maqueta que en una ventana más grande.
+      try { contents.setZoomFactor(ZOOM); } catch { /* sin zoom */ }
       state.ready = true;
       if (state.error) { state.error = ''; }
       emit();
