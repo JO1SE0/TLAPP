@@ -3646,6 +3646,11 @@ listen('music:cmd', (_e, payload) => {
 
 handle('music:login', () => ytmusic.login(mainWindow));
 handle('music:logout', () => ytmusic.logout());
+handle('club:music', () => access.getMusic());
+handle('music:play', (_e, id) => {
+  if (!store.get().music.enabled) return { ok: false, reason: 'apagada' };
+  return { ok: ytmusic.playVideo(id) };
+});
 handle('music:home', () => { ytmusic.goHome(); return { ok: true }; });
 handle('music:reload', () => { ytmusic.reload(); return { ok: true }; });
 

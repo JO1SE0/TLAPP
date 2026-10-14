@@ -27,12 +27,26 @@ const cleanText = (v, n) => String(v == null ? '' : v).replace(/\r/g, '').trim()
 const fmtDate = (ms) => new Date(ms).toLocaleString('es-AR', { dateStyle: 'short', timeStyle: 'short' });
 
 /** Una línea legible para el historial. `who` es la persona afectada, si hay. */
+/** Saca el id de 11 caracteres de un link de YouTube / YouTube Music (o de un id suelto). */
+function youtubeId(raw) {
+  const text = String(raw || '').trim();
+  if (/^[\w-]{11}$/.test(text)) return text;
+  try {
+    const u = new URL(text);
+    if (!/(^|\.)(youtube\.com|youtu\.be)$/i.test(u.hostname)) return '';
+    const v = /youtu\.be$/i.test(u.hostname) ? u.pathname.slice(1) : u.searchParams.get('v');
+    return /^[\w-]{11}$/.test(v || '') ? v : '';
+  } catch { return ''; }
+}
+
 function describe(action, extra) {
   const n = String(action.name || '');
   switch (action.type) {
     case 'addUser': return { text: `Agregó a ${extra ? extra.name : n}`, who: extra ? extra.name : n };
     case 'setReports': return { text: action.value === true ? `Le dio acceso a los informes a ${n}` : `Le sacó el acceso a los informes a ${n}`, who: n };
     case 'setExternal': return { text: action.value === true ? `Marcó a ${n} como ajeno al club` : `Marcó a ${n} como parte del club`, who: n };
+    case 'addTrack': return { text: `Agregó «${String(action.title || '').slice(0, 60)}» a la playlist del club`, who: '' };
+    case 'removeTrack': return { text: 'Sacó una canción de la playlist del club', who: '' };
     case 'addTrial': return { text: `Creó una clave de prueba para ${extra ? extra.name : n} (${fmtMin(Math.round(Number(action.minutes)) || 0)})`, who: extra ? extra.name : n };
     case 'setTrial': return { text: Math.round(Number(action.minutes)) === 0 ? `Pasó a ${n} de prueba a acceso común` : `Cambió la prueba de ${n} a ${fmtMin(Math.round(Number(action.minutes)) || 0)}`, who: n };
     case 'removeUser': return { text: `Quitó a ${n}`, who: n };
@@ -55,7 +69,7 @@ function describe(action, extra) {
 /** Para deshacer: lo último que se hizo, mientras la app siga abierta (15 min). */
 let undoSnap = null;
 const UNDO_MS = 15 * 60 * 1000;
-const SNAP_KEYS = ['enabled', 'users', 'removed', 'notices', 'minVersion', 'minMessage', 'forceUpdate', 'history'];
+const SNAP_KEYS = ['enabled', 'users', 'removed', 'notices', 'minVersion', 'minMessage', 'forceUpdate', 'history', 'music'];
 const snapshotOf = (cur) => JSON.parse(JSON.stringify(SNAP_KEYS.reduce((o, k) => { o[k] = cur[k]; return o; }, {})));
 const undoInfo = () => (undoSnap && Date.now() - undoSnap.at < UNDO_MS ? { label: undoSnap.label, at: undoSnap.at } : null);
 
@@ -69,7 +83,8 @@ function applyAction(cur, action, myPub) {
     minVersion: cur.minVersion || '',
     minMessage: cur.minMessage || '',
     forceUpdate: cur.source === 'captain' ? cur.forceUpdate === true : false,
-    history: (cur.history || []).slice(-199)
+    history: (cur.history || []).slice(-199),
+    music: Array.isArray(cur.music) ? cur.music.slice(0, 80) : []
   };
   let extra = null;
   switch (action && action.type) {
@@ -93,6 +108,21 @@ function applyAction(cur, action, myPub) {
       const key = newKey();
       doc.users.push({ name, hash: identity.hashKey(key), pub: identity.fromKey(key).pub, epoch: 0, trial: minutes });
       extra = { key, name, minutes };
+      break;
+    }
+    case 'addTrack': {
+      const id = youtubeId(action.url);
+      if (!id) throw new Error('No reconozco ese enlace de YouTube. Pegá el link de la canción (youtube.com/watch?v=… o music.youtube.com/watch?v=…).');
+      const title = cleanText(action.title, 90) || 'Sin título';
+      if (doc.music.some((m) => m.id === id)) throw new Error('Esa canción ya está en la playlist.');
+      if (doc.music.length >= 80) throw new Error('La playlist está llena (80 canciones).');
+      doc.music.push({ id, title, by: cleanText(action.by, 40) });
+      break;
+    }
+    case 'removeTrack': {
+      const before = doc.music.length;
+      doc.music = doc.music.filter((m) => m.id !== String(action.id || ''));
+      if (doc.music.length === before) throw new Error('Esa canción ya no está en la playlist.');
       break;
     }
     case 'setExternal': {
@@ -302,4 +332,4 @@ async function readTrials() {
   return out;
 }
 
-module.exports = { readTrials, run, applyAction, readAlerts, readAttempts, clearAttempts, readPerson, undoInfo };
+module.exports = { youtubeId, readTrials, run, applyAction, readAlerts, readAttempts, clearAttempts, readPerson, undoInfo };

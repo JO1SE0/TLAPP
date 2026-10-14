@@ -1875,7 +1875,7 @@ function setView(name) {
 
   if (name === 'replays') loadReplays();
   if (name === 'cuenta') loadAuth();
-  if (name === 'club') { loadClubRank(); loadReports(); }
+  if (name === 'club') { loadClubRank(); loadReports(); loadClubMusic(); }
   /*
    * El índice se rearma en cada cambio de pestaña porque lista las secciones de
    * la que está abierta. Va DESPUÉS del `scrollTop = 0` de arriba: el marcador
@@ -9856,4 +9856,95 @@ function openReport(r) {
   wrap.append(card);
   wrap.addEventListener('mousedown', (e) => { if (e.target === wrap) wrap.remove(); });
   document.body.append(wrap);
+}
+
+
+/* ── Playlist del club (YouTube Music) ───────────────────────────────────────
+ * La arma el capitán (va firmada en el mismo documento que la lista de acceso).
+ * Cada integrante toca ▶ y suena en SU YouTube Music; no es una sala compartida
+ * en vivo, es una lista común de canciones para tener a mano. */
+let clubTracks = [];
+
+async function loadClubMusic() {
+  try { clubTracks = (await tvm.music.club()) || []; } catch (e) { clubTracks = []; }
+  paintClubMusic();
+}
+
+function paintClubMusic() {
+  const host = $('#clubMusicList');
+  if (!host) return;
+  const en = isEn();
+  const cap = !!(state.access && state.access.captain);
+  $('#clubMusicAdd').hidden = !cap;
+  $('#clubMusicCount').textContent = en ? `${clubTracks.length} songs` : `${clubTracks.length} canciones`;
+  $('#clubMusicHelp').textContent = en
+    ? 'Songs picked by the club. Tap play and it opens in your YouTube Music tab.'
+    : 'Canciones elegidas por el club. Tocá ▶ y suena en tu pestaña de YouTube Music.';
+  if (!clubTracks.length) {
+    const p = document.createElement('p');
+    p.className = 'note';
+    p.textContent = en ? 'No songs yet.' : 'Todavía no hay canciones.';
+    host.replaceChildren(p);
+    return;
+  }
+  host.replaceChildren(...clubTracks.map((m) => {
+    const row = document.createElement('div');
+    row.className = 'cm__row';
+    const info = document.createElement('div');
+    info.className = 'cm__info';
+    const b = document.createElement('b');
+    b.textContent = m.title || 'Sin título';
+    info.append(b);
+    if (m.by) { const s = document.createElement('span'); s.textContent = (en ? 'added by ' : 'agregó ') + m.by; info.append(s); }
+    const play = document.createElement('button');
+    play.className = 'btn btn--primary btn--sm';
+    play.type = 'button';
+    play.textContent = '▶';
+    play.addEventListener('click', () => playClubTrack(m.id));
+    row.append(info, play);
+    if (cap) {
+      const del = document.createElement('button');
+      del.className = 'btn btn--ghost btn--sm';
+      del.type = 'button';
+      del.textContent = '✕';
+      del.addEventListener('click', async () => {
+        const res = await tvm.admin.do({ type: 'removeTrack', id: m.id }).catch((err) => ({ error: err.message }));
+        if (res && res.error) toast(res.error, 'bad');
+        loadClubMusic();
+      });
+      row.append(del);
+    }
+    return row;
+  }));
+}
+
+async function playClubTrack(id) {
+  if (!musicCfg().enabled) await patchConfig({ music: { enabled: true } });
+  setView('musica');
+  syncMusic();
+  renderMusicHud();
+  // El reproductor puede estar arrancando: se espera a que abra (hasta ~12 s).
+  for (let i = 0; i < 40 && !state.musicOpen; i++) await new Promise((r) => setTimeout(r, 300));
+  const res = await tvm.music.play(id).catch(() => null);
+  if (!res || !res.ok) toast(isEn() ? "Couldn't play it." : 'No se pudo reproducir.', 'bad');
+}
+
+if ($('#cmAddBtn')) {
+  $('#cmAddBtn').addEventListener('click', async () => {
+    const url = $('#cmUrl').value.trim();
+    if (!url) return;
+    const btn = $('#cmAddBtn');
+    btn.disabled = true;
+    try {
+      const nick = (state.config && state.config.general && state.config.general.nickname) || '';
+      const res = await tvm.admin.do({ type: 'addTrack', url, title: $('#cmTitle').value, by: nick });
+      if (res && res.error) toast(res.error, 'bad');
+      else { $('#cmUrl').value = ''; $('#cmTitle').value = ''; }
+    } catch (err) {
+      toast(err.message || 'Error', 'bad');
+    } finally {
+      btn.disabled = false;
+      loadClubMusic();
+    }
+  });
 }
