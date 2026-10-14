@@ -209,9 +209,7 @@ const DEFAULTS = {
     // grande («jugando a …») es el nombre de ESTA aplicación, no algo que se
     // pueda mandar por RPC: se cambia en discord.com/developers.
     appId: '1557982543301574767',
-    showRoom: false,
-    /** El tema de YouTube Music que suena, con su tapa chiquita. */
-    showMusic: false
+    showRoom: false
   },
   avatar: {
     /** Avatar fijo de HaxBall: hasta 2 caracteres (clave `avatar`). */
@@ -357,50 +355,6 @@ const DEFAULTS = {
    */
   chat: {
     muted: []
-  },
-  /**
-   * YouTube Music adentro del cliente.
-   *
-   * Apagado no se monta NADA: ni el `<webview>`, ni el sondeo, ni el cartel. El
-   * que no la usa no paga ni un proceso ni un milisegundo — que es la única
-   * forma honesta de meterle un navegador entero adentro a un cliente de juego.
-   *
-   */
-  music: {
-    enabled: false,
-    /**
-     * Prefiere la pista de audio y no compone el videoclip. Reduce bastante el
-     * trabajo de GPU mientras la cancha usa el mismo proceso gráfico.
-     */
-    audioOnly: true,
-    /**
-     * El volumen con el que quedó el reproductor, de 0 a 1.
-     *
-     * Se guarda acá y no se le deja a YouTube Music porque YouTube Music no lo
-     * guarda entre sesiones: cada vez que arranca el cliente volvía al 100%. El
-     * cliente lo lee del reproductor mientras suena y se lo vuelve a poner
-     * apenas carga (ver `rememberVolume` en main.js).
-     */
-    volume: 1,
-    /** Canciones fijadas desde el cartel: [{ id, title, artist }], hasta 30. */
-    pins: [],
-    /** El cartel sobre la cancha: lo que se ve mientras jugás. */
-    hud: {
-      enabled: false,
-      /**
-       * Dónde queda, en PORCENTAJE del alto y el ancho de la ventana.
-       *
-       * En porcentaje y no en píxeles por lo mismo que el cartel de teclas: la
-       * resolución de la ventana se cambia desde Ajustes, y una posición en
-       * píxeles dejaría el cartel fuera de pantalla cada vez que se achica.
-       */
-      x: 3,
-      y: 4,
-      /** De 0,7 a 1,6. Multiplica todo el cartel. */
-      scale: 1,
-      /** Sin título ni artista: sólo los tres botones, para el que quiere poco. */
-      compact: false
-    }
   },
   /*
    * Lo que el cliente dibuja SOBRE la cancha.
@@ -596,6 +550,10 @@ function migrate(stored) {
   if (!stored) return stored;
   const next = { ...stored };
 
+  // YouTube Music se sacó del cliente: se limpian sus restos del config.
+  delete next.music;
+  if (next.discord) { next.discord = { ...next.discord }; delete next.discord.showMusic; }
+
   if (!(next.version >= 2)) {
     delete next.plugins;
     if (next.appearance) {
@@ -704,13 +662,6 @@ function migrate(stored) {
   if (!(next.version >= 14) && next.pitch) delete next.pitch.trail;
 
   /*
-   * v15: YouTube Music. Rama nueva, así que no hay nada que traducir —`merge`
-   * le pone los defaults sola— pero la versión igual sube: es lo que hace que
-   * un config viejo pase por acá una sola vez, en vez de quedarse con la rama a
-   * medias si mañana se le agrega un campo.
-   */
-
-  /*
    * v16: el modo espejo (`pitch.mirror`). Campo nuevo con default, así que no
    * hay nada que traducir —`merge` se lo pone sola— pero la versión igual sube:
    * es lo que hace que un config viejo pase por acá una sola vez.
@@ -758,7 +709,6 @@ function migrate(stored) {
   if (!(next.version >= 21)) {
     if (next.discord) {
       next.discord.showRoom = false;
-      next.discord.showMusic = false;
     }
   }
 

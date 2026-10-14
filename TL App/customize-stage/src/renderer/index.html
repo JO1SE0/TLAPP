@@ -313,9 +313,6 @@
         <button class="railitem" data-view="club">
           <svg data-icon viewBox="0 0 24 24"><circle cx="9" cy="8.6" r="3.2"/><path d="M3.2 19.2c0-3.1 2.6-5 5.8-5s5.8 1.9 5.8 5"/><circle cx="17.2" cy="9.6" r="2.5"/><path d="M16.6 14.3c2.7 0 4.2 1.6 4.2 4.2"/></svg><span data-i18n="nav.club">Club</span>
         </button>
-        <button class="railitem" data-view="musica">
-          <svg data-icon viewBox="0 0 24 24"><path d="M9 17.6V6.2l10-2v11.4"/><circle cx="6.6" cy="17.8" r="2.4"/><circle cx="16.6" cy="15.8" r="2.4"/></svg><span data-i18n="nav.music">Música</span>
-        </button>
         <button class="railitem" data-view="aspecto">
           <svg data-icon viewBox="0 0 24 24"><path d="M12 3.8a8.2 8.2 0 1 0 0 16.4c1.1 0 1.9-.8 1.9-1.7 0-.5-.2-.9-.5-1.2a1.6 1.6 0 0 1 1.2-2.7h1.5a4 4 0 0 0 3.9-4c0-4-3.6-6.8-8-6.8z"/><circle class="ico-fill" cx="7.8" cy="11.2" r="1.05"/><circle class="ico-fill" cx="12" cy="8" r="1.05"/><circle class="ico-fill" cx="16.2" cy="11.2" r="1.05"/></svg><span data-i18n="nav.personalize">Personalización</span>
         </button>
@@ -648,63 +645,6 @@
           </form>
         </div>
       </div>
-
-      <!-- ═══ YouTube Music ═══════════════════════════════════════════
-           Acá NO está el reproductor: está el HUECO donde va.
-
-           YouTube Music corre en una vista que pega el proceso principal sobre
-           la ventana, no en un elemento de este documento (el porqué, medido,
-           está en src/main/ytmusic.js). Lo único que hace esta pantalla es
-           reservarle el lugar y decirle dónde: `#musicFrame` es un rectángulo
-           vacío y su medida es lo que viaja al main.
-           ═══════════════════════════════════════════════════════════ -->
-      <main class="mstage" id="mstage">
-        <header class="mstage__bar">
-          <div class="mstage__id">
-            <svg data-icon viewBox="0 0 24 24"><path d="M9.2 18V6.4l10-1.8v11.1"/><ellipse cx="6.7" cy="18" rx="2.5" ry="2.2"/><ellipse cx="16.7" cy="15.7" rx="2.5" ry="2.2"/></svg>
-            <span class="mstage__eyebrow">Toda la Lecce</span><b>YouTube Music</b>
-            <span class="mstage__who" id="musicWho"></span>
-          </div>
-          <div class="mstage__acts">
-            <button class="btn btn--primary btn--sm mstage__close" id="musicClose" type="button">Cerrar</button>
-            <button class="btn btn--ghost btn--sm" id="musicHome" data-i18n="music.home"><svg data-icon viewBox="0 0 24 24"><path d="M4.4 10.6 12 4.4l7.6 6.2v8a1.2 1.2 0 0 1-1.2 1.2H5.6a1.2 1.2 0 0 1-1.2-1.2z"/></svg>Inicio</button>
-            <button class="btn btn--ghost btn--sm" id="musicReload" data-i18n="music.reload"><svg data-icon viewBox="0 0 24 24"><path d="M19.7 12a7.7 7.7 0 1 1-2.4-5.5l3.3 3.1M20.8 4.6l-.2 5.2-5.2-.2"/></svg>Recargar</button>
-            <button class="btn btn--ghost btn--sm" id="musicHudSettings" data-i18n="music.hudSettings"><svg data-icon viewBox="0 0 24 24"><path d="M4.2 7.5h7.6M16.4 7.5h3.4M4.2 16.5h3.4M12.2 16.5h7.6"/><circle cx="14.1" cy="7.5" r="2.3"/><circle cx="9.9" cy="16.5" r="2.3"/></svg>Cartel</button>
-            <button class="btn btn--primary btn--sm" id="musicLogin" data-i18n="music.login" data-i18n-title="music.loginWhy" title="Se abre una ventana de Google. Es una sola vez: la sesión queda guardada."><svg data-icon viewBox="0 0 24 24"><path d="M14.4 15.6v2.2a1.6 1.6 0 0 1-1.6 1.6H6.2a1.6 1.6 0 0 1-1.6-1.6V6.2a1.6 1.6 0 0 1 1.6-1.6h6.6a1.6 1.6 0 0 1 1.6 1.6v2.2M9.6 12h9.8M15.9 8.6 19.4 12l-3.5 3.4"/></svg>Iniciar sesión</button>
-            <button class="btn btn--ghost btn--sm" id="musicLogout" hidden data-i18n="music.logout"><svg data-icon viewBox="0 0 24 24"><path d="M14.4 15.6v2.2a1.6 1.6 0 0 1-1.6 1.6H6.2a1.6 1.6 0 0 1-1.6-1.6V6.2a1.6 1.6 0 0 1 1.6-1.6h6.6a1.6 1.6 0 0 1 1.6 1.6v2.2M19.4 12H9.6M13.1 8.6 9.6 12l3.5 3.4"/></svg>Cerrar sesión</button>
-          </div>
-        </header>
-
-        <!-- El hueco. Vacío a propósito: es una medida, no un contenedor. -->
-        <div class="mstage__frame" id="musicFrame"></div>
-
-        <!-- No cargó: se dice por qué en vez de dejar una pantalla en negro. -->
-        <div class="mstage__off" id="musicErr" hidden>
-          <div class="mstage__card">
-            <svg data-icon viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.6"/><path d="M12 7.6v5.4M12 16.2v.1"/></svg>
-            <h2>YouTube Music no cargó</h2>
-            <p id="musicErrText"></p>
-            <div class="mstage__btns">
-              <button class="btn btn--primary" id="musicRetry" type="button">Reintentar</button>
-              <button class="btn btn--ghost" id="musicExternal" type="button">Abrir en el navegador</button>
-            </div>
-          </div>
-        </div>
-
-        <!-- Apagada: la única pantalla que se ve hasta que alguien la prenda. -->
-        <div class="mstage__off" id="musicOff" hidden>
-          <div class="mstage__card">
-            <svg data-icon viewBox="0 0 24 24"><path d="M9.2 18V6.4l10-1.8v11.1"/><ellipse cx="6.7" cy="18" rx="2.5" ry="2.2"/><ellipse cx="16.7" cy="15.7" rx="2.5" ry="2.2"/></svg>
-            <h2 data-i18n="music.offTitle">Escuchá música mientras jugás</h2>
-            <p data-i18n="music.offText">Abre YouTube Music adentro del cliente. Entrás con tu cuenta de Google, elegís qué suena y queda un cartel sobre la cancha para pasar de tema sin salir de la partida.</p>
-            <button class="btn btn--primary" id="musicEnable" data-i18n="music.enable"><svg data-icon viewBox="0 0 24 24"><path d="M8.7 5.9v12.2l10-6.1z"/></svg>Activar</button>
-            <p class="note" data-i18n="music.offNote">Apagada no se abre nada: ni el reproductor, ni la sesión, ni el cartel.</p>
-            <!-- Lo del navegador propio es la primera pregunta que hace todo el
-                 mundo, así que se contesta antes de que la hagan. -->
-            <p class="note" data-i18n="music.loginWhy">La sesión de Google se inicia en una ventana aparte del cliente, con la dirección a la vista en el título. No se puede usar la de tu navegador: una web se abre con cookies, y las de Chrome no salen de Chrome. Es una sola vez — queda guardada hasta que cierres sesión.</p>
-          </div>
-        </div>
-      </main>
 
       <!-- ═══ Panel ═══════════════════════════════════════════════════
            Rendimiento, Aspecto, Replays y Ajustes no son pantallas aparte:
@@ -1140,32 +1080,6 @@
             </div>
           </section>
 
-          <!-- ═══ Cartel de música ═══
-               Qué está sonando y los tres botones, flotando sobre la cancha.
-               El reproductor en sí vive en la pestaña Música. -->
-          <section class="sec" data-sec="musica" id="musicHudCard">
-            <header class="sec__head">
-              <h2 class="sec__title" data-i18n="music.hudTitle">Cartel de música</h2>
-              <button class="btn btn--ghost btn--sm" id="musicHudOpen" data-i18n="music.openTab"><svg data-icon viewBox="0 0 24 24"><path d="M9.2 18V6.4l10-1.8v11.1"/><ellipse cx="6.7" cy="18" rx="2.5" ry="2.2"/><ellipse cx="16.7" cy="15.7" rx="2.5" ry="2.2"/></svg>Abrir Música</button>
-            </header>
-            <p class="sec__desc" data-i18n="music.hudHelp">Sobre la cancha, con lo que suena y los botones. Sólo lo ves vos; en el juego, F7.</p>
-            <div class="sec__body">
-              <div class="rows" id="musicSwitches"></div>
-              <div class="row">
-                <div class="row__text"><span class="row__label" data-i18n="music.hudSize">Tamaño</span></div>
-                <div class="row__ctl">
-                  <input type="range" id="musicHudSize" min="0.7" max="1.6" step="0.01" />
-                  <b class="row__val" id="musicHudSizeValue">100%</b>
-                </div>
-              </div>
-              <div class="row">
-                <div class="row__text"><span class="row__label" data-i18n="keys.hudPlace">Dónde va</span></div>
-                <div class="row__ctl">
-                  <button class="btn btn--ghost btn--sm" id="musicHudMove" data-i18n="music.hudMove"><svg data-icon viewBox="0 0 24 24"><path d="M12 4.2v15.6M4.2 12h15.6M12 4.2 9.9 6.4M12 4.2l2.1 2.2M12 19.8l-2.1-2.2M12 19.8l2.1-2.2M4.2 12l2.2-2.1M4.2 12l2.2 2.1M19.8 12l-2.2-2.1M19.8 12l-2.2 2.1"/></svg>Acomodar en pantalla</button>
-                </div>
-              </div>
-            </div>
-          </section>
         </div>
       </section>
 

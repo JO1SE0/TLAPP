@@ -5,7 +5,7 @@
 // that PC's monitor and graphics card. Syncing them replaced the whole group with
 // another computer's (a 60 Hz laptop's cap, V-Sync on) and locked the FPS.
 const GROUPS = ['general', 'appearance', 'game', 'overlay', 'notify', 'favorites',
-  'discord', 'avatar', 'keys', 'countryOverride', 'vip', 'updates', 'privacy', 'chat', 'music', 'pitch'];
+  'discord', 'avatar', 'keys', 'countryOverride', 'vip', 'updates', 'privacy', 'chat', 'pitch'];
 const ASSETS = ['avatarImage', 'ballImage', 'goalSound', 'hitSound'];
 const FORBIDDEN = new Set(['__proto__', 'prototype', 'constructor', '__replace']);
 function safe(value, depth = 0) {

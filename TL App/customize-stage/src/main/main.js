@@ -27,7 +27,6 @@ const avatars = require('./avatars');
 const countries = require('./countries');
 const gamePatch = require('./game-patch');
 const gif = require('./gif');
-const ytmusic = require('./ytmusic');
 
 const isDev = process.argv.includes('--dev');
 const ROOT = path.join(__dirname, '..', '..');
@@ -1495,9 +1494,6 @@ function createWindow() {
   // esto una ventana nueva heredaría el «estás en pantalla completa» de la que
   // se cerró (en macOS se recrea al volver al dock).
   mainWindow.on('closed', () => {
-    // El reproductor colgaba de esta ventana: sin esto queda su sondeo girando
-    // en el vacío una vez por segundo, contra una vista que ya no existe.
-    ytmusic.close(mainWindow);
     mainWindow = null;
     windowFullscreen = false;
     emitWindowState = () => {};
@@ -1684,14 +1680,12 @@ function gameConfig(config) {
 }
 
 /* ------------------------------------------------------------------ *
- * Los webviews: el del juego y el de YouTube Music
+ * Los webviews: el del juego
  * ------------------------------------------------------------------ *
  * Son dos y hay que distinguirlos, o el segundo pisaría al primero: hasta que
  * apareció la música, «cualquier webview» y «el juego» eran lo mismo.
  *
- * El reproductor terminó NO siendo un `<webview>` (es un `BrowserView`, y el
- * porqué está en ytmusic.js), así que hoy el único `<webview>` que hay es el del
- * juego. Aun así se lo reconoce por su PARTICIÓN y no por descarte: «todo lo que
+ * Hoy el único `<webview>` que hay es el del juego. Aun así se lo reconoce por su PARTICIÓN y no por descarte: «todo lo que
  * hay es el juego» es exactamente la suposición que ya se rompió una vez.
  */
 app.on('web-contents-created', (_e, contents) => {
@@ -1959,7 +1953,6 @@ handle('tabs:activate', (_e, id) => {
  *   · El renderer del juego. Si se cae, el <webview> queda en blanco y la app
  *     sigue viva y aparentemente sana — parece que se colgó.
  *   · El renderer de la interfaz. Ahí sí se ve la ventana vacía.
- *   · El de YouTube Music, desde que existe la pestaña Música.
  *   · El proceso de GPU. Chromium lo levanta de nuevo solo, pero si se cae
  *     muchas veces seguidas pasa a software y todo se arrastra.
  *
@@ -1972,27 +1965,13 @@ const MAX_GAME_RECOVERIES = 3;
 let gameRecoveries = 0;
 
 app.on('render-process-gone', (_event, contents, details) => {
-  /*
-   * Cuál se murió se pregunta por identidad, uno por uno.
-   *
-   * Antes era «o es la interfaz, o es el juego», y eso dejó de ser cierto en el
-   * momento en que apareció el reproductor: con esa cuenta, YouTube Music
-   * cayéndose —una página pesada, es lo que más se cae de las tres— se leía como
-   * «se murió el juego» y disparaba la reposición. O sea que un tropiezo del
-   * reproductor te habría recargado HaxBall y te habría sacado de la sala en
-   * medio de un partido.
-   */
+  // Cuál se murió se pregunta por identidad, uno por uno: interfaz, juego u otro.
   const esInterfaz = !!mainWindow && !mainWindow.isDestroyed() && contents === mainWindow.webContents;
   const esJuego = gameTabs.has(contents);
-  const kind = esInterfaz ? 'interfaz' : esJuego ? 'juego' : 'YouTube Music';
+  const kind = esInterfaz ? 'interfaz' : esJuego ? 'juego' : 'otro';
   logToApp('error', `se murió el proceso de ${kind}: ${details.reason} (código ${details.exitCode})`);
 
-  /*
-   * La interfaz no se puede reponer desde acá sin perder el estado; el juego sí,
-   * y es el que más importa. El reproductor no se repone a propósito: se lo
-   * vuelve a montar solo la próxima vez que se entre a la pestaña, y recargarlo
-   * en silencio sería ponerse a bajar YouTube de nuevo sin que nadie lo pida.
-   */
+  // La interfaz no se puede reponer desde acá sin perder el estado; el juego sí, y es el que más importa.
   if (!esJuego || contents.isDestroyed()) return;
   if (details.reason === 'clean-exit' || details.reason === 'killed') return;
   if (gameRecoveries >= MAX_GAME_RECOVERIES) {
@@ -2078,7 +2057,7 @@ if (!app.requestSingleInstanceLock()) {
  * ------------------------------------------------------------------ */
 // Only the application and its owned game webview may send IPC events.
 const UI_ONLY_CHANNELS = new Set(['theme:boot-vars', 'game:moderate-request',
-  'game:avatar-preview', 'keystrokes:move', 'music:bounds', 'music:move', 'game:viewport',
+  'game:avatar-preview', 'keystrokes:move', 'game:viewport',
   'game:verify-bounds', 'ui:panel']);
 /**
  * Lo que una pestaña de juego puede decir estando ATRÁS.
@@ -2093,7 +2072,7 @@ const UI_ONLY_CHANNELS = new Set(['theme:boot-vars', 'game:moderate-request',
  */
 const BACKGROUND_OK_CHANNELS = new Set(['game:bootstrap', 'cfg:set', 'game:log', 'tvm:debug-log',
   'game:settings-changed', 'game:adopt-settings', 'game:want-vip',
-  'game:want-avatar-gif', 'game:want-ball-gif', 'music:want-state', 'game:auth', 'game:geo',
+  'game:want-avatar-gif', 'game:want-ball-gif', 'game:auth', 'game:geo',
   'game:flags', 'game:avatar-current', 'game:keys-current', 'game:avatar-saved', 'game:mute',
   'game:themed', 'game:view', 'game:room-name', 'game:playing', 'game:live-settings',
   'game:open-url', 'game:goal', 'game:match-start', 'game:match-end', 'game:heatmap', 'game:report']);
@@ -2327,9 +2306,6 @@ handle('cfg:set', (_e, patch) => {
   if (patch.vip && (Object.prototype.hasOwnProperty.call(patch.vip, 'discord') || '__replace' in patch.vip)) throw new Error('La sesión sólo se cambia con Discord');
   const next = store.set(patch);
   if (patch && patch.perf) applyRuntimeFlags(next.perf);
-  if (patch && patch.music && 'audioOnly' in patch.music) {
-    ytmusic.setAudioOnly(next.music.audioOnly !== false);
-  }
   if (patch && patch.general && 'launchOnStartup' in patch.general) applyStartupFlag(next.general);
   // Cambiar de color o de fuente se tiene que ver en la sala sin esperar al
   // próximo latido.
@@ -3538,195 +3514,6 @@ listen('keystrokes:move-off', () => send('keystrokes:move-off'));
 listen('keystrokes:moved', (_e, at) => {
   const clamp = (value) => Math.min(97, Math.max(0, Number(value) || 0));
   broadcastConfig(store.set({ vip: { keystrokes: { x: clamp(at && at.x), y: clamp(at && at.y) } } }));
-});
-
-/* ------------------------------------------------------------------ *
- * YouTube Music
- * ------------------------------------------------------------------ *
- * El proceso principal es el que habla con el reproductor (ver ytmusic.js). Acá
- * están los dos lados del puente: los mandos que llegan —de la pestaña Música y
- * del cartel de la cancha, que son dos procesos distintos pidiendo lo mismo— y
- * el estado, que sale para los dos a la vez.
- */
-
-/** El último estado, para el que llegue tarde (una recarga del juego, otra vista). */
-let musicState = ytmusic.state();
-
-ytmusic.onChange((next) => {
-  musicState = next;
-  send('music:state', next);
-  // El cartel vive adentro del documento del juego y es otro proceso: se le
-  // manda igual, aunque no haya nadie mirando la pestaña Música.
-  sendToGames('game:music', next);
-  rememberVolume(next.volume);
-});
-
-/* ── El volumen, entre sesiones ─────────────────────────────────────────── *
- *
- * YouTube Music no se lo guarda: cada arranque del cliente volvía al 100%, y
- * bajarlo todos los días es exactamente el tipo de cosa que uno espera que la
- * app recuerde. Así que se lee del reproductor mientras suena, se anota, y se le
- * vuelve a poner apenas carga (ver `applySavedVolume` en ytmusic.js).           */
-
-let volumeSaveTimer = null;
-/** El volumen que está esperando para guardarse, para poder guardarlo al cerrar. */
-let volumePending = null;
-
-function saveVolumeNow() {
-  clearTimeout(volumeSaveTimer);
-  volumeSaveTimer = null;
-  if (volumePending === null) return;
-  const v = volumePending;
-  volumePending = null;
-  try {
-    /*
-     * `store.set` y no `broadcastConfig`: esto no lo mira nadie de la interfaz
-     * —el cartel lee el volumen del propio reproductor— y avisar de un cambio de
-     * config repintaría los paneles cada vez que se mueve la barra.
-     */
-    store.set({ music: { volume: v } });
-    ytmusic.setSavedVolume(v);
-  } catch (err) {
-    console.error('[ytmusic] no se pudo guardar el volumen:', err.message);
-  }
-}
-
-function rememberVolume(volume) {
-  if (!Number.isFinite(volume)) return;
-  const v = Math.min(1, Math.max(0, volume));
-  /*
-   * La espera va ANTES de comparar, y ése era el error. Al arrancar, la página
-   * decía 100 un instante (el de fábrica) y eso quedaba programado para
-   * guardarse; un segundo después se le ponía el guardado, pero como ése era
-   * igual al del config, la función volvía antes de cancelar lo programado — y
-   * el 100 se guardaba igual encima. Ahora cualquier valor nuevo cancela lo que
-   * estaba esperando, también si es para volver al que ya estaba.
-   */
-  clearTimeout(volumeSaveTimer);
-  volumeSaveTimer = null;
-  volumePending = null;
-
-  // En pasos de 1%: esto llega mientras alguien arrastra la barra, y escribir el
-  // config por una diferencia que nadie oye es escribirlo veinte veces por gesto.
-  const antes = Number(store.get().music.volume);
-  if (Math.round(v * 100) === Math.round((Number.isFinite(antes) ? antes : 1) * 100)) return;
-
-  volumePending = v;
-  volumeSaveTimer = setTimeout(saveVolumeNow, 700);
-}
-
-// Cerrar el cliente con el volumen recién tocado no puede perderlo: el último
-// cambio se guarda en el acto en vez de esperar a un temporizador que ya no va
-// a correr.
-app.on('before-quit', saveVolumeNow);
-app.on('before-quit', () => { try { presence.leaveOnline({ url: access.presenceUrl(), key: access.getKey(), version: app.getVersion(), room: roomInfo.name || '' }); presence.leave({ url: access.presenceUrl(), key: access.getKey() }); } catch { /* vence solo */ } });
-
-/** Alguien recién llegó y necesita saber qué está sonando. */
-listen('music:want-state', (e) => {
-  try {
-    e.sender.send(gameTabs.has(e.sender) ? 'game:music' : 'music:state', musicState);
-  } catch { /* se fue mientras tanto */ }
-});
-
-handle('music:state', () => musicState);
-
-/**
- * Un mando. Contesta lo que dijo el reproductor en vez de tragarse el fallo:
- * «el botón no está en la página» es lo que hay que ver si YouTube Music le
- * cambia el markup a su barra, y si eso se pierde el síntoma es un botón que
- * no hace nada y no dice por qué.
- */
-handle('music:cmd', (_e, payload) =>
-  ytmusic.command(String(payload && payload.kind || ''), payload ? payload.value : undefined));
-
-/** Y el mismo mando, pero desde el cartel de la cancha, que no usa `invoke`. */
-listen('music:cmd', (_e, payload) => {
-  ytmusic.command(String(payload && payload.kind || ''), payload ? payload.value : undefined);
-});
-
-/* ── Canciones fijadas (desde el cartel de la cancha) ─────────────────── */
-const PIN_MAX = 30;
-const VIDEO_ID = /^[\w-]{11}$/;
-function savePins(pins) {
-  broadcastConfig(store.set({ music: { pins: { __replace: pins } } }));
-}
-function currentPins() {
-  const list = store.get().music.pins;
-  return Array.isArray(list) ? list.filter((p) => p && VIDEO_ID.test(String(p.id))) : [];
-}
-listen('music:pin', () => {
-  const now = ytmusic.state();
-  if (!VIDEO_ID.test(String(now.videoId || ''))) return;
-  const pins = currentPins();
-  const i = pins.findIndex((p) => p.id === now.videoId);
-  if (i >= 0) pins.splice(i, 1);
-  else {
-    pins.unshift({ id: now.videoId, title: String(now.title || '').slice(0, 70), artist: String(now.artist || '').slice(0, 40) });
-    pins.length = Math.min(pins.length, PIN_MAX);
-  }
-  savePins(pins);
-});
-listen('music:unpin', (_e, id) => {
-  const pins = currentPins().filter((p) => p.id !== String(id || ''));
-  savePins(pins);
-});
-listen('music:play', (_e, id) => {
-  if (!store.get().music.enabled) return;
-  const pins = currentPins();
-  if (!pins.some((p) => p.id === String(id || ''))) return;
-  ytmusic.playVideo(id);
-});
-
-handle('music:login', () => ytmusic.login(mainWindow));
-handle('music:logout', () => ytmusic.logout());
-handle('music:home', () => { ytmusic.goHome(); return { ok: true }; });
-handle('music:reload', () => { ytmusic.reload(); return { ok: true }; });
-
-/* ── Dónde se ve el reproductor ─────────────────────────────────────────── *
- *
- * El reproductor es un `BrowserView`, o sea que NO vive adentro del documento:
- * lo pega el proceso principal sobre la ventana, en las coordenadas que le pasa
- * la interfaz, que es la única que sabe qué pestaña está abierta y qué hay
- * encima. Es el mismo trato que ya tenía la verificación de Cloudflare.
- *
- * `bounds` en `null` es «ahora no se tiene que ver»: se va fuera de pantalla y
- * la música sigue sonando. Ver `open`/`setBounds` en ytmusic.js.
- */
-handle('music:show', (_e, bounds) => {
-  if (!store.get().music.enabled) return { ok: false, reason: 'apagada' };
-  // Antes de abrir: es lo que se le pone al reproductor apenas termine de cargar.
-  ytmusic.setSavedVolume(Number(store.get().music.volume));
-  ytmusic.setAudioOnly(store.get().music.audioOnly !== false);
-  const primera = !ytmusic.state().ready && !ytmusic.visible();
-  const res = ytmusic.open(mainWindow, bounds || null);
-  // Queda en el log a propósito: si algún día YouTube Music deja de responder,
-  // lo primero que hay que saber es si se llegó a abrir.
-  if (primera && res.ok) logToApp('info', 'YouTube Music abierto');
-  return res;
-});
-
-/** Reubicarlo. Llega seguido —al cambiar de pestaña, al mover la ventana—. */
-listen('music:bounds', (_e, bounds) => ytmusic.setBounds(mainWindow, bounds || null));
-
-/** Apagarlo del todo. Acá sí muere la música: es lo que se pidió. */
-handle('music:close', () => { ytmusic.close(mainWindow); return { ok: true }; });
-
-/** F7 desde la cancha: mostrar o esconder el cartel. */
-listen('music:toggle-hud', () => {
-  const on = !store.get().music.hud.enabled;
-  broadcastConfig(store.set({ music: { hud: { enabled: on } } }));
-});
-
-/** La interfaz enciende o apaga el modo mover del cartel de música. */
-listen('music:move', (_e, on) => sendToGame('game:music-move', !!on));
-
-/** Se apagó desde el juego: el jugador tocó en cualquier otro lado. */
-listen('music:move-off', () => send('music:move-off'));
-
-/** El cartel terminó de arrastrarse. Los porcentajes se recortan del lado que escribe. */
-listen('music:moved', (_e, at) => {
-  const clamp = (value) => Math.min(97, Math.max(0, Number(value) || 0));
-  broadcastConfig(store.set({ music: { hud: { x: clamp(at && at.x), y: clamp(at && at.y) } } }));
 });
 
 /** El usuario lo activó con /anim en el chat: se guarda para la próxima sesión. */

@@ -74,7 +74,7 @@ const PANEL_TABS = {
     { id: 'fichas', label: 'tab.discs', hint: 'tab.discsHint',
       secs: ['jugador', 'pelota', 'fichaslook', 'nombres'] },
     { id: 'partida', label: 'tab.ingame', hint: 'tab.ingameHint',
-      secs: ['chatlook', 'statslook', 'partida', 'teclashud', 'overlay', 'musica', 'sonidos', 'lista'] }
+      secs: ['chatlook', 'statslook', 'partida', 'teclashud', 'overlay', 'sonidos', 'lista'] }
   ],
   ajustes: [
     { id: 'rapido', group: 'tabg.perf', label: 'tab.quick', hint: 'tab.quickHint', secs: ['perfil', 'respuesta'] },
@@ -838,13 +838,6 @@ function applyConfig(config) {
   // `setLanguage` repinta TODO lo que tiene data-i18n, y hay dos botones que
   // dicen otra cosa mientras su modo está encendido. Ver `paintKeysMoveButton`.
   paintKeysMoveButton();
-  paintMusicMoveButton();
-  /*
-   * Prender o apagar la música monta o desmonta el reproductor, y eso puede
-   * llegar de cualquier lado: la pestaña Música, la tarjeta de Aspecto, o F7 en
-   * medio de un partido. Se resuelve donde llega la config y no en cada botón.
-   */
-  syncMusic();
   // Quién sos vive en la barra: el apodo o la foto pueden haber cambiado.
   paintMeChip();
   paintPreview();
@@ -1855,16 +1848,8 @@ function setView(name) {
   syncVerifyBounds();
   // Acomodar un cartel se hace sobre la cancha: abrir cualquier panel encima es
   // dejar de acomodarlo, igual que tocar en otro lado del juego.
-  if (name !== 'play') { stopKeysMoving(); stopMusicMoving(); }
+  if (name !== 'play') stopKeysMoving();
 
-  /*
-   * «Salas» es el fondo; el resto se abre como panel encima. «Música» es la
-   * excepción: también tapa la cancha, pero su reproductor no es HTML sino una
-   * vista que el proceso principal pega sobre la ventana (ver ytmusic.js), así
-   * que la pestaña es una pantalla propia (`.mstage`) que le hace el lugar y le
-   * dice dónde ponerse.
-   */
-  const musica = name === 'musica';
   /*
    * El índice de secciones sólo tiene sentido en las cuatro pestañas de
    * ajustes. Replays trae su propia lista y su propio buscador, así que ahí la
@@ -1872,7 +1857,7 @@ function setView(name) {
    * ancho (ver `[data-nav="off"]` en app.css).
    */
   $('#panel').dataset.nav = NAV_PAGES.includes(name) ? 'on' : 'off';
-  openPanel(name !== 'play' && !musica);
+  openPanel(name !== 'play');
   // Para el juego las dos cosas son lo mismo: con cualquiera de ellas encima
   // nadie está mirando la cancha y puede bajar el ritmo.
   tvm.game.panel(name !== 'play');
@@ -1887,13 +1872,6 @@ function setView(name) {
    * medio camino marcaría la sección equivocada por un cuadro.
    */
   if (NAV_PAGES.includes(name)) buildPanelNav();
-  /*
-   * El reproductor flota por ENCIMA de este documento y no se esconde solo al
-   * cambiar de pestaña: hay que correrlo o taparía lo que se abra. Va en cada
-   * cambio de vista, se entre o se salga de Música.
-   */
-  if (musica) syncMusic();
-  else syncMusicBounds();
   if (name === 'play' && state.stage === 'browser') refreshRoomsIfStale();
 }
 
@@ -3898,9 +3876,6 @@ function renderAspect() {
   syncRangeFill($('#hudScale'));
 
   renderPitch();
-  // El cartel de música NO cuelga de `renderVip` como el de teclas: escuchar
-  // música no es un beneficio de rol.
-  renderMusicHud();
 }
 
 /* ── Color de la cancha ─────────────────────────────────────────── *
@@ -5159,308 +5134,6 @@ $('#keysHudMove').addEventListener('click', () => {
   if (state.keysMoving) closePanel();
 });
 
-/* ══════════════════════════════════════════════════════════
-   YouTube Music
-   ══════════════════════════════════════════════════════════
-
-   Tres piezas y ninguna habla con Google:
-
-     · La pestaña Música (`.mstage`), que es YouTube Music de verdad adentro de
-       un `<webview>` con su propia partición.
-     · El cartel sobre la cancha, que lo dibuja `game-preload.js` — acá sólo se
-       lo configura, igual que el de teclas.
-     · Los mandos, que van todos al proceso principal. El porqué de cada
-       decisión está en `src/main/ytmusic.js`.
-
-   Apagada no se monta NADA: sin `<webview>`, sin sesión, sin sondeo. El que no
-   la usa no paga un proceso más. */
-
-const MUSIC_SWITCHES = {
-  es: [
-    { key: 'enabled', where: 'music', label: 'YouTube Music', description: 'El reproductor, en la pestaña Música.', hint: 'Apagada no se abre nada: ni el reproductor, ni la sesión, ni el cartel.' },
-    { key: 'audioOnly', where: 'music', label: 'Modo liviano (sin videoclip)', description: 'Prefiere la versión de canción, sin video.', hint: 'Evita componer el videoclip para dejarle la placa de video al juego.' },
-    { key: 'enabled', where: 'hud', label: 'Mostrar el cartel', description: 'Qué suena y los botones, sobre la cancha.' },
-    { key: 'compact', where: 'hud', label: 'Sólo los botones', description: 'Sin título ni artista: sólo tres botones.' }
-  ],
-  en: [
-    { key: 'enabled', where: 'music', label: 'YouTube Music', description: 'The player, in the Music tab.', hint: 'Off, nothing is opened at all: no player, no session, no overlay.' },
-    { key: 'audioOnly', where: 'music', label: 'Light mode (no video)', description: 'Prefers the song version, no video.', hint: 'Avoids compositing the video clip so the GPU stays available for the game.' },
-    { key: 'enabled', where: 'hud', label: 'Show the overlay', description: 'What is playing plus the buttons.' },
-    { key: 'compact', where: 'hud', label: 'Buttons only', description: 'No title, no artist: just three buttons.' }
-  ]
-};
-
-/**
- * La rama `music` del config, o un objeto vacío si todavía no llegó.
- *
- * Lo de «todavía no llegó» no es defensa de más: `state.config` arranca en
- * `null` y `boot()` lo espera. Mientras tanto la ventana puede cambiar de tamaño
- * —la reposición del arranque la redimensiona— y ese `resize` entra acá antes de
- * que exista config. Sin esta guarda, el cliente moría en el arranque con un
- * «Cannot read property 'music' of null» y no se veía nada más.
- */
-function musicCfg() {
-  return (state.config && state.config.music) || {};
-}
-
-function musicHudCfg() {
-  return musicCfg().hud || {};
-}
-
-/** Lo último que contestó el proceso principal sobre qué está sonando. */
-state.music = null;
-/** ¿Está abierto el reproductor? La vista la maneja el proceso principal. */
-state.musicOpen = false;
-/** Si el cartel se está acomodando ahora mismo. No se guarda: dura el gesto. */
-state.musicMoving = false;
-
-function renderMusicHud() {
-  const lang = isEn() ? 'en' : 'es';
-
-  /*
-   * El `value` se lee por función y no por una referencia capturada acá: guardar
-   * reemplaza `state.config` por un objeto NUEVO, así que una referencia vieja
-   * dejaría al interruptor volviendo solo a su posición anterior. Es la misma
-   * trampa que documenta `renderKeysHud`.
-   */
-  buildSwitches(
-    $('#musicSwitches'),
-    MUSIC_SWITCHES[lang].map((item) => ({
-      ...item,
-      value: () => (item.where === 'hud' ? !!musicHudCfg()[item.key] : !!musicCfg()[item.key])
-    })),
-    (item, value) => patchConfig(item.where === 'hud'
-      ? { music: { hud: { [item.key]: value } } }
-      : { music: { [item.key]: value } })
-  );
-
-  const scale = Number(musicHudCfg().scale) || 1;
-  $('#musicHudSize').value = scale;
-  $('#musicHudSizeValue').textContent = `${Math.round(scale * 100)}%`;
-  syncRangeFill($('#musicHudSize'));
-
-  paintMusicMoveButton();
-}
-
-function paintMusicMoveButton() {
-  const btn = $('#musicHudMove');
-  if (!btn) return;
-  setButtonLabel(btn, t(state.musicMoving ? 'music.hudMoving' : 'music.hudMove'));
-  btn.classList.toggle('is-on', !!state.musicMoving);
-}
-
-/** Termina el modo acomodar, venga de donde venga. */
-function stopMusicMoving() {
-  if (!state.musicMoving) return;
-  state.musicMoving = false;
-  tvm.music.moveHud(false);
-  paintMusicMoveButton();
-}
-
-// El juego avisa cuando el jugador tocó fuera del cartel: el modo se terminó
-// allá y acá sólo queda acompañarlo.
-tvm.music.onMoveHudOff(() => {
-  state.musicMoving = false;
-  paintMusicMoveButton();
-});
-
-$('#musicHudSize').addEventListener('input', (e) => {
-  syncRangeFill(e.target);
-  $('#musicHudSizeValue').textContent = `${Math.round(Number(e.target.value) * 100)}%`;
-});
-$('#musicHudSize').addEventListener('change', (e) =>
-  patchConfig({ music: { hud: { scale: Number(e.target.value) } } }));
-
-$('#musicHudMove').addEventListener('click', () => {
-  // Acomodarlo es arrastrarlo sobre la cancha, así que hay que estar viéndola.
-  // Mismo motivo que el cartel de teclas.
-  if (state.stage !== 'game') {
-    toast(t('music.hudNeedGame'), 'err');
-    return;
-  }
-  if (!musicHudCfg().enabled) {
-    toast(t('music.hudNeedOn'), 'err');
-    return;
-  }
-  state.musicMoving = !state.musicMoving;
-  tvm.music.moveHud(state.musicMoving);
-  paintMusicMoveButton();
-  if (state.musicMoving) { closePanel(); setView('play'); }
-});
-
-$('#musicHudOpen').addEventListener('click', () => setView('musica'));
-$('#musicHudSettings').addEventListener('click', () => {
-  setView('aspecto');
-  $('#musicHudCard').scrollIntoView({ block: 'start' });
-});
-
-/* ── La pestaña ───────────────────────────────────────────────────────── */
-
-/**
- * Monta el reproductor. La partición y el user-agent los decide el proceso
- * principal (ver ytmusic.js): acá no se repiten, que es donde se
- * desincronizarían.
- *
- * El `<webview>` se crea UNA vez por sesión. Moverlo de lugar en el DOM o
- * esconderlo con `display:none` lo re-adjunta —o sea, recarga la página y corta
- * la música—, y por eso la pestaña es una pantalla propia escondida con
- * `visibility` (ver `.mstage` en app.css).
- */
-/**
- * Dónde va el reproductor, en coordenadas de la ventana.
- *
- * El `BrowserView` lo pega el proceso principal y no sabe nada de este
- * documento, así que la medida sale de acá — igual que la verificación de
- * Cloudflare (ver `verifyBounds`). `getBoundingClientRect()` ya da píxeles
- * independientes del dispositivo, que es lo que `setBounds` espera.
- *
- * @returns {object|null} el rectángulo, o `null` si ahora NO se tiene que ver.
- */
-function musicBounds() {
-  if (!musicCfg().enabled) return null;
-  // Sólo en su pestaña. Un `BrowserView` va por encima de TODO el documento, así
-  // que en cualquier otra vista taparía la app entera.
-  if (state.view !== 'musica') return null;
-  /*
-   * Y tampoco con algo encima. El dock de amigos, el perfil y los avisos son
-   * HTML de esta ventana, o sea que quedan DEBAJO de la vista: si no se la
-   * corriera, abrir el dock desde la pestaña Música no mostraría el dock.
-   */
-  if (state.friendsOpen || state.profileOpen) return null;
-  // Con error la vista se esconde para que se vea el cartel que lo explica.
-  if (state.music && state.music.error) return null;
-
-  const box = $('#musicFrame').getBoundingClientRect();
-  if (!box.width || !box.height) return null;
-  return {
-    x: Math.round(box.x),
-    y: Math.round(box.y),
-    width: Math.round(box.width),
-    height: Math.round(box.height)
-  };
-}
-
-/**
- * Le dice al proceso principal dónde poner el reproductor, o que lo saque de
- * encima. Es barato y sin respuesta: se puede llamar todas las veces que haga
- * falta.
- */
-function syncMusicBounds() {
-  if (!musicCfg().enabled) return;
-  tvm.music.bounds(musicBounds());
-}
-
-window.addEventListener('resize', syncMusicBounds);
-
-/**
- * Abre el reproductor si hace falta y lo deja en su lugar.
- *
- * La primera apertura se deja para cuando el motor esté libre: cargar YouTube
- * Music es cargar una aplicación web entera, y al arrancar eso compite con lo
- * único que de verdad no puede esperar, que es el juego. Es el mismo trato que
- * tiene el precalentado del panel en `boot`.
- */
-function mountMusic() {
-  if (state.musicOpen) return syncMusicBounds();
-  if (state.musicMounting) return;
-  state.musicMounting = true;
-
-  const go = async () => {
-    state.musicMounting = false;
-    // Lo pudo apagar mientras esperábamos al motor.
-    if (!musicCfg().enabled || state.musicOpen) return;
-    const res = await tvm.music.show(musicBounds()).catch(() => null);
-    if (res && res.ok) state.musicOpen = true;
-  };
-  if (typeof requestIdleCallback === 'function') requestIdleCallback(go, { timeout: 3000 });
-  else setTimeout(go, 800);
-}
-
-/** Apaga el reproductor del todo. Acá sí se corta la música: es lo que se pidió. */
-function unmountMusic() {
-  state.musicMounting = false;
-  if (!state.musicOpen) return;
-  state.musicOpen = false;
-  state.music = null;
-  tvm.music.close().catch(() => {});
-}
-
-function paintMusicStage() {
-  paintMusicClose();
-  const on = !!musicCfg().enabled;
-  $('#mstage').dataset.on = String(on);
-  const failed = on && !!(state.music && state.music.error);
-  $('#musicFrame').hidden = !on;
-  $('#musicOff').hidden = on;
-  $('#musicErr').hidden = !failed;
-  if (failed) $('#musicErrText').textContent = state.music.error;
-
-  const now = state.music;
-  const signed = !!(now && now.signedIn === true);
-  // Mientras no se sepa (la página todavía no cargó) no se dice nada: «sin
-  // sesión» en ese momento sería mentira la mitad de las veces.
-  const known = !!(now && now.signedIn !== null && now.signedIn !== undefined);
-  $('#musicWho').textContent = !on || !known ? '' : t(signed ? 'music.signedIn' : 'music.signedOut');
-  $('#musicLogin').hidden = !on || signed;
-  $('#musicLogout').hidden = !on || !signed;
-}
-
-/** Todo lo que cambia cuando se prende, se apaga o cambia de estado. */
-function syncMusic() {
-  if (musicCfg().enabled) {
-    mountMusic();
-    /*
-     * Y se pide una foto del estado, en vez de esperar al primer aviso: el
-     * proceso principal sólo avisa cuando algo CAMBIA, así que con la música ya
-     * sonando desde antes —volver a esta pestaña, recargar la interfaz— no
-     * habría nada que esperar y la barra quedaría en blanco.
-     */
-    tvm.music.state().then((now) => {
-      if (!now) return;
-      state.music = now;
-      paintMusicStage();
-    }).catch(() => {});
-  } else {
-    unmountMusic();
-  }
-  paintMusicStage();
-  // Después de pintar: el hueco recién ahí tiene su tamaño de verdad.
-  syncMusicBounds();
-}
-
-tvm.music.onState((next) => {
-  state.music = next;
-  paintMusicStage();
-  syncMusicBounds();
-});
-
-$('#musicEnable').addEventListener('click', async () => {
-  await patchConfig({ music: { enabled: true } });
-  syncMusic();
-  renderMusicHud();
-});
-
-$('#musicHome').addEventListener('click', () => tvm.music.home());
-$('#musicReload').addEventListener('click', () => tvm.music.reload());
-
-$('#musicLogin').addEventListener('click', async () => {
-  const btn = $('#musicLogin');
-  btn.disabled = true;
-  try {
-    // La promesa vuelve cuando se cierra la ventana, haya entrado o no: el
-    // veredicto lo trae el sondeo, que ya está mirando la página recargada.
-    await tvm.music.login();
-  } finally {
-    btn.disabled = false;
-  }
-});
-
-$('#musicLogout').addEventListener('click', async () => {
-  if (!window.confirm(t('music.logoutConfirm'))) return;
-  const res = await guard(tvm.music.logout(), 'Error');
-  if (res) toast(t('music.loggedOut'), 'ok');
-});
-
 /** file:// para mostrar una imagen del disco dentro del renderer. */
 function fileUrl(filePath) {
   return encodeURI(`file:///${String(filePath).replace(/\\/g, '/').replace(/^\/+/, '')}`);
@@ -6160,12 +5833,6 @@ function setFriendsOpen(open) {
   state.friendsOpen = open;
   $('#friendsDock').hidden = !open;
   $('#btnFriends').classList.toggle('is-on', open);
-  /*
-   * El dock es HTML de esta ventana y el reproductor es una vista que va por
-   * ENCIMA: sin correrla, abrir el dock desde la pestaña Música no mostraría
-   * nada. Ver `musicBounds`.
-   */
-   syncMusicBounds();
 
   if (open) {
     renderFriends();
@@ -6733,8 +6400,6 @@ async function openProfile(id) {
   state.profileOpen = true;
   $('#profileModal').hidden = false;
   paintProfile();
-  // La tarjeta es HTML y el reproductor una vista por encima: ver `musicBounds`.
-  syncMusicBounds();
 
   if (!id) return;
   const res = await friendAction({ action: 'profile', friend: id });
@@ -6750,7 +6415,6 @@ function closeProfile() {
   state.profileOpen = false;
   state.profileWho = null;
   $('#profileModal').hidden = true;
-  syncMusicBounds();
   // Igual que al cerrar el dock: si estabas jugando, las teclas vuelven al juego.
   if (!state.friendsOpen) focusGame();
 }
@@ -10014,21 +9678,6 @@ function openReport(r) {
   document.body.append(wrap);
 }
 
-$('#musicRetry').addEventListener('click', () => { if (state.music) state.music.error = ''; paintMusicStage(); syncMusicBounds(); tvm.music.reload(); });
-$('#musicExternal').addEventListener('click', () => { tvm.app.openExternal('https://music.youtube.com/').catch(() => {}); });
-
-/* Salir de Música: dentro de una sala vuelve a la cancha, afuera a la lista. La música sigue sonando. */
-function paintMusicClose() {
-  const b = $('#musicClose');
-  if (!b) return;
-  const inRoom = $('#app').dataset.stage === 'game';
-  b.textContent = inRoom ? (isEn() ? 'Back to room' : 'Volver a la sala') : (isEn() ? 'Close' : 'Cerrar');
-}
-$('#musicClose').addEventListener('click', () => setView('play'));
-$('#rail').addEventListener('click', paintMusicClose);
-$('#musicHudOpen').addEventListener('click', paintMusicClose);
-
-
 /* ── Secciones plegables y barra de la solapa ────────────────────────────────
  * Cada sección se puede cerrar tocando su título (se recuerda), y arriba de la
  * solapa hay una fila de atajos para saltar a cualquiera sin scrollear. Sólo
@@ -10256,9 +9905,6 @@ const MIX_CHANNELS = [
     get: (c) => c.appearance.musicVolume,
     live: (v) => { const c = state.config.appearance; if (window.TLMusic) window.TLMusic.configure(c.music !== false, v, c.musicClub !== false); },
     set: (v) => ({ appearance: { musicVolume: v, music: true } }) },
-  { id: 'ytm', es: 'YouTube Music', en: 'YouTube Music', def: 1, needsPlayer: true,
-    get: (c) => (state.music && typeof state.music.volume === 'number' ? state.music.volume : c.music && c.music.volume),
-    live: (v) => { tvm.music.cmd('volume', v).catch(() => {}); } },
   { id: 'goalsfx', es: 'Sonido de gol incluido', en: 'Built-in goal sound', def: 0.7,
     get: (c) => c.appearance.goalSfxVolume, set: (v) => ({ appearance: { goalSfxVolume: v } }) },
   { id: 'goalown', es: 'Tu sonido de gol', en: 'Your goal sound', def: 0.7,
@@ -10310,8 +9956,6 @@ function paintMixer() {
     const raw = Number(ch.get(state.config));
     const v = Number.isFinite(raw) ? Math.min(1, Math.max(0, raw)) : ch.def;
     input.value = String(v);
-    input.disabled = !!ch.needsPlayer && !state.musicOpen;
-    row.title = input.disabled ? (en ? 'Open the Music tab first' : 'Abrí primero la pestaña Música') : '';
     syncRangeFill(input);
     row.querySelector('.row__val').textContent = `${Math.round(v * 100)}%`;
   }

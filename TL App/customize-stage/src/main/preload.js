@@ -214,40 +214,6 @@ contextBridge.exposeInMainWorld('tvm', {
     onMoveHudOff: (cb) => on('keystrokes:move-off', cb)
   },
 
-  /**
-   * YouTube Music. Todo pasa por el proceso principal: la ventana no habla con
-   * Google ni con el `<webview>` directamente (ver ytmusic.js).
-   */
-  music: {
-    /**
-     * Mostrar el reproductor en ese rectángulo de la ventana. Lo abre si hacía
-     * falta. `null` lo manda fuera de pantalla sin cortar la música.
-     */
-    show: (bounds) => call('music:show', bounds),
-    /** Reubicarlo. Va por `send` porque llega seguido y no espera respuesta. */
-    bounds: (rect) => ipcRenderer.send('music:bounds', rect),
-    /** Apagarlo del todo: la vista se destruye y la música se corta. */
-    close: () => call('music:close'),
-    /** Qué está sonando ahora mismo. */
-    state: () => call('music:state'),
-    /** `playpause` · `next` · `prev` · `volume` (0..1) · `mute`. */
-    cmd: (kind, value) => call('music:cmd', { kind, value }),
-    /** Abre la ventana de Google. Resuelve cuando se cierra, entrara o no. */
-    login: () => call('music:login'),
-    logout: () => call('music:logout'),
-    home: () => call('music:home'),
-    reload: () => call('music:reload'),
-    onState: (cb) => on('music:state', cb),
-    /**
-     * Enciende o apaga el modo mover del cartel de música. Mientras está
-     * encendido se lo arrastra por encima de la cancha; la posición la guarda
-     * el proceso principal cuando se suelta. Igual que el cartel de teclas.
-     */
-    moveHud: (value) => ipcRenderer.send('music:move', !!value),
-    /** El modo mover se terminó solo: el jugador tocó fuera del cartel. */
-    onMoveHudOff: (cb) => on('music:move-off', cb)
-  },
-
   vip: {
     pickAvatar: () => call('vip:pickAvatar'),
     pickBall: () => call('vip:pickBall'),

@@ -344,26 +344,6 @@ svg[data-icon] .ico-fill { fill: currentColor; stroke: none; }
 .app[data-stage="game"] .railedge:hover ~ .rail,
 .app[data-stage="game"] .rail:hover { transform: translateX(0); }
 
-/*
- * ── Menos en la pestaña Música, donde el riel se queda ─────────────────────
- *
- * El riel se guarda estando en una sala porque ahí abajo hay cancha y esos 72 px
- * son cancha. En Música no hay cancha: hay un reproductor, y encima uno que NO
- * es HTML sino una vista que el proceso principal pega sobre la ventana.
- *
- * Eso último es lo que obliga a esto. Un riel que aparece al pasar el mouse
- * aparecería DEBAJO de la vista, o sea que no aparecería: quedaba el menú de
- * YouTube Music tapando el del cliente y sin forma de cambiar de pestaña salvo
- * con Escape. Acá el riel vuelve al flujo, le come sus 72 px al hueco, y la
- * vista se pega al lado en vez de encima.
- */
-.app[data-stage="game"][data-view="musica"] .rail {
-  position: relative;
-  left: auto; top: auto; bottom: auto;
-  transform: none;
-}
-.app[data-stage="game"][data-view="musica"] .railedge { display: none; }
-
 /* ── Amigos y perfil en la barra ─────────────────────────── */
 .friendsbtn {
   position: relative;
@@ -559,95 +539,7 @@ svg[data-icon] .ico-fill { fill: currentColor; stroke: none; }
    que seguir viéndose atrás. */
 .stage { visibility: hidden; }
 .app[data-stage="game"] .stage { visibility: visible; }
-
-/* ── YouTube Music ──────────────────────────────────────── *
- *
- * Acá NO hay reproductor: hay un hueco.
- *
- * YouTube Music corre en una vista que el proceso principal pega sobre la
- * ventana (`BrowserView`), no en un elemento de este documento. El porqué está
- * en `src/main/ytmusic.js`, y es medido: el mismo `<webview>` que le funciona al
- * juego, acá recibía 0×0 por dentro y la pestaña se veía vacía.
- *
- * Así que lo único que hace este CSS es reservar el lugar. `#musicFrame` es un
- * rectángulo vacío cuyo `getBoundingClientRect()` la interfaz le manda al
- * proceso principal (ver `musicBounds` en app.js); la vista se pega justo ahí y
- * se va lejos cuando no corresponde verla.
- *
- * `visibility` y no `display` para esconder la pantalla: el hueco tiene que
- * seguir maquetado para poder medirlo. Y va por encima de `.stage` (z-index 30)
- * y por debajo del panel (40), que es el orden en el que se tapan las cosas.  */
-.mstage {
-  --mbar: 50px;
-  position: absolute;
-  inset: 0;
-  z-index: 30;
-  background: var(--bg-1);
-  visibility: hidden;
-  contain: layout style;
-  display: block;
-}
-.sec#musicHudCard[hidden], .sec[data-sec="overlay"][hidden] { display: none !important; }
-.app[data-view="musica"] .mstage { visibility: visible; }
-
-.mstage__bar {
-  position: absolute;
-  top: 0; left: 0; right: 0;
-  height: var(--mbar);
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 0 14px;
-  border-bottom: 1px solid var(--line);
-  background: linear-gradient(180deg, var(--panel-top), var(--bg-1));
-}
-.mstage__id { display: flex; align-items: center; gap: 9px; min-width: 0; }
-.mstage__id svg { width: 18px; height: 18px; flex: none; color: var(--accent); }
-.mstage__id b { font-family: var(--font-display); font-size: 14px; font-weight: 600; }
-.mstage__who { font-size: 12px; color: var(--text-faint); white-space: nowrap; }
-.mstage__acts {
-  margin-left: auto;
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  flex-wrap: wrap;
-  gap: 7px;
-}
-/* Apagada no hay nada que hacer con la sesión ni con la página. */
-.mstage[data-on="false"] .mstage__acts { display: none; }
-
-/*
- * El hueco. Está vacío a propósito: es una medida, no un contenedor. El fondo
- * es el mismo negro que usa YouTube Music, para que no se vea un salto de color
- * en el instante entre que se pega la vista y que la página pinta.
- */
-.mstage__frame {
-  position: absolute;
-  top: var(--mbar); left: 0; right: 0; bottom: 0;
-  background: #0b0b0f;
-}
-.mstage__frame[hidden] { display: none; }
-
-.mstage__off {
-  position: absolute;
-  top: var(--mbar); left: 0; right: 0; bottom: 0;
-  display: grid;
-  place-items: center;
-  padding: 30px;
-  overflow-y: auto;
-}
-.mstage__card {
-  max-width: 430px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 12px;
-  text-align: center;
-}
-.mstage__card svg { width: 34px; height: 34px; color: var(--accent); }
-.mstage__card h2 { font-family: var(--font-display); font-size: 20px; font-weight: 700; }
-.mstage__card p { color: var(--text-dim); font-size: 13px; line-height: 1.6; }
-.mstage__card .note { font-size: 11.5px; }
+.sec[data-sec="overlay"][hidden]{ display: none !important; }
 
 /* Para salir de la sala está el botón «Leave» que trae la propia sala de
    HaxBall, arriba a la derecha. El cliente tenía uno encima que recargaba el
@@ -5218,47 +5110,6 @@ html[data-stage="game"] .trialchip { display: none; }
 #app[data-view="club"] .panel__pages { flex: 0 1 auto; height: auto; min-height: 0; }
 #app[data-view="club"] .page[data-page="club"] .page__inner { max-width: none; padding: 52px 22px 24px; }
 
-/* ── Música con el estilo de Club ───────────────────────────── */
-.mstage { --mbar: 62px; }
-.mstage__bar {
-  padding: 0 20px;
-  border-bottom: 1px solid var(--accent-line);
-  background: linear-gradient(120deg, rgb(var(--accent-rgb) / 20%), var(--bg-1) 70%);
-}
-.mstage__id { position: relative; display: grid; grid-template-columns: auto 1fr; column-gap: 10px; align-items: center; }
-.mstage__id svg { width: 28px; height: 28px; grid-row: 1 / 3; padding: 5px; border-radius: 10px; color: var(--accent-text-on); background: linear-gradient(145deg, var(--accent), var(--accent-2, var(--accent))); }
-.mstage__eyebrow { font-size: 10px; font-weight: 800; letter-spacing: .22em; text-transform: uppercase; color: var(--accent-text); line-height: 1; }
-.mstage__id b { font-size: 18px; font-weight: 800; letter-spacing: -.02em; line-height: 1.1; }
-.mstage__who { grid-column: 2; }
-.mstage__acts .btn { border-radius: 99px; }
-.mstage__off { background: radial-gradient(60% 50% at 50% 30%, rgb(var(--accent-rgb) / 12%), transparent 70%); }
-.mstage__card {
-  max-width: 460px; padding: 30px 28px; border-radius: 22px;
-  background: var(--surface); border: 1px solid var(--line);
-  box-shadow: 0 24px 60px -30px rgb(0 0 0 / 70%);
-}
-.mstage__card > svg { width: 52px; height: 52px; padding: 13px; border-radius: 16px; color: var(--accent-text-on); background: linear-gradient(145deg, var(--accent), var(--accent-2, var(--accent))); }
-.mstage__card h2 { font-size: 22px; font-weight: 800; letter-spacing: -.02em; }
-.mstage__btns { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
-
-/* ── Música como ventana al centro ───────────────────────────── */
-.mstage {
-  --mbar: 60px;
-  inset: 0;
-  margin: auto;
-  width: min(940px, calc(100% - 48px));
-  height: min(600px, calc(100% - 48px));
-  border-radius: 20px;
-  border: 1px solid var(--accent-line);
-  background: var(--bg-1);
-  /* Atenúa la sala de fondo sin una capa extra. */
-  box-shadow: 0 0 0 100vmax rgb(4 6 12 / 62%), 0 30px 80px -20px rgb(0 0 0 / 80%), 0 0 60px -20px rgb(var(--accent-rgb) / 45%);
-}
-.mstage__bar { border-radius: 19px 19px 0 0; }
-.mstage__frame { left: 12px; right: 12px; bottom: 12px; border-radius: 10px; border: 1px solid var(--line); }
-.mstage__off { top: var(--mbar); }
-.mstage__close { order: 99; }
-
 /* ── Ajustes y Personalización: estilo Club, con secciones plegables ───── */
 .page[data-page="aspecto"] .pagehead,
 .page[data-page="ajustes"] .pagehead {
@@ -5325,15 +5176,6 @@ html[data-density="comfy"] .railitem { height: 44px; }
 .rrow.is-club { background: linear-gradient(90deg, rgb(90 170 255 / 15%), transparent 70%); }
 .rrow__club { flex: none; margin-left: 8px; padding: 1px 8px; border-radius: 99px; font-size: 11px; font-weight: 800; line-height: 18px; color: #bfe0ff; background: rgb(90 170 255 / 18%); border: 1px solid rgb(90 170 255 / 45%); }
 
-/* ── Música: encabezado ordenado y ventana más grande ───────── */
-.mstage { width: min(1040px, calc(100% - 48px)); height: min(700px, calc(100% - 48px)); }
-.mstage__id { grid-template-columns: auto 1fr auto; grid-template-rows: auto auto; align-items: center; row-gap: 2px; }
-.mstage__id svg { grid-row: 1 / 3; }
-.mstage__eyebrow { grid-column: 2; grid-row: 1; align-self: end; }
-.mstage__id b { grid-column: 2; grid-row: 2; align-self: start; }
-.mstage__who { grid-column: 3; grid-row: 1 / 3; align-self: center; margin-left: 10px; padding: 3px 10px; border-radius: 99px; background: var(--accent-soft); color: var(--accent-text); font-weight: 700; }
-.mstage__who:empty { display: none; }
-
 
 /* ═══════════════════════════════════════════════════════════════════════════
    Interfaces elegibles (`html[data-layout]`)
@@ -5371,9 +5213,6 @@ html[data-layout="top"] .app[data-stage="game"] .railedge {
 html[data-layout="top"] .railedge i { width: 52px; height: 3px; border-radius: 0 0 3px 3px; }
 html[data-layout="top"] .app[data-stage="game"] .railedge:hover ~ .rail,
 html[data-layout="top"] .app[data-stage="game"] .rail:hover { transform: translateY(0); }
-html[data-layout="top"] .app[data-stage="game"][data-view="musica"] .rail {
-  position: relative; left: auto; right: auto; top: auto; transform: none;
-}
 
 /* ── Dock flotante ──
    Flota ENCIMA del contenido (no ocupa una franja propia: la franja quedaba con
@@ -5411,10 +5250,6 @@ html[data-layout="dock"] .app[data-stage="game"] .railedge {
 html[data-layout="dock"] .railedge i { width: 52px; height: 3px; border-radius: 3px 3px 0 0; }
 html[data-layout="dock"] .app[data-stage="game"] .railedge:hover ~ .rail,
 html[data-layout="dock"] .app[data-stage="game"] .rail:hover { transform: translate(-50%, 0); }
-html[data-layout="dock"] .app[data-stage="game"][data-view="musica"] .rail {
-  position: relative; left: auto; bottom: auto; align-self: center; margin: 2px 0 12px; transform: none;
-}
-html[data-layout="dock"] .app[data-stage="game"][data-view="musica"] .shell { flex-direction: column; }
 
 /* ── Isla: píldora vertical flotante a la izquierda ── */
 html[data-layout="island"] { --rail-w: 0px; }
@@ -5444,9 +5279,6 @@ html[data-layout="island"] .panel { padding-left: 88px; }
 html[data-layout="island"] .app[data-stage="game"] .rail { transform: translate(-170%, -50%); }
 html[data-layout="island"] .app[data-stage="game"] .railedge:hover ~ .rail,
 html[data-layout="island"] .app[data-stage="game"] .rail:hover { transform: translate(0, -50%); }
-html[data-layout="island"] .app[data-stage="game"][data-view="musica"] .rail {
-  position: relative; left: auto; top: auto; align-self: center; margin: 0 0 0 12px; transform: none;
-}
 
 /* ── Barra inferior: pestañas con nombre abajo, ancho completo ── */
 html[data-layout="bottom"] { --rail-w: 0px; }
@@ -5476,9 +5308,6 @@ html[data-layout="bottom"] .app[data-stage="game"] .railedge {
 html[data-layout="bottom"] .railedge i { width: 52px; height: 3px; border-radius: 3px 3px 0 0; }
 html[data-layout="bottom"] .app[data-stage="game"] .railedge:hover ~ .rail,
 html[data-layout="bottom"] .app[data-stage="game"] .rail:hover { transform: translateY(0); }
-html[data-layout="bottom"] .app[data-stage="game"][data-view="musica"] .rail {
-  position: relative; left: auto; right: auto; bottom: auto; transform: none;
-}
 
 /* ── Íconos: el menú de siempre pero angosto, sólo íconos ── */
 html[data-layout="mini"] { --rail-w: 64px; }
@@ -5505,9 +5334,6 @@ html[data-layout="right"] .app[data-stage="game"] .railedge {
 html[data-layout="right"] .railedge i { border-radius: 3px 0 0 3px; }
 html[data-layout="right"] .app[data-stage="game"] .railedge:hover ~ .rail,
 html[data-layout="right"] .app[data-stage="game"] .rail:hover { transform: translateX(0); }
-html[data-layout="right"] .app[data-stage="game"][data-view="musica"] .rail {
-  position: relative; right: auto; transform: none;
-}
 
 /* La barra de arriba en pantalla completa: la zona sensible por encima del riel
    (si no, el riel arriba la tapaba y la barra no bajaba nunca), la barra por
