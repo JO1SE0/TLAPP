@@ -740,10 +740,6 @@ function migrate(stored) {
   }
 
   if (next.overlay) next.overlay.enabled = false;
-  if (next.music) {
-    next.music.enabled = false;
-    if (next.music.hud) next.music.hud.enabled = false;
-  }
 
   if (!(next.version >= 20) && next.appearance) {
     const customThemes = Array.isArray(next.appearance.customThemes)

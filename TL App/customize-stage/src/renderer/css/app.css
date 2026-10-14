@@ -585,7 +585,7 @@ svg[data-icon] .ico-fill { fill: currentColor; stroke: none; }
   background: var(--bg-1);
   visibility: hidden;
   contain: layout style;
-  display: none;
+  display: block;
 }
 .sec#musicHudCard[hidden], .sec[data-sec="overlay"][hidden] { display: none !important; }
 .app[data-view="musica"] .mstage { visibility: visible; }
