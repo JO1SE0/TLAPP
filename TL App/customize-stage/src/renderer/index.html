@@ -310,6 +310,9 @@
         <button class="railitem" data-view="cuenta">
           <svg data-icon viewBox="0 0 24 24"><circle cx="12" cy="8.4" r="3.9"/><path d="M4.6 20.2c0-3.6 3.3-5.9 7.4-5.9s7.4 2.3 7.4 5.9"/></svg><span data-i18n="nav.account">Cuenta</span>
         </button>
+        <button class="railitem" data-view="club">
+          <svg data-icon viewBox="0 0 24 24"><circle cx="9" cy="8.6" r="3.2"/><path d="M3.2 19.2c0-3.1 2.6-5 5.8-5s5.8 1.9 5.8 5"/><circle cx="17.2" cy="9.6" r="2.5"/><path d="M16.6 14.3c2.7 0 4.2 1.6 4.2 4.2"/></svg><span data-i18n="nav.club">Club</span>
+        </button>
         <button class="railitem" data-view="aspecto">
           <svg data-icon viewBox="0 0 24 24"><path d="M12 3.8a8.2 8.2 0 1 0 0 16.4c1.1 0 1.9-.8 1.9-1.7 0-.5-.2-.9-.5-1.2a1.6 1.6 0 0 1 1.2-2.7h1.5a4 4 0 0 0 3.9-4c0-4-3.6-6.8-8-6.8z"/><circle class="ico-fill" cx="7.8" cy="11.2" r="1.05"/><circle class="ico-fill" cx="12" cy="8" r="1.05"/><circle class="ico-fill" cx="16.2" cy="11.2" r="1.05"/></svg><span data-i18n="nav.personalize">Personalización</span>
         </button>
@@ -1371,6 +1374,20 @@
             <div class="sec__body" id="discordSwitches"></div>
           </section>
 
+
+        </div>
+      </section>
+
+      <!-- ═══════════════════════════════════════════════════════════════
+           CLUB: quién está conectado, estadísticas de todos e informes
+           ═══════════════════════════════════════════════════════════════ -->
+      <section class="page" data-page="club">
+        <div class="page__inner">
+          <header class="pagehead">
+            <h1 data-i18n="club.title">Club</h1>
+            <p data-i18n="club.subtitle">Quién está conectado, cómo viene cada uno y los informes de partido.</p>
+          </header>
+
           <section class="sec" data-sec="clubrank" id="clubRankSec">
             <header class="sec__head">
               <h2 class="sec__title" data-i18n="clubrank.title">Estadísticas del club</h2>
@@ -1392,7 +1409,7 @@
             </div>
           </section>
 
-          <section class="sec" data-sec="informes" id="reportsSec">
+          <section class="sec" data-sec="informes" id="reportsSec" hidden>
             <header class="sec__head">
               <h2 class="sec__title" data-i18n="reports.title">Informes de partido</h2>
               <span class="statusline" id="reportsCount">—</span>
@@ -1412,7 +1429,6 @@
               <div class="clubnow" id="clubNowList"></div>
             </div>
           </section>
-
         </div>
       </section>
 

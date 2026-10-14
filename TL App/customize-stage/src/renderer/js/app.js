@@ -634,6 +634,8 @@ function onAccess(st) {
   const capBtn = $('#captainBtn');
   if (capBtn) capBtn.hidden = !(st && st.captain);
   paintTrialChip(st);
+  const repSec = $('#reportsSec');
+  if (repSec) repSec.hidden = !(st && st.reports);
   showUrgentIfAny();
   if (welcomePending) { welcomePending = false; startWelcome(); }
   setTimeout(showNoticeIfReady, 900);
@@ -1835,7 +1837,8 @@ function setView(name) {
   tvm.game.panel(name !== 'play');
 
   if (name === 'replays') loadReplays();
-  if (name === 'cuenta') { loadAuth(); loadClubRank(); loadReports(); }
+  if (name === 'cuenta') loadAuth();
+  if (name === 'club') { loadClubRank(); loadReports(); }
   /*
    * El índice se rearma en cada cambio de pestaña porque lista las secciones de
    * la que está abierta. Va DESPUÉS del `scrollTop = 0` de arriba: el marcador
@@ -9554,8 +9557,8 @@ function paintReports() {
   const en = isEn();
   $('#reportsCount').textContent = en ? `${reportList.length} saved` : `${reportList.length} guardados`;
   $('#reportsHelp').textContent = en
-    ? 'Every match you play or watch live is saved here. After an official match, the winning captain picks it and gets the report ready to copy or paste as an image.'
-    : 'Cada partido que jugás o mirás en vivo queda guardado acá. Después de un partido oficial, el capitán ganador lo elige y tiene el informe listo para copiar o pegar como imagen.';
+    ? 'Every match you play or watch live is saved here. Only the captain and whoever he delegates can see this section. Pick a match to get its report ready to copy or paste as an image.'
+    : 'Cada partido que jugás o mirás en vivo queda guardado acá. Esta sección sólo la ven el capitán y quien él habilite. Elegí un partido y tenés el informe listo para copiar o pegar como imagen.';
   if (!reportList.length) {
     const empty = document.createElement('p');
     empty.className = 'note';

@@ -146,7 +146,7 @@ function rebuild(list) {
       legacyNotice: cleanNotice(base.announcement), seq: 0, source: 'github', removed: [], forceUpdate: false, history: []
     };
   }
-  roster = eff.users.filter((u) => u && HEX64.test(String(u.pub || ''))).map((u) => ({ name: String(u.name || '').slice(0, 40), pub: String(u.pub).toLowerCase(), trial: Number(u.trial) > 0 }));
+  roster = eff.users.filter((u) => u && HEX64.test(String(u.pub || ''))).map((u) => ({ name: String(u.name || '').slice(0, 40), pub: String(u.pub).toLowerCase(), trial: Number(u.trial) > 0, rep: u.rep === true }));
   presence = typeof base.presence === 'string' ? base.presence : '';
 }
 
@@ -204,6 +204,17 @@ function isCaptainKey(key) {
   try { return !!key && eff.captains.includes(identity.fromKey(key).pub); } catch { return false; }
 }
 
+/** ¿Esta clave puede ver los informes? El capitán siempre; los demás si él se lo dio. */
+function reportsAllowed(key) {
+  try {
+    if (!key) return false;
+    const pub = identity.fromKey(key).pub;
+    if (eff.captains.includes(pub)) return true;
+    const me = eff.users.find((u) => u && String(u.pub || '').toLowerCase() === pub);
+    return !!(me && me.rep === true);
+  } catch { return false; }
+}
+
 function set(next) {
   const now = Date.now();
   const active = activeNotices(now, next.name);
@@ -214,10 +225,11 @@ function set(next) {
   next.minVersion = eff.minVersion || '';
   next.captain = next.state === 'ok' && isCaptainKey(saved.key);
   next.forceUpdate = eff.forceUpdate === true;
+  next.reports = next.state === 'ok' && reportsAllowed(saved.key);
   next.trialEnd = next.state === 'ok' && saved.trialMins && saved.trialStart ? saved.trialStart + saved.trialMins * MIN : 0;
   const changed = next.state !== status.state || next.reason !== status.reason || next.name !== status.name ||
-    JSON.stringify([next.notice, next.urgent, next.minVersion, next.captain, next.minMessage, next.forceUpdate, next.trialEnd]) !==
-    JSON.stringify([status.notice, status.urgent, status.minVersion, status.captain, status.minMessage, status.forceUpdate, status.trialEnd]);
+    JSON.stringify([next.notice, next.urgent, next.minVersion, next.captain, next.minMessage, next.forceUpdate, next.trialEnd, next.reports]) !==
+    JSON.stringify([status.notice, status.urgent, status.minVersion, status.captain, status.minMessage, status.forceUpdate, status.trialEnd, status.reports]);
   status = next;
   if (changed) onChange(status);
 }
@@ -426,6 +438,7 @@ const getEffective = () => JSON.parse(JSON.stringify({
   seq: eff.seq, source: eff.source, captains: eff.captains, removed: eff.removed, forceUpdate: eff.forceUpdate, history: eff.history
 }));
 const isCaptain = () => !!status.captain;
+const canReports = () => !!status.reports;
 /** El capitán acaba de publicar: se adopta al instante, sin esperar el próximo minuto. */
 async function adoptAdmin(raw) {
   if (!lastList) return;
@@ -435,4 +448,4 @@ async function adoptAdmin(raw) {
   await evaluate(null, { skipGithub: true });
 }
 
-module.exports = { getEffective, isCaptain, adoptAdmin, getKey, getRoster, presenceUrl, init, get, isLocked, submit, recheck, hashKey, normalize, ACCESS_URL };
+module.exports = { getEffective, isCaptain, canReports, adoptAdmin, getKey, getRoster, presenceUrl, init, get, isLocked, submit, recheck, hashKey, normalize, ACCESS_URL };

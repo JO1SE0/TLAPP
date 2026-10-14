@@ -3885,11 +3885,13 @@ function syncPlaying() {
 
 /** Terminó un partido en vivo: el preload mandó la bitácora, acá queda guardada. */
 listen('game:report', (_e, payload) => {
+  // Los informes son sólo del capitán y de a quien él se los delegó.
+  if (!access.canReports()) return;
   const entry = reports.add(payload);
   if (entry) send('reports:new', entry);
 });
-handle('reports:list', async () => reports.list());
-handle('reports:remove', async (_e, id) => reports.remove(String(id || '')));
+handle('reports:list', async () => (access.canReports() ? reports.list() : []));
+handle('reports:remove', async (_e, id) => (access.canReports() ? reports.remove(String(id || '')) : []));
 
 /** Un gol, ya con autor y asistencia resueltos. */
 listen('game:goal', (e, payload) => send('game:goal', payload || {}, tabMeta(e)));

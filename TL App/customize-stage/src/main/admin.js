@@ -31,6 +31,7 @@ function describe(action, extra) {
   const n = String(action.name || '');
   switch (action.type) {
     case 'addUser': return { text: `Agregó a ${extra ? extra.name : n}`, who: extra ? extra.name : n };
+    case 'setReports': return { text: action.value === true ? `Le dio acceso a los informes a ${n}` : `Le sacó el acceso a los informes a ${n}`, who: n };
     case 'addTrial': return { text: `Creó una clave de prueba para ${extra ? extra.name : n} (${fmtMin(Math.round(Number(action.minutes)) || 0)})`, who: extra ? extra.name : n };
     case 'setTrial': return { text: Math.round(Number(action.minutes)) === 0 ? `Pasó a ${n} de prueba a acceso común` : `Cambió la prueba de ${n} a ${fmtMin(Math.round(Number(action.minutes)) || 0)}`, who: n };
     case 'removeUser': return { text: `Quitó a ${n}`, who: n };
@@ -61,7 +62,7 @@ const undoInfo = () => (undoSnap && Date.now() - undoSnap.at < UNDO_MS ? { label
 function applyAction(cur, action, myPub) {
   const doc = {
     enabled: cur.enabled === true,
-    users: cur.users.map((u) => ({ name: u.name, hash: u.hash, pub: u.pub, epoch: Number(u.epoch) || 0, banned: Array.isArray(u.banned) ? u.banned.slice(-5) : [], ...(Number(u.trial) > 0 ? { trial: Number(u.trial) } : {}) })),
+    users: cur.users.map((u) => ({ name: u.name, hash: u.hash, pub: u.pub, epoch: Number(u.epoch) || 0, banned: Array.isArray(u.banned) ? u.banned.slice(-5) : [], ...(Number(u.trial) > 0 ? { trial: Number(u.trial) } : {}), ...(u.rep === true ? { rep: true } : {}) })),
     removed: (cur.removed || []).slice(),
     notices: cur.notices.slice(),
     minVersion: cur.minVersion || '',
@@ -93,6 +94,12 @@ function applyAction(cur, action, myPub) {
       extra = { key, name, minutes };
       break;
     }
+    case 'setReports': {
+      const target = doc.users.find((u) => String(u.name).toLowerCase() === String(action.name || '').toLowerCase());
+      if (!target) throw new Error('No encontré a esa persona.');
+      if (action.value === true) target.rep = true; else delete target.rep;
+      break;
+    }
     case 'setTrial': {
       const target = doc.users.find((u) => String(u.name).toLowerCase() === String(action.name || '').toLowerCase());
       if (!target) throw new Error('No encontré a esa persona.');
@@ -109,14 +116,14 @@ function applyAction(cur, action, myPub) {
       if (!target) throw new Error('No encontré a esa persona.');
       if (target.pub === myPub) throw new Error('No podés sacarte a vos mismo.');
       doc.users = doc.users.filter((u) => u !== target);
-      doc.removed = [...doc.removed.filter((u) => u.name !== target.name), { name: target.name, hash: target.hash, pub: target.pub, epoch: target.epoch, banned: target.banned || [], trial: target.trial || 0, at: Date.now() }].slice(-100);
+      doc.removed = [...doc.removed.filter((u) => u.name !== target.name), { name: target.name, hash: target.hash, pub: target.pub, epoch: target.epoch, banned: target.banned || [], trial: target.trial || 0, rep: target.rep === true, at: Date.now() }].slice(-100);
       break;
     }
     case 'restoreUser': {
       const back = doc.removed.find((u) => String(u.name).toLowerCase() === String(action.name || '').toLowerCase());
       if (!back) throw new Error('No encontré a esa persona entre los quitados.');
       doc.removed = doc.removed.filter((u) => u !== back);
-      doc.users.push({ name: back.name, hash: back.hash, pub: back.pub, epoch: (Number(back.epoch) || 0) + 1, banned: back.banned || [], ...(Number(back.trial) > 0 ? { trial: Number(back.trial) } : {}) });
+      doc.users.push({ name: back.name, hash: back.hash, pub: back.pub, epoch: (Number(back.epoch) || 0) + 1, banned: back.banned || [], ...(Number(back.trial) > 0 ? { trial: Number(back.trial) } : {}), ...(back.rep === true ? { rep: true } : {}) });
       break;
     }
     case 'changeKey': {

@@ -224,7 +224,11 @@
         if (!await typedConfirm(`¿Quitarle el acceso a ${m.name}? Dejará de poder usar la app.`, 'QUITAR')) return;
         await act({ type: 'removeUser', name: m.name });
       });
-      acts.append(free, nk, del);
+      const rep = el('button', 'cap__btn cap__btn--ghost cap__btn--sm', m.rep ? 'Informes: sí' : 'Informes: no');
+      rep.type = 'button'; rep.disabled = m.self || busy;
+      rep.title = 'Que pueda ver los informes de partido.';
+      rep.addEventListener('click', async () => { if (await act({ type: 'setReports', name: m.name, value: !m.rep })) flash(m.rep ? `${m.name} ya no ve los informes.` : `${m.name} ahora ve los informes.`); });
+      acts.append(rep, free, nk, del);
       row.append(name, state, ver, acts);
       table.append(row);
     }
