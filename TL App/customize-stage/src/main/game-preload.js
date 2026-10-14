@@ -6701,24 +6701,9 @@ function paintRings(ctx, renderer, f, px, want) {
        */
       const equipo = p[f.team];
       const rojo = equipo && equipo[f.color] != null && esRojo(equipo[f.color]);
-      if (visual.discGlow) {
-        // El mismo brillo de color que lleva el aro de las fichas.
-        const gr = r + 3.2 * px;
-        ctx.strokeStyle = visual.discGlow;
-        for (let g = 0; g < 2; g++) {
-          ctx.beginPath();
-          ctx.globalAlpha = g ? 0.3 : 0.12;
-          ctx.lineWidth = (1.8 + (g ? 5 : 10) * visual.discGlowSize) * px;
-          ctx.arc(at.x, at.y, gr, 0, TAU);
-          ctx.stroke();
-        }
-        ctx.globalAlpha = 1;
-      }
       ctx.beginPath();
       ctx.lineWidth = 1.8 * px;
-      // El aro de equipo es blanco de fábrica; con un color elegido en «Aro de
-      // las fichas», es ése.
-      ctx.strokeStyle = visual.discOutline || 'rgba(255,255,255,0.85)';
+      ctx.strokeStyle = 'rgba(255,255,255,0.85)';
       // Sólo el punteado toca el dash, y lo devuelve al terminar. El lleno no
       // pide nada porque el trazo entra siempre limpio: o no lo tocó nadie, o
       // lo dejó así la vuelta anterior.
@@ -8914,7 +8899,7 @@ let flatGraphicsEnabled = false;
 const visual = {
   pitchLine: 1, discLine: 1, ballLine: 1, ballSize: 1, discSize: 1, lines: false, sizes: false,
   texture: 'none', crest: false, crestOpacity: 0.18, crestSize: 0.45,
-  lineColor: '', postColor: '', discOutline: '', ballOutline: '', ballGlow: '', ballGlowSize: 1, discGlow: '', discGlowSize: 1,
+  lineColor: '', postColor: '', discOutline: '', ballOutline: '', ballGlow: '', ballGlowSize: 1,
   discStyle: 'default', ballStyle: 'default', ringStyle: 'default', ringColor: '', light: '', shadows: false, ballColor: '', lineGlow: false,
   selfTrail: false, selfTrailColor: '',
   nameScale: 1, nameColor: '', nameOutline: false, nameFont: 'default',
@@ -8953,8 +8938,6 @@ function syncCanvasHotFlags() {
   visual.ballOutline = lookfx.safeColor(cfg.ballOutline);
   visual.ballGlow = lookfx.safeColor(cfg.ballGlow);
   visual.ballGlowSize = clampNum(cfg.ballGlowSize, 0.3, 2, 1);
-  visual.discGlow = lookfx.safeColor(cfg.discGlow);
-  visual.discGlowSize = clampNum(cfg.discGlowSize, 0.3, 2, 1);
   visual.discStyle = ['sphere', 'glass', 'neon', 'metal', 'bubble', 'target', 'stripes', 'gem', 'cartoon', 'dots'].includes(cfg.discStyle) ? cfg.discStyle : 'default';
   visual.light = ['vignette', 'spot', 'corners'].includes(cfg.pitchLight) ? cfg.pitchLight : '';
   visual.shadows = !!cfg.softShadows;
@@ -8969,7 +8952,7 @@ function syncCanvasHotFlags() {
   visual.nameColor = lookfx.safeColor(cfg.nameColor);
   visual.nameOutline = !!cfg.nameOutline;
   visual.nameFont = FONT_FAMILIES[cfg.nameFont] ? cfg.nameFont : 'default';
-  visual.discFx = visual.shadows || visual.discStyle !== 'default' || visual.ballStyle !== 'default' || !!visual.ballColor || !!visual.discOutline || !!visual.ballOutline || !!visual.ballGlow || !!visual.discGlow;
+  visual.discFx = visual.shadows || visual.discStyle !== 'default' || visual.ballStyle !== 'default' || !!visual.ballColor || !!visual.discOutline || !!visual.ballOutline || !!visual.ballGlow;
   visual.names = visual.nameScale !== 1 || !!visual.nameColor || visual.nameOutline || visual.nameFont !== 'default';
 }
 
@@ -9201,7 +9184,6 @@ function installCanvasHooks(doc) {
       let ballFx = false;
       let glow = '';
       let ballGlow = '';
-      let glowK = 1;
       if (pend.on) {
         if (pend.kind === 'ball') {
           mul = visual.ballLine;
@@ -9209,14 +9191,10 @@ function installCanvasHooks(doc) {
           ballFx = visual.ballStyle !== 'default' || !!visual.ballColor;
           // Brillo de color alrededor del aro de la pelota (ver abajo).
           ballGlow = visual.ballGlow;
-          glowK = visual.ballGlowSize;
         } else if (pend.kind === 'disc') {
           mul = visual.discLine;
           color = visual.discOutline;
           overlay = visual.discStyle !== 'default' && pend.mine;
-          // Brillo de color alrededor del aro de cada ficha.
-          ballGlow = visual.discGlow;
-          glowK = visual.discGlowSize;
         } else {
           mul = visual.pitchLine;
         }
@@ -9266,7 +9244,7 @@ function installCanvasHooks(doc) {
         const w0 = this.lineWidth;
         const s0 = this.strokeStyle;
         const a0 = this.globalAlpha;
-        const k = glowK;
+        const k = visual.ballGlowSize;
         ownDraw++;
         try {
           this.strokeStyle = ballGlow;

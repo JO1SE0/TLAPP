@@ -299,18 +299,6 @@
       ctx.fill();
       // El estilo de ficha es sólo de la tuya, igual que en el juego.
       if (d.mine && V.discStyle && V.discStyle !== 'default') L.discOverlay(ctx, V.discStyle, d.x, d.y, r0, null);
-      const dGlow = L.safeColor(V.discGlow);
-      if (dGlow) {
-        const k = num(V.discGlowSize, 0.3, 2, 1);
-        ctx.save();
-        ctx.strokeStyle = dGlow;
-        for (const [w, a] of [[10, 0.12], [5, 0.3]]) {
-          ctx.globalAlpha = a;
-          ctx.lineWidth = 2 * discLine + w * k;
-          ctx.stroke();
-        }
-        ctx.restore();
-      }
       ctx.lineWidth = 2 * discLine;
       ctx.strokeStyle = discOutline;
       ctx.stroke();
