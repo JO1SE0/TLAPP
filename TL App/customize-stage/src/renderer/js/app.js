@@ -3682,7 +3682,21 @@ function renderThemes() {
   const box = $('#themes');
   box.replaceChildren();
 
-  for (const [id, meta] of Object.entries(state.schema.themes)) {
+  // Oscuros y claros por separado: son dos decisiones distintas («cómo quiero
+  // ver la app» y después «cuál»), y con quince tarjetas mezcladas se perdía.
+  const entries = Object.entries(state.schema.themes);
+  const groups = [
+    [isEn() ? 'Dark' : 'Oscuros', entries.filter(([, m]) => !m.preview || m.preview.dark !== false)],
+    [isEn() ? 'Light' : 'Claros', entries.filter(([, m]) => m.preview && m.preview.dark === false)]
+  ];
+  for (const [groupLabel, list] of groups) {
+    if (!list.length) continue;
+    const gh = document.createElement('div');
+    gh.className = 'themes__label';
+    gh.innerHTML = '<span></span><i></i>';
+    gh.firstChild.textContent = `${groupLabel} · ${list.length}`;
+    box.append(gh);
+  for (const [id, meta] of list) {
     /*
      * Los temas de dos acentos son del rol. `bloqueado` es «es VIP y vos no»:
      * la tarjeta se sigue viendo entera —la gracia es que se vea lo que te
@@ -3707,14 +3721,20 @@ function renderThemes() {
     preview.style.setProperty('--sw-accent', meta.preview.accent2
       ? `linear-gradient(120deg, ${meta.preview.accent}, ${meta.preview.accent2})`
       : meta.preview.accent);
+    // Una maqueta de la app: columna lateral y contenido con barras y botón.
+    const side = document.createElement('i');
+    side.className = 'themecard__side';
+    const main = document.createElement('div');
+    main.className = 'themecard__main';
     for (let i = 0; i < 3; i++) {
       const bar = document.createElement('div');
       bar.className = 'themecard__bar';
-      preview.append(bar);
+      main.append(bar);
     }
     const btn = document.createElement('div');
     btn.className = 'themecard__btn';
-    preview.append(btn);
+    main.append(btn);
+    preview.append(side, main);
 
     const name = document.createElement('strong');
     name.textContent = meta.label;
@@ -3751,6 +3771,7 @@ function renderThemes() {
       toast(t('toast.themeApplied', { name: meta.label }), 'ok');
     });
     box.append(card);
+  }
   }
 }
 
