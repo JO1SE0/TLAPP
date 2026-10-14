@@ -5206,3 +5206,14 @@ html[data-stage="game"] .trialchip { display: none; }
 }
 #favList .pnav__i::before { content: '★'; margin-right: 6px; font-size: 10px; color: var(--accent); }
 #favList .pnav__i:hover { color: var(--text); border-color: var(--accent-line); background: var(--accent-soft); }
+
+/* ═══ Club: la ventana se ajusta a lo que hay, no ocupa toda la pantalla ═══ */
+#app[data-view="club"] .panel__card {
+  width: min(940px, 100%);
+  max-width: 940px;
+  height: auto;
+  max-height: 100%;
+}
+#app[data-view="club"] .panel__body,
+#app[data-view="club"] .panel__pages { flex: 0 1 auto; height: auto; min-height: 0; }
+#app[data-view="club"] .page[data-page="club"] .page__inner { max-width: none; padding: 52px 22px 24px; }
