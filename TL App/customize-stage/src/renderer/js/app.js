@@ -2354,6 +2354,26 @@ function renderRoomsFromTop() {
   renderRooms();
 }
 
+/** Sala (en minúsculas, cortada a 40) → nombres del club que están adentro. */
+const clubRoomMap = new Map();
+let clubRoomSig = '';
+function updateClubRooms(list) {
+  const next = new Map();
+  for (const m of (Array.isArray(list) ? list : [])) {
+    if (!m || !m.online || !m.room || m.self || m.trial || m.ext) continue;
+    const key = String(m.room).trim().slice(0, 40).toLowerCase();
+    if (!next.has(key)) next.set(key, []);
+    next.get(key).push(m.name);
+  }
+  const sig = [...next].map(([k, v]) => k + ':' + v.join(',')).sort().join('|');
+  if (sig === clubRoomSig) return;
+  clubRoomSig = sig;
+  clubRoomMap.clear();
+  for (const [k, v] of next) clubRoomMap.set(k, v);
+  // Sólo se redibuja si la lista de salas está a la vista.
+  if (state.view === 'play' && state.stage === 'browser' && state.rooms.list.length) renderRooms();
+}
+
 function roomRow(room) {
   const full = room.players >= room.maxPlayers;
   const almostFull = !full && room.maxPlayers > 2 && room.players >= room.maxPlayers - 2 && room.players > 0;
@@ -2366,6 +2386,8 @@ function roomRow(room) {
   else if (openRoom) row.classList.add('is-open-room');
   if (!room.players) row.classList.add('is-empty');
   if (sponsored) row.classList.add('is-sponsored');
+  const mates = clubRoomMap.get(String(room.name || '').trim().slice(0, 40).toLowerCase());
+  if (mates) row.classList.add('is-club');
   if (state.selected === room.token) row.classList.add('is-selected');
   row.dataset.token = room.token;
 
@@ -2407,6 +2429,14 @@ function roomRow(room) {
   fav.dataset.fav = '1';
   fav.textContent = '★';
   fav.title = t('rooms.fav');
+
+  if (mates) {
+    const club = document.createElement('span');
+    club.className = 'rrow__club';
+    club.textContent = '👥 ' + mates.length;
+    club.title = mates.join(', ');
+    name.append(club);
+  }
 
   row.append(dist, flag, name, players, fav);
   // Sin listeners por fila: la lista entera puede pasar el millar de salas y
@@ -9519,6 +9549,7 @@ boot()
  * una lista nueva. Nada corre por cuadro ni por temporizador propio.
  */
 function paintClubNow(list) {
+  try { updateClubRooms(list); } catch (e) { /* adorno */ }
   const host = $('#clubNowList');
   if (!host) return;
   const en = isEn();

@@ -5320,3 +5320,7 @@ html[data-density="comfy"] .row__desc { font-size: 13px; }
 html[data-density="comfy"] .sec { padding: 28px 30px 16px; }
 html[data-density="comfy"] .sec + .sec, html[data-density="comfy"] .launch + .sec { margin-top: 26px; }
 html[data-density="comfy"] .railitem { height: 44px; }
+
+/* Salas con gente del club. Azul y no el acento: el acento ya lo usan la patrocinada y la fila marcada. */
+.rrow.is-club { background: linear-gradient(90deg, rgb(90 170 255 / 15%), transparent 70%); }
+.rrow__club { flex: none; margin-left: 8px; padding: 1px 8px; border-radius: 99px; font-size: 11px; font-weight: 800; line-height: 18px; color: #bfe0ff; background: rgb(90 170 255 / 18%); border: 1px solid rgb(90 170 255 / 45%); }
