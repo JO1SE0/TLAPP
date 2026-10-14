@@ -210,4 +210,58 @@ function leaveOnline(ctx) {
   putOnline(ctx, 1).catch(() => {});
 }
 
-module.exports = { call, online, leaveOnline, why: () => why, leave, beat, cleanUrl, signedText, EVERY_MS, ALIVE_MS };
+/* ── Estadísticas del club ───────────────────────────────────────────────────
+ * Cada app sube SUS números (los que mide ella: partidos, goles, asistencias,
+ * goles en contra y tiempo jugado) a `stats/<pid> = { g, a, o, m, s, t, sig }`,
+ * firmados con la misma identidad que la presencia. Todos leen la carpeta
+ * entera y sólo cuentan las filas con firma válida de alguien del plantel.
+ * Se sube de vez en cuando (al terminar un partido, o al abrir) y nunca baja:
+ * si el servidor tiene más que la copia local (reinstalaste), se queda lo más alto. */
+const statsText = (g, a, o, m, s, t) => `stats|${g}|${a}|${o}|${m}|${s}|${t}`;
+const num = (v) => Math.max(0, Math.min(1e7, Math.round(Number(v) || 0)));
+
+/** ctx = { url, key }, stats = { goals, assists, ownGoals, matches, secondsPlayed } */
+async function putStats(ctx, stats) {
+  const base = cleanUrl(ctx && ctx.url);
+  if (!base || !ctx.key) return false;
+  const id = idOf(ctx.key);
+  const prev = await call(`${base}/stats/${id.pid}.json`, 'GET').catch(() => null);
+  const keep = (mine, theirs) => Math.max(num(mine), num(theirs));
+  const g = keep(stats.goals, prev && prev.g);
+  const a = keep(stats.assists, prev && prev.a);
+  const o = keep(stats.ownGoals, prev && prev.o);
+  const m = keep(stats.matches, prev && prev.m);
+  const s = keep(stats.secondsPlayed, prev && prev.s);
+  const t = Date.now();
+  await call(`${base}/stats/${id.pid}.json`, 'PUT', { g, a, o, m, s, t, sig: id.sign(statsText(g, a, o, m, s, t)) });
+  return true;
+}
+
+/** ctx = { url, key, roster } → [{ name, goals, assists, ownGoals, matches, seconds, self }] o null. */
+async function readStats(ctx) {
+  const base = cleanUrl(ctx && ctx.url);
+  if (!base || !ctx.key) return null;
+  const id = idOf(ctx.key);
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+  let data = {};
+  try {
+    const res = await fetch(`${base}/stats.json`, { signal: controller.signal });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    data = (await res.json()) || {};
+  } finally { clearTimeout(timer); }
+  const out = [];
+  for (const u of ctx.roster || []) {
+    if (!u || u.trial || !/^[0-9a-f]{64}$/i.test(u.pub || '')) continue;
+    const pid = identity.pidOf(u.pub);
+    const e = data[pid];
+    if (!e || typeof e !== 'object' || typeof e.sig !== 'string') continue;
+    const [g, a, o, m, s] = [num(e.g), num(e.a), num(e.o), num(e.m), num(e.s)];
+    const t = Number(e.t) || 0;
+    if (!identity.verify(u.pub, statsText(g, a, o, m, s, t), e.sig)) continue;
+    out.push({ name: u.name, goals: g, assists: a, ownGoals: o, matches: m, seconds: s, updated: t, self: pid === id.pid });
+  }
+  return out;
+}
+
+module.exports = { putStats, readStats, call, online, leaveOnline, why: () => why, leave, beat, cleanUrl, signedText, EVERY_MS, ALIVE_MS };

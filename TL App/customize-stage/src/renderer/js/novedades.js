@@ -11,6 +11,7 @@ window.TL_NEWS = {
   title: { es: 'Qué hay de nuevo', en: "What's new" },
   items: {
     es: [
+      'Nuevo en Cuenta: estadísticas del club (goles, asistencias y partidos de todos, firmadas por cada app) e informes de partido listos para copiar como texto o imagen.',
       'Nuevo: el palo suena (un «tong» metálico) cuando la pelota le pega. Se puede apagar o bajar el volumen.',
       'Nuevo: botones ◀ Gol / Gol ▶ en las replays para ir al gol anterior o siguiente.',
       'Nuevo: opacidad del chat y estilo/opacidad del cuadro de FPS y ping.',
@@ -26,6 +27,7 @@ window.TL_NEWS = {
       'Cada clave se usa en una sola PC: si cambiás de computadora, pedile a miclo que te la libere.'
     ],
     en: [
+      'New in Account: club stats (everyone’s goals, assists and matches, signed by each app) and match reports ready to copy as text or image.',
       'New: goalposts make a metallic clang when the ball hits them. Can be turned off or lowered.',
       'New: ◀ Goal / Goal ▶ buttons in replays to jump to the previous or next goal.',
       'New: chat opacity and FPS/ping box style and opacity.',

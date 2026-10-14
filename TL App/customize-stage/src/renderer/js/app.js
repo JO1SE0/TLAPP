@@ -1835,7 +1835,7 @@ function setView(name) {
   tvm.game.panel(name !== 'play');
 
   if (name === 'replays') loadReplays();
-  if (name === 'cuenta') loadAuth();
+  if (name === 'cuenta') { loadAuth(); loadClubRank(); loadReports(); }
   /*
    * El índice se rearma en cada cambio de pestaña porque lista las secciones de
    * la que está abierta. Va DESPUÉS del `scrollTop = 0` de arriba: el marcador
@@ -9475,4 +9475,256 @@ function paintClubNow(list) {
 if (window.tvm.presence && window.tvm.presence.onRoster) {
   window.tvm.presence.onRoster(paintClubNow);
   if (window.tvm.presence.roster) window.tvm.presence.roster().then(paintClubNow).catch(() => {});
+}
+
+
+/* ── Estadísticas del club ───────────────────────────────────────────────────
+ * Los números que midió cada app, firmados y subidos a la base del club. Se
+ * piden al abrir Cuenta o con el botón: no hay temporizador. */
+let clubRank = null;
+
+async function loadClubRank() {
+  const stateEl = $('#clubRankState');
+  if (!window.tvm.club) return;
+  if (stateEl) stateEl.textContent = isEn() ? 'loading…' : 'cargando…';
+  let list = null;
+  try { list = await window.tvm.club.stats(); } catch (e) { list = null; }
+  clubRank = Array.isArray(list) ? list : null;
+  paintClubRank();
+}
+
+function paintClubRank() {
+  const host = $('#clubRankList');
+  if (!host) return;
+  const en = isEn();
+  const stateEl = $('#clubRankState');
+  const note = $('#clubRankNote');
+  if (note) note.textContent = en
+    ? 'Numbers are measured by each member’s own app and signed with their key. Only matches played to the end count.'
+    : 'Cada número lo mide la app de cada jugador y viaja firmado con su clave. Sólo cuentan los partidos jugados hasta el final.';
+  if (!clubRank) {
+    host.replaceChildren();
+    if (stateEl) stateEl.textContent = en ? 'unavailable' : 'sin datos';
+    return;
+  }
+  const key = $('#clubRankSort').value || 'goals';
+  const value = (m) => key === 'gpm' ? (m.matches ? m.goals / m.matches : 0) : m[key];
+  const rows = clubRank.slice().sort((a, b) => (value(b) - value(a)) || (b.goals - a.goals) || a.name.localeCompare(b.name, 'es'));
+  if (stateEl) stateEl.textContent = en ? `${rows.length} players` : `${rows.length} jugadores`;
+
+  const head = document.createElement('div');
+  head.className = 'cr__row cr__row--head';
+  for (const h of ['#', en ? 'Player' : 'Jugador', en ? 'G' : 'G', en ? 'A' : 'A', en ? 'GP' : 'PJ', en ? 'OG' : 'GC', en ? 'Time' : 'Tiempo']) {
+    const c = document.createElement('span'); c.textContent = h; head.append(c);
+  }
+  const hours = (sec) => sec >= 3600 ? `${(sec / 3600).toFixed(1)} h` : `${Math.round(sec / 60)} min`;
+  const nodes = rows.map((m, i) => {
+    const row = document.createElement('div');
+    row.className = 'cr__row' + (m.self ? ' is-self' : '');
+    for (const v of [i + 1, m.name, m.goals, m.assists, m.matches, m.ownGoals, hours(m.seconds)]) {
+      const c = document.createElement('span'); c.textContent = String(v); row.append(c);
+    }
+    return row;
+  });
+  host.replaceChildren(head, ...nodes);
+}
+if ($('#clubRankSort')) {
+  $('#clubRankSort').addEventListener('change', paintClubRank);
+  $('#clubRankRefresh').addEventListener('click', loadClubRank);
+}
+
+/* ── Informes de partido ─────────────────────────────────────────────────────
+ * La app registra cada partido en vivo (una muestra por segundo, sin tocar el
+ * dibujado). Acá se elige uno, se ponen los nombres de los equipos y sale el
+ * informe en texto para copiar o en imagen para pegar en Discord. */
+let reportList = [];
+
+async function loadReports() {
+  if (!window.tvm.reports) return;
+  try { reportList = (await window.tvm.reports.list()) || []; } catch (e) { reportList = []; }
+  paintReports();
+}
+if (window.tvm.reports && window.tvm.reports.onNew) {
+  window.tvm.reports.onNew((entry) => { if (entry) { reportList.unshift(entry); paintReports(); } });
+}
+
+function paintReports() {
+  const host = $('#reportsList');
+  if (!host) return;
+  const en = isEn();
+  $('#reportsCount').textContent = en ? `${reportList.length} saved` : `${reportList.length} guardados`;
+  $('#reportsHelp').textContent = en
+    ? 'Every match you play or watch live is saved here. After an official match, the winning captain picks it and gets the report ready to copy or paste as an image.'
+    : 'Cada partido que jugás o mirás en vivo queda guardado acá. Después de un partido oficial, el capitán ganador lo elige y tiene el informe listo para copiar o pegar como imagen.';
+  if (!reportList.length) {
+    const empty = document.createElement('p');
+    empty.className = 'note';
+    empty.textContent = en ? 'No matches recorded yet.' : 'Todavía no hay partidos registrados.';
+    host.replaceChildren(empty);
+    return;
+  }
+  host.replaceChildren(...reportList.map((r) => {
+    const row = document.createElement('div');
+    row.className = 'rep__row';
+    const info = document.createElement('div');
+    info.className = 'rep__info';
+    const title = document.createElement('b');
+    title.textContent = `${en ? 'Red' : 'Rojo'} ${r.score.red} – ${r.score.blue} ${en ? 'Blue' : 'Azul'}`;
+    const sub = document.createElement('span');
+    sub.textContent = `${new Date(r.at).toLocaleString(en ? 'en' : 'es', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}${r.room ? ' · ' + r.room : ''} · ${r.end}`;
+    info.append(title, sub);
+    const open = document.createElement('button');
+    open.className = 'btn btn--sm';
+    open.type = 'button';
+    open.textContent = en ? 'Make report' : 'Armar informe';
+    open.addEventListener('click', () => openReport(r));
+    const del = document.createElement('button');
+    del.className = 'btn btn--ghost btn--sm';
+    del.type = 'button';
+    del.textContent = '✕';
+    del.title = en ? 'Delete' : 'Borrar';
+    del.addEventListener('click', async () => {
+      try { reportList = (await window.tvm.reports.remove(r.id)) || []; } catch (e) { /* queda */ }
+      paintReports();
+    });
+    row.append(info, open, del);
+    return row;
+  }));
+}
+
+/** El informe como lista de líneas [{ text, kind }], para texto e imagen por igual. */
+function reportLines(r, names) {
+  const en = isEn();
+  const L = [];
+  const add = (text, kind) => L.push({ text, kind: kind || '' });
+  const who = (n) => n || '?';
+  const when = new Date(r.at).toLocaleDateString(en ? 'en' : 'es', { day: 'numeric', month: 'long', year: 'numeric' });
+  add(en ? 'MATCH REPORT' : 'INFORME DE PARTIDO', 'title');
+  add(`${names.Red} ${r.score.red} – ${r.score.blue} ${names.Blue}`, 'score');
+  add(`${when}${r.room ? ' · ' + r.room : ''} · ${en ? 'duration' : 'duración'} ${r.end}`, 'meta');
+  for (const t of ['Red', 'Blue']) {
+    const side = r[t];
+    add('', 'gap');
+    add(names[t].toUpperCase(), 'head');
+    add((en ? 'Played: ' : 'Jugaron: ') + (side.starters.length ? side.starters.join(', ') : '—'));
+    if (side.subs.length) {
+      add(en ? 'Substitutions:' : 'Cambios:', 'sub');
+      for (const s of side.subs) {
+        add(`  ${s.at}  ${s.in ? (en ? 'in ' : 'entró ') + s.in : ''}${s.in && s.out ? (en ? ' for ' : ' por ') : ''}${s.out ? (s.in ? s.out : (en ? 'left ' : 'salió ') + s.out) : ''}`);
+      }
+    } else add(en ? 'Substitutions: none' : 'Cambios: ninguno');
+    if (side.goals.length) {
+      add(en ? 'Goals:' : 'Goles:', 'sub');
+      for (const g of side.goals) add(`  ${g.clock}  ${who(g.scorer)}${g.assist ? (en ? ' (assist ' : ' (asist. ') + g.assist + ')' : ''}`);
+    } else add(en ? 'Goals: none' : 'Goles: ninguno');
+    if (side.ownGoals.length) {
+      add(en ? 'Own goals:' : 'Goles en contra:', 'sub');
+      for (const g of side.ownGoals) add(`  ${g.clock}  ${who(g.scorer)}`);
+    }
+    for (const k of side.keepers) {
+      add(`${en ? 'Keeper' : 'Arquero'}: ${k.name} — ${k.conceded
+        ? (en ? `clean sheet until ${k.until}` : `valla invicta hasta el ${k.until}`)
+        : (en ? `clean sheet until ${k.until} (no goals conceded)` : `valla invicta hasta el ${k.until} (no recibió goles)`)}`);
+    }
+  }
+  return L;
+}
+
+function reportText(r, names) {
+  return reportLines(r, names).map((l) => l.text).join('\n');
+}
+
+/** Dibuja el informe en un canvas, sólo cuando se pide. */
+function reportCanvas(r, names) {
+  const lines = reportLines(r, names);
+  const W = 860, pad = 36;
+  const style = {
+    title: ['700 26px system-ui, sans-serif', '#e8c15a', 40],
+    score: ['700 34px system-ui, sans-serif', '#ffffff', 50],
+    meta: ['400 15px system-ui, sans-serif', '#9aa6bd', 26],
+    head: ['700 20px system-ui, sans-serif', '#e8c15a', 32],
+    sub: ['600 16px system-ui, sans-serif', '#cfd8ea', 24],
+    gap: ['400 8px system-ui, sans-serif', '#fff', 10],
+    '': ['400 16px system-ui, sans-serif', '#dbe3f3', 24]
+  };
+  const H = pad * 2 + lines.reduce((n, l) => n + style[l.kind][2], 0);
+  const c = document.createElement('canvas');
+  c.width = W; c.height = H;
+  const g = c.getContext('2d');
+  const bg = g.createLinearGradient(0, 0, 0, H);
+  bg.addColorStop(0, '#0f1626'); bg.addColorStop(1, '#0a0f1b');
+  g.fillStyle = bg; g.fillRect(0, 0, W, H);
+  g.fillStyle = '#e8c15a'; g.fillRect(0, 0, 6, H);
+  let y = pad;
+  g.textBaseline = 'top';
+  for (const l of lines) {
+    const [font, color, h] = style[l.kind];
+    g.font = font; g.fillStyle = color;
+    g.fillText(l.text, pad, y + (h > 20 ? 2 : 0), W - pad * 2);
+    y += h;
+  }
+  return c;
+}
+
+function openReport(r) {
+  const en = isEn();
+  document.getElementById('repModal')?.remove();
+  const names = { Red: en ? 'Red' : 'Rojo', Blue: en ? 'Blue' : 'Azul' };
+  const wrap = document.createElement('div');
+  wrap.id = 'repModal';
+  wrap.className = 'rep__modal';
+  const card = document.createElement('div');
+  card.className = 'rep__card';
+
+  const bar = document.createElement('div');
+  bar.className = 'rep__names';
+  const inputs = {};
+  for (const t of ['Red', 'Blue']) {
+    const label = document.createElement('label');
+    label.textContent = (t === 'Red' ? (en ? 'Red team name' : 'Nombre del equipo rojo') : (en ? 'Blue team name' : 'Nombre del equipo azul'));
+    const input = document.createElement('input');
+    input.type = 'text'; input.maxLength = 30; input.value = names[t];
+    input.addEventListener('input', () => { names[t] = input.value.trim() || (t === 'Red' ? 'Rojo' : 'Azul'); area.value = reportText(r, names); });
+    inputs[t] = input;
+    label.append(input);
+    bar.append(label);
+  }
+  const area = document.createElement('textarea');
+  area.className = 'rep__text';
+  area.readOnly = true;
+  area.value = reportText(r, names);
+
+  const actions = document.createElement('div');
+  actions.className = 'rep__actions';
+  const mk = (txt, fn, ghost) => {
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'btn btn--sm' + (ghost ? ' btn--ghost' : ''); b.textContent = txt;
+    b.addEventListener('click', fn);
+    actions.append(b);
+    return b;
+  };
+  const flash = (b, txt) => { const old = b.textContent; b.textContent = txt; setTimeout(() => { b.textContent = old; }, 1400); };
+  const copyBtn = mk(en ? 'Copy text' : 'Copiar texto', async () => {
+    try { await navigator.clipboard.writeText(area.value); flash(copyBtn, en ? 'Copied' : 'Copiado'); } catch (e) { area.select(); }
+  });
+  const imgBtn = mk(en ? 'Copy image' : 'Copiar imagen', () => {
+    reportCanvas(r, names).toBlob(async (blob) => {
+      try { await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]); flash(imgBtn, en ? 'Copied' : 'Copiada'); } catch (e) { flash(imgBtn, en ? 'Not possible' : 'No se pudo'); }
+    });
+  });
+  mk(en ? 'Save image' : 'Guardar imagen', () => {
+    reportCanvas(r, names).toBlob((blob) => {
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `informe-${names.Red}-${r.score.red}-${r.score.blue}-${names.Blue}.png`.replace(/[^\w.-]+/g, '_');
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+    });
+  }, true);
+  mk(en ? 'Close' : 'Cerrar', () => wrap.remove(), true);
+
+  card.append(bar, area, actions);
+  wrap.append(card);
+  wrap.addEventListener('mousedown', (e) => { if (e.target === wrap) wrap.remove(); });
+  document.body.append(wrap);
 }

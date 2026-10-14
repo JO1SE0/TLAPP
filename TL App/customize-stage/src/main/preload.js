@@ -157,6 +157,14 @@ contextBridge.exposeInMainWorld('tvm', {
     clearAttempts: () => call('admin:clear-attempts'),
     pending: () => call('admin:pending')
   },
+  reports: {
+    list: () => call('reports:list'),
+    remove: (id) => call('reports:remove', id),
+    onNew: (cb) => on('reports:new', cb)
+  },
+  club: {
+    stats: () => call('club:stats')
+  },
   presence: {
     roster: () => call('presence:roster'),
     onRoster: (cb) => on('presence:roster', cb),

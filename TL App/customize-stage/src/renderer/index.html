@@ -1371,6 +1371,38 @@
             <div class="sec__body" id="discordSwitches"></div>
           </section>
 
+          <section class="sec" data-sec="clubrank" id="clubRankSec">
+            <header class="sec__head">
+              <h2 class="sec__title" data-i18n="clubrank.title">Estadísticas del club</h2>
+              <span class="statusline" id="clubRankState">—</span>
+            </header>
+            <div class="sec__body">
+              <div class="cr__bar">
+                <select id="clubRankSort">
+                  <option value="goals">Goles</option>
+                  <option value="assists">Asistencias</option>
+                  <option value="matches">Partidos</option>
+                  <option value="gpm">Goles por partido</option>
+                  <option value="seconds">Tiempo jugado</option>
+                </select>
+                <button class="btn btn--ghost btn--sm" id="clubRankRefresh" type="button">Actualizar</button>
+              </div>
+              <div class="cr__table" id="clubRankList"></div>
+              <p class="note" id="clubRankNote"></p>
+            </div>
+          </section>
+
+          <section class="sec" data-sec="informes" id="reportsSec">
+            <header class="sec__head">
+              <h2 class="sec__title" data-i18n="reports.title">Informes de partido</h2>
+              <span class="statusline" id="reportsCount">—</span>
+            </header>
+            <div class="sec__body">
+              <p class="note" id="reportsHelp"></p>
+              <div class="rep__list" id="reportsList"></div>
+            </div>
+          </section>
+
           <section class="sec" data-sec="clubnow" id="clubNowSec">
             <header class="sec__head">
               <h2 class="sec__title" data-i18n="clubnow.title">Club conectado</h2>

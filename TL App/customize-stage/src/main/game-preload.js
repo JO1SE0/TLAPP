@@ -5692,6 +5692,200 @@ function playPostSound(strength) {
   goalSfx.playPost((Number.isFinite(vol) ? vol : 0.7) * lv, strength);
 }
 
+/* ── Bitácora del partido (para el informe) ──────────────────────────────────
+ *
+ * Todo lo que pide el informe de un partido oficial: quiénes jugaron, quién
+ * entró por quién, goles y asistencias por equipo, goles en contra, y hasta
+ * qué minuto cada arquero dejó la valla invicta.
+ *
+ * Costo: UNA muestra por segundo de partido (no por cuadro). Cada muestra
+ * recorre los ~10 jugadores una vez. Sólo corre en vivo, nunca en replays.
+ *
+ * El arquero no se declara en ningún lado en HaxBall, así que se deduce: el
+ * jugador de cada equipo más metido hacia su propio arco. Para que un defensor
+ * que se queda atrás un rato no cuente como cambio de arquero, hace falta que
+ * sea el más atrasado durante GK_STREAK muestras seguidas.
+ */
+const GK_STREAK = 5;
+const mlog = {
+  on: false,
+  lastSec: -1,
+  startedAt: 0,
+  side: null,          // { Red: -1|1, Blue: -1|1 }: de qué lado de x=0 defiende cada uno
+  teams: { Red: null, Blue: null },
+  goals: [],
+  subs: [],
+  starters: { Red: [], Blue: [] },
+  everyone: new Map(), // nombre → equipo con el que más estuvo
+  gk: { Red: null, Blue: null },
+  stints: []           // { team, name, from, until, conceded }
+};
+
+function mlogStart() {
+  mlog.on = true;
+  mlog.lastSec = -1;
+  mlog.startedAt = Date.now();
+  mlog.side = null;
+  mlog.teams = { Red: null, Blue: null };
+  mlog.goals = [];
+  mlog.subs = [];
+  mlog.starters = { Red: [], Blue: [] };
+  mlog.everyone = new Map();
+  mlog.gk = { Red: null, Blue: null };
+  mlog.stints = [];
+}
+
+function mlogClockText(sec) {
+  const s = Math.max(0, Math.floor(sec));
+  return `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
+}
+
+/** Una vez por segundo de partido. */
+function mlogTick(f, room, match) {
+  if (!mlog.on || !f.name) return;
+  const S = f.score;
+  const sec = S ? Number(match[S.time]) : NaN;
+  if (!Number.isFinite(sec)) return;
+  const whole = Math.floor(sec);
+  if (whole === mlog.lastSec) return;
+  mlog.lastSec = whole;
+
+  const players = room[f.players];
+  if (!players) return;
+
+  // Quién está en cada equipo ahora y quién es el más atrasado.
+  const now = { Red: new Set(), Blue: new Set() };
+  const deep = { Red: null, Blue: null };
+  const sum = { Red: 0, Blue: 0 };
+  const count = { Red: 0, Blue: 0 };
+  for (let i = 0; i < players.length; i++) {
+    const p = players[i];
+    const disc = p && p[f.disc];
+    const at = disc && disc[f.pos];
+    if (!at) continue;
+    const { name, team } = whoIs(f, p);
+    if (!name || (team !== 'Red' && team !== 'Blue')) continue;
+    now[team].add(name);
+    sum[team] += at.x;
+    count[team]++;
+    if (mlog.side) {
+      const depth = at.x * mlog.side[team]; // más grande = más pegado a su propio arco
+      if (!deep[team] || depth > deep[team].depth) deep[team] = { name, depth };
+    }
+  }
+
+  // Primera muestra con gente en los dos equipos: ahí quedan los titulares y
+  // se sabe de qué lado defiende cada uno (el que tiene la media en x < 0 defiende la izquierda).
+  if (!mlog.side) {
+    if (!count.Red || !count.Blue) return;
+    mlog.side = { Red: sum.Red / count.Red < 0 ? -1 : 1, Blue: sum.Blue / count.Blue < 0 ? -1 : 1 };
+    mlog.starters = { Red: [...now.Red], Blue: [...now.Blue] };
+    mlog.teams = { Red: new Set(now.Red), Blue: new Set(now.Blue) };
+    for (const t of ['Red', 'Blue']) for (const n of now[t]) mlog.everyone.set(n, t);
+    return;
+  }
+
+  // Cambios: quien aparece en un equipo y quien se fue de él, en orden.
+  for (const t of ['Red', 'Blue']) {
+    const before = mlog.teams[t];
+    const entered = [];
+    const left = [];
+    for (const n of now[t]) if (!before.has(n)) entered.push(n);
+    for (const n of before) if (!now[t].has(n)) left.push(n);
+    if (entered.length || left.length) {
+      const n = Math.max(entered.length, left.length);
+      for (let i = 0; i < n && mlog.subs.length < 60; i++) {
+        mlog.subs.push({ team: t, in: entered[i] || null, out: left[i] || null, at: mlogClockText(sec) });
+      }
+      for (const name of entered) mlog.everyone.set(name, t);
+    }
+    mlog.teams[t] = new Set(now[t]);
+  }
+
+  // Arquero de cada equipo.
+  for (const t of ['Red', 'Blue']) {
+    const cand = deep[t] && deep[t].name;
+    let g = mlog.gk[t];
+    if (!g) {
+      if (!cand) continue;
+      g = mlog.gk[t] = { name: cand, cand: cand, streak: 0 };
+      mlog.stints.push({ team: t, name: cand, from: mlogClockText(sec), until: null, conceded: null });
+      continue;
+    }
+    if (cand && cand !== g.name) {
+      g.streak = g.cand === cand ? g.streak + 1 : 1;
+      g.cand = cand;
+      if (g.streak >= GK_STREAK) {
+        for (let k = mlog.stints.length - 1; k >= 0; k--) {
+          if (mlog.stints[k].team === t) { mlog.stints[k].to = mlogClockText(sec); break; }
+        }
+        g.name = cand; g.streak = 0;
+        mlog.stints.push({ team: t, name: cand, from: mlogClockText(sec), until: null, conceded: null });
+      }
+    } else {
+      g.streak = 0;
+    }
+  }
+}
+
+/** Anota un gol (ya con autor y asistencia). */
+function mlogGoal(goal) {
+  if (!mlog.on || !goal) return;
+  const scoring = goal.team === 'Red' ? 'Red' : 'Blue';
+  const conceding = scoring === 'Red' ? 'Blue' : 'Red';
+  const clock = goal.clock || mlogClockText(0);
+  mlog.goals.push({
+    team: scoring,
+    scorer: goal.scorer || null,
+    scorerTeam: goal.scorerTeam || null,
+    assist: goal.assist || null,
+    own: !!goal.own,
+    clock
+  });
+  // Primer gol que le hacen a este arquero: ahí se corta la valla invicta.
+  for (let i = mlog.stints.length - 1; i >= 0; i--) {
+    const st = mlog.stints[i];
+    if (st.team === conceding) {
+      if (!st.conceded) st.conceded = clock;
+      break;
+    }
+  }
+}
+
+/** Arma el informe y lo manda a guardar. Se llama cuando termina el partido. */
+function mlogFinish(score) {
+  if (!mlog.on) return;
+  mlog.on = false;
+  if (!mlog.side) return; // nunca hubo dos equipos en cancha
+  const endSec = mlog.lastSec;
+  if (endSec < 30) return; // un partido que no llegó a nada no se informa
+
+  const side = (t) => ({
+    starters: mlog.starters[t].slice(),
+    subs: mlog.subs.filter((x) => x.team === t).map((x) => ({ in: x.in, out: x.out, at: x.at })),
+    goals: mlog.goals.filter((g) => g.team === t && !g.own).map((g) => ({ scorer: g.scorer, assist: g.assist, clock: g.clock })),
+    // En contra: los que convirtió el rival en su propio arco, anotados al que se lo hizo.
+    ownGoals: mlog.goals.filter((g) => g.own && g.scorerTeam === t).map((g) => ({ scorer: g.scorer, clock: g.clock })),
+    keepers: mlog.stints.filter((x) => x.team === t).map((x) => ({
+      name: x.name,
+      from: x.from,
+      // Hasta cuándo no le hicieron un gol: el primero que recibió, o cuando
+      // lo reemplazaron, o el final del partido.
+      until: x.conceded || x.to || mlogClockText(endSec),
+      conceded: !!x.conceded
+    }))
+  });
+
+  ipcRenderer.send('game:report', {
+    at: Date.now(),
+    room: engineRoomName || '',
+    score: { red: score ? score.red : lastScore.red, blue: score ? score.blue : lastScore.blue },
+    end: mlogClockText(endSec),
+    Red: side('Red'),
+    Blue: side('Blue')
+  });
+}
+
 function resetTracker() {
   tracker.clock = 0;
   tracker.lastAt = 0;
@@ -7146,6 +7340,7 @@ function noteGoalNames(goal) {
   goalNames.assist = goal.assist || null;
   goalNames.own = !!goal.own;
   goalNames.at = Date.now();
+  safe(mlogGoal, goal);
   paintGoalNames();
   try { clubGoalFx(); } catch (e) { /* adorno */ }
 }
@@ -7615,6 +7810,7 @@ function onGameTick(view, room) {
       tracker.match = null;
       sendHeatmap();
       ipcRenderer.send('game:match-end', { red: lastScore.red, blue: lastScore.blue });
+      safe(mlogFinish);
     }
     return;
   }
@@ -7623,10 +7819,11 @@ function onGameTick(view, room) {
     // Un partido nuevo cierra el anterior. Hace falta además del caso de arriba:
     // entre dos partidos seguidos el hueco puede durar un solo cuadro y caer
     // entero entre dos dibujados, y entonces el final no se ve pasar.
-    if (tracker.match) { sendHeatmap(); ipcRenderer.send('game:match-end', { red: lastScore.red, blue: lastScore.blue }); }
+    if (tracker.match) { sendHeatmap(); ipcRenderer.send('game:match-end', { red: lastScore.red, blue: lastScore.blue }); safe(mlogFinish); }
     resetTracker();
     tracker.match = match;
     ipcRenderer.send('game:match-start');
+    if (!onReplay()) mlogStart();
   }
 
   // El reloj de partido. El tope de 100 ms tapa los saltos de un alt-tab o de
@@ -7639,6 +7836,8 @@ function onGameTick(view, room) {
     tracker.clock += advanced;
   }
   tracker.lastAt = now;
+
+  if (mlog.on) mlogTick(f, room, match);
 
   /*
    * Va SIEMPRE, aunque el resultado no se use: es lo que mantiene al día por

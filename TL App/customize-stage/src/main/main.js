@@ -12,6 +12,7 @@ const store = require('./store');
 const preferences = require('./preferences');
 const replays = require('./replays');
 const replayArchive = require('./replay-archive');
+const reports = require('./reports');
 const haxball = require('./haxball-settings');
 const themes = require('./themes');
 const roomlist = require('./roomlist');
@@ -2095,7 +2096,7 @@ const BACKGROUND_OK_CHANNELS = new Set(['game:bootstrap', 'cfg:set', 'game:log',
   'game:want-avatar-gif', 'game:want-ball-gif', 'music:want-state', 'game:auth', 'game:geo',
   'game:flags', 'game:avatar-current', 'game:keys-current', 'game:avatar-saved', 'game:mute',
   'game:themed', 'game:view', 'game:room-name', 'game:playing', 'game:live-settings',
-  'game:open-url', 'game:goal', 'game:match-start', 'game:match-end', 'game:heatmap']);
+  'game:open-url', 'game:goal', 'game:match-start', 'game:match-end', 'game:heatmap', 'game:report']);
 function listen(channel, fn) {
   ipcMain.on(channel, (event, ...args) => {
     const ui = mainWindow && event.sender === mainWindow.webContents &&
@@ -2607,6 +2608,7 @@ handle('stats:add', (_e, patch = {}) => {
 
   const stats = store.set({ stats: next }).stats;
   scheduleStatsPush();
+  setTimeout(() => pushClubStats(false), 5000).unref?.();
   return stats;
 });
 
@@ -2769,6 +2771,23 @@ async function beatOnline() {
   onlineBusy = false;
 }
 handle('presence:roster', async () => liveRoster);
+
+/* Ranking del club: cada app sube sus números y todos leen la carpeta entera. */
+let lastClubPush = 0;
+async function pushClubStats(force) {
+  if (!access.presenceUrl() || !access.getKey()) return;
+  if (!force && Date.now() - lastClubPush < 120000) return;
+  lastClubPush = Date.now();
+  try {
+    await presence.putStats({ url: access.presenceUrl(), key: access.getKey() }, store.get().stats || {});
+  } catch { /* sin red o sin permiso en la carpeta stats: se reintenta después */ }
+}
+handle('club:stats', async () => {
+  await pushClubStats(false);
+  try {
+    return await presence.readStats({ url: access.presenceUrl(), key: access.getKey(), roster: access.getRoster() });
+  } catch { return null; }
+});
 // Panel del capitán: estado vigente + estado de cada miembro, y las acciones.
 handle('admin:get', async () => {
   if (!access.isCaptain()) return null;
@@ -3863,6 +3882,14 @@ function syncPlaying() {
  *
  * Los tres llegan del preload del juego, que es el único que ve la cancha, y
  * van derecho a la interfaz, que es la única que dibuja el resumen. */
+
+/** Terminó un partido en vivo: el preload mandó la bitácora, acá queda guardada. */
+listen('game:report', (_e, payload) => {
+  const entry = reports.add(payload);
+  if (entry) send('reports:new', entry);
+});
+handle('reports:list', async () => reports.list());
+handle('reports:remove', async (_e, id) => reports.remove(String(id || '')));
 
 /** Un gol, ya con autor y asistencia resueltos. */
 listen('game:goal', (e, payload) => send('game:goal', payload || {}, tabMeta(e)));
