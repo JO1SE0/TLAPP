@@ -5132,3 +5132,44 @@ html[data-stage="game"] .trialchip { display: none; }
   .cr__row { grid-template-columns: 26px 1fr 34px 34px 34px 34px; }
   .cr__bar2 { display: none; }
 }
+
+/* ═══ Configuración y Personalización: más claras y con la onda del club ═══ */
+.pnav__list { gap: 4px; }
+.pnav__group { margin-top: 10px; padding: 10px 12px 4px; color: var(--accent-text); display: flex; align-items: center; gap: 8px; }
+.pnav__group::after { content: ''; flex: 1; height: 1px; background: var(--accent-line); opacity: .6; }
+.pnav__group:first-child { margin-top: 0; padding-top: 2px; }
+.pnav__tab { flex-direction: row; align-items: center; gap: 12px; padding: 9px 12px 9px 12px; border-radius: 14px; }
+.pnav__tab .pnav__tx { display: grid; gap: 1px; min-width: 0; text-align: left; }
+.pnav__tab b { font-size: 14px; }
+.pnav__tab small { font-size: 11px; }
+.pnav__ic { flex: none; width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; background: var(--surface); border: 1px solid var(--line); color: var(--text-dim); }
+.pnav__ic svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.pnav__tab:hover .pnav__ic { color: var(--text); border-color: var(--line-hi); }
+.pnav__tab.is-on { background: linear-gradient(90deg, rgb(var(--accent-rgb) / 22%), rgb(var(--accent-rgb) / 6%)); }
+.pnav__tab.is-on::before { display: none; }
+.pnav__tab.is-on .pnav__ic { background: var(--accent); color: var(--accent-text-on); border-color: transparent; box-shadow: 0 6px 16px -8px var(--accent); }
+
+/* Cabecera de las dos páginas, como la del Club */
+.page[data-page="ajustes"] .pagehead,
+.page[data-page="aspecto"] .pagehead {
+  position: relative; overflow: hidden; padding: 20px 22px; border-radius: 18px; margin-bottom: 22px;
+  border: 1px solid var(--accent-line);
+  background: radial-gradient(120% 160% at 0% 0%, rgb(var(--accent-rgb) / 20%), transparent 62%), linear-gradient(160deg, rgba(255,255,255,.05), rgba(255,255,255,.01));
+}
+.page[data-page="ajustes"] .pagehead::before,
+.page[data-page="aspecto"] .pagehead::before {
+  content: 'Toda la Lecce'; display: block; margin-bottom: 4px; font-size: 10.5px; font-weight: 800; letter-spacing: .32em; text-transform: uppercase; color: var(--accent-text);
+}
+.page[data-page="ajustes"] .pagehead h1,
+.page[data-page="aspecto"] .pagehead h1 { font-size: 34px; font-weight: 900; letter-spacing: -.04em; }
+
+/* Secciones: encabezado con barra de acento y filas con relieve al pasar el mouse */
+.page[data-page="ajustes"] .sec,
+.page[data-page="aspecto"] .sec { border-radius: 18px; }
+.page[data-page="ajustes"] .sec__title,
+.page[data-page="aspecto"] .sec__title { font-size: 13px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; }
+.page[data-page="ajustes"] .row,
+.page[data-page="aspecto"] .row { transition: background-color .12s; border-radius: 10px; }
+.page[data-page="ajustes"] .row:hover,
+.page[data-page="aspecto"] .row:hover { background: rgba(255,255,255,.035); }
+.launch { border-radius: 16px; }

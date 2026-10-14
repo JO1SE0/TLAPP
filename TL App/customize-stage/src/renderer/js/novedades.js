@@ -11,6 +11,7 @@ window.TL_NEWS = {
   title: { es: 'Qué hay de nuevo', en: "What's new" },
   items: {
     es: [
+      'Configuración rediseñada: 7 solapas con íconos (perfil rápido, gráficos, red, controles, cliente y audio, cuentas y sistema) y cabeceras con los colores del club.',
       'Panel del capitán: ahora se pueden marcar personas como «ajenas al club» (no ven conectados ni estadísticas y nadie del club las ve).',
       'Nuevo botón «Club» en el menú de la izquierda: estadísticas del club (goles, asistencias y partidos de todos, firmadas por cada app) e informes de partido (sólo capitán y quien él habilite) listos para copiar como texto o imagen.',
       'Nuevo: el palo suena (un «tong» metálico) cuando la pelota le pega. Se puede apagar o bajar el volumen.',
@@ -28,6 +29,7 @@ window.TL_NEWS = {
       'Cada clave se usa en una sola PC: si cambiás de computadora, pedile a miclo que te la libere.'
     ],
     en: [
+      'Settings redesigned: 7 tabs with icons (quick profile, graphics, network, controls, client & audio, accounts and system) and club-coloured headers.',
       'Captain panel: people can now be marked as “outside the club” (they see no online list or stats, and nobody in the club sees them).',
       'New “Club” button in the left menu: club stats (everyone’s goals, assists and matches, signed by each app) and match reports (captain only, delegable) ready to copy as text or image.',
       'New: goalposts make a metallic clang when the ball hits them. Can be turned off or lowered.',

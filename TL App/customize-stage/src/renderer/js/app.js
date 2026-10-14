@@ -51,6 +51,20 @@ settingsUpdates.before(accountSection('[data-sec="identidades"]'), accountSectio
  * cartel de teclas) no se muestran sueltas: en su lugar va una tarjeta que las
  * abre en una ventana aparte (ver `openSecModal`).
  */
+const TAB_ICONS = {
+  estilo: 'M12 3.8a8.2 8.2 0 1 0 0 16.4c1.1 0 1.9-.8 1.9-1.7 0-.5-.2-.9-.5-1.2a1.6 1.6 0 0 1 1.2-2.7h1.5a4 4 0 0 0 3.9-4c0-4-3.6-6.8-8-6.8z',
+  cancha: 'M3 6h18v12H3zM12 6v12M3 10.5h3v3H3zM18 10.5h3v3h-3z',
+  fichas: 'M12 4a8 8 0 1 0 0 16 8 8 0 0 0 0-16zM12 8.6l3.2 2.3-1.2 3.7h-4l-1.2-3.7z',
+  partida: 'M8.7 5.9v12.2l10-6.1z',
+  rapido: 'M13 3 5 13.5h6L10 21l8-10.5h-6z',
+  graficos: 'M4 5h16v11H4zM9 20h6M12 16v4',
+  red: 'M3.5 9.2a12.5 12.5 0 0 1 17 0M6.6 12.4a8 8 0 0 1 10.8 0M9.7 15.5a3.6 3.6 0 0 1 4.6 0M12 18.8h.01',
+  controles: 'M7.5 8h9a4.5 4.5 0 0 1 4.5 4.5v.5a3 3 0 0 1-5.1 2.1L14.6 14h-5.2l-1.3 1.1A3 3 0 0 1 3 13v-.5A4.5 4.5 0 0 1 7.5 8zM8 10.6v2.8M6.6 12h2.8',
+  cliente: 'M4 5h16v14H4zM4 9.5h16M7 7.2h.01M9.6 7.2h.01',
+  cuentas: 'M12 4a4 4 0 1 0 0 8 4 4 0 0 0 0-8zM5 20c0-3.5 3-6 7-6s7 2.5 7 6',
+  sistema: 'M20 12a8 8 0 1 1-2.4-5.7M20 4v5h-5'
+};
+
 const PANEL_TABS = {
   aspecto: [
     { id: 'estilo', label: 'tab.style', hint: 'tab.styleHint',
@@ -63,10 +77,13 @@ const PANEL_TABS = {
       secs: ['chatlook', 'statslook', 'partida', 'teclashud', 'overlay', 'musica', 'sonidos', 'lista'] }
   ],
   ajustes: [
-    { id: 'rendimiento', label: 'tab.perf', hint: 'tab.perfHint',
-      secs: ['perfil', 'respuesta', 'graficos', 'red', 'avanzado'] },
-    { id: 'juego', label: 'tab.game', hint: 'tab.gameHint',
-      secs: ['teclas', 'cliente', 'audio', 'identidades', 'discord', 'actualizaciones', 'config'] }
+    { id: 'rapido', group: 'tabg.perf', label: 'tab.quick', hint: 'tab.quickHint', secs: ['perfil', 'respuesta'] },
+    { id: 'graficos', group: 'tabg.perf', label: 'tab.gfx', hint: 'tab.gfxHint', secs: ['graficos'] },
+    { id: 'red', group: 'tabg.perf', label: 'tab.net', hint: 'tab.netHint', secs: ['red', 'avanzado'] },
+    { id: 'controles', group: 'tabg.game', label: 'tab.controls', hint: 'tab.controlsHint', secs: ['teclas'] },
+    { id: 'cliente', group: 'tabg.game', label: 'tab.client', hint: 'tab.clientHint', secs: ['cliente', 'audio'] },
+    { id: 'cuentas', group: 'tabg.game', label: 'tab.accounts', hint: 'tab.accountsHint', secs: ['identidades', 'discord'] },
+    { id: 'sistema', group: 'tabg.game', label: 'tab.system', hint: 'tab.systemHint', secs: ['actualizaciones', 'config'] }
   ]
 };
 
@@ -1392,7 +1409,16 @@ function buildPanelNav() {
       const page = navPage(name);
       if (page) { filterPage(page, ''); paintEmptyState(page, false); }
     }
+    let lastGroup = '';
     for (const tab of PANEL_TABS[activa] || []) {
+      if (tab.group && tab.group !== lastGroup) {
+        lastGroup = tab.group;
+        const gh = document.createElement('span');
+        gh.className = 'pnav__group';
+        gh.dataset.i18n = tab.group;
+        gh.textContent = t(tab.group);
+        list.append(gh);
+      }
       const btn = document.createElement('button');
       btn.type = 'button';
       btn.className = 'pnav__tab';
@@ -1404,7 +1430,13 @@ function buildPanelNav() {
       const hint = document.createElement('small');
       hint.dataset.i18n = tab.hint;
       hint.textContent = t(tab.hint);
-      btn.append(title, hint);
+      const ic = document.createElement('span');
+      ic.className = 'pnav__ic';
+      ic.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="${TAB_ICONS[tab.id] || ''}"/></svg>`;
+      const txt = document.createElement('span');
+      txt.className = 'pnav__tx';
+      txt.append(title, hint);
+      btn.append(ic, txt);
       list.append(btn);
     }
     applyTab(activa);
