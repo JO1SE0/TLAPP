@@ -5330,6 +5330,7 @@ function unmountMusic() {
 }
 
 function paintMusicStage() {
+  paintMusicClose();
   const on = !!musicCfg().enabled;
   $('#mstage').dataset.on = String(on);
   const failed = on && !!(state.music && state.music.error);
@@ -9866,3 +9867,14 @@ function openReport(r) {
 
 $('#musicRetry').addEventListener('click', () => { if (state.music) state.music.error = ''; paintMusicStage(); syncMusicBounds(); tvm.music.reload(); });
 $('#musicExternal').addEventListener('click', () => { tvm.app.openExternal('https://music.youtube.com/').catch(() => {}); });
+
+/* Salir de Música: dentro de una sala vuelve a la cancha, afuera a la lista. La música sigue sonando. */
+function paintMusicClose() {
+  const b = $('#musicClose');
+  if (!b) return;
+  const inRoom = $('#app').dataset.stage === 'game';
+  b.textContent = inRoom ? (isEn() ? 'Back to room' : 'Volver a la sala') : (isEn() ? 'Close' : 'Cerrar');
+}
+$('#musicClose').addEventListener('click', () => setView('play'));
+$('#rail').addEventListener('click', paintMusicClose);
+$('#musicHudOpen').addEventListener('click', paintMusicClose);
