@@ -12,6 +12,7 @@ window.TL_NEWS = {
   items: {
     es: [
       'Nuevo: pestaña Informes (capitán y habilitados). Elegís una replay y se arma el informe del partido: quiénes jugaron, los cambios (quién por quién), goles y asistencias, goles en contra y hasta qué minuto cada arco mantuvo la valla invicta. Ya no se guarda nada solo: sólo lo que cargues ahí.',
+      'Rediseño completo «Estadio»: focos de luz que respiran de fondo, tarjetas con borde degradé del color del club, títulos con degradé, botones con destello, menú con píldora iluminada y una entrada animada en cada pantalla. Se adapta al color que elijas y se apaga dentro de las salas, así que no cuesta FPS.',
       'Configuración rediseñada: más limpia, con encabezado compacto, tarjetas más suaves, índice más angosto y la estrella de favoritos que aparece al apuntar. En Rendimiento hay tres opciones experimentales nuevas (apagadas de fábrica) para probar si suben los FPS: Sin freno de mensajes, No caer a dibujo por CPU y GPU en el proceso principal.',
       'Arreglo: la app ya no se congela al pasar a pantalla completa en algunas PCs. si la ventana no responde tras el cambio, se deshace sola.',
       'Nuevo: tarjeta de perfil con anillo de nivel, barra de XP y tus partidos / goles / asistencias, con un destello dorado en el borde. Cambia de lugar según la interfaz: tarjeta en el menú lateral, chip en la barra de arriba o de abajo, o solo tu foto con el nivel en dock, isla e íconos. Tocala para abrir tu perfil.',

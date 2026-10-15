@@ -5902,3 +5902,124 @@ html .app[data-stage="game"] .profcard { display: none; }
 .panel__pages .sec .row:hover { background: none; }
 .panel__pages .sec__head[data-fold] .tag { margin-right: 4px; }
 .panel__pages .sec__head[data-fold] { padding-right: 34px; }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   «Estadio» · piel nueva de toda la interfaz
+   Noche de estadio: fondo con focos de luz que respiran, tarjetas con borde
+   degradé del color del club, títulos con degradé, botones con destello y un
+   solo movimiento de entrada por pantalla. Todo sale de las variables del tema
+   (--accent, --accent-2…), así que cambia con el color que elija el jugador.
+
+   Costo: capas estáticas más tres movimientos que sólo tocan transform y
+   opacity. En una sala (data-stage="game") nada de esto corre, y con
+   «reducir movimiento» del sistema quedan todos quietos.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Fondo: focos de luz ── */
+:root:not([data-stage="game"]) .body { background: var(--bg-0); overflow: hidden; isolation: isolate; }
+:root:not([data-stage="game"]) .body::before {
+  content: ''; position: absolute; inset: -8%; z-index: -1; pointer-events: none;
+  background:
+    radial-gradient(46% 38% at 12% -4%, rgb(var(--accent-rgb) / 17%), transparent 70%),
+    radial-gradient(40% 34% at 96% 8%, rgb(var(--accent-2-rgb) / 20%), transparent 72%),
+    radial-gradient(52% 40% at 70% 112%, rgb(var(--accent-rgb) / 11%), transparent 70%);
+  animation: skinDrift 22s ease-in-out infinite alternate; will-change: transform;
+}
+:root:not([data-stage="game"]) .browser { background: transparent; }
+@keyframes skinDrift {
+  from { transform: translate3d(-2.5%, -1%, 0) scale(1); }
+  to   { transform: translate3d(2.5%, 1.5%, 0) scale(1.06); }
+}
+
+/* ── Menú lateral ── */
+:root .rail { background: linear-gradient(180deg, rgb(var(--accent-rgb) / 9%), transparent 38%), var(--bg-0); }
+:root .railitem { border-radius: 12px; border: 1px solid transparent; transition: background .18s, color .18s, transform .18s var(--ease), border-color .18s; }
+:root .railitem svg { transition: transform .22s var(--ease); }
+:root .railitem:hover svg { transform: scale(1.14) rotate(-4deg); }
+:root .railitem.is-active {
+  color: var(--text); border-color: var(--accent-line);
+  background: linear-gradient(95deg, rgb(var(--accent-rgb) / 26%), rgb(var(--accent-2-rgb) / 7%) 70%, transparent);
+  box-shadow: inset 3px 0 0 var(--accent), 0 8px 22px -14px var(--accent);
+}
+:root .railitem.is-active svg { color: var(--accent-text); }
+
+/* ── Barra superior: línea de luz ── */
+:root .topbar {
+  background:
+    linear-gradient(90deg, transparent, rgb(var(--accent-rgb) / 85%) 50%, transparent) bottom / 100% 1px no-repeat,
+    linear-gradient(180deg, rgb(var(--accent-rgb) / 7%), transparent), var(--bg-0);
+}
+
+/* ── Tarjetas con borde degradé ── */
+:root .sec, :root .rpanel, :root .tray, :root .panel__card { position: relative; border-color: transparent; }
+:root .sec { background: linear-gradient(165deg, rgb(255 255 255 / 4.5%), rgb(255 255 255 / 1.2%) 60%), var(--surface); }
+:root .sec--feature { background: radial-gradient(120% 90% at 0% 0%, rgb(var(--accent-rgb) / 17%), transparent 62%), linear-gradient(165deg, rgb(255 255 255 / 4%), transparent), var(--surface); }
+:root .sec::before, :root .rpanel::before, :root .tray::before, :root .panel__card::before {
+  content: ''; position: absolute; inset: 0; z-index: 0; border-radius: inherit; padding: 1px; pointer-events: none;
+  background: linear-gradient(140deg, rgb(var(--accent-rgb) / 70%), rgb(var(--accent-rgb) / 7%) 36%, rgb(var(--accent-2-rgb) / 12%) 64%, rgb(var(--accent-2-rgb) / 55%));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor; mask-composite: exclude;
+  opacity: .62; transition: opacity .25s;
+}
+:root .sec:hover::before, :root .rpanel:hover::before, :root .sec:focus-within::before { opacity: 1; }
+:root .panel__card { box-shadow: 0 30px 80px -20px rgb(0 0 0 / 70%), 0 0 90px -40px rgb(var(--accent-rgb) / 45%); }
+:root .panel__card::before { opacity: .9; }
+
+/* ── Títulos con degradé (sólo en temas oscuros: en claro se lee mal) ── */
+:root:not([data-scheme="light"]) .pagehead h1,
+:root:not([data-scheme="light"]) .panel__pages .sec .sec__title,
+:root:not([data-scheme="light"]) .hub__head h1 {
+  background: linear-gradient(100deg, var(--text) 35%, var(--accent-lift) 100%);
+  -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; color: transparent;
+}
+.pagehead h1 { position: relative; width: fit-content; padding-bottom: 8px; }
+.pagehead h1::after {
+  content: ''; position: absolute; left: 0; bottom: 0; width: 56px; height: 3px; border-radius: 3px;
+  background: linear-gradient(90deg, var(--accent), var(--accent-2)); transform-origin: left; animation: skinLine .7s var(--ease) .1s backwards;
+}
+@keyframes skinLine { from { transform: scaleX(0); } }
+
+/* ── Entrada de pantalla: un solo movimiento, escalonado ── */
+:root:not([data-stage="game"]) .page.is-active .page__inner > * { animation: skinIn .5s var(--ease) backwards; }
+:root:not([data-stage="game"]) .page.is-active .page__inner > :nth-child(2) { animation-delay: .05s; }
+:root:not([data-stage="game"]) .page.is-active .page__inner > :nth-child(3) { animation-delay: .1s; }
+:root:not([data-stage="game"]) .page.is-active .page__inner > :nth-child(4) { animation-delay: .15s; }
+:root:not([data-stage="game"]) .page.is-active .page__inner > :nth-child(5) { animation-delay: .2s; }
+:root:not([data-stage="game"]) .page.is-active .page__inner > :nth-child(n+6) { animation-delay: .25s; }
+@keyframes skinIn { from { opacity: 0; transform: translateY(14px); } }
+
+/* ── Botones ── */
+:root .btn--primary { position: relative; overflow: hidden; }
+:root .btn--primary::after {
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(105deg, transparent 38%, rgb(255 255 255 / 38%) 50%, transparent 62%);
+  transform: translateX(-130%);
+}
+:root .btn--primary:hover::after { transform: translateX(130%); transition: transform .65s var(--ease); }
+:root .btn--primary:hover { transform: translateY(-1px); box-shadow: 0 14px 34px -10px var(--accent), inset 0 1px 0 rgb(255 255 255 / 28%); }
+:root .btn--ghost { transition: background .15s, border-color .15s, transform .15s var(--ease); }
+:root .btn--ghost:hover { transform: translateY(-1px); border-color: var(--accent); }
+
+/* ── Interruptores y barras ── */
+:root .switch.is-on { background: linear-gradient(135deg, var(--accent-lift), var(--accent) 55%, var(--accent-2)); box-shadow: 0 0 16px -3px var(--accent); }
+:root input[type="range"]::-webkit-slider-thumb { box-shadow: 0 0 0 3px rgb(var(--accent-rgb) / 25%), 0 0 14px -2px var(--accent); }
+
+/* ── Índice de Configuración ── */
+:root .pnav { background: linear-gradient(180deg, rgb(var(--accent-rgb) / 8%), transparent 45%), var(--bg-0); }
+:root .pnav__tab { transition: background .18s, transform .18s var(--ease); }
+:root .pnav__tab:hover { transform: translateX(3px); }
+:root .pnav__tab.is-on {
+  background: linear-gradient(95deg, rgb(var(--accent-rgb) / 24%), rgb(var(--accent-2-rgb) / 6%) 80%, transparent);
+  box-shadow: inset 3px 0 0 var(--accent), 0 10px 26px -16px var(--accent);
+}
+
+/* ── Barras de desplazamiento ── */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { border-radius: 10px; border: 2px solid transparent; background: linear-gradient(180deg, rgb(var(--accent-rgb) / 45%), rgb(var(--accent-2-rgb) / 40%)) padding-box; }
+::-webkit-scrollbar-thumb:hover { background: linear-gradient(180deg, var(--accent), var(--accent-2)) padding-box; }
+::selection { background: rgb(var(--accent-rgb) / 35%); }
+
+@media (prefers-reduced-motion: reduce) {
+  .body::before, .pagehead h1::after, .page .page__inner > * { animation: none !important; }
+}
