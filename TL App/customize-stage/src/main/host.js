@@ -22,6 +22,36 @@ const MAX_REPLAY = 40 * 1024 * 1024;
 const MODES = new Set(['interno', 'amistoso']);
 const clean = (v, max) => String(v == null ? '' : v).replace(/[\u0000-\u001f]/g, '').trim().slice(0, max);
 
+/**
+ * La página headless define `HBInit` DESPUÉS de cargar (avisa con
+ * `window.onHBLoaded`), así que al «dom-ready» todavía no existe y el script
+ * fallaba con un ReferenceError. Se espera a que esté y recién ahí se corre;
+ * si algo tira un error, se avisa al cliente con el mensaje real.
+ */
+function wrap(source) {
+  return `(function () {
+    var done = false;
+    var report = function (e) { try { window.TLHost.emit('error', String(e && e.stack || e).slice(0, 400)); } catch (x) {} };
+    var run = function () {
+      if (done) return; done = true;
+      try {
+        (function () {\n${source}\n})();
+        if (typeof window.onHBLoaded === 'function' && window.onHBLoaded !== hook) { try { window.onHBLoaded(); } catch (e) { report(e); } }
+      } catch (e) { report(e); }
+    };
+    var prev = window.onHBLoaded;
+    var hook = function () { if (typeof prev === 'function') { try { prev(); } catch (e) {} } run(); };
+    if (typeof HBInit === 'function') { run(); return; }
+    window.onHBLoaded = hook;
+    var tries = 0;
+    var t = setInterval(function () {
+      if (done) { clearInterval(t); return; }
+      if (typeof HBInit === 'function') { clearInterval(t); run(); }
+      else if (++tries > 240) { clearInterval(t); report('HaxBall no cargó la página headless (¿sin conexión?)'); }
+    }, 250);
+  })();`;
+}
+
 function create(deps) {
   const { BrowserWindow, ipcMain, onMatch, onReplay, onState } = deps;
   let win = null;
@@ -64,6 +94,8 @@ function create(deps) {
     if (type === 'link' && typeof data === 'string') {
       set({ link: data.slice(0, 200), starting: false, running: true, error: '' });
       if (!cfg.token && win) { try { win.hide(); } catch { /* ya cerrada */ } }
+    } else if (type === 'error' && typeof data === 'string') {
+      set({ error: 'El script falló: ' + data.slice(0, 300), starting: false });
     } else if (type === 'players' && data) {
       set({ players: Math.max(0, Math.min(99, Number(data.count) || 0)) });
     } else if (type === 'mode' && data && typeof data.mode === 'string') {
@@ -94,7 +126,7 @@ function create(deps) {
     mine.webContents.setWindowOpenHandler && mine.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
     mine.webContents.on('will-navigate', (e, url) => { if (!/^https:\/\/(www\.)?(html5\.)?haxball\.com\//i.test(url)) e.preventDefault(); });
     mine.webContents.once('dom-ready', () => {
-      mine.webContents.executeJavaScript(source).catch((err) => set({ error: 'El script falló: ' + (err && err.message || err), starting: false }));
+      mine.webContents.executeJavaScript(wrap(source)).catch((err) => set({ error: 'No se pudo iniciar el script: ' + (err && err.message || err), starting: false }));
     });
     mine.on('closed', () => {
       if (win === mine) win = null;
