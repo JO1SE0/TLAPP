@@ -188,6 +188,7 @@ function applyBootFlags(perf) {
   if (unlockFpsSupported() && perf.unlockFps) {
     app.commandLine.appendSwitch('disable-frame-rate-limit');
     app.commandLine.appendSwitch('disable-gpu-vsync');
+    app.commandLine.appendSwitch('force_high_performance_gpu');
   }
 
   // Sin esto, el sonido de gol no suena: Chromium exige un gesto del usuario

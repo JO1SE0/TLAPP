@@ -9,7 +9,7 @@ const haxball = require('./haxball-settings');
 const FILE = 'config.json';
 
 const DEFAULTS = {
-  version: 25,
+  version: 24,
   general: {
     gameUrl: 'https://www.haxball.com/play',
     nickname: '',
@@ -152,8 +152,7 @@ const DEFAULTS = {
     disableBackgroundThrottling: true,
     // GPU
     gpuRasterization: true,
-    // Apagado de fábrica: en algunos drivers deja la ventana congelada al pasar a pantalla completa.
-    zeroCopy: false,
+    zeroCopy: true,
     /** Experimental: deja el canvas del juego en modo desincronizado (menos retardo de pantalla). */
     lowLatencyCanvas: false,
     forceGpu: false,
@@ -727,11 +726,7 @@ function migrate(stored) {
 
   if (next.vip) next.vip.discord = null;
   delete next.privacy;
-  // v25: «Copia cero» se apaga a todos. Congelaba la ventana al entrar o salir de pantalla
-  // completa en algunas PCs. Quien la quiera la vuelve a prender en Rendimiento.
-  if (!(next.version >= 25) && next.perf) next.perf.zeroCopy = false;
-
-  next.version = 25;
+  next.version = 24;
   return next;
 }
 
