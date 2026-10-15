@@ -85,7 +85,7 @@ async function flush(ctx) {
   return { sent, pending: left.length };
 }
 
-/** ctx = { url, hostPubs:Set }. → { kings:[…], matches, last:[…] } o null. */
+/** ctx = { url, hostPubs:Set, names:[nombres del plantel] }. → { kings:[…], matches, last:[…] } o null. */
 async function read(ctx) {
   const base = presence.cleanUrl(ctx && ctx.url);
   if (!base) return null;
@@ -112,6 +112,10 @@ async function read(ctx) {
       table.set(k, r);
     }
   }
+  // Cuentan todos los que juegan, tengan o no la app. A los del plantel (los que
+  // figuran en access.json con ese nombre) se los marca para destacarlos.
+  const members = new Set((ctx.names || []).map(fold));
+  for (const [k, r] of table) r.app = members.has(k);
   const kings = Array.from(table.values()).sort((x, y) => y.wins - x.wins || y.goals - x.goals || y.assists - x.assists || x.name.localeCompare(y.name));
   list.sort((x, y) => y.at - x.at);
   return { kings, matches: list.length, last: list.slice(0, 8).map((m) => ({ at: m.at, red: m.r, blue: m.b, winner: m.w, mode: m.x, seconds: m.s })) };

@@ -5686,3 +5686,6 @@ html[data-layout="top"] .app[data-stage="game"] .rail:hover { visibility: visibl
 .hostmaps__row { display: flex; align-items: center; gap: 10px; }
 .hostmaps__row b { width: 54px; font-size: var(--fs-sm); }
 .hostmaps__row .note { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.kings__tl { font-style: normal; font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 99px; color: var(--accent-text-on); background: var(--accent); vertical-align: 1px; }
+.kings__row.is-app .cr__name { color: var(--accent-text); }

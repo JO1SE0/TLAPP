@@ -2820,7 +2820,7 @@ handle('club:interno', async () => {
   if (access.isExternal()) return null;
   try {
     interno.flush(internoCtx()).catch(() => {});
-    return await interno.read({ url: access.presenceUrl(), hostPubs: access.hostPubs() });
+    return await interno.read({ url: access.presenceUrl(), hostPubs: access.hostPubs(), names: (access.getRoster() || []).map((u) => u && u.name).filter(Boolean) });
   } catch { return null; }
 });
 app.on('before-quit', () => { try { hostSession.stop(); } catch { /* ya cerrada */ } });

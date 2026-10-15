@@ -9552,14 +9552,16 @@ function paintKings() {
   const note = $('#kingsNote');
   if (!kings) { host.replaceChildren(); if (st) st.textContent = 'sin datos'; if (note) note.textContent = ''; return; }
   if (st) st.textContent = `${kings.matches} ${kings.matches === 1 ? 'partido' : 'partidos'}`;
-  if (note) note.textContent = 'Sólo cuentan los internos hosteados desde TL App, firmados por quien los armó.';
+  if (note) note.textContent = 'Cuentan todos los que juegan los internos de x7, usen o no la TL App. Los que la usan llevan la marca TL.';
   const mk = (tag, cls, txt) => { const e = document.createElement(tag); if (cls) e.className = cls; if (txt !== undefined) e.textContent = txt; return e; };
   if (!kings.kings.length) { host.replaceChildren(mk('p', 'note', 'Todavía no hay internos registrados.')); return; }
   const head = mk('div', 'cr__row cr__row--head kings__row');
   for (const t of ['#', 'Jugador', 'Ganados', 'Goles', 'Asist.']) head.append(mk('span', '', t));
   const rows = kings.kings.map((k, i) => {
     const r = mk('div', 'cr__row kings__row' + (i === 0 ? ' is-king' : ''));
-    r.append(mk('span', 'cr__pos', i === 0 ? '👑' : String(i + 1)), mk('span', 'cr__name', k.name),
+    const nm = mk('span', 'cr__name', k.name);
+    if (k.app) { const tag = mk('em', 'kings__tl', 'TL'); tag.title = 'Juega con la TL App'; nm.append(' ', tag); r.classList.add('is-app'); }
+    r.append(mk('span', 'cr__pos', i === 0 ? '👑' : String(i + 1)), nm,
       mk('span', 'is-key', String(k.wins)), mk('span', '', String(k.goals)), mk('span', '', String(k.assists)));
     return r;
   });
