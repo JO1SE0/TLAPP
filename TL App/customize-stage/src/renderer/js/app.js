@@ -656,6 +656,11 @@ function onAccess(st) {
     clubBtn.hidden = !!(st && st.external);
     if (st && st.external && state.view === 'club') setView('play');
   }
+  const hostRail = $('#hostRailBtn');
+  if (hostRail) {
+    hostRail.hidden = !(st && st.host);
+    if (hostRail.hidden && state.view === 'hostear') setView('play');
+  }
   const repBtn = $('#reportsBtn');
   if (repBtn) {
     repBtn.hidden = !(st && st.reports);
@@ -1874,7 +1879,8 @@ function setView(name) {
 
   if (name === 'replays') loadReplays();
   if (name === 'cuenta') loadAuth();
-  if (name === 'club') { loadClubRank(); loadKings(); loadHostState(); }
+  if (name === 'club') { loadClubRank(); loadKings(); }
+  if (name === 'hostear') loadHostState();
   if (name === 'informes') loadReports();
   /*
    * El índice se rearma en cada cambio de pestaña porque lista las secciones de
@@ -9580,8 +9586,6 @@ let hostScript = '';
 
 function paintHostAccess() {
   const ok = !!(state.access && state.access.host);
-  const sec = $('#hostSec');
-  if (sec) sec.hidden = !ok;
   const btn = $('#hostBtn');
   if (btn) btn.hidden = !ok;
 }
@@ -9709,7 +9713,7 @@ function bindHost() {
     if (p.adminKey) $('#hostAdminKey').value = p.adminKey;
   } catch (e) { /* sin preferencias */ }
   paintHostMode();
-  if ($('#hostBtn')) $('#hostBtn').addEventListener('click', () => { goView ? goView('club') : setView('club'); });
+  if ($('#hostBtn')) $('#hostBtn').addEventListener('click', () => goView('hostear'));
 }
 bindHost();
 
@@ -10248,7 +10252,8 @@ const NAV_DESTS = [
   { view: 'club', es: 'Club', en: 'Club' },
   { view: 'aspecto', es: 'Personalización', en: 'Personalization' },
   { view: 'ajustes', es: 'Configuración', en: 'Settings' },
-  { view: 'informes', es: 'Informes', en: 'Reports', only: 'reports' }
+  { view: 'informes', es: 'Informes', en: 'Reports', only: 'reports' },
+  { view: 'hostear', es: 'Hostear', en: 'Host', only: 'host' }
 ];
 /** Los destinos que esta persona puede ver (Informes sólo con permiso). */
 const navDests = () => NAV_DESTS.filter((d) => !d.only || (state.access && state.access[d.only]));
@@ -10274,6 +10279,7 @@ function hubSub(view, en) {
     return n === null ? (en ? 'Your library' : 'Tu biblioteca') : `${n} replays`;
   }
   if (view === 'club') return typeof state.clubOnline === 'number' ? `${state.clubOnline} ${en ? 'online' : 'conectados'}` : (en ? 'Stats and roster' : 'Estadísticas y plantel');
+  if (view === 'hostear') return hostSt && hostSt.running ? (en ? 'Room live' : 'Sala en el aire') : (en ? 'Interno and friendly rooms' : 'Salas de interno y amistoso');
   if (view === 'informes') return en ? 'From any replay' : 'Desde cualquier replay';
   if (view === 'aspecto') return en ? 'Theme, colours and layout' : 'Tema, colores e interfaz';
   return en ? 'Client, network and controls' : 'Cliente, red y controles';

@@ -5101,7 +5101,8 @@ html[data-stage="game"] .trialchip { display: none; }
 
 /* ═══ Club: la ventana se ajusta a lo que hay, no ocupa toda la pantalla ═══ */
 #app[data-view="club"] .panel__card,
-#app[data-view="informes"] .panel__card {
+#app[data-view="informes"] .panel__card,
+#app[data-view="hostear"] .panel__card {
   width: min(940px, 100%);
   max-width: 940px;
   height: auto;
@@ -5110,9 +5111,12 @@ html[data-stage="game"] .trialchip { display: none; }
 #app[data-view="club"] .panel__body,
 #app[data-view="club"] .panel__pages,
 #app[data-view="informes"] .panel__body,
-#app[data-view="informes"] .panel__pages { flex: 0 1 auto; height: auto; min-height: 0; }
+#app[data-view="informes"] .panel__pages,
+#app[data-view="hostear"] .panel__body,
+#app[data-view="hostear"] .panel__pages { flex: 0 1 auto; height: auto; min-height: 0; }
 #app[data-view="club"] .page[data-page="club"] .page__inner,
-#app[data-view="informes"] .page[data-page="informes"] .page__inner { max-width: none; padding: 52px 22px 24px; }
+#app[data-view="informes"] .page[data-page="informes"] .page__inner,
+#app[data-view="hostear"] .page[data-page="hostear"] .page__inner { max-width: none; padding: 52px 22px 24px; }
 
 /* ── Ajustes y Personalización: estilo Club, con secciones plegables ───── */
 .page[data-page="aspecto"] .pagehead,
@@ -5696,6 +5700,7 @@ html[data-layout="top"] .app[data-stage="game"] .rail:hover { visibility: visibl
 
 /* Radial: Informes ocupa el lugar 7 y el botón del capitán pasa al 8. */
 html[data-layout="radial"] .railitem:nth-of-type(8) { --dx: 43px; --dy: -133px; }
+html[data-layout="radial"] .railitem:nth-of-type(9) { --dx: 82px; --dy: -113px; }
 
 .reports__status { color: var(--accent-text); }
 .reports__status.is-err { color: #ff8b7a; }
