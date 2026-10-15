@@ -5583,19 +5583,14 @@ function cardPayload(card) {
 /* ── Bitácora del partido (para el informe) ──────────────────────────────────
  *
  * Todo lo que pide el informe de un partido oficial: quiénes jugaron, quién
- * entró por quién, goles y asistencias por equipo, goles en contra, y hasta
- * qué minuto cada arquero dejó la valla invicta.
+ * entró por quién, goles y asistencias por equipo, goles en contra, y el
+ * momento en que a cada equipo le hicieron el primer gol (la valla invicta).
  *
  * Costo: UNA muestra por segundo de partido (no por cuadro). Cada muestra
  * recorre los ~10 jugadores una vez. Ya no corre en vivo: sólo cuando se pide el
  * informe de una grabación (`analyzeReplay` con `report`).
  *
- * El arquero no se declara en ningún lado en HaxBall, así que se deduce: el
- * jugador de cada equipo más metido hacia su propio arco. Para que un defensor
- * que se queda atrás un rato no cuente como cambio de arquero, hace falta que
- * sea el más atrasado durante GK_STREAK muestras seguidas.
  */
-const GK_STREAK = 5;
 const mlog = {
   on: false,
   lastSec: -1,
@@ -5606,8 +5601,7 @@ const mlog = {
   subs: [],
   starters: { Red: [], Blue: [] },
   everyone: new Map(), // nombre → equipo con el que más estuvo
-  gk: { Red: null, Blue: null },
-  stints: []           // { team, name, from, until, conceded }
+  conceded: { Red: null, Blue: null } // reloj del primer gol que recibió cada equipo
 };
 
 function mlogStart() {
@@ -5620,8 +5614,7 @@ function mlogStart() {
   mlog.subs = [];
   mlog.starters = { Red: [], Blue: [] };
   mlog.everyone = new Map();
-  mlog.gk = { Red: null, Blue: null };
-  mlog.stints = [];
+  mlog.conceded = { Red: null, Blue: null };
 }
 
 function mlogClockText(sec) {
@@ -5644,7 +5637,6 @@ function mlogTick(f, room, match) {
 
   // Quién está en cada equipo ahora y quién es el más atrasado.
   const now = { Red: new Set(), Blue: new Set() };
-  const deep = { Red: null, Blue: null };
   const sum = { Red: 0, Blue: 0 };
   const count = { Red: 0, Blue: 0 };
   for (let i = 0; i < players.length; i++) {
@@ -5657,10 +5649,6 @@ function mlogTick(f, room, match) {
     now[team].add(name);
     sum[team] += at.x;
     count[team]++;
-    if (mlog.side) {
-      const depth = at.x * mlog.side[team]; // más grande = más pegado a su propio arco
-      if (!deep[team] || depth > deep[team].depth) deep[team] = { name, depth };
-    }
   }
 
   // Primera muestra con gente en los dos equipos: ahí quedan los titulares y
@@ -5690,31 +5678,6 @@ function mlogTick(f, room, match) {
     }
     mlog.teams[t] = new Set(now[t]);
   }
-
-  // Arquero de cada equipo.
-  for (const t of ['Red', 'Blue']) {
-    const cand = deep[t] && deep[t].name;
-    let g = mlog.gk[t];
-    if (!g) {
-      if (!cand) continue;
-      g = mlog.gk[t] = { name: cand, cand: cand, streak: 0 };
-      mlog.stints.push({ team: t, name: cand, from: mlogClockText(sec), until: null, conceded: null });
-      continue;
-    }
-    if (cand && cand !== g.name) {
-      g.streak = g.cand === cand ? g.streak + 1 : 1;
-      g.cand = cand;
-      if (g.streak >= GK_STREAK) {
-        for (let k = mlog.stints.length - 1; k >= 0; k--) {
-          if (mlog.stints[k].team === t) { mlog.stints[k].to = mlogClockText(sec); break; }
-        }
-        g.name = cand; g.streak = 0;
-        mlog.stints.push({ team: t, name: cand, from: mlogClockText(sec), until: null, conceded: null });
-      }
-    } else {
-      g.streak = 0;
-    }
-  }
 }
 
 /** Anota un gol (ya con autor y asistencia). */
@@ -5731,14 +5694,8 @@ function mlogGoal(goal) {
     own: !!goal.own,
     clock
   });
-  // Primer gol que le hacen a este arquero: ahí se corta la valla invicta.
-  for (let i = mlog.stints.length - 1; i >= 0; i--) {
-    const st = mlog.stints[i];
-    if (st.team === conceding) {
-      if (!st.conceded) st.conceded = clock;
-      break;
-    }
-  }
+  // El primer gol que recibe cada equipo es lo que corta su valla invicta.
+  if (!mlog.conceded[conceding]) mlog.conceded[conceding] = clock;
 }
 
 /** Arma el informe del partido que se acaba de recorrer. Devuelve null si no llegó a nada. */
@@ -5749,21 +5706,28 @@ function mlogBuild(score) {
   const endSec = mlog.lastSec;
   if (endSec < 30) return null; // un partido que no llegó a nada no se informa
 
-  const side = (t) => ({
-    starters: mlog.starters[t].slice(),
-    subs: mlog.subs.filter((x) => x.team === t).map((x) => ({ in: x.in, out: x.out, at: x.at })),
-    goals: mlog.goals.filter((g) => g.team === t && !g.own).map((g) => ({ scorer: g.scorer, assist: g.assist, clock: g.clock })),
-    // En contra: los que convirtió el rival en su propio arco, anotados al que se lo hizo.
-    ownGoals: mlog.goals.filter((g) => g.own && g.scorerTeam === t).map((g) => ({ scorer: g.scorer, clock: g.clock })),
-    keepers: mlog.stints.filter((x) => x.team === t).map((x) => ({
-      name: x.name,
-      from: x.from,
-      // Hasta cuándo no le hicieron un gol: el primero que recibió, o cuando
-      // lo reemplazaron, o el final del partido.
-      until: x.conceded || x.to || mlogClockText(endSec),
-      conceded: !!x.conceded
-    }))
-  });
+  const side = (t) => {
+    const starters = mlog.starters[t].slice();
+    const first = new Set(starters);
+    // Cambios: el que aparece y no era de los iniciales; si en ese mismo
+    // momento se fue alguien, es el que salió.
+    const seen = new Set();
+    const changes = [];
+    for (const x of mlog.subs) {
+      if (x.team !== t || !x.in || first.has(x.in) || seen.has(x.in)) continue;
+      seen.add(x.in);
+      changes.push({ in: x.in, out: x.out && x.out !== x.in ? x.out : null });
+    }
+    return {
+      starters,
+      changes,
+      goals: mlog.goals.filter((g) => g.team === t && !g.own).map((g) => ({ scorer: g.scorer, assist: g.assist, clock: g.clock })),
+      // En contra: los que convirtió el rival en su propio arco, anotados al que se lo hizo.
+      ownGoals: mlog.goals.filter((g) => g.own && g.scorerTeam === t).map((g) => ({ scorer: g.scorer, clock: g.clock })),
+      // Cuándo le hicieron el primer gol (null: no recibió ninguno).
+      conceded: mlog.conceded[t]
+    };
+  };
 
   return {
     score: { red: score ? score.red : 0, blue: score ? score.blue : 0 },

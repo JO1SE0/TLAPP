@@ -9725,7 +9725,6 @@ bindHost();
  * goles con su asistencia, los goles en contra y hasta cuándo cada arquero
  * mantuvo la valla invicta. Nada se guarda: el informe vive mientras lo mirás. */
 let reportBusy = false;
-let reportReplays = [];
 
 function reportStatus(text, kind) {
   const el = $('#reportsStatus');
@@ -9735,58 +9734,20 @@ function reportStatus(text, kind) {
   el.classList.toggle('is-err', kind === 'err');
 }
 
-async function loadReports() {
-  const data = await guard(tvm.replays.list(), 'Error');
-  if (data) { state.replays = data; reportReplays = Array.isArray(data.items) ? data.items : []; }
-  paintReports();
-}
+function loadReports() { paintReports(); }
 
 function paintReports() {
-  const host = $('#reportsList');
-  if (!host) return;
   const en = isEn();
-  const items = (state.replays && Array.isArray(state.replays.items) ? state.replays.items : reportReplays).slice()
-    .sort((x, y) => (y.updatedAt || 0) - (x.updatedAt || 0));
-  const q = fold(($('#reportsSearch') && $('#reportsSearch').value) || '');
-  const shown = q ? items.filter((r) => fold(r.name).includes(q)) : items;
-  $('#reportsCount').textContent = en ? `${items.length} replays` : `${items.length} replays`;
   $('#reportsHelp').textContent = en
-    ? 'Pick a replay and its match report is built from it: who played, substitutions, goals and assists, own goals and how long each goalkeeper kept a clean sheet. Nothing is saved. Only the captain and whoever he delegates can see this section.'
-    : 'Elegí una replay y se arma el informe a partir de ella: quiénes jugaron, los cambios, goles y asistencias, goles en contra y hasta cuándo cada arquero mantuvo la valla invicta. No se guarda nada. Esta sección sólo la ven el capitán y quien él habilite.';
-  if (!shown.length) {
-    const empty = document.createElement('p');
-    empty.className = 'note';
-    empty.textContent = items.length ? (en ? 'No replay matches that search.' : 'Ninguna replay coincide con la búsqueda.') : (en ? 'There are no replays in your replays folder yet.' : 'Todavía no hay replays en tu carpeta de replays.');
-    host.replaceChildren(empty);
-    return;
-  }
-  host.replaceChildren(...shown.slice(0, 80).map((r) => {
-    const row = document.createElement('div');
-    row.className = 'rep__row';
-    const info = document.createElement('div');
-    info.className = 'rep__info';
-    const title = document.createElement('b');
-    title.textContent = r.name.replace(/\.hbr2?$/i, '');
-    const sub = document.createElement('span');
-    const d = r.digest;
-    sub.textContent = `${new Date(r.updatedAt).toLocaleString(en ? 'en' : 'es', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}` +
-      (d && typeof d.red === 'number' ? ` · ${d.red}–${d.blue}` : '');
-    info.append(title, sub);
-    const open = document.createElement('button');
-    open.className = 'btn btn--sm';
-    open.type = 'button';
-    open.disabled = reportBusy;
-    open.textContent = en ? 'Make report' : 'Armar informe';
-    open.addEventListener('click', () => makeReportFrom(r));
-    row.append(info, open);
-    return row;
-  }));
+    ? 'Load a replay from your computer and its match report is built from it: who played, substitutions, goals and assists, own goals and the moment each team conceded its first goal. Nothing is saved. Only the captain and whoever he delegates can see this section.'
+    : 'Cargá una replay desde tu PC y se arma el informe a partir de ella: quiénes jugaron, los cambios, goles y asistencias, goles en contra y el momento en que a cada equipo le hicieron el primer gol. No se guarda nada. Esta sección sólo la ven el capitán y quien él habilite.';
+  const btn = $('#reportsLoad');
+  if (btn) { btn.disabled = reportBusy; btn.textContent = en ? 'Load replay…' : 'Cargar replay…'; }
 }
-if ($('#reportsSearch')) $('#reportsSearch').addEventListener('input', paintReports);
-if ($('#reportsRefresh')) $('#reportsRefresh').addEventListener('click', loadReports);
+if ($('#reportsLoad')) $('#reportsLoad').addEventListener('click', () => makeReportFromFile());
 
-/** Abre la replay, la recorre pidiendo el informe y lo muestra. */
-async function makeReportFrom(replay) {
+/** Elige una replay de la PC, la recorre pidiendo el informe y lo muestra. */
+async function makeReportFromFile() {
   if (reportBusy) return;
   const en = isEn();
   if (state.stage === 'game' && (state.gameView === 'room' || state.gameView === 'game')) {
@@ -9795,14 +9756,14 @@ async function makeReportFrom(replay) {
   }
   reportBusy = true;
   paintReports();
-  reportStatus(en ? 'Opening the replay…' : 'Abriendo la replay…');
   const prev = { path: state.replayPath, name: state.replayName, summary: state.summary };
   try {
-    const res = await guard(tvm.replays.play(replay.path), 'Error');
-    if (!res) throw new Error(en ? 'The replay could not be opened.' : 'No se pudo abrir la replay.');
+    const res = await guard(tvm.replays.pickAndPlay(), 'Error');
+    if (!res) { reportStatus(''); return; } // canceló el selector
+    reportStatus(en ? 'Opening the replay…' : 'Abriendo la replay…');
     state.summary = null;
     state.replayName = res.name.replace(/\.hbr2?$/i, '');
-    state.replayPath = replay.path;
+    state.replayPath = null;
     // El reproductor tarda un momento en estar listo.
     for (let i = 0; i < 40 && state.gameView !== 'replay'; i++) await new Promise((r) => setTimeout(r, 250));
     await new Promise((r) => setTimeout(r, 1500));
@@ -9811,9 +9772,10 @@ async function makeReportFrom(replay) {
     if (!out || !out.ok) throw new Error((out && out.reason) || (en ? 'The replay could not be analysed.' : 'No se pudo analizar la replay.'));
     const reports = Array.isArray(out.reports) ? out.reports : [];
     if (!reports.length) throw new Error(en ? 'No match long enough to report was found in that replay.' : 'No hay ningún partido en esa replay con la duración suficiente para informar.');
-    const base = { at: replay.updatedAt || Date.now(), room: state.replayName || replay.name };
+    const base = { at: res.updatedAt || Date.now(), room: state.replayName || res.name };
     const list = reports.map((r) => ({ ...base, ...r }));
     reportStatus('');
+    $('#reportsCount').textContent = res.name;
     if (list.length === 1) openReport(list[0]);
     else pickReportMatch(list);
   } catch (err) {
@@ -9865,12 +9827,10 @@ function reportLines(r, names) {
     add('', 'gap');
     add(names[t].toUpperCase(), 'head');
     add((en ? 'Played: ' : 'Jugaron: ') + (side.starters.length ? side.starters.join(', ') : '—'));
-    if (side.subs.length) {
-      add(en ? 'Substitutions:' : 'Cambios:', 'sub');
-      for (const s of side.subs) {
-        add(`  ${s.at}  ${s.in ? (en ? 'in ' : 'entró ') + s.in : ''}${s.in && s.out ? (en ? ' for ' : ' por ') : ''}${s.out ? (s.in ? s.out : (en ? 'left ' : 'salió ') + s.out) : ''}`);
-      }
-    } else add(en ? 'Substitutions: none' : 'Cambios: ninguno');
+    const changes = side.changes || [];
+    add((en ? 'Substitutions: ' : 'Cambios: ') + (changes.length
+      ? changes.map((c) => (c.out ? `${c.in} ${en ? 'for' : 'por'} ${c.out}` : `${en ? 'in' : 'entró'} ${c.in}`)).join(', ')
+      : (en ? 'none' : 'ninguno')));
     if (side.goals.length) {
       add(en ? 'Goals:' : 'Goles:', 'sub');
       for (const g of side.goals) add(`  ${g.clock}  ${who(g.scorer)}${g.assist ? (en ? ' (assist ' : ' (asist. ') + g.assist + ')' : ''}`);
@@ -9879,11 +9839,7 @@ function reportLines(r, names) {
       add(en ? 'Own goals:' : 'Goles en contra:', 'sub');
       for (const g of side.ownGoals) add(`  ${g.clock}  ${who(g.scorer)}`);
     }
-    for (const k of side.keepers) {
-      add(`${en ? 'Keeper' : 'Arquero'}: ${k.name} — ${k.conceded
-        ? (en ? `clean sheet until ${k.until}` : `valla invicta hasta el ${k.until}`)
-        : (en ? `clean sheet until ${k.until} (no goals conceded)` : `valla invicta hasta el ${k.until} (no recibió goles)`)}`);
-    }
+    add(`${en ? 'Clean sheet' : 'Valla invicta'}: ${side.conceded || (en ? 'no goals conceded' : 'no recibió goles')}`);
   }
   return L;
 }

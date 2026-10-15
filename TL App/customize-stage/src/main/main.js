@@ -2554,6 +2554,31 @@ handle('replays:play', (_e, file) => {
   return { name: replay.name, size: replay.size };
 });
 
+/**
+ * Para los informes: una replay de cualquier carpeta de la PC, elegida con el
+ * selector de archivos. Se la pasa al reproductor igual que `replays:play`, pero
+ * sin exigir que esté en la carpeta de replays (y sin copiarla ni guardarla).
+ */
+handle('replays:pickAndPlay', async () => {
+  if (!access.canReports()) throw new Error('No tenés permiso para armar informes.');
+  if (!gameContents || gameContents.isDestroyed()) throw new Error('El juego todavía no cargó.');
+  const res = await dialog.showOpenDialog(mainWindow, {
+    title: 'Elegí la replay',
+    defaultPath: store.get().replays.folder,
+    filters: [{ name: 'Replay de HaxBall', extensions: ['hbr2', 'hbr'] }],
+    properties: ['openFile']
+  });
+  if (res.canceled || !res.filePaths[0]) return null;
+  const file = res.filePaths[0];
+  const st = fs.statSync(file);
+  if (!st.isFile() || st.size > 64 * 1024 * 1024) throw new Error('El archivo no es una replay válida (o es demasiado grande).');
+  const data = fs.readFileSync(file);
+  if (data.slice(0, 4).toString('ascii') !== 'HBR2') throw new Error('Ese archivo no es una replay de HaxBall.');
+  const name = path.basename(file);
+  sendToGame('game:play-replay', { name, base64: data.toString('base64'), size: data.length });
+  return { name, size: data.length, updatedAt: st.mtimeMs };
+});
+
 handle('replays:trash', async (_e, file) => {
   const res = await dialog.showMessageBox(mainWindow, {
     type: 'warning',

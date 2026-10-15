@@ -1439,16 +1439,14 @@
           <section class="csec" id="reportsSec">
             <header class="csec__head">
               <h2 data-i18n="reports.title">Informes de partido</h2>
-              <span class="csec__tag" id="reportsCount">—</span>
+              <span class="csec__tag" id="reportsCount">sin cargar</span>
             </header>
             <p class="note" id="reportsHelp"></p>
-            <div class="cr__bar">
-              <input type="text" id="reportsSearch" placeholder="Buscar replay…" autocomplete="off" />
-              <button class="btn btn--ghost btn--sm" id="reportsRefresh" type="button">Actualizar</button>
+            <div class="hostact">
+              <button class="btn btn--primary" id="reportsLoad" type="button">Cargar replay…</button>
             </div>
             <p class="note reports__status" id="reportsStatus" hidden></p>
             <div class="reports__pick" id="reportsPick" hidden></div>
-            <div class="rep__list" id="reportsList"></div>
           </section>
         </div>
       </section>

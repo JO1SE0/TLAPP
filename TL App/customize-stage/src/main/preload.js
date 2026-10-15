@@ -123,6 +123,7 @@ contextBridge.exposeInMainWorld('tvm', {
     trash: (file) => call('replays:trash', file),
     openFolder: () => call('replays:openFolder'),
     play: (file) => call('replays:play', file),
+    pickAndPlay: () => call('replays:pickAndPlay'),
     /** Simula la grabación abierta de punta a punta y devuelve todo lo que pasó. */
     analyze: (opts) => call('replay:analyze', opts),
     /** El análisis de otra vez, sin volver a simular nada. Null si nunca se hizo. */
