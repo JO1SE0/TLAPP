@@ -101,6 +101,7 @@ async function read(ctx) {
     let m;
     try { m = restore(JSON.parse(doc.d)); } catch { continue; }
     if (idOf(doc.by, doc.d) !== id) continue;
+    if (m.x !== 'x7') continue; // «Los reyes del x7»: sólo cuentan los de x7
     list.push(m);
     for (const p of m.p) {
       const k = fold(p.n);

@@ -176,6 +176,8 @@ contextBridge.exposeInMainWorld('tvm', {
     state: () => call('host:state'),
     start: (opts) => call('host:start', opts),
     stop: () => call('host:stop'),
+    maps: () => call('host:maps'),
+    openMaps: () => call('host:openMaps'),
     show: () => call('host:show'),
     pickScript: () => call('host:pickScript'),
     onState: (cb) => on('host:state', cb)

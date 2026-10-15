@@ -9598,8 +9598,19 @@ function paintHost() {
   if (err) { err.textContent = s.error || ''; err.hidden = !s.error; }
 }
 
+async function loadHostMaps() {
+  const el = $('#hostMapsInfo');
+  if (!el || !window.tvm.host.maps) return;
+  try {
+    const have = (await window.tvm.host.maps()) || [];
+    const all = ['x1', 'x3', 'x4', 'x5', 'x7', 'train'];
+    el.textContent = 'Cargados: ' + (have.join(', ') || 'ninguno') + (have.length < all.length ? ' · faltan: ' + all.filter((k) => !have.includes(k)).join(', ') : '');
+  } catch (e) { el.textContent = '—'; }
+}
+
 async function loadHostState() {
   if (!window.tvm.host) return;
+  loadHostMaps();
   try { hostSt = await window.tvm.host.state(); } catch (e) { return; }
   paintHost();
 }
@@ -9612,6 +9623,8 @@ function paintHostMode() {
   if (nameEl && (!nameEl.value || nameEl.dataset.auto === '1')) { nameEl.value = hostMode === 'interno' ? 'Interno TL' : 'Amistoso TL'; nameEl.dataset.auto = '1'; }
   const size = $('#hostSize');
   if (size && size.dataset.touched !== '1') size.value = hostMode === 'interno' ? '7' : '3';
+  const tr = $('#hostTrainOpt');
+  if (tr) { tr.hidden = hostMode === 'interno'; tr.disabled = hostMode === 'interno'; if (hostMode === 'interno' && size && size.value === 'train') size.value = '7'; }
 }
 
 function bindHost() {
@@ -9634,7 +9647,7 @@ function bindHost() {
     g.disabled = true;
     try {
       hostSt = await window.tvm.host.start({
-        mode: hostMode, name: $('#hostName').value, size: Number($('#hostSize').value), maxPlayers: Number($('#hostMax').value),
+        mode: hostMode, name: $('#hostName').value, size: ($('#hostSize').value === 'train' ? 'train' : Number($('#hostSize').value)), maxPlayers: Number($('#hostMax').value),
         password: $('#hostPass').value, adminKey: $('#hostAdminKey').value, hostNick: $('#hostNick').value,
         record: $('#hostRecord').checked, listed: $('#hostListed').checked, customPath: hostMode === 'amistoso' ? hostScript : ''
       });
@@ -9645,6 +9658,7 @@ function bindHost() {
     g.disabled = false;
     paintHost();
   });
+  if ($('#hostMapsOpen')) $('#hostMapsOpen').addEventListener('click', () => { window.tvm.host.openMaps().then(loadHostMaps).catch(() => {}); });
   $('#hostStop').addEventListener('click', async () => { try { hostSt = await window.tvm.host.stop(); } catch (e) { /* ya cerrada */ } paintHost(); });
   $('#hostShow').addEventListener('click', () => { window.tvm.host.show().catch(() => {}); });
   $('#hostCopy').addEventListener('click', async () => {

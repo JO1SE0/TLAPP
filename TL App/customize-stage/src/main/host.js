@@ -17,6 +17,9 @@ const path = require('path');
 const HEADLESS = 'https://html5.haxball.com/headless';
 const BUILTIN = path.join(__dirname, 'host-scripts', 'room.js');
 const MAX_SCRIPT = 512 * 1024;
+const MAP_KEYS = ['x1', 'x3', 'x4', 'x5', 'x7', 'train'];
+const MAP_EXT = ['.hbs', '.json'];
+const MAX_MAP = 2 * 1024 * 1024;
 const MAX_REPLAY = 40 * 1024 * 1024;
 
 const MODES = new Set(['interno', 'amistoso']);
@@ -52,8 +55,30 @@ function wrap(source) {
   })();`;
 }
 
+/** Los mapas son archivos x1.hbs, x3.hbs, x4.hbs, x5.hbs, x7.hbs y train.hbs. */
+function loadMaps(dirs) {
+  const out = {};
+  for (const key of MAP_KEYS) {
+    for (const dir of dirs) {
+      let found = false;
+      for (const ext of MAP_EXT) {
+        try {
+          const file = path.join(dir, key + ext);
+          const st = fs.statSync(file);
+          if (!st.isFile() || st.size > MAX_MAP) continue;
+          out[key] = fs.readFileSync(file, 'utf8');
+          found = true;
+          break;
+        } catch { /* no está */ }
+      }
+      if (found) break;
+    }
+  }
+  return out;
+}
+
 function create(deps) {
-  const { BrowserWindow, ipcMain, onMatch, onReplay, onState } = deps;
+  const { BrowserWindow, ipcMain, onMatch, onReplay, onState, mapDirs } = deps;
   let win = null;
   let cfg = null;
   let state = { running: false, starting: false, mode: '', size: '', link: '', players: 0, name: '', error: '', custom: false };
@@ -63,11 +88,11 @@ function create(deps) {
   function sanitize(raw) {
     const r = raw || {};
     const mode = MODES.has(r.mode) ? r.mode : 'amistoso';
-    const size = [1, 2, 3, 4, 5, 6, 7].includes(Number(r.size)) ? Number(r.size) : (mode === 'interno' ? 7 : 3);
+    const size = r.size === 'train' && mode !== 'interno' ? 'train' : [1, 3, 4, 5, 7].includes(Number(r.size)) ? Number(r.size) : (mode === 'interno' ? 7 : 3);
     return {
       mode, size,
       name: clean(r.name, 40) || (mode === 'interno' ? 'Interno TL' : 'Amistoso TL'),
-      maxPlayers: Math.max(2, Math.min(30, Math.round(Number(r.maxPlayers)) || (size * 2 + 4))),
+      maxPlayers: Math.max(2, Math.min(30, Math.round(Number(r.maxPlayers)) || (typeof size === 'number' ? size * 2 + 4 : 16))),
       password: clean(r.password, 30),
       listed: r.listed !== false,
       adminKey: clean(r.adminKey, 30),
@@ -111,7 +136,7 @@ function create(deps) {
     if (win && !win.isDestroyed()) throw new Error('Ya hay una sala hosteada. Cerrala primero.');
     const c = sanitize(raw);
     const source = readScript(c);
-    cfg = c;
+    cfg = { ...c, maps: loadMaps(mapDirs || []) };
     set({ running: false, starting: true, mode: c.mode, size: 'x' + c.size, link: '', players: 0, name: c.name, error: '', custom: !!c.customPath });
     win = new BrowserWindow({
       width: 520, height: 640, show: true, autoHideMenuBar: true, title: 'Sala TL — ' + c.name,
@@ -145,7 +170,7 @@ function create(deps) {
 
   function show() { if (win && !win.isDestroyed()) { win.show(); win.focus(); } return { ...state }; }
 
-  return { start, stop, show, state: () => ({ ...state }), isRunning: () => !!(win && !win.isDestroyed()) };
+  return { start, stop, show, maps: () => Object.keys(loadMaps(mapDirs || [])), state: () => ({ ...state }), isRunning: () => !!(win && !win.isDestroyed()) };
 }
 
 module.exports = { create };

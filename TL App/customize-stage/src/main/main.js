@@ -2772,6 +2772,8 @@ handle('club:stats', async () => {
 const internoCtx = () => ({ url: access.presenceUrl(), key: access.getKey(), dir: app.getPath('userData') });
 const hostSession = hostRoom.create({
   BrowserWindow, ipcMain,
+  // Primero la carpeta del usuario (se puede pisar un mapa), después la que viene con la app.
+  mapDirs: [path.join(app.getPath('userData'), 'mapas'), path.join(__dirname, 'host-scripts', 'maps')],
   onState: (st) => send('host:state', st),
   onMatch: async (match) => {
     if (!access.canHost() || access.isExternal()) return;
@@ -2796,6 +2798,13 @@ handle('host:start', async (_e, opts) => {
   return res;
 });
 handle('host:stop', () => hostSession.stop());
+handle('host:maps', () => hostSession.maps());
+handle('host:openMaps', async () => {
+  const dir = path.join(app.getPath('userData'), 'mapas');
+  fs.mkdirSync(dir, { recursive: true });
+  await shell.openPath(dir);
+  return dir;
+});
 handle('host:show', () => hostSession.show());
 handle('host:pickScript', async () => {
   if (!access.canHost()) throw new Error('No tenés permiso para hostear.');

@@ -25,14 +25,14 @@
 
   /* ── Canchas y reglas por modo ─────────────────────────────────────────── */
   var SIZES = {
-    x1: { size: 1, map: 'Small', score: 3, time: 3 },
-    x2: { size: 2, map: 'Small', score: 5, time: 5 },
-    x3: { size: 3, map: 'Classic', score: 3, time: 3 },
-    x4: { size: 4, map: 'Big', score: 4, time: 4 },
-    x5: { size: 5, map: 'Big', score: 5, time: 5 },
-    x6: { size: 6, map: 'Big', score: 6, time: 6 },
-    x7: { size: 7, map: 'Big', score: 7, time: 7 }
+    x1: { size: 1, score: 3, time: 3 },
+    x3: { size: 3, score: 0, time: 10 },
+    x4: { size: 4, score: 0, time: 10 },
+    x5: { size: 5, score: 0, time: 10 },
+    x7: { size: 7, score: 0, time: 12 },
+    train: { size: 0, score: 0, time: 0 }
   };
+  var CUSTOM_MAPS = CFG.maps || {};
   var MAPS = {
     classic: 'Classic', easy: 'Easy', small: 'Small', big: 'Big', rounded: 'Rounded',
     hockey: 'Hockey', bighockey: 'Big Hockey', bigeasy: 'Big Easy', bigrounded: 'Big Rounded', huge: 'Huge'
@@ -67,7 +67,7 @@
     token: CFG.token ? String(CFG.token) : undefined
   });
 
-  var sizeKey = SIZES['x' + CFG.size] ? 'x' + CFG.size : (MODE === 'interno' ? 'x7' : 'x3');
+  var sizeKey = CFG.size === 'train' && MODE !== 'interno' ? 'train' : SIZES['x' + CFG.size] ? 'x' + CFG.size : (MODE === 'interno' ? 'x7' : 'x3');
   var uniforms = { 1: null, 2: null };
   var game = null;
   var session = {}; // por nombre: { w, l, g, a, o, m } mientras la sala vive
@@ -103,11 +103,16 @@
     var m = SIZES[key];
     if (!m) return false;
     sizeKey = key;
-    room.setDefaultStadium(m.map);
+    var text = CUSTOM_MAPS[key];
+    var loaded = false;
+    if (text) { try { room.setCustomStadium(text); loaded = true; } catch (e) { loaded = false; } }
     room.setScoreLimit(m.score);
     room.setTimeLimit(m.time);
     room.setTeamsLock(false);
-    if (announce) say('Modo ' + key + ': cancha ' + m.map + ', ' + m.score + ' goles o ' + m.time + ' min.');
+    if (announce) {
+      var lim = (m.score ? m.score + ' goles' : 'sin límite de goles') + ', ' + (m.time ? m.time + ' min' : 'sin tiempo');
+      say('Modo ' + key + ': ' + lim + '.' + (loaded ? '' : ' (Falta el mapa de ' + key + ': queda la cancha actual.)'));
+    }
     BR.emit('mode', { mode: key });
     return true;
   }
@@ -124,6 +129,7 @@
 
   function shuffleTeams() {
     var m = SIZES[sizeKey];
+    if (!m.size) { say('En !train no hay equipos para mezclar.'); return; }
     var pool = players().slice();
     for (var i = pool.length - 1; i > 0; i--) {
       var j = Math.floor(Math.random() * (i + 1));
@@ -309,7 +315,7 @@
   /* ── Comandos ──────────────────────────────────────────────────────────── */
   var HELP = [
     'Comandos de todos: !ayuda · !stats · !admin <clave>',
-    'Admin: !x1 !x2 !x3 !x4 !x5 !x6 !x7 · !swap · !mezclar · !camis · !start · !stop · !pausa · !limite N · !tiempo N · !mapa nombre · !spec · !kick nombre'
+    'Admin: !x1 !x3 !x4 !x5 !x7 !train · !swap · !mezclar · !camis · !start · !stop · !pausa · !limite N · !tiempo N · !mapa nombre · !spec · !kick nombre'
   ];
 
   function isAdmin(p) { var cur = byId(p.id); return !!(cur && cur.admin); }

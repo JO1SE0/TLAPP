@@ -1388,12 +1388,16 @@
               <div class="hostgrid">
                 <div class="field"><label for="hostName">Nombre de la sala</label><input type="text" id="hostName" maxlength="40" /></div>
                 <div class="field"><label for="hostSize">Cancha</label>
-                  <select id="hostSize" class="sortselect"><option value="1">x1</option><option value="2">x2</option><option value="3">x3</option><option value="4">x4</option><option value="5">x5</option><option value="6">x6</option><option value="7" selected>x7</option></select></div>
+                  <select id="hostSize" class="sortselect"><option value="1">x1 (3 goles · 3 min)</option><option value="3">x3 (10 min)</option><option value="4">x4 (10 min)</option><option value="5">x5 (10 min)</option><option value="7" selected>x7 (12 min)</option><option value="train" id="hostTrainOpt">Entrenamiento (!train)</option></select></div>
                 <div class="field"><label for="hostMax">Cupo</label><input type="number" id="hostMax" min="2" max="30" value="18" /></div>
                 <div class="field"><label for="hostPass">Clave de la sala (opcional)</label><input type="text" id="hostPass" maxlength="30" autocomplete="off" /></div>
                 <div class="field"><label for="hostAdminKey">Clave de admin (!admin clave)</label><input type="text" id="hostAdminKey" maxlength="30" autocomplete="off" /></div>
                 <div class="field"><label for="hostNick">Tu nick (queda admin al entrar)</label><input type="text" id="hostNick" maxlength="25" /></div>
               </div>
+              <div class="field"><label>Mapas</label>
+                <div class="hostscript"><span id="hostMapsInfo" class="note">—</span>
+                  <button class="btn btn--ghost btn--sm" id="hostMapsOpen" type="button">Abrir carpeta de mapas</button></div>
+                <p class="note">Poné ahí tus mapas como <code>x1.hbs</code>, <code>x3.hbs</code>, <code>x4.hbs</code>, <code>x5.hbs</code>, <code>x7.hbs</code> y <code>train.hbs</code>.</p></div>
               <label class="hostchk" id="hostRecordRow"><input type="checkbox" id="hostRecord" checked /> Grabar replay de cada partido</label>
               <label class="hostchk"><input type="checkbox" id="hostListed" checked /> Sala pública (aparece en la lista)</label>
               <div class="field" id="hostScriptRow" hidden>
