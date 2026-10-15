@@ -1242,6 +1242,25 @@ function setWindowFullscreen(fullscreen) {
     }
     repaintWindowSoon();
   }, 1200);
+
+  // Seguro contra el congelamiento: si después del cambio la ventana no contesta, se deshace el
+  // cambio en vez de dejar la app colgada. Dos intentos, y si ya contesta no se toca nada.
+  const wasWanted = wanted;
+  const probe = (attempt) => {
+    if (!mainWindow || mainWindow.isDestroyed() || windowFullscreen !== wasWanted) return;
+    let answered = false;
+    mainWindow.webContents.executeJavaScript('1', true).then(() => { answered = true; }).catch(() => {});
+    setTimeout(() => {
+      if (answered || !mainWindow || mainWindow.isDestroyed() || windowFullscreen !== wasWanted) return;
+      if (attempt === 0) { repaintWindowSoon(); probe(1); return; }
+      windowFullscreen = !wasWanted;
+      fullscreenLockUntil = Date.now() + 1500;
+      emitWindowState();
+      mainWindow.setFullScreen(!wasWanted);
+      repaintWindowSoon();
+    }, 2500);
+  };
+  setTimeout(() => probe(0), 400);
 }
 
 /**
