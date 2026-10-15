@@ -12,7 +12,6 @@ const store = require('./store');
 const preferences = require('./preferences');
 const replays = require('./replays');
 const replayArchive = require('./replay-archive');
-const reports = require('./reports');
 const haxball = require('./haxball-settings');
 const themes = require('./themes');
 const roomlist = require('./roomlist');
@@ -2077,7 +2076,7 @@ const BACKGROUND_OK_CHANNELS = new Set(['game:bootstrap', 'cfg:set', 'game:log',
   'game:want-avatar-gif', 'game:want-ball-gif', 'game:auth', 'game:geo',
   'game:flags', 'game:avatar-current', 'game:keys-current', 'game:avatar-saved', 'game:mute',
   'game:themed', 'game:view', 'game:room-name', 'game:playing', 'game:live-settings',
-  'game:open-url', 'game:goal', 'game:match-start', 'game:match-end', 'game:heatmap', 'game:report']);
+  'game:open-url', 'game:goal', 'game:match-start', 'game:match-end', 'game:heatmap']);
 function listen(channel, fn) {
   ipcMain.on(channel, (event, ...args) => {
     const ui = mainWindow && event.sender === mainWindow.webContents &&
@@ -2824,6 +2823,8 @@ handle('club:interno', async () => {
   } catch { return null; }
 });
 app.on('before-quit', () => { try { hostSession.stop(); } catch { /* ya cerrada */ } });
+// Los informes ya no se guardan: se borra el archivo de la versión anterior.
+try { fs.unlinkSync(path.join(app.getPath('userData'), 'match-reports.json')); } catch { /* no estaba */ }
 
 // Panel del capitán: estado vigente + estado de cada miembro, y las acciones.
 handle('admin:get', async () => {
@@ -3764,16 +3765,6 @@ function syncPlaying() {
  * Los tres llegan del preload del juego, que es el único que ve la cancha, y
  * van derecho a la interfaz, que es la única que dibuja el resumen. */
 
-/** Terminó un partido en vivo: el preload mandó la bitácora, acá queda guardada. */
-listen('game:report', (_e, payload) => {
-  // Los informes son sólo del capitán y de a quien él se los delegó.
-  if (!access.canReports()) return;
-  const entry = reports.add(payload);
-  if (entry) send('reports:new', entry);
-});
-handle('reports:list', async () => (access.canReports() ? reports.list() : []));
-handle('reports:remove', async (_e, id) => (access.canReports() ? reports.remove(String(id || '')) : []));
-
 /** Un gol, ya con autor y asistencia resueltos. */
 listen('game:goal', (e, payload) => send('game:goal', payload || {}, tabMeta(e)));
 
@@ -3813,7 +3804,7 @@ listen('game:toggle-stats', (_e, payload) => send('game:toggle-stats', payload |
  */
 let analyzing = false;
 
-handle('replay:analyze', () => new Promise((resolve, reject) => {
+handle('replay:analyze', (_e, opts) => new Promise((resolve, reject) => {
   if (!gameContents || gameContents.isDestroyed()) {
     reject(new Error('El juego todavía no cargó.'));
     return;
@@ -3835,5 +3826,5 @@ handle('replay:analyze', () => new Promise((resolve, reject) => {
   const onSummary = (_e, payload) => done(resolve, payload || { ok: false, reason: 'El juego no contestó.' });
 
   ipcMain.once('game:replay-summary', onSummary);
-  sendToGame('game:analyze-replay');
+  sendToGame('game:analyze-replay', opts && opts.report ? { report: true } : undefined);
 }));

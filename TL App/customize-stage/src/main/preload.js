@@ -124,7 +124,7 @@ contextBridge.exposeInMainWorld('tvm', {
     openFolder: () => call('replays:openFolder'),
     play: (file) => call('replays:play', file),
     /** Simula la grabación abierta de punta a punta y devuelve todo lo que pasó. */
-    analyze: () => call('replay:analyze'),
+    analyze: (opts) => call('replay:analyze', opts),
     /** El análisis de otra vez, sin volver a simular nada. Null si nunca se hizo. */
     archived: (file) => call('replays:archived', file),
     archive: (file, summary) => call('replays:archive', file, summary),
@@ -157,11 +157,7 @@ contextBridge.exposeInMainWorld('tvm', {
     clearAttempts: () => call('admin:clear-attempts'),
     pending: () => call('admin:pending')
   },
-  reports: {
-    list: () => call('reports:list'),
-    remove: (id) => call('reports:remove', id),
-    onNew: (cb) => on('reports:new', cb)
-  },
+
   club: {
     stats: () => call('club:stats'),
     interno: () => call('club:interno'),

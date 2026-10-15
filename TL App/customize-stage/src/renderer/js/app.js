@@ -9716,62 +9716,134 @@ bindHost();
 
 
 /* ── Informes de partido ─────────────────────────────────────────────────────
- * La app registra cada partido en vivo (una muestra por segundo, sin tocar el
- * dibujado). Acá se elige uno, se ponen los nombres de los equipos y sale el
- * informe en texto para copiar o en imagen para pegar en Discord. */
-let reportList = [];
+ * Se arman a partir de una replay que se elige acá: la app la recorre una vez
+ * (la misma simulación del resumen) y saca quiénes jugaron, los cambios, los
+ * goles con su asistencia, los goles en contra y hasta cuándo cada arquero
+ * mantuvo la valla invicta. Nada se guarda: el informe vive mientras lo mirás. */
+let reportBusy = false;
+let reportReplays = [];
+
+function reportStatus(text, kind) {
+  const el = $('#reportsStatus');
+  if (!el) return;
+  el.textContent = text || '';
+  el.hidden = !text;
+  el.classList.toggle('is-err', kind === 'err');
+}
 
 async function loadReports() {
-  if (!window.tvm.reports) return;
-  try { reportList = (await window.tvm.reports.list()) || []; } catch (e) { reportList = []; }
+  const data = await guard(tvm.replays.list(), 'Error');
+  if (data) { state.replays = data; reportReplays = Array.isArray(data.items) ? data.items : []; }
   paintReports();
-}
-if (window.tvm.reports && window.tvm.reports.onNew) {
-  window.tvm.reports.onNew((entry) => { if (entry) { reportList.unshift(entry); paintReports(); } });
 }
 
 function paintReports() {
   const host = $('#reportsList');
   if (!host) return;
   const en = isEn();
-  $('#reportsCount').textContent = en ? `${reportList.length} saved` : `${reportList.length} guardados`;
+  const items = (state.replays && Array.isArray(state.replays.items) ? state.replays.items : reportReplays).slice()
+    .sort((x, y) => (y.updatedAt || 0) - (x.updatedAt || 0));
+  const q = fold(($('#reportsSearch') && $('#reportsSearch').value) || '');
+  const shown = q ? items.filter((r) => fold(r.name).includes(q)) : items;
+  $('#reportsCount').textContent = en ? `${items.length} replays` : `${items.length} replays`;
   $('#reportsHelp').textContent = en
-    ? 'Every match you play or watch live is saved here (the last 25). Only the captain and whoever he delegates can see this section. Pick a match to get its report ready to copy or paste as an image.'
-    : 'Cada partido que jugás o mirás en vivo queda guardado acá (los últimos 25). Esta sección sólo la ven el capitán y quien él habilite. Elegí un partido y tenés el informe listo para copiar o pegar como imagen.';
-  if (!reportList.length) {
+    ? 'Pick a replay and its match report is built from it: who played, substitutions, goals and assists, own goals and how long each goalkeeper kept a clean sheet. Nothing is saved. Only the captain and whoever he delegates can see this section.'
+    : 'Elegí una replay y se arma el informe a partir de ella: quiénes jugaron, los cambios, goles y asistencias, goles en contra y hasta cuándo cada arquero mantuvo la valla invicta. No se guarda nada. Esta sección sólo la ven el capitán y quien él habilite.';
+  if (!shown.length) {
     const empty = document.createElement('p');
     empty.className = 'note';
-    empty.textContent = en ? 'No matches recorded yet.' : 'Todavía no hay partidos registrados.';
+    empty.textContent = items.length ? (en ? 'No replay matches that search.' : 'Ninguna replay coincide con la búsqueda.') : (en ? 'There are no replays in your replays folder yet.' : 'Todavía no hay replays en tu carpeta de replays.');
     host.replaceChildren(empty);
     return;
   }
-  host.replaceChildren(...reportList.map((r) => {
+  host.replaceChildren(...shown.slice(0, 80).map((r) => {
     const row = document.createElement('div');
     row.className = 'rep__row';
     const info = document.createElement('div');
     info.className = 'rep__info';
     const title = document.createElement('b');
-    title.textContent = `${en ? 'Red' : 'Rojo'} ${r.score.red} – ${r.score.blue} ${en ? 'Blue' : 'Azul'}`;
+    title.textContent = r.name.replace(/\.hbr2?$/i, '');
     const sub = document.createElement('span');
-    sub.textContent = `${new Date(r.at).toLocaleString(en ? 'en' : 'es', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}${r.room ? ' · ' + r.room : ''} · ${r.end}`;
+    const d = r.digest;
+    sub.textContent = `${new Date(r.updatedAt).toLocaleString(en ? 'en' : 'es', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}` +
+      (d && typeof d.red === 'number' ? ` · ${d.red}–${d.blue}` : '');
     info.append(title, sub);
     const open = document.createElement('button');
     open.className = 'btn btn--sm';
     open.type = 'button';
+    open.disabled = reportBusy;
     open.textContent = en ? 'Make report' : 'Armar informe';
-    open.addEventListener('click', () => openReport(r));
-    const del = document.createElement('button');
-    del.className = 'btn btn--ghost btn--sm';
-    del.type = 'button';
-    del.textContent = '✕';
-    del.title = en ? 'Delete' : 'Borrar';
-    del.addEventListener('click', async () => {
-      try { reportList = (await window.tvm.reports.remove(r.id)) || []; } catch (e) { /* queda */ }
-      paintReports();
-    });
-    row.append(info, open, del);
+    open.addEventListener('click', () => makeReportFrom(r));
+    row.append(info, open);
     return row;
   }));
+}
+if ($('#reportsSearch')) $('#reportsSearch').addEventListener('input', paintReports);
+if ($('#reportsRefresh')) $('#reportsRefresh').addEventListener('click', loadReports);
+
+/** Abre la replay, la recorre pidiendo el informe y lo muestra. */
+async function makeReportFrom(replay) {
+  if (reportBusy) return;
+  const en = isEn();
+  if (state.stage === 'game' && (state.gameView === 'room' || state.gameView === 'game')) {
+    reportStatus(en ? 'Leave your room first: the replay needs the game screen.' : 'Salí de la sala primero: la replay necesita la pantalla del juego.', 'err');
+    return;
+  }
+  reportBusy = true;
+  paintReports();
+  reportStatus(en ? 'Opening the replay…' : 'Abriendo la replay…');
+  const prev = { path: state.replayPath, name: state.replayName, summary: state.summary };
+  try {
+    const res = await guard(tvm.replays.play(replay.path), 'Error');
+    if (!res) throw new Error(en ? 'The replay could not be opened.' : 'No se pudo abrir la replay.');
+    state.summary = null;
+    state.replayName = res.name.replace(/\.hbr2?$/i, '');
+    state.replayPath = replay.path;
+    // El reproductor tarda un momento en estar listo.
+    for (let i = 0; i < 40 && state.gameView !== 'replay'; i++) await new Promise((r) => setTimeout(r, 250));
+    await new Promise((r) => setTimeout(r, 1500));
+    reportStatus(en ? 'Analysing the match…' : 'Analizando el partido…');
+    const out = await tvm.replays.analyze({ report: true });
+    if (!out || !out.ok) throw new Error((out && out.reason) || (en ? 'The replay could not be analysed.' : 'No se pudo analizar la replay.'));
+    const reports = Array.isArray(out.reports) ? out.reports : [];
+    if (!reports.length) throw new Error(en ? 'No match long enough to report was found in that replay.' : 'No hay ningún partido en esa replay con la duración suficiente para informar.');
+    const base = { at: replay.updatedAt || Date.now(), room: state.replayName || replay.name };
+    const list = reports.map((r) => ({ ...base, ...r }));
+    reportStatus('');
+    if (list.length === 1) openReport(list[0]);
+    else pickReportMatch(list);
+  } catch (err) {
+    reportStatus(String((err && err.message) || err), 'err');
+  } finally {
+    reportBusy = false;
+    state.summary = prev.summary;
+    state.replayPath = prev.path;
+    state.replayName = prev.name;
+    paintReports();
+  }
+}
+
+/** Una replay puede traer varios partidos: se elige de cuál se quiere el informe. */
+function pickReportMatch(list) {
+  const en = isEn();
+  const host = $('#reportsPick');
+  if (!host) { openReport(list[0]); return; }
+  host.hidden = false;
+  const title = document.createElement('p');
+  title.className = 'note';
+  title.textContent = en ? 'This replay has several matches. Pick one:' : 'Esta replay tiene varios partidos. Elegí uno:';
+  const rows = list.map((r, i) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'btn btn--ghost btn--sm';
+    b.textContent = `${en ? 'Match' : 'Partido'} ${i + 1}: ${en ? 'Red' : 'Rojo'} ${r.score.red} – ${r.score.blue} ${en ? 'Blue' : 'Azul'} · ${r.end}`;
+    b.addEventListener('click', () => openReport(r));
+    return b;
+  });
+  const close = document.createElement('button');
+  close.type = 'button'; close.className = 'btn btn--ghost btn--sm'; close.textContent = '✕';
+  close.addEventListener('click', () => { host.hidden = true; host.replaceChildren(); });
+  host.replaceChildren(title, ...rows, close);
 }
 
 /** El informe como lista de líneas [{ text, kind }], para texto e imagen por igual. */
@@ -10202,7 +10274,7 @@ function hubSub(view, en) {
     return n === null ? (en ? 'Your library' : 'Tu biblioteca') : `${n} replays`;
   }
   if (view === 'club') return typeof state.clubOnline === 'number' ? `${state.clubOnline} ${en ? 'online' : 'conectados'}` : (en ? 'Stats and roster' : 'Estadísticas y plantel');
-  if (view === 'informes') return reportList.length ? `${reportList.length} ${en ? 'saved' : 'guardados'}` : (en ? 'Match reports' : 'Informes de partido');
+  if (view === 'informes') return en ? 'From any replay' : 'Desde cualquier replay';
   if (view === 'aspecto') return en ? 'Theme, colours and layout' : 'Tema, colores e interfaz';
   return en ? 'Client, network and controls' : 'Cliente, red y controles';
 }

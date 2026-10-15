@@ -5696,3 +5696,8 @@ html[data-layout="top"] .app[data-stage="game"] .rail:hover { visibility: visibl
 
 /* Radial: Informes ocupa el lugar 7 y el botón del capitán pasa al 8. */
 html[data-layout="radial"] .railitem:nth-of-type(8) { --dx: 43px; --dy: -133px; }
+
+.reports__status { color: var(--accent-text); }
+.reports__status.is-err { color: #ff8b7a; }
+.reports__pick { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 8px 0; }
+.reports__pick .note { flex-basis: 100%; margin: 0; }

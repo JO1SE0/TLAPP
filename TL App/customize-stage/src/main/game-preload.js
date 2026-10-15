@@ -5587,7 +5587,8 @@ function cardPayload(card) {
  * qué minuto cada arquero dejó la valla invicta.
  *
  * Costo: UNA muestra por segundo de partido (no por cuadro). Cada muestra
- * recorre los ~10 jugadores una vez. Sólo corre en vivo, nunca en replays.
+ * recorre los ~10 jugadores una vez. Ya no corre en vivo: sólo cuando se pide el
+ * informe de una grabación (`analyzeReplay` con `report`).
  *
  * El arquero no se declara en ningún lado en HaxBall, así que se deduce: el
  * jugador de cada equipo más metido hacia su propio arco. Para que un defensor
@@ -5740,13 +5741,13 @@ function mlogGoal(goal) {
   }
 }
 
-/** Arma el informe y lo manda a guardar. Se llama cuando termina el partido. */
-function mlogFinish(score) {
-  if (!mlog.on) return;
+/** Arma el informe del partido que se acaba de recorrer. Devuelve null si no llegó a nada. */
+function mlogBuild(score) {
+  if (!mlog.on) return null;
   mlog.on = false;
-  if (!mlog.side) return; // nunca hubo dos equipos en cancha
+  if (!mlog.side) return null; // nunca hubo dos equipos en cancha
   const endSec = mlog.lastSec;
-  if (endSec < 30) return; // un partido que no llegó a nada no se informa
+  if (endSec < 30) return null; // un partido que no llegó a nada no se informa
 
   const side = (t) => ({
     starters: mlog.starters[t].slice(),
@@ -5764,14 +5765,12 @@ function mlogFinish(score) {
     }))
   });
 
-  ipcRenderer.send('game:report', {
-    at: Date.now(),
-    room: engineRoomName || '',
-    score: { red: score ? score.red : lastScore.red, blue: score ? score.blue : lastScore.blue },
+  return {
+    score: { red: score ? score.red : 0, blue: score ? score.blue : 0 },
     end: mlogClockText(endSec),
     Red: side('Red'),
     Blue: side('Blue')
-  });
+  };
 }
 
 function resetTracker() {
@@ -7228,7 +7227,6 @@ function noteGoalNames(goal) {
   goalNames.assist = goal.assist || null;
   goalNames.own = !!goal.own;
   goalNames.at = Date.now();
-  safe(mlogGoal, goal);
   paintGoalNames();
   try { clubGoalFx(); } catch (e) { /* adorno */ }
 }
@@ -7698,7 +7696,6 @@ function onGameTick(view, room) {
       tracker.match = null;
       sendHeatmap();
       ipcRenderer.send('game:match-end', { red: lastScore.red, blue: lastScore.blue });
-      safe(mlogFinish);
     }
     return;
   }
@@ -7707,11 +7704,10 @@ function onGameTick(view, room) {
     // Un partido nuevo cierra el anterior. Hace falta además del caso de arriba:
     // entre dos partidos seguidos el hueco puede durar un solo cuadro y caer
     // entero entre dos dibujados, y entonces el final no se ve pasar.
-    if (tracker.match) { sendHeatmap(); ipcRenderer.send('game:match-end', { red: lastScore.red, blue: lastScore.blue }); safe(mlogFinish); }
+    if (tracker.match) { sendHeatmap(); ipcRenderer.send('game:match-end', { red: lastScore.red, blue: lastScore.blue }); }
     resetTracker();
     tracker.match = match;
     ipcRenderer.send('game:match-start');
-    if (!onReplay()) mlogStart();
   }
 
   // El reloj de partido. El tope de 100 ms tapa los saltos de un alt-tab o de
@@ -7724,8 +7720,6 @@ function onGameTick(view, room) {
     tracker.clock += advanced;
   }
   tracker.lastAt = now;
-
-  if (mlog.on) mlogTick(f, room, match);
 
   /*
    * Va SIEMPRE, aunque el resultado no se use: es lo que mantiene al día por
@@ -8299,7 +8293,9 @@ const ROSTER_EVERY = 60;
  * Recorre la grabación abierta de punta a punta y devuelve todo lo que pasó.
  * Deja el reproductor exactamente donde estaba.
  */
-function analyzeReplay() {
+function analyzeReplay(opts) {
+  const wantReport = !!(opts && opts.report);
+  const reports = [];
   const doc = gameDocument();
   const view = doc && doc.defaultView;
   const f = view && view.__tvmF;
@@ -8368,6 +8364,12 @@ function analyzeReplay() {
         // Partido nuevo: el marcador vuelve a cero y los toques del anterior ya
         // no valen. Se compara la identidad y no "hay partido o no": entre dos
         // partidos seguidos el hueco puede durar un solo cuadro.
+        // El informe del partido que termina (si se pidió) se arma acá, con su marcador final.
+        if (wantReport && mlog.on) {
+          const last = matches[matches.length - 1];
+          const rep = mlogBuild(last ? { red: last.red, blue: last.blue } : null);
+          if (rep) reports.push(rep);
+        }
         match = now;
         red = 0;
         blue = 0;
@@ -8378,11 +8380,13 @@ function analyzeReplay() {
            seguidos y lo que se quiere es la ficha de todo lo que se grabó, que
            es lo que dice el título del resumen. El mapa, por lo mismo, tampoco. */
         if (match) matches.push({ red: 0, blue: 0, seconds: 0, goals: 0 });
+        if (wantReport && match) mlogStart();
       }
       if (!match) continue; // entre partidos no hay nada que medir
 
       const current = matches[matches.length - 1];
       current.seconds = Number(match[S.time]) || current.seconds;
+      if (wantReport) mlogTick(f, room, match);
 
       // Acá cada vuelta es un cuadro de la simulación, así que lo que avanza la
       // pelota entre dos vueltas es siempre `msPerFrame`. La regla del golpe es
@@ -8424,6 +8428,7 @@ function analyzeReplay() {
            todos hay un minuto 3. Esto es lo que hace posible saltar al gol y
            encadenarlos en el carrete. */
         goal.at = Math.round(scan.clock);
+        if (wantReport) mlogGoal(goal);
         goals.push(goal);
         current.goals++;
       }
@@ -8436,7 +8441,13 @@ function analyzeReplay() {
       // que en la tabla figure también el que jugó todo el partido sin tocarla.
       if (frame % ROSTER_EVERY === 0) takeRoster(roster, f, room);
     }
+    if (wantReport && mlog.on) {
+      const last = matches[matches.length - 1];
+      const rep = mlogBuild(last ? { red: last.red, blue: last.blue } : null);
+      if (rep) reports.push(rep);
+    }
   } finally {
+    mlog.on = false;
     // Pase lo que pase, el reproductor vuelve a donde estaba: el usuario dejó
     // la grabación en un punto y el análisis no es motivo para moverla.
     try {
@@ -8465,7 +8476,8 @@ function analyzeReplay() {
     goals,
     players: [...roster.values()],
     card: cardPayload(scan.card),
-    heat: heatImage(doc)
+    heat: heatImage(doc),
+    reports
   };
 }
 
@@ -10973,8 +10985,8 @@ function boot() {
   ipcRenderer.on('game:keystrokes-move', (_e, on) => safe(setKeystrokesMoveMode, on));
 
   ipcRenderer.on('game:play-replay', (_e, replay) => safe(playReplay, replay));
-  ipcRenderer.on('game:analyze-replay', () => {
-    const summary = safe(analyzeReplay);
+  ipcRenderer.on('game:analyze-replay', (_e, opts) => {
+    const summary = safe(analyzeReplay, opts);
     ipcRenderer.send('game:replay-summary', summary || {
       ok: false,
       reason: 'El análisis de la grabación falló.'
