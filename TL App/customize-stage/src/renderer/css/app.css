@@ -5660,3 +5660,24 @@ html[data-layout="radial"] .app[data-stage="game"] .rail:hover { transform: none
 .hosterr { color: #ff8b7a; }
 .kings__row { grid-template-columns: 38px minmax(0, 1fr) 72px 72px 72px; }
 .kings__row.is-king .cr__name { color: var(--accent-text); font-weight: 600; }
+
+/* ── Interfaces dentro de una sala ──
+   La regla base de la sala (`.app[data-stage="game"] .rail`, pegada al borde
+   izquierdo y estirada de arriba a abajo) le ganaba por especificidad a la
+   posición de las interfaces flotantes: el dock y la isla quedaban como una
+   columna entera fuera de lugar y el radial lejos de su esquina. Acá cada una
+   vuelve a decir dónde va (mismo valor que fuera de la sala). */
+html[data-layout="dock"] .app[data-stage="game"] .rail {
+  left: 50%; right: auto; top: auto; bottom: 14px; width: auto; height: auto;
+}
+html[data-layout="island"] .app[data-stage="game"] .rail {
+  left: 14px; right: auto; top: 50%; bottom: auto; width: 58px; height: auto;
+}
+html[data-layout="radial"] .app[data-stage="game"] .rail {
+  left: auto; right: 26px; top: auto; bottom: 26px; width: 56px; height: 56px;
+}
+/* La barra de arriba se esconde hacia arriba, y arriba está la barra de la
+   ventana: sin esto se la veía encima de ella. */
+html[data-layout="top"] .app[data-stage="game"] .rail { visibility: hidden; }
+html[data-layout="top"] .app[data-stage="game"] .railedge:hover ~ .rail,
+html[data-layout="top"] .app[data-stage="game"] .rail:hover { visibility: visible; }
