@@ -281,6 +281,18 @@
         <button class="railitem" data-view="replays">
           <svg data-icon viewBox="0 0 24 24"><path d="m15 10 4.5-2.25A1 1 0 0 1 21 8.62v6.76a1 1 0 0 1-1.5.88L15 14M5 6h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2Z"/></svg><span data-i18n="nav.replays">Replays</span>
         </button>
+        <!-- Tarjeta de perfil: ocupa el hueco del riel con tu nombre, nivel y números. -->
+        <button class="profcard" id="profCard" type="button" title="Tu perfil">
+          <span class="pfp profcard__av" id="profCardAv"></span>
+          <span class="profcard__name" id="profCardName"></span>
+          <span class="profcard__lvl" id="profCardLvl"></span>
+          <span class="profcard__bar" aria-hidden="true"><i id="profCardBar"></i></span>
+          <span class="profcard__stats">
+            <span><b id="pcM">0</b><em>PJ</em></span>
+            <span><b id="pcG">0</b><em>G</em></span>
+            <span><b id="pcA">0</b><em>A</em></span>
+          </span>
+        </button>
         <!-- Plantel: llena el hueco del riel con los nombres del club. Es sólo
              decoración (aria-hidden, sin eventos) y se esconde en ventanas bajas. -->
         <div class="roster" aria-hidden="true">

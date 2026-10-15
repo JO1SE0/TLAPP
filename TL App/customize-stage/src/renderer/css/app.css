@@ -5706,3 +5706,32 @@ html[data-layout="radial"] .railitem:nth-of-type(9) { --dx: 82px; --dy: -113px; 
 .reports__status.is-err { color: #ff8b7a; }
 .reports__pick { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 8px 0; }
 .reports__pick .note { flex-basis: 100%; margin: 0; }
+
+/* ── Tarjeta de perfil en el hueco del riel ──
+   Va arriba del plantel; en ventanas bajas el plantel cede el lugar (flex 1 con
+   min-height 0) y la tarjeta queda. Sólo en las interfaces de riel vertical. */
+.profcard {
+  flex: none; width: calc(100% - 20px); margin: 10px 10px 4px; padding: 10px 10px 9px;
+  display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center;
+  border-radius: 14px; cursor: pointer; color: var(--text);
+  background: linear-gradient(160deg, rgb(var(--accent-rgb) / 14%), rgb(255 255 255 / 3%));
+  border: 1px solid var(--accent-line);
+  transition: transform .18s var(--ease), border-color .18s;
+}
+.profcard:hover { transform: translateY(-1px); border-color: var(--accent); }
+.profcard__av { width: 44px; height: 44px; font-size: 18px; }
+.profcard__name { max-width: 100%; font-size: 13px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.profcard__lvl { font-size: 10.5px; font-weight: 600; letter-spacing: .04em; color: var(--accent-text); }
+.profcard__bar { width: 100%; height: 4px; border-radius: 99px; background: rgb(255 255 255 / 10%); overflow: hidden; }
+.profcard__bar i { display: block; height: 100%; border-radius: inherit; background: var(--accent); }
+.profcard__stats { display: flex; justify-content: space-between; width: 100%; margin-top: 3px; }
+.profcard__stats span { display: flex; flex-direction: column; align-items: center; line-height: 1.15; }
+.profcard__stats b { font-size: 13px; font-variant-numeric: tabular-nums; }
+.profcard__stats em { font-style: normal; font-size: 9px; letter-spacing: .08em; color: var(--text-faint); }
+@media (max-height: 640px) { .profcard__stats, .profcard__bar { display: none; } }
+@media (max-height: 520px) { .profcard { display: none; } }
+html[data-layout="top"] .profcard, html[data-layout="dock"] .profcard, html[data-layout="island"] .profcard,
+html[data-layout="bottom"] .profcard, html[data-layout="radial"] .profcard,
+html[data-layout="consola"] .profcard, html[data-layout="comando"] .profcard,
+html[data-layout="mini"] .profcard,
+.app[data-stage="game"] .profcard { display: none; }

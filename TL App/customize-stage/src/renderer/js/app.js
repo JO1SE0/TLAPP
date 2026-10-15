@@ -2011,7 +2011,26 @@ function paintMeChip() {
   $('#meChipName').textContent = profile ? profile.username : nick;
   $('#meChipVip').hidden = true; // TL App no tiene niveles VIP
   paintFace($('#meChipAvatar'), profile ? { name: profile.username, avatar: profile.avatar } : { name: nick });
+  paintProfCard();
 }
+
+/** La tarjeta del riel: nombre, foto, nivel con su barra y partidos / goles / asistencias. */
+function paintProfCard() {
+  const card = $('#profCard');
+  if (!card || !state.config) return;
+  const profile = vipProfile();
+  const nick = state.config.general.nickname || t('me.noNick');
+  const name = profile ? profile.username : nick;
+  const lv = withLevel(state.config.stats || {});
+  $('#profCardName').textContent = name;
+  paintFace($('#profCardAv'), profile ? { name: profile.username, avatar: profile.avatar } : { name: nick });
+  $('#profCardLvl').textContent = (isEn() ? 'Level ' : 'Nivel ') + lv.level;
+  $('#profCardBar').style.width = `${Math.max(3, Math.min(100, Math.round((lv.levelInto / Math.max(1, lv.levelNeed)) * 100)))}%`;
+  $('#pcM').textContent = String(lv.matches || 0);
+  $('#pcG').textContent = String(lv.goals || 0);
+  $('#pcA').textContent = String(lv.assists || 0);
+}
+if ($('#profCard')) $('#profCard').addEventListener('click', () => openProfile());
 
 function paintMeMenu() {
   const profile = vipProfile();
@@ -7344,6 +7363,7 @@ function addStats(patch) {
   return tvm.stats.add(patch).then((stats) => {
     if (!stats) return;
     state.config.stats = stats;
+    paintProfCard();
   }).catch(() => { /* no es crítico */ });
 }
 
