@@ -2801,7 +2801,7 @@ handle('host:stop', () => hostSession.stop());
 handle('host:maps', (_e, picked) => hostSession.maps(picked));
 handle('host:pickMap', async (_e, key) => {
   if (!access.canHost()) throw new Error('No tenés permiso para hostear.');
-  const res = await dialog.showOpenDialog(mainWindow, { title: `Mapa para ${String(key).slice(0, 8)} (.hbs)`, filters: [{ name: 'Mapa de HaxBall', extensions: ['hbs', 'json'] }], properties: ['openFile'] });
+  const res = await dialog.showOpenDialog(mainWindow, { title: `Mapa para ${String(key).slice(0, 8)} (.hbs)`, filters: [{ name: 'Mapa de HaxBall', extensions: ['hbs', 'json', 'txt'] }], properties: ['openFile'] });
   return res.canceled || !res.filePaths[0] ? '' : res.filePaths[0];
 });
 handle('host:openMaps', async () => {

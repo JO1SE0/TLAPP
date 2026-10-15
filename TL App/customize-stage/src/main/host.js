@@ -18,7 +18,7 @@ const HEADLESS = 'https://html5.haxball.com/headless';
 const BUILTIN = path.join(__dirname, 'host-scripts', 'room.js');
 const MAX_SCRIPT = 512 * 1024;
 const MAP_KEYS = ['x1', 'x3', 'x4', 'x5', 'x7', 'train'];
-const MAP_EXT = ['.hbs', '.json'];
+const MAP_EXT = ['.hbs', '.json', '.txt'];
 const MAX_MAP = 2 * 1024 * 1024;
 const MAX_REPLAY = 40 * 1024 * 1024;
 
@@ -60,7 +60,7 @@ function loadMaps(dirs, picked) {
   const out = {};
   for (const key of MAP_KEYS) {
     const mine = picked && typeof picked[key] === 'string' ? picked[key] : '';
-    if (mine && /\.(hbs|json)$/i.test(mine)) {
+    if (mine && /\.(hbs|json|txt)$/i.test(mine)) {
       try {
         const st = fs.statSync(mine);
         if (st.isFile() && st.size <= MAX_MAP) { out[key] = fs.readFileSync(mine, 'utf8'); continue; }
