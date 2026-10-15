@@ -9598,14 +9598,46 @@ function paintHost() {
   if (err) { err.textContent = s.error || ''; err.hidden = !s.error; }
 }
 
+const HOST_MAP_KEYS = ['x1', 'x3', 'x4', 'x5', 'x7', 'train'];
+let hostMapFiles = {};
+try { hostMapFiles = JSON.parse(localStorage.getItem('tl_host_maps') || '{}') || {}; } catch (e) { hostMapFiles = {}; }
+
 async function loadHostMaps() {
   const el = $('#hostMapsInfo');
+  const grid = $('#hostMaps');
   if (!el || !window.tvm.host.maps) return;
-  try {
-    const have = (await window.tvm.host.maps()) || [];
-    const all = ['x1', 'x3', 'x4', 'x5', 'x7', 'train'];
-    el.textContent = 'Cargados: ' + (have.join(', ') || 'ninguno') + (have.length < all.length ? ' · faltan: ' + all.filter((k) => !have.includes(k)).join(', ') : '');
-  } catch (e) { el.textContent = '—'; }
+  let have = [];
+  try { have = (await window.tvm.host.maps(hostMapFiles)) || []; } catch (e) { have = []; }
+  el.textContent = 'Con mapa: ' + (have.join(', ') || 'ninguno');
+  if (!grid) return;
+  grid.replaceChildren(...HOST_MAP_KEYS.map((k) => {
+    const row = document.createElement('div');
+    row.className = 'hostmaps__row';
+    const name = document.createElement('b');
+    name.textContent = k === 'train' ? '!train' : '!' + k;
+    const file = document.createElement('span');
+    file.className = 'note';
+    const own = hostMapFiles[k];
+    file.textContent = own ? own.split(/[\\/]/).pop() : (have.includes(k) ? 'de la carpeta de mapas' : 'sin mapa');
+    const pick = document.createElement('button');
+    pick.type = 'button'; pick.className = 'btn btn--ghost btn--sm'; pick.textContent = 'Elegir…';
+    pick.addEventListener('click', async () => {
+      let f = '';
+      try { f = await window.tvm.host.pickMap(k); } catch (e) { f = ''; }
+      if (!f) return;
+      hostMapFiles[k] = f;
+      try { localStorage.setItem('tl_host_maps', JSON.stringify(hostMapFiles)); } catch (e) { /* sin guardar */ }
+      loadHostMaps();
+    });
+    row.append(name, file, pick);
+    if (own) {
+      const clr = document.createElement('button');
+      clr.type = 'button'; clr.className = 'btn btn--ghost btn--sm'; clr.textContent = 'Quitar';
+      clr.addEventListener('click', () => { delete hostMapFiles[k]; try { localStorage.setItem('tl_host_maps', JSON.stringify(hostMapFiles)); } catch (e) { /* nada */ } loadHostMaps(); });
+      row.append(clr);
+    }
+    return row;
+  }));
 }
 
 async function loadHostState() {
@@ -9649,7 +9681,7 @@ function bindHost() {
       hostSt = await window.tvm.host.start({
         mode: hostMode, name: $('#hostName').value, size: ($('#hostSize').value === 'train' ? 'train' : Number($('#hostSize').value)), maxPlayers: Number($('#hostMax').value),
         password: $('#hostPass').value, adminKey: $('#hostAdminKey').value, hostNick: $('#hostNick').value,
-        record: $('#hostRecord').checked, listed: $('#hostListed').checked, customPath: hostMode === 'amistoso' ? hostScript : ''
+        record: $('#hostRecord').checked, listed: $('#hostListed').checked, mapFiles: hostMapFiles, customPath: hostMode === 'amistoso' ? hostScript : ''
       });
       try { localStorage.setItem('tl_host_prefs', JSON.stringify({ nick: $('#hostNick').value, adminKey: $('#hostAdminKey').value })); } catch (e) { /* sin guardar */ }
     } catch (e) {

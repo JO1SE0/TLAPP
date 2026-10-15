@@ -56,9 +56,16 @@ function wrap(source) {
 }
 
 /** Los mapas son archivos x1.hbs, x3.hbs, x4.hbs, x5.hbs, x7.hbs y train.hbs. */
-function loadMaps(dirs) {
+function loadMaps(dirs, picked) {
   const out = {};
   for (const key of MAP_KEYS) {
+    const mine = picked && typeof picked[key] === 'string' ? picked[key] : '';
+    if (mine && /\.(hbs|json)$/i.test(mine)) {
+      try {
+        const st = fs.statSync(mine);
+        if (st.isFile() && st.size <= MAX_MAP) { out[key] = fs.readFileSync(mine, 'utf8'); continue; }
+      } catch { /* el archivo ya no está: se cae a las carpetas */ }
+    }
     for (const dir of dirs) {
       let found = false;
       for (const ext of MAP_EXT) {
@@ -99,7 +106,8 @@ function create(deps) {
       hostNick: clean(r.hostNick, 25),
       token: clean(r.token, 200),
       record: mode === 'interno' && r.record !== false,
-      customPath: clean(r.customPath, 500)
+      customPath: clean(r.customPath, 500),
+      mapFiles: MAP_KEYS.reduce((o, k) => { const v = r.mapFiles && clean(r.mapFiles[k], 500); if (v) o[k] = v; return o; }, {})
     };
   }
 
@@ -136,7 +144,7 @@ function create(deps) {
     if (win && !win.isDestroyed()) throw new Error('Ya hay una sala hosteada. Cerrala primero.');
     const c = sanitize(raw);
     const source = readScript(c);
-    cfg = { ...c, maps: loadMaps(mapDirs || []) };
+    cfg = { ...c, maps: loadMaps(mapDirs || [], c.mapFiles) };
     set({ running: false, starting: true, mode: c.mode, size: 'x' + c.size, link: '', players: 0, name: c.name, error: '', custom: !!c.customPath });
     win = new BrowserWindow({
       width: 520, height: 640, show: true, autoHideMenuBar: true, title: 'Sala TL — ' + c.name,
@@ -170,7 +178,7 @@ function create(deps) {
 
   function show() { if (win && !win.isDestroyed()) { win.show(); win.focus(); } return { ...state }; }
 
-  return { start, stop, show, maps: () => Object.keys(loadMaps(mapDirs || [])), state: () => ({ ...state }), isRunning: () => !!(win && !win.isDestroyed()) };
+  return { start, stop, show, maps: (picked) => Object.keys(loadMaps(mapDirs || [], picked)), state: () => ({ ...state }), isRunning: () => !!(win && !win.isDestroyed()) };
 }
 
 module.exports = { create };

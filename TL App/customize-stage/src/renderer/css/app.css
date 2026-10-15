@@ -5681,3 +5681,8 @@ html[data-layout="radial"] .app[data-stage="game"] .rail {
 html[data-layout="top"] .app[data-stage="game"] .rail { visibility: hidden; }
 html[data-layout="top"] .app[data-stage="game"] .railedge:hover ~ .rail,
 html[data-layout="top"] .app[data-stage="game"] .rail:hover { visibility: visible; }
+
+.hostmaps { display: flex; flex-direction: column; gap: 6px; margin: 6px 0; }
+.hostmaps__row { display: flex; align-items: center; gap: 10px; }
+.hostmaps__row b { width: 54px; font-size: var(--fs-sm); }
+.hostmaps__row .note { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
