@@ -11,6 +11,7 @@ window.TL_NEWS = {
   title: { es: 'Qué hay de nuevo', en: "What's new" },
   items: {
     es: [
+      'Nuevo: Hostear salas desde el cliente (Club → Hostear sala, sólo capitán y habilitados). Modo Interno: guarda el replay de cada partido y cuenta victorias, goles y asistencias. Modo Amistoso: sala con comandos (!x1 !x3 !x4 !x5 !x7, !swap, !mezclar, !camis, !limite…) y podés cargar tu propio script .js. En Club aparece «Los reyes del x7» con partidos ganados, goles y asistencias de todo el club.',
       'Nuevo: Interfaz elegible (Personalización → Estilo): Clásica (la de siempre, por defecto), Barra superior, Dock flotante, Isla, Barra inferior, Íconos, Lateral derecho y tres que cambian todo: Consola (Inicio con mosaicos), Comando (paleta Ctrl+K) y Radial (botón en abanico). Podés volver a la clásica cuando quieras. También: filas de la lista de salas densa/normal/amplia.',
       'Replays rediseñadas: ★ para fijar tus mejores, marcador y una línea con los goles de cada equipo, tarjetas con fecha y resultado del análisis, agrupadas por día, con filtros (hoy, semana, con análisis) y orden (más goles, más largos). La lista de salas muestra un esqueleto mientras carga los ajustes tienen migas de pan y hay una barra de estado opcional (Personalización → Estilo → Interfaz).',
       'Nuevo: Mezclador de volúmenes (Configuración → Cliente y audio) con la música del menú, gol y golpe en un solo lugar.',

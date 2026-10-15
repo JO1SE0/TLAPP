@@ -228,11 +228,15 @@
       rep.type = 'button'; rep.disabled = m.self || busy;
       rep.title = 'Que pueda ver los informes de partido.';
       rep.addEventListener('click', async () => { if (await act({ type: 'setReports', name: m.name, value: !m.rep })) flash(m.rep ? `${m.name} ya no ve los informes.` : `${m.name} ahora ve los informes.`); });
+      const host = el('button', 'cap__btn cap__btn--ghost cap__btn--sm', m.host ? 'Hostea: sí' : 'Hostea: no');
+      host.type = 'button'; host.disabled = m.self || busy || !!m.ext;
+      host.title = 'Que pueda hostear internos y amistosos. Los resultados del interno que cargue cuentan para «Los reyes del x7».';
+      host.addEventListener('click', async () => { if (await act({ type: 'setHost', name: m.name, value: !m.host })) flash(m.host ? `${m.name} ya no hostea.` : `${m.name} ahora puede hostear.`); });
       const ext = el('button', 'cap__btn cap__btn--ghost cap__btn--sm', m.ext ? 'Ajeno: sí' : 'Ajeno: no');
       ext.type = 'button'; ext.disabled = m.self || busy;
       ext.title = 'Ajeno al club: no ve quién está conectado ni las estadísticas, y nadie del club lo ve a él. Sólo lo ves vos.';
       ext.addEventListener('click', async () => { if (await act({ type: 'setExternal', name: m.name, value: !m.ext })) flash(m.ext ? `${m.name} vuelve a ser del club.` : `${m.name} quedó como ajeno al club.`); });
-      acts.append(ext, rep, free, nk, del);
+      acts.append(ext, host, rep, free, nk, del);
       row.append(name, state, ver, acts);
       table.append(row);
     }

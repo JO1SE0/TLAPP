@@ -1,0 +1,119 @@
+'use strict';
+
+/**
+ * Hostear una sala desde el cliente (modo interno o amistoso).
+ *
+ * Abre una ventana con la página headless de HaxBall, le inyecta el script de
+ * la sala y traduce lo que éste avisa (link, partidos, replays) en callbacks.
+ * Una sola sala a la vez. Cerrar la ventana cierra la sala.
+ *
+ * La página pide un captcha si no hay token: por eso la ventana se muestra
+ * hasta que la sala sale al aire, y después se esconde (se puede volver a abrir).
+ */
+
+const fs = require('fs');
+const path = require('path');
+
+const HEADLESS = 'https://html5.haxball.com/headless';
+const BUILTIN = path.join(__dirname, 'host-scripts', 'room.js');
+const MAX_SCRIPT = 512 * 1024;
+const MAX_REPLAY = 40 * 1024 * 1024;
+
+const MODES = new Set(['interno', 'amistoso']);
+const clean = (v, max) => String(v == null ? '' : v).replace(/[\u0000-\u001f]/g, '').trim().slice(0, max);
+
+function create(deps) {
+  const { BrowserWindow, ipcMain, onMatch, onReplay, onState } = deps;
+  let win = null;
+  let cfg = null;
+  let state = { running: false, starting: false, mode: '', size: '', link: '', players: 0, name: '', error: '', custom: false };
+
+  const set = (patch) => { state = { ...state, ...patch }; try { onState && onState({ ...state }); } catch { /* sin panel */ } };
+
+  function sanitize(raw) {
+    const r = raw || {};
+    const mode = MODES.has(r.mode) ? r.mode : 'amistoso';
+    const size = [1, 2, 3, 4, 5, 6, 7].includes(Number(r.size)) ? Number(r.size) : (mode === 'interno' ? 7 : 3);
+    return {
+      mode, size,
+      name: clean(r.name, 40) || (mode === 'interno' ? 'Interno TL' : 'Amistoso TL'),
+      maxPlayers: Math.max(2, Math.min(30, Math.round(Number(r.maxPlayers)) || (size * 2 + 4))),
+      password: clean(r.password, 30),
+      listed: r.listed !== false,
+      adminKey: clean(r.adminKey, 30),
+      hostNick: clean(r.hostNick, 25),
+      token: clean(r.token, 200),
+      record: mode === 'interno' && r.record !== false,
+      customPath: clean(r.customPath, 500)
+    };
+  }
+
+  function readScript(c) {
+    if (!c.customPath) return fs.readFileSync(BUILTIN, 'utf8');
+    if (!/\.js$/i.test(c.customPath)) throw new Error('El script tiene que ser un archivo .js');
+    const st = fs.statSync(c.customPath);
+    if (!st.isFile() || st.size > MAX_SCRIPT) throw new Error('El script es demasiado grande o no es un archivo');
+    return fs.readFileSync(c.customPath, 'utf8');
+  }
+
+  function ours(event) { return !!(win && !win.isDestroyed() && event.sender === win.webContents); }
+
+  ipcMain.on('host:config', (event) => { event.returnValue = ours(event) ? cfg : null; });
+  ipcMain.on('host:event', (event, type, data) => {
+    if (!ours(event)) return;
+    if (type === 'link' && typeof data === 'string') {
+      set({ link: data.slice(0, 200), starting: false, running: true, error: '' });
+      if (!cfg.token && win) { try { win.hide(); } catch { /* ya cerrada */ } }
+    } else if (type === 'players' && data) {
+      set({ players: Math.max(0, Math.min(99, Number(data.count) || 0)) });
+    } else if (type === 'mode' && data && typeof data.mode === 'string') {
+      set({ size: data.mode.slice(0, 4) });
+    } else if (type === 'match' && data && cfg.mode === 'interno' && onMatch) {
+      Promise.resolve(onMatch(data)).catch(() => { /* queda en la cola */ });
+    } else if (type === 'replay' && data && typeof data.data === 'string' && data.data.length < MAX_REPLAY * 1.4 && onReplay) {
+      Promise.resolve(onReplay(clean(data.name, 80), Buffer.from(data.data, 'base64'))).catch(() => { /* sin carpeta */ });
+    }
+  });
+
+  async function start(raw) {
+    if (win && !win.isDestroyed()) throw new Error('Ya hay una sala hosteada. Cerrala primero.');
+    const c = sanitize(raw);
+    const source = readScript(c);
+    cfg = c;
+    set({ running: false, starting: true, mode: c.mode, size: 'x' + c.size, link: '', players: 0, name: c.name, error: '', custom: !!c.customPath });
+    win = new BrowserWindow({
+      width: 520, height: 640, show: true, autoHideMenuBar: true, title: 'Sala TL — ' + c.name,
+      webPreferences: {
+        preload: path.join(__dirname, 'host-preload.js'),
+        partition: 'persist:tl-host',
+        nodeIntegration: false, contextIsolation: false, sandbox: false,
+        backgroundThrottling: false, enableRemoteModule: false
+      }
+    });
+    const mine = win;
+    mine.webContents.setWindowOpenHandler && mine.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
+    mine.webContents.on('will-navigate', (e, url) => { if (!/^https:\/\/(www\.)?(html5\.)?haxball\.com\//i.test(url)) e.preventDefault(); });
+    mine.webContents.once('dom-ready', () => {
+      mine.webContents.executeJavaScript(source).catch((err) => set({ error: 'El script falló: ' + (err && err.message || err), starting: false }));
+    });
+    mine.on('closed', () => {
+      if (win === mine) win = null;
+      set({ running: false, starting: false, link: '', players: 0 });
+    });
+    await mine.loadURL(HEADLESS);
+    return { ...state };
+  }
+
+  function stop() {
+    if (win && !win.isDestroyed()) win.destroy();
+    win = null;
+    set({ running: false, starting: false, link: '', players: 0 });
+    return { ...state };
+  }
+
+  function show() { if (win && !win.isDestroyed()) { win.show(); win.focus(); } return { ...state }; }
+
+  return { start, stop, show, state: () => ({ ...state }), isRunning: () => !!(win && !win.isDestroyed()) };
+}
+
+module.exports = { create };

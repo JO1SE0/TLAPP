@@ -22,6 +22,8 @@ const updater = require('./updater');
 const access = require('./access');
 const panel = require('./panel');
 const presence = require('./presence');
+const hostRoom = require('./host');
+const interno = require('./interno');
 const admin = require('./admin');
 const avatars = require('./avatars');
 const countries = require('./countries');
@@ -2766,6 +2768,49 @@ handle('club:stats', async () => {
     return await presence.readStats({ url: access.presenceUrl(), key: access.getKey(), roster: access.getRoster(), captain: access.isCaptain() });
   } catch { return null; }
 });
+/* Hostear salas (modo interno / amistoso) y «Los reyes del x7» --------------- */
+const internoCtx = () => ({ url: access.presenceUrl(), key: access.getKey(), dir: app.getPath('userData') });
+const hostSession = hostRoom.create({
+  BrowserWindow, ipcMain,
+  onState: (st) => send('host:state', st),
+  onMatch: async (match) => {
+    if (!access.canHost() || access.isExternal()) return;
+    await interno.submit(internoCtx(), match);
+    send('interno:updated');
+  },
+  onReplay: async (name, data) => {
+    const dir = store.get().replays.folder;
+    const safe = name.replace(/[^\w.\-]+/g, '_').replace(/^\.+/, '') || 'interno';
+    fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(path.join(dir, `${safe}.hbr2`), data);
+  }
+});
+handle('host:state', () => ({ ...hostSession.state(), allowed: access.canHost() }));
+handle('host:start', async (_e, opts) => {
+  if (!access.canHost()) throw new Error('No tenés permiso para hostear. Pedíselo al capitán.');
+  const o = { ...(opts || {}) };
+  if (o.mode === 'interno') o.customPath = '';
+  if (o.mode === 'interno' && !access.getKey()) throw new Error('El interno necesita tu clave para firmar los partidos.');
+  const res = await hostSession.start(o);
+  if (o.mode === 'interno') interno.flush(internoCtx()).catch(() => {});
+  return res;
+});
+handle('host:stop', () => hostSession.stop());
+handle('host:show', () => hostSession.show());
+handle('host:pickScript', async () => {
+  if (!access.canHost()) throw new Error('No tenés permiso para hostear.');
+  const res = await dialog.showOpenDialog(mainWindow, { title: 'Script de sala (.js)', filters: [{ name: 'JavaScript', extensions: ['js'] }], properties: ['openFile'] });
+  return res.canceled || !res.filePaths[0] ? '' : res.filePaths[0];
+});
+handle('club:interno', async () => {
+  if (access.isExternal()) return null;
+  try {
+    interno.flush(internoCtx()).catch(() => {});
+    return await interno.read({ url: access.presenceUrl(), hostPubs: access.hostPubs() });
+  } catch { return null; }
+});
+app.on('before-quit', () => { try { hostSession.stop(); } catch { /* ya cerrada */ } });
+
 // Panel del capitán: estado vigente + estado de cada miembro, y las acciones.
 handle('admin:get', async () => {
   if (!access.isCaptain()) return null;

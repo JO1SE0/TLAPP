@@ -146,7 +146,7 @@ function rebuild(list) {
       legacyNotice: cleanNotice(base.announcement), seq: 0, source: 'github', removed: [], forceUpdate: false, history: []
     };
   }
-  roster = eff.users.filter((u) => u && HEX64.test(String(u.pub || ''))).map((u) => ({ name: String(u.name || '').slice(0, 40), pub: String(u.pub).toLowerCase(), trial: Number(u.trial) > 0, rep: u.rep === true, ext: u.ext === true }));
+  roster = eff.users.filter((u) => u && HEX64.test(String(u.pub || ''))).map((u) => ({ name: String(u.name || '').slice(0, 40), pub: String(u.pub).toLowerCase(), trial: Number(u.trial) > 0, rep: u.rep === true, host: u.host === true, ext: u.ext === true }));
   presence = typeof base.presence === 'string' ? base.presence : '';
 }
 
@@ -226,6 +226,24 @@ function reportsAllowed(key) {
   } catch { return false; }
 }
 
+/** ¿Esta clave puede hostear internos? El capitán siempre; los demás si él se lo dio. */
+function hostAllowed(key) {
+  try {
+    if (!key) return false;
+    const pub = identity.fromKey(key).pub;
+    if (eff.captains.includes(pub)) return true;
+    const me = eff.users.find((u) => u && String(u.pub || '').toLowerCase() === pub);
+    return !!(me && me.host === true && me.ext !== true);
+  } catch { return false; }
+}
+
+/** Las llaves públicas cuyos resultados de interno valen: el capitán y los habilitados. */
+function hostPubs() {
+  const out = new Set((eff.captains || []).map((p) => String(p).toLowerCase()));
+  for (const u of eff.users) if (u && u.host === true && u.ext !== true && HEX64.test(String(u.pub || ''))) out.add(String(u.pub).toLowerCase());
+  return out;
+}
+
 function set(next) {
   const now = Date.now();
   const active = activeNotices(now, next.name);
@@ -237,11 +255,12 @@ function set(next) {
   next.captain = next.state === 'ok' && isCaptainKey(saved.key);
   next.forceUpdate = eff.forceUpdate === true;
   next.reports = next.state === 'ok' && reportsAllowed(saved.key);
+  next.host = next.state === 'ok' && hostAllowed(saved.key);
   next.external = next.state === 'ok' && isExternalKey(saved.key);
   next.trialEnd = next.state === 'ok' && saved.trialMins && saved.trialStart ? saved.trialStart + saved.trialMins * MIN : 0;
   const changed = next.state !== status.state || next.reason !== status.reason || next.name !== status.name ||
-    JSON.stringify([next.notice, next.urgent, next.minVersion, next.captain, next.minMessage, next.forceUpdate, next.trialEnd, next.reports, next.external]) !==
-    JSON.stringify([status.notice, status.urgent, status.minVersion, status.captain, status.minMessage, status.forceUpdate, status.trialEnd, status.reports, status.external]);
+    JSON.stringify([next.notice, next.urgent, next.minVersion, next.captain, next.minMessage, next.forceUpdate, next.trialEnd, next.reports, next.external, next.host]) !==
+    JSON.stringify([status.notice, status.urgent, status.minVersion, status.captain, status.minMessage, status.forceUpdate, status.trialEnd, status.reports, status.external, status.host]);
   status = next;
   if (changed) onChange(status);
 }
@@ -451,6 +470,7 @@ const getEffective = () => JSON.parse(JSON.stringify({
 }));
 const isCaptain = () => !!status.captain;
 const canReports = () => !!status.reports;
+const canHost = () => !!status.host;
 const isExternal = () => !!status.external;
 /** El capitán acaba de publicar: se adopta al instante, sin esperar el próximo minuto. */
 async function adoptAdmin(raw) {
@@ -461,4 +481,4 @@ async function adoptAdmin(raw) {
   await evaluate(null, { skipGithub: true });
 }
 
-module.exports = { getEffective, isCaptain, canReports, isExternal, adoptAdmin, getKey, getRoster, presenceUrl, init, get, isLocked, submit, recheck, hashKey, normalize, ACCESS_URL };
+module.exports = { getEffective, isCaptain, canReports, canHost, hostPubs, isExternal, adoptAdmin, getKey, getRoster, presenceUrl, init, get, isLocked, submit, recheck, hashKey, normalize, ACCESS_URL };

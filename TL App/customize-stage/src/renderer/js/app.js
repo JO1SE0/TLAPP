@@ -658,6 +658,7 @@ function onAccess(st) {
   }
   const repSec = $('#reportsSec');
   if (repSec) repSec.hidden = !(st && st.reports);
+  paintHostAccess();
   showUrgentIfAny();
   if (welcomePending) { welcomePending = false; startWelcome(); }
   setTimeout(showNoticeIfReady, 900);
@@ -1870,7 +1871,7 @@ function setView(name) {
 
   if (name === 'replays') loadReplays();
   if (name === 'cuenta') loadAuth();
-  if (name === 'club') { loadClubRank(); loadReports(); }
+  if (name === 'club') { loadClubRank(); loadReports(); loadKings(); loadHostState(); }
   /*
    * El índice se rearma en cada cambio de pestaña porque lista las secciones de
    * la que está abierta. Va DESPUÉS del `scrollTop = 0` de arriba: el marcador
@@ -9530,6 +9531,137 @@ for (const b of $$('#clubRankSeg button')) {
   b.addEventListener('click', () => { clubRankKey = b.dataset.key; paintClubRank(); });
 }
 if ($('#clubRankRefresh')) $('#clubRankRefresh').addEventListener('click', loadClubRank);
+
+/* ── Los reyes del x7 y hostear salas ────────────────────────────────────────
+ * Los partidos de los internos viajan firmados por quien hosteó; acá sólo se
+ * leen y se muestran. Se piden al abrir Club o con el botón: no hay temporizador. */
+let kings = null;
+
+async function loadKings() {
+  if (!window.tvm.club || !window.tvm.club.interno) return;
+  const st = $('#kingsState');
+  if (st) st.textContent = 'cargando…';
+  try { kings = await window.tvm.club.interno(); } catch (e) { kings = null; }
+  paintKings();
+}
+
+function paintKings() {
+  const host = $('#kingsList');
+  if (!host) return;
+  const st = $('#kingsState');
+  const note = $('#kingsNote');
+  if (!kings) { host.replaceChildren(); if (st) st.textContent = 'sin datos'; if (note) note.textContent = ''; return; }
+  if (st) st.textContent = `${kings.matches} ${kings.matches === 1 ? 'partido' : 'partidos'}`;
+  if (note) note.textContent = 'Sólo cuentan los internos hosteados desde TL App, firmados por quien los armó.';
+  const mk = (tag, cls, txt) => { const e = document.createElement(tag); if (cls) e.className = cls; if (txt !== undefined) e.textContent = txt; return e; };
+  if (!kings.kings.length) { host.replaceChildren(mk('p', 'note', 'Todavía no hay internos registrados.')); return; }
+  const head = mk('div', 'cr__row cr__row--head kings__row');
+  for (const t of ['#', 'Jugador', 'Ganados', 'Goles', 'Asist.']) head.append(mk('span', '', t));
+  const rows = kings.kings.map((k, i) => {
+    const r = mk('div', 'cr__row kings__row' + (i === 0 ? ' is-king' : ''));
+    r.append(mk('span', 'cr__pos', i === 0 ? '👑' : String(i + 1)), mk('span', 'cr__name', k.name),
+      mk('span', 'is-key', String(k.wins)), mk('span', '', String(k.goals)), mk('span', '', String(k.assists)));
+    return r;
+  });
+  host.replaceChildren(head, ...rows);
+}
+if ($('#kingsRefresh')) $('#kingsRefresh').addEventListener('click', loadKings);
+if (window.tvm.club && window.tvm.club.onInterno) window.tvm.club.onInterno(() => loadKings());
+
+let hostSt = null;
+let hostMode = 'interno';
+let hostScript = '';
+
+function paintHostAccess() {
+  const ok = !!(state.access && state.access.host);
+  const sec = $('#hostSec');
+  if (sec) sec.hidden = !ok;
+  const btn = $('#hostBtn');
+  if (btn) btn.hidden = !ok;
+}
+
+function paintHost() {
+  const s = hostSt;
+  if (!s) return;
+  const live = !!(s.running || s.starting);
+  const tag = $('#hostTag');
+  if (tag) tag.textContent = s.running ? 'en el aire' : s.starting ? 'iniciando…' : 'apagada';
+  if ($('#hostForm')) $('#hostForm').hidden = live;
+  if ($('#hostLive')) $('#hostLive').hidden = !live;
+  if ($('#hostGo')) $('#hostGo').hidden = live;
+  if ($('#hostStop')) $('#hostStop').hidden = !live;
+  if ($('#hostLiveName')) $('#hostLiveName').textContent = s.name || '';
+  if ($('#hostLiveInfo')) $('#hostLiveInfo').textContent = `${s.mode === 'interno' ? 'Interno' : 'Amistoso'} · ${s.size || ''} · ${s.players || 0} adentro` + (s.custom ? ' · script propio' : '');
+  if ($('#hostLink')) $('#hostLink').value = s.link || (s.starting ? 'esperando que HaxBall la publique…' : '');
+  if ($('#hostCopy')) $('#hostCopy').disabled = !s.link;
+  const err = $('#hostErr');
+  if (err) { err.textContent = s.error || ''; err.hidden = !s.error; }
+}
+
+async function loadHostState() {
+  if (!window.tvm.host) return;
+  try { hostSt = await window.tvm.host.state(); } catch (e) { return; }
+  paintHost();
+}
+
+function paintHostMode() {
+  for (const b of $$('#hostMode button')) b.classList.toggle('is-on', b.dataset.mode === hostMode);
+  if ($('#hostRecordRow')) $('#hostRecordRow').hidden = hostMode !== 'interno';
+  if ($('#hostScriptRow')) $('#hostScriptRow').hidden = hostMode === 'interno';
+  const nameEl = $('#hostName');
+  if (nameEl && (!nameEl.value || nameEl.dataset.auto === '1')) { nameEl.value = hostMode === 'interno' ? 'Interno TL' : 'Amistoso TL'; nameEl.dataset.auto = '1'; }
+  const size = $('#hostSize');
+  if (size && size.dataset.touched !== '1') size.value = hostMode === 'interno' ? '7' : '3';
+}
+
+function bindHost() {
+  if (!window.tvm.host || !$('#hostSec')) return;
+  for (const b of $$('#hostMode button')) b.addEventListener('click', () => { hostMode = b.dataset.mode; paintHostMode(); });
+  if ($('#hostName')) $('#hostName').addEventListener('input', (e) => { e.target.dataset.auto = '0'; });
+  if ($('#hostSize')) $('#hostSize').addEventListener('change', (e) => { e.target.dataset.touched = '1'; });
+  if ($('#hostScriptPick')) $('#hostScriptPick').addEventListener('click', async () => {
+    try { hostScript = (await window.tvm.host.pickScript()) || hostScript; } catch (e) { /* cancelado */ }
+    if ($('#hostScriptName')) $('#hostScriptName').textContent = hostScript ? hostScript.split(/[\\/]/).pop() : 'Usa el script de TL App';
+    if ($('#hostScriptClear')) $('#hostScriptClear').hidden = !hostScript;
+  });
+  if ($('#hostScriptClear')) $('#hostScriptClear').addEventListener('click', () => {
+    hostScript = '';
+    $('#hostScriptName').textContent = 'Usa el script de TL App';
+    $('#hostScriptClear').hidden = true;
+  });
+  $('#hostGo').addEventListener('click', async () => {
+    const g = $('#hostGo');
+    g.disabled = true;
+    try {
+      hostSt = await window.tvm.host.start({
+        mode: hostMode, name: $('#hostName').value, size: Number($('#hostSize').value), maxPlayers: Number($('#hostMax').value),
+        password: $('#hostPass').value, adminKey: $('#hostAdminKey').value, hostNick: $('#hostNick').value,
+        record: $('#hostRecord').checked, listed: $('#hostListed').checked, customPath: hostMode === 'amistoso' ? hostScript : ''
+      });
+      try { localStorage.setItem('tl_host_prefs', JSON.stringify({ nick: $('#hostNick').value, adminKey: $('#hostAdminKey').value })); } catch (e) { /* sin guardar */ }
+    } catch (e) {
+      hostSt = { ...(hostSt || {}), error: String((e && e.message) || e).replace(/^Error:\s*/, '') };
+    }
+    g.disabled = false;
+    paintHost();
+  });
+  $('#hostStop').addEventListener('click', async () => { try { hostSt = await window.tvm.host.stop(); } catch (e) { /* ya cerrada */ } paintHost(); });
+  $('#hostShow').addEventListener('click', () => { window.tvm.host.show().catch(() => {}); });
+  $('#hostCopy').addEventListener('click', async () => {
+    try { await navigator.clipboard.writeText($('#hostLink').value); toast('Link copiado'); } catch (e) { /* sin portapapeles */ }
+  });
+  if (window.tvm.host.onState) window.tvm.host.onState((s) => { hostSt = { ...(hostSt || {}), ...s }; paintHost(); });
+  try {
+    const p = JSON.parse(localStorage.getItem('tl_host_prefs') || '{}');
+    if (p.nick) $('#hostNick').value = p.nick;
+    if (p.adminKey) $('#hostAdminKey').value = p.adminKey;
+  } catch (e) { /* sin preferencias */ }
+  paintHostMode();
+  if ($('#hostBtn')) $('#hostBtn').addEventListener('click', () => { goView ? goView('club') : setView('club'); });
+}
+bindHost();
+
+
 
 /* ── Informes de partido ─────────────────────────────────────────────────────
  * La app registra cada partido en vivo (una muestra por segundo, sin tocar el

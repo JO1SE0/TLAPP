@@ -1350,7 +1350,7 @@ svg[data-icon] .ico-fill { fill: currentColor; stroke: none; }
 .note { font-size: var(--fs-xs); color: var(--text-faint); line-height: 1.5; }
 .note--warn { color: var(--warn); }
 
-input[type="text"], select {
+input[type="text"], input[type="number"], select {
   height: 36px;
   padding: 0 12px;
   border-radius: 10px;
@@ -1360,7 +1360,7 @@ input[type="text"], select {
   outline: none;
   user-select: text;
 }
-input[type="text"]:focus, select:focus {
+input[type="text"]:focus, input[type="number"]:focus, select:focus {
   border-color: var(--accent);
   box-shadow: 0 0 0 3px var(--accent-soft);
 }
@@ -5645,3 +5645,18 @@ html[data-layout="radial"] .app[data-stage="game"] .rail:hover { transform: none
 .laycard__prev--radial .lp-side { display: none; }
 .laycard__prev--radial .lp-bar { right: 8px; bottom: 8px; width: 16px; height: 16px; border-radius: 50%; left: auto; }
 .laycard__prev--radial .lp-main { left: 5px; right: 5px; top: 5px; bottom: 5px; }
+
+/* ── Hostear salas y Los reyes del x7 ── */
+.hostform { display: flex; flex-direction: column; gap: var(--sp-3); margin-top: var(--sp-3); }
+.hostgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: var(--sp-3); }
+.hostgrid .field + .field { margin-top: 0; }
+.hostgrid input, .hostscript { min-width: 0; }
+.hostchk { display: flex; align-items: center; gap: 8px; font-size: var(--fs-sm); color: var(--text-dim); cursor: pointer; }
+.hostscript { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.hostlive { display: flex; flex-direction: column; gap: 6px; margin-top: var(--sp-3); padding: 12px; border-radius: 10px; background: var(--surface-2, rgba(255,255,255,.04)); }
+.hostlive__row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.hostlive__row input { flex: 1 1 220px; min-width: 0; }
+.hostact { display: flex; gap: 8px; margin-top: var(--sp-3); }
+.hosterr { color: #ff8b7a; }
+.kings__row { grid-template-columns: 38px minmax(0, 1fr) 72px 72px 72px; }
+.kings__row.is-king .cr__name { color: var(--accent-text); font-weight: 600; }

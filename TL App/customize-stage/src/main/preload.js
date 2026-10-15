@@ -163,12 +163,22 @@ contextBridge.exposeInMainWorld('tvm', {
     onNew: (cb) => on('reports:new', cb)
   },
   club: {
-    stats: () => call('club:stats')
+    stats: () => call('club:stats'),
+    interno: () => call('club:interno'),
+    onInterno: (cb) => on('interno:updated', cb)
   },
   presence: {
     roster: () => call('presence:roster'),
     onRoster: (cb) => on('presence:roster', cb),
     onBack: (cb) => on('presence:back', cb)
+  },
+  host: {
+    state: () => call('host:state'),
+    start: (opts) => call('host:start', opts),
+    stop: () => call('host:stop'),
+    show: () => call('host:show'),
+    pickScript: () => call('host:pickScript'),
+    onState: (cb) => on('host:state', cb)
   },
   access: {
     status: () => call('access:status'),

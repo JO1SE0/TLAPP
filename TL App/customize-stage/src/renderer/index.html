@@ -490,6 +490,7 @@
               <span class="filterchip__ico">👥</span>
               <span data-i18n="rooms.hideFull">Ocultar llenas</span>
             </button>
+            <button class="filterchip" id="hostBtn" type="button" hidden><span class="filterchip__ico">🏟</span><span>Hostear</span></button>
             <select id="roomSort" class="sortselect">
               <option value="distance" data-i18n="rooms.sortDistance">Más cerca</option>
               <option value="players" data-i18n="rooms.sortPlayers">Más jugadores</option>
@@ -1373,6 +1374,45 @@
             </div>
           </header>
 
+          <section class="csec" id="hostSec" hidden>
+            <header class="csec__head">
+              <h2>Hostear sala</h2>
+              <span class="csec__tag" id="hostTag">—</span>
+            </header>
+            <p class="note">Armá una sala con script desde acá. <b>Interno</b> guarda replays y cuenta victorias, goles y asistencias para «Los reyes del x7». <b>Amistoso</b> es una sala con comandos (<code>!x1 !x3 !x5 !x7 !swap !camis</code>…), sin registrar nada.</p>
+            <div class="hostform" id="hostForm">
+              <div class="seg" id="hostMode" role="tablist">
+                <button type="button" class="is-on" data-mode="interno">Interno</button>
+                <button type="button" data-mode="amistoso">Amistoso</button>
+              </div>
+              <div class="hostgrid">
+                <div class="field"><label for="hostName">Nombre de la sala</label><input type="text" id="hostName" maxlength="40" /></div>
+                <div class="field"><label for="hostSize">Cancha</label>
+                  <select id="hostSize" class="sortselect"><option value="1">x1</option><option value="2">x2</option><option value="3">x3</option><option value="4">x4</option><option value="5">x5</option><option value="6">x6</option><option value="7" selected>x7</option></select></div>
+                <div class="field"><label for="hostMax">Cupo</label><input type="number" id="hostMax" min="2" max="30" value="18" /></div>
+                <div class="field"><label for="hostPass">Clave de la sala (opcional)</label><input type="text" id="hostPass" maxlength="30" autocomplete="off" /></div>
+                <div class="field"><label for="hostAdminKey">Clave de admin (!admin clave)</label><input type="text" id="hostAdminKey" maxlength="30" autocomplete="off" /></div>
+                <div class="field"><label for="hostNick">Tu nick (queda admin al entrar)</label><input type="text" id="hostNick" maxlength="25" /></div>
+              </div>
+              <label class="hostchk" id="hostRecordRow"><input type="checkbox" id="hostRecord" checked /> Grabar replay de cada partido</label>
+              <label class="hostchk"><input type="checkbox" id="hostListed" checked /> Sala pública (aparece en la lista)</label>
+              <div class="field" id="hostScriptRow" hidden>
+                <label>Script propio (opcional)</label>
+                <div class="hostscript"><span id="hostScriptName" class="note">Usa el script de TL App</span>
+                  <button class="btn btn--ghost btn--sm" id="hostScriptPick" type="button">Elegir .js</button>
+                  <button class="btn btn--ghost btn--sm" id="hostScriptClear" type="button" hidden>Quitar</button></div>
+              </div>
+            </div>
+            <div class="hostlive" id="hostLive" hidden>
+              <b id="hostLiveName"></b>
+              <span class="note" id="hostLiveInfo"></span>
+              <div class="hostlive__row"><input type="text" id="hostLink" readonly /><button class="btn btn--ghost btn--sm" id="hostCopy" type="button">Copiar link</button><button class="btn btn--ghost btn--sm" id="hostShow" type="button">Ver ventana</button></div>
+            </div>
+            <p class="note hosterr" id="hostErr" hidden></p>
+            <div class="hostact"><button class="btn btn--primary" id="hostGo" type="button">Hostear</button><button class="btn btn--ghost" id="hostStop" type="button" hidden>Cerrar sala</button></div>
+            <p class="note">La primera vez HaxBall puede pedir un captcha en la ventana de la sala: resolvelo y se esconde sola cuando sale al aire. Si cerrás esa ventana, se cierra la sala.</p>
+          </section>
+
           <section class="csec" id="clubNowSec">
             <header class="csec__head">
               <h2 data-i18n="clubnow.title">Club conectado</h2>
@@ -1398,6 +1438,15 @@
             <div class="podium" id="clubPodium"></div>
             <div class="cr__table" id="clubRankList"></div>
             <p class="note" id="clubRankNote"></p>
+          </section>
+
+          <section class="csec" id="kingsSec">
+            <header class="csec__head">
+              <h2>Los reyes del x7</h2>
+              <span class="csec__tag" id="kingsState">—</span>
+            </header>
+            <div class="cr__bar"><span class="note" id="kingsNote"></span><button class="btn btn--ghost btn--sm" id="kingsRefresh" type="button">Actualizar</button></div>
+            <div class="cr__table" id="kingsList"></div>
           </section>
 
           <section class="csec" id="reportsSec" hidden>
