@@ -2025,7 +2025,11 @@ function paintProfCard() {
   $('#profCardName').textContent = name;
   paintFace($('#profCardAv'), profile ? { name: profile.username, avatar: profile.avatar } : { name: nick });
   $('#profCardLvl').textContent = (isEn() ? 'Level ' : 'Nivel ') + lv.level;
-  $('#profCardBar').style.width = `${Math.max(3, Math.min(100, Math.round((lv.levelInto / Math.max(1, lv.levelNeed)) * 100)))}%`;
+  const pct = Math.max(3, Math.min(100, Math.round((lv.levelInto / Math.max(1, lv.levelNeed)) * 100)));
+  $('#profCardBar').style.width = `${pct}%`;
+  $('#profCardRing').style.setProperty('--p', pct);
+  $('#profCardBadge').textContent = String(lv.level);
+  card.title = `${name} · ${isEn() ? 'Level' : 'Nivel'} ${lv.level} · ${Math.round(lv.levelInto)} / ${Math.round(lv.levelNeed)} XP`;
   $('#pcM').textContent = String(lv.matches || 0);
   $('#pcG').textContent = String(lv.goals || 0);
   $('#pcA').textContent = String(lv.assists || 0);
