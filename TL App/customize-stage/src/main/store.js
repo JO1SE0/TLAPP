@@ -160,10 +160,6 @@ const DEFAULTS = {
     noOcclusionPause: true,
     // Audio
     lowLatencyAudio: true,
-    // Experimentales: apagados de fábrica, cada uno se prueba y se deja si ayuda.
-    noIpcFlood: false,
-    keepGpu: false,
-    inProcessGpu: false,
     // Diagnóstico
     disableHardwareAcceleration: false
   },
