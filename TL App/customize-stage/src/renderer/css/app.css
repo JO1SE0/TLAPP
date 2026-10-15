@@ -5100,15 +5100,19 @@ html[data-stage="game"] .trialchip { display: none; }
 #favList .pnav__i:hover { color: var(--text); border-color: var(--accent-line); background: var(--accent-soft); }
 
 /* ═══ Club: la ventana se ajusta a lo que hay, no ocupa toda la pantalla ═══ */
-#app[data-view="club"] .panel__card {
+#app[data-view="club"] .panel__card,
+#app[data-view="informes"] .panel__card {
   width: min(940px, 100%);
   max-width: 940px;
   height: auto;
   max-height: 100%;
 }
 #app[data-view="club"] .panel__body,
-#app[data-view="club"] .panel__pages { flex: 0 1 auto; height: auto; min-height: 0; }
-#app[data-view="club"] .page[data-page="club"] .page__inner { max-width: none; padding: 52px 22px 24px; }
+#app[data-view="club"] .panel__pages,
+#app[data-view="informes"] .panel__body,
+#app[data-view="informes"] .panel__pages { flex: 0 1 auto; height: auto; min-height: 0; }
+#app[data-view="club"] .page[data-page="club"] .page__inner,
+#app[data-view="informes"] .page[data-page="informes"] .page__inner { max-width: none; padding: 52px 22px 24px; }
 
 /* ── Ajustes y Personalización: estilo Club, con secciones plegables ───── */
 .page[data-page="aspecto"] .pagehead,
@@ -5689,3 +5693,6 @@ html[data-layout="top"] .app[data-stage="game"] .rail:hover { visibility: visibl
 
 .kings__tl { font-style: normal; font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 99px; color: var(--accent-text-on); background: var(--accent); vertical-align: 1px; }
 .kings__row.is-app .cr__name { color: var(--accent-text); }
+
+/* Radial: Informes ocupa el lugar 7 y el botón del capitán pasa al 8. */
+html[data-layout="radial"] .railitem:nth-of-type(8) { --dx: 43px; --dy: -133px; }

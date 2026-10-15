@@ -656,8 +656,11 @@ function onAccess(st) {
     clubBtn.hidden = !!(st && st.external);
     if (st && st.external && state.view === 'club') setView('play');
   }
-  const repSec = $('#reportsSec');
-  if (repSec) repSec.hidden = !(st && st.reports);
+  const repBtn = $('#reportsBtn');
+  if (repBtn) {
+    repBtn.hidden = !(st && st.reports);
+    if (repBtn.hidden && state.view === 'informes') setView('play');
+  }
   paintHostAccess();
   showUrgentIfAny();
   if (welcomePending) { welcomePending = false; startWelcome(); }
@@ -1871,7 +1874,8 @@ function setView(name) {
 
   if (name === 'replays') loadReplays();
   if (name === 'cuenta') loadAuth();
-  if (name === 'club') { loadClubRank(); loadReports(); loadKings(); loadHostState(); }
+  if (name === 'club') { loadClubRank(); loadKings(); loadHostState(); }
+  if (name === 'informes') loadReports();
   /*
    * El índice se rearma en cada cambio de pestaña porque lista las secciones de
    * la que está abierta. Va DESPUÉS del `scrollTop = 0` de arriba: el marcador
@@ -9732,8 +9736,8 @@ function paintReports() {
   const en = isEn();
   $('#reportsCount').textContent = en ? `${reportList.length} saved` : `${reportList.length} guardados`;
   $('#reportsHelp').textContent = en
-    ? 'Every match you play or watch live is saved here. Only the captain and whoever he delegates can see this section. Pick a match to get its report ready to copy or paste as an image.'
-    : 'Cada partido que jugás o mirás en vivo queda guardado acá. Esta sección sólo la ven el capitán y quien él habilite. Elegí un partido y tenés el informe listo para copiar o pegar como imagen.';
+    ? 'Every match you play or watch live is saved here (the last 25). Only the captain and whoever he delegates can see this section. Pick a match to get its report ready to copy or paste as an image.'
+    : 'Cada partido que jugás o mirás en vivo queda guardado acá (los últimos 25). Esta sección sólo la ven el capitán y quien él habilite. Elegí un partido y tenés el informe listo para copiar o pegar como imagen.';
   if (!reportList.length) {
     const empty = document.createElement('p');
     empty.className = 'note';
@@ -10171,8 +10175,11 @@ const NAV_DESTS = [
   { view: 'replays', es: 'Replays', en: 'Replays' },
   { view: 'club', es: 'Club', en: 'Club' },
   { view: 'aspecto', es: 'Personalización', en: 'Personalization' },
-  { view: 'ajustes', es: 'Configuración', en: 'Settings' }
+  { view: 'ajustes', es: 'Configuración', en: 'Settings' },
+  { view: 'informes', es: 'Informes', en: 'Reports', only: 'reports' }
 ];
+/** Los destinos que esta persona puede ver (Informes sólo con permiso). */
+const navDests = () => NAV_DESTS.filter((d) => !d.only || (state.access && state.access[d.only]));
 function layoutIs(id) { return document.documentElement.dataset.layout === id; }
 function navIcon(view) {
   const src = document.querySelector(`#rail [data-view="${view}"] svg`);
@@ -10195,6 +10202,7 @@ function hubSub(view, en) {
     return n === null ? (en ? 'Your library' : 'Tu biblioteca') : `${n} replays`;
   }
   if (view === 'club') return typeof state.clubOnline === 'number' ? `${state.clubOnline} ${en ? 'online' : 'conectados'}` : (en ? 'Stats and roster' : 'Estadísticas y plantel');
+  if (view === 'informes') return reportList.length ? `${reportList.length} ${en ? 'saved' : 'guardados'}` : (en ? 'Match reports' : 'Informes de partido');
   if (view === 'aspecto') return en ? 'Theme, colours and layout' : 'Tema, colores e interfaz';
   return en ? 'Client, network and controls' : 'Cliente, red y controles';
 }
@@ -10206,13 +10214,14 @@ function paintHub() {
   $('#hubTitle').textContent = en ? 'Home' : 'Inicio';
   const nick = state.config.general && state.config.general.nickname;
   $('#hubSub').textContent = nick ? (en ? `Welcome, ${nick}` : `Bienvenido, ${nick}`) : (en ? 'Pick where to go' : 'Elegí a dónde ir');
-  $('#hubHint').textContent = en ? 'Arrow keys + Enter, or numbers 1–5. Esc to go back.' : 'Flechas y Enter, o los números 1 a 5. Esc para volver.';
+  const nTiles = navDests().length;
+  $('#hubHint').textContent = en ? `Arrow keys + Enter, or numbers 1–${nTiles}. Esc to go back.` : `Flechas y Enter, o los números 1 a ${nTiles}. Esc para volver.`;
   const tiles = [];
   const last = $('#lastRoom');
   if (last && !last.hidden) {
     tiles.push({ wide: true, title: en ? 'Back to your last room' : 'Volver a tu última sala', sub: ($('#lastRoomName').textContent || '').trim(), icon: last.querySelector('svg') && last.querySelector('svg').cloneNode(true), run: () => last.click() });
   }
-  NAV_DESTS.forEach((d, i) => tiles.push({ title: en ? d.en : d.es, sub: hubSub(d.view, en), icon: navIcon(d.view), key: String(i + 1), run: () => goView(d.view) }));
+  navDests().forEach((d, i) => tiles.push({ title: en ? d.en : d.es, sub: hubSub(d.view, en), icon: navIcon(d.view), key: String(i + 1), run: () => goView(d.view) }));
   const cap = $('#captainBtn');
   if (cap && !cap.hidden) tiles.push({ title: en ? 'Captain' : 'Capitán', sub: en ? 'Club admin' : 'Administración del club', icon: cap.querySelector('svg') && cap.querySelector('svg').cloneNode(true), run: () => cap.click() });
   grid.replaceChildren(...tiles.map((tile, i) => {
@@ -10276,7 +10285,7 @@ const fold = (x) => String(x || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toL
 
 function cmdEntries() {
   const en = isEn();
-  const out = NAV_DESTS.map((d) => ({ label: en ? d.en : d.es, hint: en ? 'Go to' : 'Ir a', icon: navIcon(d.view), run: () => goView(d.view) }));
+  const out = navDests().map((d) => ({ label: en ? d.en : d.es, hint: en ? 'Go to' : 'Ir a', icon: navIcon(d.view), run: () => goView(d.view) }));
   const last = $('#lastRoom');
   if (last && !last.hidden) out.unshift({ label: en ? 'Back to your last room' : 'Volver a tu última sala', hint: ($('#lastRoomName').textContent || '').trim(), icon: last.querySelector('svg') && last.querySelector('svg').cloneNode(true), run: () => last.click() });
   out.push({ label: en ? 'Create a room' : 'Crear sala', hint: en ? 'Action' : 'Acción', run: () => { goView('play'); const c = $('#actCreate'); if (c) c.click(); } });
