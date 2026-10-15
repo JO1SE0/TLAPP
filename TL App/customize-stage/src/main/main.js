@@ -236,6 +236,13 @@ function applyBootFlags(perf) {
   // En notebooks con dos placas, pide la dedicada en vez de la integrada.
   if (perf.highPerformanceGpu) app.commandLine.appendSwitch('force_high_performance_gpu');
   if (perf.lowLatencyAudio) app.commandLine.appendSwitch('force-wave-audio');
+  // Chromium frena los mensajes entre procesos si llegan a ráfagas; el juego manda muchos por segundo.
+  if (perf.noIpcFlood) app.commandLine.appendSwitch('disable-ipc-flooding-protection');
+  // Después de unos cuelgues de la GPU, Chromium se pasa a dibujar con la CPU y los FPS se desploman.
+  // Esto lo obliga a seguir intentando con la placa de video.
+  if (perf.keepGpu) app.commandLine.appendSwitch('disable-gpu-process-crash-limit');
+  // La GPU corre dentro del proceso principal: un salto de proceso menos por cuadro.
+  if (perf.inProcessGpu) app.commandLine.appendSwitch('in-process-gpu');
 
   /*
    * Techo del montón de JavaScript.

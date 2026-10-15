@@ -3205,6 +3205,9 @@ const PERF_GROUPS = {
     // apagándolo, así que dejó de ser una decisión del jugador.
     { key: 'noOcclusionPause', label: 'No pausar si algo tapa la ventana', description: 'Windows pausa si cree que está tapada.', restart: true },
     { key: 'lowLatencyAudio', label: 'Audio de baja latencia', description: 'Usa la ruta de audio directa de Windows.', restart: true },
+    { key: 'noIpcFlood', label: 'Sin freno de mensajes (experimental)', description: 'Chromium deja de limitar los mensajes entre procesos.', hint: 'Puede quitar tirones cuando hay mucha actividad en la sala. Si notás algo raro, apagalo.', restart: true },
+    { key: 'keepGpu', label: 'No caer a dibujo por CPU (experimental)', description: 'Sigue usando la placa aunque el driver falle.', hint: 'Si la GPU se cuelga unas veces, Chromium pasa a dibujar con la CPU y los FPS se desploman. Esto lo evita. Si el cliente se ve roto, apagalo.', restart: true },
+    { key: 'inProcessGpu', label: 'GPU en el proceso principal (experimental)', description: 'Un salto de proceso menos por cuadro.', hint: 'Puede subir un poco los FPS y bajar el retardo en PCs justas, pero si el driver falla se cierra todo el cliente. Probalo y comparalo con el overlay de FPS.', restart: true },
     { key: 'disableHardwareAcceleration', label: 'Desactivar aceleración por hardware', description: 'Sólo para diagnosticar: el render pasa a la CPU.', hint: 'Va bastante más lento. Sirve para saber si una falla gráfica viene del driver de video.', restart: true }
   ]
 };
@@ -3226,6 +3229,9 @@ const PERF_GROUPS_EN = {
   perfSystem: [
     { key: 'noOcclusionPause', label: 'Do not pause when covered', description: 'Windows pauses when it thinks it is hidden.', restart: true },
     { key: 'lowLatencyAudio', label: 'Low latency audio', description: 'Uses the direct Windows audio path.', restart: true },
+    { key: 'noIpcFlood', label: 'No message throttling (experimental)', description: 'Chromium stops limiting messages between processes.', hint: 'Can remove stutter when a room is busy. If anything looks off, turn it off.', restart: true },
+    { key: 'keepGpu', label: 'Never fall back to CPU drawing (experimental)', description: 'Keeps using the GPU even if the driver fails.', hint: 'After a few GPU hangs Chromium switches to CPU drawing and FPS collapse. This prevents it. If the client looks broken, turn it off.', restart: true },
+    { key: 'inProcessGpu', label: 'GPU in the main process (experimental)', description: 'One fewer process hop per frame.', hint: 'Can raise FPS a little and cut delay on tight PCs, but if the driver fails the whole client closes. Try it and compare with the FPS overlay.', restart: true },
     { key: 'disableHardwareAcceleration', label: 'Disable hardware acceleration', description: 'Diagnostics only: rendering moves to the CPU.', hint: 'It runs noticeably slower. Use it to tell whether a graphics glitch comes from the video driver.', restart: true }
   ]
 };

@@ -5839,3 +5839,66 @@ html[data-layout="top"] .profcard__stats span + span, html[data-layout="bottom"]
 html[data-layout="consola"] .profcard, html[data-layout="comando"] .profcard, html[data-layout="radial"] .profcard,
 html .app[data-stage="game"] .profcard { display: none; }
 @media (prefers-reduced-motion: reduce) { .profcard__glow::before { animation: none; } }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Configuración · rediseño «limpio»
+   Sólo pinta distinto lo que ya existe: no hay JS ni estructura nueva, así que
+   el buscador, los favoritos y las secciones plegables siguen igual. Todo es
+   estático (sin blur ni animaciones nuevas) para no sumar costo al abrir el panel.
+     · encabezado chico en vez del cartel grande de cada pestaña
+     · tarjetas con borde fino y títulos sin mayúsculas separadas
+     · filas sin recuadro al pasar el mouse; la estrella aparece sólo al apuntar
+     · índice más angosto: la descripción se ve sólo en la pestaña elegida
+   ═══════════════════════════════════════════════════════════════════════════ */
+.panel__pages .page[data-page] .pagehead {
+  padding: 2px 4px 0; margin: 0 0 14px; border: 0; border-radius: 0; background: none; box-shadow: none; overflow: visible;
+}
+.panel__pages .page[data-page] .pagehead::before,
+.panel__pages .page[data-page] .pagehead::after { display: none; }
+.panel__pages .pagehead h1 { font-size: 26px; letter-spacing: -.03em; }
+.panel__pages .pagehead p { font-size: 12.5px; color: var(--text-faint); margin-top: 2px; }
+
+.panel__pages .sec {
+  padding: 18px 22px 8px; border-radius: 18px; border: 1px solid var(--line);
+  background: linear-gradient(180deg, rgb(255 255 255 / 3.5%), rgb(255 255 255 / 1.5%)), var(--surface);
+  box-shadow: none;
+}
+.panel__pages .sec + .sec { margin-top: 14px; }
+.panel__pages .sec--feature {
+  border-color: var(--accent-line);
+  background: radial-gradient(110% 90% at 0% 0%, rgb(var(--accent-rgb) / 13%), transparent 62%), var(--surface);
+}
+.panel__pages .sec__head { margin: 0 0 4px; padding: 0 0 10px; border-bottom: 0; }
+.panel__pages .sec__title { padding-left: 0; font-size: 15px; font-weight: 750; letter-spacing: -.005em; text-transform: none; gap: 9px; }
+.panel__pages .sec__title::before {
+  position: static; flex: none; width: 7px; height: 7px; border-radius: 50%; background: var(--accent);
+  box-shadow: 0 0 0 3px rgb(var(--accent-rgb) / 18%);
+}
+.panel__pages .sec__desc { font-size: 12px; color: var(--text-faint); margin: 0 0 8px; }
+.panel__pages .sec__chev { background: none; width: 24px; height: 24px; top: -1px; }
+.panel__pages .sec__head[data-fold]:hover .sec__chev { background: var(--surface); color: var(--text); }
+
+.panel__pages .row { min-height: 50px; padding: 8px 4px; margin: 0; border-radius: 0; }
+.panel__pages .row + .row { box-shadow: inset 0 1px 0 rgb(255 255 255 / 5.5%); }
+.panel__pages .row:hover { background: none; }
+.panel__pages .row__label { font-size: 13.5px; font-weight: 650; }
+.panel__pages .row__desc, .panel__pages .row__hint { font-size: 12px; color: var(--text-faint); }
+.panel__pages .favstar { opacity: 0; transition: opacity .12s; }
+.panel__pages .row:hover .favstar, .panel__pages .favstar.is-on, .panel__pages .favstar:focus-visible { opacity: 1; }
+.panel__pages .switch.is-on { box-shadow: none; }
+
+.panel__pages .tabbar { gap: 6px; margin-bottom: 14px; }
+.panel__pages .tabbar__chip { padding: 5px 12px; font-size: 12px; font-weight: 650; }
+
+.pnav__tab { padding: 8px 10px; border-radius: 12px; }
+.pnav__tab:not(.is-on) small { display: none; }
+.pnav__tab b { font-size: 13.5px; font-weight: 650; }
+.pnav__tab.is-on b { font-weight: 750; }
+.pnav__group { margin-top: 6px; padding: 10px 10px 4px; font-size: 10px; letter-spacing: .16em; }
+.pnav__tab.is-on { background: rgb(var(--accent-rgb) / 14%); box-shadow: inset 2px 0 0 var(--accent); }
+.pnav__tab.is-on .pnav__ic { box-shadow: none; }
+
+.panel__pages .sec .sec__title { text-transform: none; letter-spacing: -.005em; font-size: 15px; }
+.panel__pages .sec .row:hover { background: none; }
+.panel__pages .sec__head[data-fold] .tag { margin-right: 4px; }
+.panel__pages .sec__head[data-fold] { padding-right: 34px; }
