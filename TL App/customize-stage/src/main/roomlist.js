@@ -147,20 +147,63 @@ function distanceKm(a, b) {
 /**
  * @param {{lat:number, lon:number}|null} origin Ubicación del jugador, para la distancia.
  */
+/**
+ * Baja la lista con la pila de red de Chromium (`net` de Electron) y, si eso
+ * falla, prueba con el `fetch` de Node.
+ *
+ * Con `fetch` de Node la petición sale con otra huella TLS que un navegador y
+ * un User-Agent inventado: HaxBall (que está detrás de un filtro anti-bots)
+ * puede contestar 403 aunque la lista esté bien. `net` sale como el propio
+ * Chromium de la app, con su User-Agent verdadero.
+ */
+function viaChromium(signal) {
+  return new Promise((resolve, reject) => {
+    let net;
+    try { ({ net } = require('electron')); } catch { net = null; }
+    if (!net || typeof net.request !== 'function') { reject(new Error('sin net')); return; }
+    const req = net.request({ url: LIST_URL, method: 'GET' });
+    req.setHeader('Referer', 'https://www.haxball.com/');
+    req.setHeader('Cache-Control', 'no-cache');
+    const chunks = [];
+    const onAbort = () => { try { req.abort(); } catch { /* ya terminó */ } reject(new Error('timeout')); };
+    if (signal) signal.addEventListener('abort', onAbort, { once: true });
+    req.on('response', (res) => {
+      res.on('data', (c) => chunks.push(c));
+      res.on('end', () => {
+        if (res.statusCode < 200 || res.statusCode >= 300) { const e = new Error(`HaxBall respondió ${res.statusCode}`); e.status = res.statusCode; reject(e); return; }
+        resolve(Buffer.concat(chunks));
+      });
+      res.on('error', reject);
+    });
+    req.on('error', reject);
+    req.end();
+  });
+}
+
+async function viaFetch(signal) {
+  const res = await fetch(LIST_URL, {
+    signal,
+    headers: {
+      Referer: 'https://www.haxball.com/',
+      'cache-control': 'no-cache',
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.164 Safari/537.36'
+    }
+  });
+  if (!res.ok) throw new Error(`HaxBall respondió ${res.status}`);
+  return Buffer.from(await res.arrayBuffer());
+}
+
 async function fetchRooms(origin) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 12000);
   try {
-    const res = await fetch(LIST_URL, {
-      signal: controller.signal,
-      headers: { 
-        Referer: 'https://www.haxball.com/', 
-        'cache-control': 'no-cache',
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-      }
-    });
-    if (!res.ok) throw new Error(`HaxBall respondió ${res.status}`);
-    const rooms = parse(Buffer.from(await res.arrayBuffer()));
+    let body;
+    try { body = await viaChromium(controller.signal); }
+    catch (first) {
+      if (controller.signal.aborted) throw first;
+      try { body = await viaFetch(controller.signal); } catch { throw first; }
+    }
+    const rooms = parse(body);
 
     rooms.forEach((room, i) => {
       // Orden en el que vino la sala. Es el desempate de la lista: muchos hosts
