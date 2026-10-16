@@ -655,17 +655,18 @@ function applyClientStyles(doc) {
        tapado. Sin blur ni sombras animadas. */
     html .replay-controls-view {
       position: fixed !important;
-      left: 50% !important;
-      right: auto !important;
+      left: 0 !important;
+      right: 0 !important;
+      margin: 0 auto !important;
       top: auto !important;
-      bottom: 14px !important;
+      bottom: calc(14px + var(--tvm-dy, 0px)) !important;
       width: min(1080px, calc(100vw - 32px)) !important;
       height: auto !important;
       min-height: 0 !important;
       max-height: none !important;
       overflow: visible !important;
       box-sizing: border-box !important;
-      transform: translate(-50%, calc(var(--tvm-dy, 0px) * -1));
+      transform: none !important;
       display: flex !important;
       flex-wrap: wrap !important;
       justify-content: center !important;
@@ -678,8 +679,10 @@ function applyClientStyles(doc) {
       box-shadow: 0 18px 44px -14px rgba(0, 0, 0, .9), inset 0 1px 0 rgba(255, 255, 255, .07) !important;
       z-index: 2147481000;
     }
-    /* El chat sube lo que ocupa la barra: antes se la tapaba encima. */
-    html .game-view.replayer .chatbox-view { margin-bottom: calc(var(--tvm-replay-h, 100px) + 22px) !important; }
+    /* El chat de la replay se esconde (tapaba la cancha): el botón «Chat» de la
+       barra lo muestra, y entonces sube lo que ocupa la barra para no quedar debajo. */
+    html .game-view.replayer .chatbox-view { display: none !important; }
+    html.tvm-chat-on .game-view.replayer .chatbox-view { display: block !important; margin-bottom: calc(var(--tvm-replay-h, 100px) + 22px) !important; }
     html .replay-controls-view > * { order: 11; }
     /* Salto de fila entre la línea de tiempo y los botones. */
     html .replay-controls-view::after { content: ''; order: 3; flex: 0 0 100%; height: 0; }
@@ -750,6 +753,7 @@ function applyClientStyles(doc) {
     html .replay-controls-view > .tvm-goalnav { order: 8; }
     html .replay-controls-view > .tvm-stats-btn { order: 9; }
     html .replay-controls-view > .tvm-board-btn { order: 10; }
+    html .replay-controls-view > .tvm-chat-btn { order: 10; }
 
     /* Cada grupo es un control segmentado con su propio fondo. */
     .replay-controls-view .tvm-speeds {
@@ -777,6 +781,8 @@ function applyClientStyles(doc) {
     }
     html .replay-controls-view .tvm-stats-btn,
     html .replay-controls-view .tvm-board-btn { padding: 0 14px !important; }
+    html .replay-controls-view .tvm-chat-btn { padding: 0 14px !important; }
+    html .replay-controls-view .tvm-chat-btn.is-on,
     html .replay-controls-view .tvm-board-btn.is-on {
       background: ${p.accent || p.blue} !important;
       color: #fff !important;
@@ -1941,6 +1947,20 @@ async function watchReplayView(doc) {
     safe(toggleBoard);
   });
 
+  // Chat de la replay: escondido por defecto (tapaba la cancha), se muestra a pedido.
+  doc.documentElement.classList.remove('tvm-chat-on');
+  const chatBtn = doc.createElement('button');
+  chatBtn.type = 'button';
+  chatBtn.className = 'tvm-chat-btn';
+  chatBtn.textContent = '💬 Chat';
+  chatBtn.title = 'Mostrar u ocultar el chat de la grabación';
+  chatBtn.addEventListener('click', (event) => {
+    event.preventDefault();
+    const on = doc.documentElement.classList.toggle('tvm-chat-on');
+    chatBtn.classList.toggle('is-on', on);
+    setTimeout(syncHeight, 0);
+  });
+
   // Antes del cronómetro: los botones de velocidad quedan todos juntos y la
   // barra de tiempo no se corre de lugar.
   const time = controls.querySelector('[data-hook="time"]');
@@ -1949,6 +1969,7 @@ async function watchReplayView(doc) {
   controls.insertBefore(goalBar, time);
   controls.insertBefore(stats, time);
   controls.insertBefore(boardBtn, time);
+  controls.insertBefore(chatBtn, time);
 
   // La tecla P abre y cierra la pizarra.
   doc.addEventListener('keydown', (event) => {
