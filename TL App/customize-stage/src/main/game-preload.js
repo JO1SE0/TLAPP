@@ -704,7 +704,11 @@ function applyClientStyles(doc) {
     /* El chat de la replay se esconde (tapaba la cancha): el botón «Chat» de la
        barra lo muestra, y entonces sube lo que ocupa la barra para no quedar debajo. */
     html .game-view.replayer .chatbox-view { display: none !important; }
-    html.tvm-chat-on .game-view.replayer .chatbox-view { display: block !important; margin-bottom: calc(var(--tvm-replay-h, 100px) + 22px) !important; }
+    html.tvm-chat-on .game-view.replayer .chatbox-view { display: block !important; }
+    /* La barra flota, así que la cancha ocuparía toda la pantalla y quedaría
+       tapada abajo: se le reserva lo que mide la barra y HaxBall la redibuja
+       entera por encima (el JS pone --tvm-reserve y avisa el cambio de tamaño). */
+    html .game-view.replayer { padding-bottom: var(--tvm-reserve, 0px) !important; box-sizing: border-box !important; }
     html .replay-controls-view > * { order: 11; }
     /* Salto de fila entre la línea de tiempo y los botones. */
     html .replay-controls-view::after { content: ''; order: 3; flex: 0 0 100%; height: 0; }
@@ -1877,12 +1881,22 @@ async function watchReplayView(doc) {
   // la barra se sube lo que haga falta si el contenedor de HaxBall la corre y el
   // borde de la pantalla la corta: se mide dónde quedó y se compensa.
   const root = doc.documentElement;
+  let lastReserve = -1;
   const syncHeight = () => {
     try {
       root.style.setProperty('--tvm-replay-h', `${controls.offsetHeight}px`);
       root.style.setProperty('--tvm-dy', '0px');
       const gap = view.innerHeight - controls.getBoundingClientRect().bottom;
-      root.style.setProperty('--tvm-dy', `${Math.round(14 - gap)}px`);
+      const dy = Math.round(14 - gap);
+      root.style.setProperty('--tvm-dy', `${dy}px`);
+      // Lo que se le reserva a la cancha: la barra, su margen y un respiro.
+      const reserve = controls.offsetHeight + 14 + Math.max(0, dy) + 8;
+      if (reserve !== lastReserve) {
+        lastReserve = reserve;
+        root.style.setProperty('--tvm-reserve', `${reserve}px`);
+        // El juego se acomoda al alto nuevo cuando se le avisa que cambió el tamaño.
+        view.requestAnimationFrame(() => { try { view.dispatchEvent(new view.Event('resize')); } catch (_) { /* sin resize */ } });
+      }
     } catch (_) { /* sin medidas */ }
   };
   if (view.ResizeObserver) new view.ResizeObserver(syncHeight).observe(controls);
