@@ -4541,6 +4541,11 @@ function paintGameExtras() {
   const en = isEn();
   $('#goalSfxLabel').textContent = en ? 'Built-in goal sound' : 'Sonido de gol incluido';
   $('#goalSfxVolLabel').textContent = en ? 'Built-in volume' : 'Volumen del incluido';
+  $('#kickSfxLabel').textContent = en ? 'Built-in kick sound' : 'Sonido de patada incluido';
+  $('#kickSfxDesc').textContent = en
+    ? 'Tap one to hear it and pick it. If you load your own kick file, the file wins.'
+    : 'Tocá uno para escucharlo y elegirlo. Si cargás un archivo propio de patada, manda el archivo.';
+  $('#kickSfxVolLabel').textContent = en ? 'Kick volume' : 'Volumen de la patada';
   $('#scoreboardLabel').textContent = en ? 'Scoreboard style' : 'Cartel de marcador';
   const fill = (host, items, cur, attr) => {
     host.innerHTML = '';
@@ -4554,6 +4559,12 @@ function paintGameExtras() {
     }
   };
   fill($('#goalSfxChips'), (window.TLGoalSfx ? window.TLGoalSfx.STYLES : []), ap.goalSfx || 'default', 'sfx');
+  fill($('#kickSfxChips'), (window.TLGoalSfx ? window.TLGoalSfx.KICK_STYLES : []), ap.kickSfx || 'default', 'kick');
+  const kv = typeof ap.kickSfxVolume === 'number' ? ap.kickSfxVolume : 0.7;
+  const kr = $('#kickSfxVolume');
+  if (document.activeElement !== kr) kr.value = String(kv);
+  $('#kickSfxVolumeValue').textContent = `${Math.round(kv * 100)}%`;
+  syncRangeFill(kr);
   fill($('#scoreboardChips'), SCOREBOARDS, ap.scoreboard || 'default', 'sb');
   const v = typeof ap.goalSfxVolume === 'number' ? ap.goalSfxVolume : 0.7;
   const r = $('#goalSfxVolume');
@@ -4567,6 +4578,23 @@ $('#goalSfxChips').addEventListener('click', (e) => {
   const vol = state.config.appearance.goalSfxVolume ?? 0.7;
   if (window.TLGoalSfx) window.TLGoalSfx.play(b.dataset.sfx, vol);
   patchConfig({ appearance: { goalSfx: b.dataset.sfx } });
+});
+$('#kickSfxChips').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-kick]');
+  if (!b) return;
+  const vol = state.config.appearance.kickSfxVolume ?? 0.7;
+  if (window.TLGoalSfx) window.TLGoalSfx.playKick(b.dataset.kick, vol);
+  patchConfig({ appearance: { kickSfx: b.dataset.kick } });
+});
+$('#kickSfxVolume').addEventListener('input', (e) => {
+  syncRangeFill(e.target);
+  $('#kickSfxVolumeValue').textContent = `${Math.round(Number(e.target.value) * 100)}%`;
+});
+$('#kickSfxVolume').addEventListener('change', (e) => {
+  const v = Number(e.target.value);
+  const st = state.config.appearance.kickSfx;
+  if (window.TLGoalSfx && st && st !== 'default') window.TLGoalSfx.playKick(st, v);
+  patchConfig({ appearance: { kickSfxVolume: v } });
 });
 $('#scoreboardChips').addEventListener('click', (e) => {
   const b = e.target.closest('[data-sb]');
@@ -10547,6 +10575,8 @@ const MIX_CHANNELS = [
     set: (v) => ({ appearance: { musicVolume: v, music: true } }) },
   { id: 'goalsfx', es: 'Sonido de gol incluido', en: 'Built-in goal sound', def: 0.7,
     get: (c) => c.appearance.goalSfxVolume, set: (v) => ({ appearance: { goalSfxVolume: v } }) },
+  { id: 'kicksfx', es: 'Patada incluida', en: 'Built-in kick sound', def: 0.7,
+    get: (c) => c.appearance.kickSfxVolume, set: (v) => ({ appearance: { kickSfxVolume: v } }) },
   { id: 'goalown', es: 'Tu sonido de gol', en: 'Your goal sound', def: 0.7,
     get: (c) => c.vip && c.vip.goalVolume, set: (v) => ({ vip: { goalVolume: v } }) },
   { id: 'hit', es: 'Sonido de golpe', en: 'Kick sound', def: 0.7,

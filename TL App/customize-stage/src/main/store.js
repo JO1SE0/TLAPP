@@ -123,6 +123,9 @@ const DEFAULTS = {
     /** Sonido de gol incluido: default | bocina | campanas | aplausos | silbato | tribuna | retro. */
     goalSfx: 'default',
     goalSfxVolume: 0.7,
+    /** Sonido de patada incluido: default | lofi | vinilo | cassette | madera | bongo | burbuja | gota | tecla | cuero | pelotazo | marimba | chasquido | vidrio | pluck | redoblante. */
+    kickSfx: 'default',
+    kickSfxVolume: 0.7,
     /** Tamaño de la botonera flotante de la partida. */
     hudScale: 1,
     /** Factor de zoom de cámara: conserva la resolución nativa del canvas. */

@@ -11,6 +11,7 @@ window.TL_NEWS = {
   title: { es: 'Qué hay de nuevo', en: "What's new" },
   items: {
     es: [
+      'Nuevo: 15 sonidos de patada lo-fi y limpios (Personalización → Sonidos propios → Sonido de patada incluido): lo-fi, vinilo, cassette, madera, bongó, burbuja, gota, tecla, cuero, pelotazo, marimba, chasquido, vidrio, cuerda y redoblante. Tocás uno para escucharlo y elegirlo; cada golpe varía apenas el tono para que no suene a copia. Con un archivo propio de patada manda el archivo.',
       'Personalización: vista previa de cada estilo antes de elegirlo. La pelota, la ficha, el aro, la textura y la luz de la cancha ahora son una galería de miniaturas dibujadas con tu config (tu color, el 3D…): tocás la que te gusta y se aplica. Además los estilos Neón de la ficha, la pelota y la textura se rehicieron para que brillen de verdad.',
       'Nuevo: 16 pelotas más en Personalización → Discos y pelota → Aspecto de la pelota: fútbol moderno, de triángulos y de cuero, tenis, básquet, vóley, béisbol, golf, bowling, planeta Tierra, luna, bola de espejos, orbe, calabaza, sandía y ojo. Arreglo: con la pelota 3D el aspecto y el color ahora giran con la pelota y se ven con volumen (antes quedaban planos).',
       'Nuevo: pestaña Informes (capitán y habilitados). Elegís una replay y se arma el informe del partido: quiénes jugaron, los cambios (quién por quién), goles y asistencias, goles en contra y hasta qué minuto cada arco mantuvo la valla invicta. Ya no se guarda nada solo: sólo lo que cargues ahí.',

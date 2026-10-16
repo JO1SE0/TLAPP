@@ -177,5 +177,206 @@
     } catch (e) { return false; }
   }
 
-  return { STYLES, play, has: (s) => !!RECIPES[s] };
+
+  /* ── Sonidos de patada ──────────────────────────────────────────────────
+   * Cortitos (menos de 0,35 s), suaves y sin chillidos: pensados para oírse
+   * miles de veces sin cansar. Cada golpe sale con una variación mínima de tono y
+   * de volumen —lo que separa un sonido «vivo» de una ametralladora de clones—.
+   * Todo se genera con osciladores y un ruido que se calcula UNA vez; no hay
+   * archivos ni cuentas por cuadro, y por golpe se crean cinco o seis nodos.   */
+  const KICK_STYLES = [
+    ['default', 'El del juego', 'Game default'],
+    ['lofi', 'Lo-fi', 'Lo-fi'],
+    ['vinilo', 'Vinilo', 'Vinyl'],
+    ['cassette', 'Cassette', 'Cassette'],
+    ['madera', 'Madera', 'Wood block'],
+    ['bongo', 'Bongó', 'Bongo'],
+    ['burbuja', 'Burbuja', 'Bubble'],
+    ['gota', 'Gota', 'Droplet'],
+    ['tecla', 'Tecla', 'Keyboard'],
+    ['cuero', 'Cuero', 'Leather'],
+    ['pelotazo', 'Pelotazo', 'Heavy'],
+    ['marimba', 'Marimba', 'Marimba'],
+    ['chasquido', 'Chasquido', 'Finger snap'],
+    ['vidrio', 'Vidrio', 'Glass tap'],
+    ['pluck', 'Cuerda', 'Pluck'],
+    ['redoblante', 'Redoblante', 'Snare']
+  ];
+
+  let noiseBuf = null;
+  function noiseBuffer(ctx) {
+    if (noiseBuf && noiseBuf.sampleRate === ctx.sampleRate) return noiseBuf;
+    const n = Math.floor(ctx.sampleRate * 0.4);
+    noiseBuf = ctx.createBuffer(1, n, ctx.sampleRate);
+    const d = noiseBuf.getChannelData(0);
+    for (let i = 0; i < n; i++) d[i] = Math.random() * 2 - 1;
+    return noiseBuf;
+  }
+
+  /** Golpecito de ruido filtrado: el «clic» de casi todo golpe. */
+  function tick(ctx, out, t, dur, vol, freq, q, type) {
+    const s = ctx.createBufferSource();
+    s.buffer = noiseBuffer(ctx);
+    const f = ctx.createBiquadFilter();
+    f.type = type || 'bandpass'; f.frequency.value = freq; f.Q.value = q || 1;
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.linearRampToValueAtTime(vol, t + 0.0015);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    s.connect(f); f.connect(g); g.connect(out);
+    s.start(t, Math.random() * 0.2, dur + 0.02);
+  }
+
+  /** Tono que cae (o sube) de f0 a f1: el cuerpo del golpe. */
+  function body(ctx, out, t, f0, f1, dur, vol, type) {
+    const o = ctx.createOscillator();
+    const g = ctx.createGain();
+    o.type = type || 'sine';
+    o.frequency.setValueAtTime(f0, t);
+    o.frequency.exponentialRampToValueAtTime(Math.max(20, f1), t + dur * 0.8);
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.linearRampToValueAtTime(vol, t + 0.003);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g); g.connect(out);
+    o.start(t); o.stop(t + dur + 0.03);
+  }
+
+  /** Un pasabajos delante de `out`: lo que le da el aire «lo-fi» a un sonido. */
+  function soften(ctx, out, freq) {
+    const f = ctx.createBiquadFilter();
+    f.type = 'lowpass'; f.frequency.value = freq; f.Q.value = 0.5;
+    f.connect(out);
+    return f;
+  }
+
+  const PENTA = [392, 440, 523.25, 587.33, 659.25];
+
+  const KICKS = {
+    lofi(c, o, t, k) {
+      const s = soften(c, o, 3200);
+      body(c, s, t, 175 * k, 68 * k, 0.17, 0.95);
+      tick(c, s, t, 0.03, 0.22, 1100, 0.8);
+    },
+    vinilo(c, o, t, k) {
+      const s = soften(c, o, 4200);
+      body(c, s, t, 150 * k, 62 * k, 0.14, 0.85);
+      for (let i = 0; i < 4; i++) tick(c, s, t + 0.004 + Math.random() * 0.07, 0.004, 0.16 + Math.random() * 0.12, 5200, 0.7, 'highpass');
+    },
+    cassette(c, o, t, k) {
+      const s = soften(c, o, 2800);
+      body(c, s, t, 160 * k, 72 * k, 0.2, 0.55);
+      body(c, s, t, 164 * k, 74 * k, 0.2, 0.4);
+      tick(c, s, t, 0.14, 0.07, 3500, 0.5, 'lowpass');
+    },
+    madera(c, o, t, k) {
+      tick(c, o, t, 0.05, 0.95, 950 * k, 9);
+      body(c, o, t, 560 * k, 380 * k, 0.07, 0.3);
+    },
+    bongo(c, o, t, k) {
+      body(c, o, t, 270 * k, 175 * k, 0.15, 0.8);
+      tick(c, o, t, 0.022, 0.32, 1900, 1.2);
+    },
+    burbuja(c, o, t, k) {
+      body(c, o, t, 380 * k, 1150 * k, 0.1, 0.6);
+      body(c, o, t, 760 * k, 2200 * k, 0.06, 0.12);
+    },
+    gota(c, o, t, k) {
+      body(c, o, t, 1550 * k, 640 * k, 0.11, 0.55);
+      body(c, o, t, 3100 * k, 1300 * k, 0.04, 0.08, 'triangle');
+    },
+    tecla(c, o, t, k) {
+      tick(c, o, t, 0.014, 0.45, 3300 * k, 1.5);
+      body(c, o, t + 0.004, 145 * k, 92 * k, 0.07, 0.6);
+      tick(c, o, t + 0.032, 0.01, 0.2, 2400, 1.5);
+    },
+    cuero(c, o, t, k) {
+      body(c, o, t, 215 * k, 96 * k, 0.14, 0.8);
+      tick(c, o, t, 0.06, 0.38, 700, 1);
+    },
+    pelotazo(c, o, t, k) {
+      const s = soften(c, o, 2600);
+      body(c, s, t, 135 * k, 48 * k, 0.32, 1);
+      tick(c, s, t, 0.09, 0.5, 520, 0.7, 'lowpass');
+    },
+    marimba(c, o, t, k) {
+      const f = PENTA[Math.floor(Math.random() * PENTA.length)] * (0.5 + 0.5 * k);
+      body(c, o, t, f, f * 0.995, 0.3, 0.55);
+      body(c, o, t, f * 4, f * 3.98, 0.08, 0.14);
+      tick(c, o, t, 0.012, 0.18, 2200, 1);
+    },
+    chasquido(c, o, t, k) {
+      tick(c, o, t, 0.04, 0.75, 2800 * k, 3);
+      tick(c, o, t + 0.004, 0.022, 0.3, 1400, 1.5);
+    },
+    vidrio(c, o, t, k) {
+      body(c, o, t, 1900 * k, 1890 * k, 0.24, 0.3);
+      body(c, o, t, 2870 * k, 2860 * k, 0.17, 0.2);
+      tick(c, o, t, 0.01, 0.2, 5200, 0.8, 'highpass');
+    },
+    pluck(c, o, t, k) {
+      const f = 330 * k;
+      const lp = c.createBiquadFilter();
+      lp.type = 'lowpass'; lp.Q.value = 2;
+      lp.frequency.setValueAtTime(3000, t);
+      lp.frequency.exponentialRampToValueAtTime(320, t + 0.2);
+      const g = c.createGain();
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.linearRampToValueAtTime(0.4, t + 0.003);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.24);
+      lp.connect(g); g.connect(o);
+      for (const m of [1, 1.005]) {
+        const osc = c.createOscillator();
+        osc.type = 'sawtooth';
+        osc.frequency.value = f * m;
+        osc.connect(lp);
+        osc.start(t); osc.stop(t + 0.27);
+      }
+    },
+    redoblante(c, o, t, k) {
+      body(c, o, t, 195 * k, 150 * k, 0.1, 0.5);
+      tick(c, o, t, 0.13, 0.42, 2300, 0.5);
+    }
+  };
+
+  /* Parejos de volumen: los clics (madera, chasquido) tienen poco pico y sonarían
+     muy bajito al lado de un pelotazo. Medidos contra un pico común de ~0,5. */
+  const KICK_TRIM = {
+    lofi: 0.9, vinilo: 1, cassette: 0.9, madera: 2.5, bongo: 1.1, burbuja: 1.2, gota: 1.4, tecla: 1.6,
+    cuero: 1.1, pelotazo: 0.8, marimba: 1.25, chasquido: 3.6, vidrio: 1.6, pluck: 0.95, redoblante: 1.2
+  };
+
+  let kickBus = null;
+  /** Deja listo el audio (lo que más tarda es crearlo): llamarlo al abrir la sala. */
+  function warm(AC) {
+    try {
+      const Ctor = AC || (typeof AudioContext !== 'undefined' ? AudioContext : null);
+      if (!Ctor) return false;
+      if (!shared) shared = new Ctor();
+      if (shared.state === 'suspended' && shared.resume) shared.resume();
+      noiseBuffer(shared);
+      return true;
+    } catch (e) { return false; }
+  }
+
+  function playKick(style, volume, AC) {
+    const recipe = KICKS[style];
+    if (!recipe) return false;
+    if (!warm(AC)) return false;
+    try {
+      const ctx = shared;
+      if (!kickBus || kickBus.context !== ctx) {
+        kickBus = ctx.createGain();
+        kickBus.connect(ctx.destination);
+      }
+      // Volumen del jugador, con 0,6 de margen para que varias capas juntas no saturen.
+      const vol = Math.min(1, Math.max(0, volume)) * 0.6;
+      const hit = ctx.createGain();
+      hit.gain.value = vol * (KICK_TRIM[style] || 1) * (0.92 + Math.random() * 0.16);
+      hit.connect(kickBus);
+      recipe(ctx, hit, ctx.currentTime + 0.002, 0.95 + Math.random() * 0.1);
+      return true;
+    } catch (e) { return false; }
+  }
+
+  return { STYLES, KICK_STYLES, KICKS, play, playKick, warm, has: (s) => !!RECIPES[s], hasKick: (s) => !!KICKS[s] };
 });

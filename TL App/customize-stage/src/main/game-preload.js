@@ -1289,6 +1289,24 @@ function playGoalSound() {
  * llega otro antes de que el primero termine, el que vale es el nuevo. Con las
  * voces turnándose se superponían y sonaba a eco.
  */
+/**
+ * La patada incluida en la app (sintetizada, sin archivos). `true` si sonó y el
+ * del juego se saltea; `false` si no hay ninguna elegida y suena el de HaxBall.
+ */
+function playBuiltInKick() {
+  const ap = state.config.appearance || {};
+  const style = ap.kickSfx;
+  if (!goalSfx || !style || style === 'default' || !goalSfx.hasKick(style)) return false;
+  const lv = gameSoundLevel();
+  if (lv <= 0) return true;
+  const now = Date.now();
+  if (now - lastHitSoundAt < HIT_SOUND_GAP_MS) return true;
+  lastHitSoundAt = now;
+  const vol = Number(ap.kickSfxVolume);
+  const own = Math.min(1, Math.max(0, Number.isFinite(vol) ? vol : 0.7));
+  return goalSfx.playKick(style, own * lv);
+}
+
 let hitAudio = null;
 let hitAudioFor = '';
 let hitStopTimer = null;
@@ -1324,7 +1342,8 @@ const HIT_SOUND_MAX_MS = 3000;
 function playHitSound() {
   const cfg = state.config.vip;
   const file = cfg && cfg.hitSound;
-  if (!file) return false;
+  // Sin archivo propio: el sonido incluido que haya elegido (si eligió alguno).
+  if (!file) return playBuiltInKick();
 
   // Callado el juego, callado esto. Va ANTES de la espera entre patadas: si no,
   // la patada muda dejaría marcada la hora y la primera de después de sacar el
@@ -6160,6 +6179,12 @@ function installTracking(view) {
    * que callar nada por afuera ni adivinar cuándo fue la patada: es el propio
    * juego el que avisa, en el mismo instante y las mismas veces.
    */
+  // El audio de la patada incluida se prepara ahora y no en el primer golpe
+  // (crearlo tarda y el primer toque saldría tarde).
+  try {
+    const kickChoice = state.config.appearance && state.config.appearance.kickSfx;
+    if (goalSfx && kickChoice && kickChoice !== 'default') goalSfx.warm();
+  } catch { /* sin audio: suena el del juego */ }
   view.__tvmKick = (player, room) => {
     // El motor habló: el parche de sonidos está puesto en este documento. Ver
     // `engineSaidGoal`.
