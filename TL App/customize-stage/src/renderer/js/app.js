@@ -8514,7 +8514,52 @@ function lookValue(key) {
  * cancha entera. Las miniaturas se dibujan de a unas pocas por cuadro para que
  * abrir la solapa no trabe el panel.
  */
-const LOOK_GALLERY = { ballStyle: 'swatch', discStyle: 'swatch', ringStyle: 'swatch', texture: 'pitch', pitchLight: 'pitch' };
+const LOOK_GALLERY = { ballStyle: 'swatch', discStyle: 'swatch', ringStyle: 'swatch' };
+/*
+ * El acabado de la cancha (textura y luz) ya se ve arriba en la vista previa
+ * grande: acá sólo van las opciones, como píldoras con un puntito del color o la
+ * forma de cada una. Nada que dibujar, así que abrir la solapa no cuesta nada.
+ */
+const LOOK_CHIPS = {
+  texture: {
+    none: '#5f7a4c', wood: 'linear-gradient(135deg,#c79556,#9a6a35)', ice: 'linear-gradient(135deg,#e6f7ff,#9fd3ec)',
+    sand: 'linear-gradient(135deg,#ecd9a0,#cdb06c)', concrete: 'linear-gradient(135deg,#a2a5ab,#74777d)', night: 'linear-gradient(135deg,#2c5a43,#142a20)',
+    clay: 'linear-gradient(135deg,#d57c4a,#a9502a)', checker: 'conic-gradient(#f2f2f2 25%,#25272c 0 50%,#f2f2f2 0 75%,#25272c 0)',
+    carbon: 'repeating-linear-gradient(45deg,#2a2d33 0 3px,#15171b 3px 6px)', marble: 'linear-gradient(135deg,#f5f3ef,#c9c4bb)',
+    hex: 'radial-gradient(circle,#e8b93a 30%,#7a5a10 32% 60%,#e8b93a 62%)', stars: 'radial-gradient(circle at 30% 30%,#fff 0 6%,transparent 8%),radial-gradient(circle at 70% 65%,#fff 0 5%,transparent 7%),#1c1c4a',
+    brick: 'linear-gradient(135deg,#b9574a,#8a3a30)', snow: 'linear-gradient(135deg,#ffffff,#cfdcec)', neon: 'linear-gradient(135deg,#00e5ff,#7a3cff)',
+    lava: 'linear-gradient(135deg,#ffb12a,#e8321a)', waves: 'linear-gradient(135deg,#46b0f0,#1f5fb8)'
+  },
+  pitchLight: {
+    none: '#5f7a4c', vignette: 'radial-gradient(circle,#8fb36e 25%,#1c2a16 100%)', spot: 'radial-gradient(circle,#f4ffd0 0,#6f8f4f 55%,#2a3a20 100%)',
+    corners: 'radial-gradient(circle at 0 0,#10180c 0 28%,transparent 40%),radial-gradient(circle at 100% 100%,#10180c 0 28%,transparent 40%),#7da35a'
+  }
+};
+
+function lookChipsRow(item, value) {
+  const dots = LOOK_CHIPS[item.key] || {};
+  const wrap = document.createElement('div');
+  wrap.className = 'lookchips';
+  wrap.setAttribute('role', 'radiogroup');
+  for (const [val, label] of item.options) {
+    const chip = document.createElement('button');
+    chip.type = 'button';
+    chip.className = 'lookchip' + (val === value ? ' is-on' : '');
+    chip.setAttribute('role', 'radio');
+    chip.setAttribute('aria-checked', String(val === value));
+    const dot = document.createElement('i');
+    dot.className = 'lookchip__dot' + (val === 'none' ? ' is-none' : '');
+    if (dots[val]) dot.style.background = dots[val];
+    const name = document.createElement('span');
+    name.textContent = t(label);
+    chip.append(dot, name);
+    chip.addEventListener('click', () => {
+      if (val !== value) lookPatch({ visual: { [item.key]: val } });
+    });
+    wrap.append(chip);
+  }
+  return settingRow({ label: t(item.label), description: item.desc ? t(item.desc) : '', control: wrap, block: true });
+}
 // Una sola cola para todas las galerías: se vacía cada vez que se rearma la solapa.
 let lookGalleryQueue = [];
 let lookGalleryBusy = false;
@@ -8580,6 +8625,7 @@ function lookRow(item) {
   if (item.type === 'select' && LOOK_GALLERY[item.key] && window.TLPreview) {
     return lookGalleryRow(item, value);
   }
+  if (item.type === 'select' && LOOK_CHIPS[item.key]) return lookChipsRow(item, value);
   if (item.type === 'select') {
     control = document.createElement('select');
     for (const [val, label] of item.options) {
