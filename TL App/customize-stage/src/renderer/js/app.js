@@ -4618,6 +4618,7 @@ $('#goalSfxVolume').addEventListener('change', (e) => {
 const CLIP_KEYS = [['F6', 'F6'], ['F7', 'F7'], ['F8', 'F8'], ['F9', 'F9'], ['F10', 'F10'], ['Insert', 'Insert']];
 const CLIP_SECONDS = [10, 15, 20, 30];
 const CLIP_QUALITIES = [['liviana', 'Liviana', 'Light'], ['normal', 'Normal', 'Normal'], ['alta', 'Alta', 'High']];
+const CLIP_ZOOMS = [[1, 'Pantalla completa', 'Full screen'], [0.7, 'Cerca', 'Closer'], [0.5, 'Muy cerca', 'Closest']];
 
 // Estado de la lista de clips (se declara antes de `paintClips`, que lo consulta).
 let clipsShown = null;
@@ -4630,6 +4631,8 @@ function paintClips() {
   $('#clipsKeyLabel').textContent = en ? 'Clip key' : 'Tecla para clipear';
   $('#clipsSecLabel').textContent = en ? 'Seconds it keeps' : 'Cuántos segundos guarda';
   $('#clipsQualLabel').textContent = en ? 'Quality' : 'Calidad';
+  $('#clipsZoomLabel').textContent = en ? 'Framing' : 'Encuadre';
+  $('#clipsZoomDesc').textContent = en ? 'Closer records only the middle of the screen, so a small map looks bigger.' : 'Cerca graba sólo el centro de la pantalla: en un mapa chico se ve todo más grande.';
   $('#clipsMemLabel').textContent = en ? 'What it uses' : 'Lo que usa';
   $('#clipsOpen').textContent = en ? 'Open clips folder' : 'Abrir carpeta de clips';
   buildSwitches($('#clipsSwitch'), [{
@@ -4662,12 +4665,13 @@ function paintClips() {
   chips($('#clipsKeyChips'), CLIP_KEYS, cfg.key, 'ck');
   chips($('#clipsSecChips'), CLIP_SECONDS.map((n) => [n, `${n} s`]), cfg.seconds, 'cs');
   chips($('#clipsQualChips'), CLIP_QUALITIES.map((q) => [q[0], en ? q[2] : q[1]]), cfg.quality, 'cq');
+  chips($('#clipsZoomChips'), CLIP_ZOOMS.map((z) => [z[0], en ? z[2] : z[1]]), cfg.zoom, 'cz');
   if (window.TLClip) {
     const plan = window.TLClip.plan(cfg);
     const mb = Math.round(plan.bytes / 1048576);
     $('#clipsMemDesc').textContent = en
-      ? `About ${mb} MB of video memory while it's on (${plan.w}×${plan.h}, ${plan.fps} fps). Saves to Videos\\TL App\\Clips as .webm (opens in your browser, VLC or Discord).`
-      : `Unos ${mb} MB de memoria de video mientras está prendido (${plan.w}×${plan.h}, ${plan.fps} cuadros por segundo). Se guarda en Videos\\TL App\\Clips como .webm (se abre con el navegador, VLC o Discord).`;
+      ? `About ${mb} MB of video memory while it's on (${plan.w}×${plan.h}, ${plan.fps} fps${plan.seconds < cfg.seconds ? `, up to ${plan.seconds} s at this quality` : ''}). Saves to Videos\\TL App\\Clips as .webm (opens in your browser, VLC or Discord).`
+      : `Unos ${mb} MB de memoria de video mientras está prendido (${plan.w}×${plan.h}, ${plan.fps} cuadros por segundo${plan.seconds < cfg.seconds ? `, hasta ${plan.seconds} s con esta calidad` : ''}). Se guarda en Videos\\TL App\\Clips como .webm (se abre con el navegador, VLC o Discord).`;
   }
   if (clipsShown === null) clipsLoad();
 }
@@ -4678,6 +4682,10 @@ $('#clipsKeyChips').addEventListener('click', (e) => {
 $('#clipsSecChips').addEventListener('click', (e) => {
   const b = e.target.closest('[data-cs]');
   if (b) patchConfig({ clips: { seconds: Number(b.dataset.cs) } });
+});
+$('#clipsZoomChips').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-cz]');
+  if (b) patchConfig({ clips: { zoom: Number(b.dataset.cz) } });
 });
 $('#clipsQualChips').addEventListener('click', (e) => {
   const b = e.target.closest('[data-cq]');

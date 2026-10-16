@@ -23,12 +23,14 @@
   else root.TLClip = factory();
 })(typeof self !== 'undefined' ? self : this, function () {
   const PRESETS = {
-    liviana: { w: 320, h: 180, fps: 12, bps: 1000000 },
-    normal: { w: 480, h: 270, fps: 15, bps: 1600000 },
-    alta: { w: 640, h: 360, fps: 20, bps: 3000000 }
+    liviana: { w: 480, h: 270, fps: 12, bps: 1000000 },
+    normal: { w: 640, h: 360, fps: 15, bps: 1600000 },
+    alta: { w: 960, h: 540, fps: 12, bps: 3000000 }
   };
   const COLS = 15;
   const MAX_SIDE = 16384; // lado máximo de un canvas en Chromium
+  const MAX_BYTES = 400 * 1048576; // tope de memoria de video de la grilla
+  const ZOOMS = [1, 0.7, 0.5]; // qué parte de la pantalla se graba (centrada): 1 = toda
 
   /** Defaults y límites de la config de clips. */
   function clean(cfg) {
@@ -39,6 +41,7 @@
       quality: PRESETS[c.quality] ? c.quality : 'normal',
       seconds: Number.isFinite(sec) ? Math.min(30, Math.max(5, Math.round(sec))) : 15,
       autoGoal: !!c.autoGoal,
+      zoom: ZOOMS.indexOf(Number(c.zoom)) >= 0 ? Number(c.zoom) : 1,
       key: typeof c.key === 'string' && c.key ? c.key : 'F9'
     };
   }
@@ -52,11 +55,12 @@
     const p = PRESETS[c.quality];
     let cap = p.fps * c.seconds;
     let rows = Math.ceil(cap / COLS);
-    while (rows * p.h > MAX_SIDE || COLS * p.w > MAX_SIDE) {
+    // Un tope de memoria: con calidad alta y muchos segundos, guarda menos tiempo.
+    while (rows * p.h > MAX_SIDE || COLS * p.w > MAX_SIDE || COLS * p.w * rows * p.h * 4 > MAX_BYTES) {
       cap -= COLS;
       rows = Math.ceil(cap / COLS);
     }
-    return { ...p, cols: COLS, rows, cap, seconds: c.seconds, bytes: COLS * p.w * rows * p.h * 4 };
+    return { ...p, cols: COLS, rows, cap, seconds: Math.min(c.seconds, Math.floor(cap / p.fps)), bytes: COLS * p.w * rows * p.h * 4 };
   }
 
   /*
@@ -181,7 +185,9 @@
       atlas.width = geo.cols * geo.w;
       atlas.height = geo.rows * geo.h;
       actx = atlas.getContext('2d', { alpha: false });
-      actx.imageSmoothingQuality = 'low';
+      actx.imageSmoothingEnabled = true;
+      // «high» filtra bien al achicar (con «low» las líneas y los textos salían escalonados).
+      actx.imageSmoothingQuality = 'high';
       n = 0;
       timer = view.setInterval(tick, Math.round(1000 / geo.fps));
     }
@@ -196,14 +202,20 @@
         const i = n % geo.cap;
         const x = (i % geo.cols) * geo.w;
         const y = Math.floor(i / geo.cols) * geo.h;
-        const k = Math.min(geo.w / src.width, geo.h / src.height);
-        const dw = src.width * k;
-        const dh = src.height * k;
+        // El encuadre: sólo la parte central de la pantalla (acerca la acción).
+        const z = cfg.zoom;
+        const sw = src.width * z;
+        const sh = src.height * z;
+        const sx = (src.width - sw) / 2;
+        const sy = (src.height - sh) / 2;
+        const k = Math.min(geo.w / sw, geo.h / sh);
+        const dw = sw * k;
+        const dh = sh * k;
         if (dw < geo.w - 0.5 || dh < geo.h - 0.5) {
           actx.fillStyle = '#000';
           actx.fillRect(x, y, geo.w, geo.h);
         }
-        actx.drawImage(src, x + (geo.w - dw) / 2, y + (geo.h - dh) / 2, dw, dh);
+        actx.drawImage(src, sx, sy, sw, sh, x + (geo.w - dw) / 2, y + (geo.h - dh) / 2, dw, dh);
         n++;
         failures = 0;
       } catch (e) {
@@ -219,7 +231,7 @@
       const prev = cfg;
       cfg = clean(next);
       if (!cfg.enabled) { release(); return; }
-      const changed = !geo || prev.quality !== cfg.quality || prev.seconds !== cfg.seconds;
+      const changed = !geo || prev.quality !== cfg.quality || prev.seconds !== cfg.seconds || prev.zoom !== cfg.zoom;
       if (changed) { release(); build(); }
     }
 
@@ -257,7 +269,8 @@
         out.width = g.w;
         out.height = g.h;
         const octx = out.getContext('2d', { alpha: false });
-        const quality = g.w >= 640 ? 0.8 : g.w >= 480 ? 0.72 : 0.62;
+        // Los cuadros salen chicos (la cancha es casi plana): se puede ir con calidad alta.
+        const quality = 0.9;
         const encode = () => new Promise((resolve) => out.toBlob(resolve, 'image/webp', quality));
 
         const frames = [];
