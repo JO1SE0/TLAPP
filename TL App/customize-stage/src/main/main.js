@@ -204,13 +204,21 @@ function applyBootFlags(perf) {
     'HardwareMediaKeyHandling',
     'Translate',
     'OptimizationHints',
-    'AutofillServerCommunication'
+    'AutofillServerCommunication',
+    // El juego va en un iframe de otro dominio: con el aislamiento de sitios
+    // Chromium lo manda a un proceso aparte y cada tecla y cada cuadro cruza
+    // entre procesos. Sin aislamiento corre en el mismo.
+    'IsolateOrigins',
+    'site-per-process'
   ];
   // Va con el unlock: si el unlock no se aplica, esto tampoco tiene sentido.
   if (unlockFpsSupported() && perf.unlockFps) disabledFeatures.push('FrameRateThrottling');
   // Windows pausa el render cuando cree que otra ventana tapa la nuestra.
   if (perf.noOcclusionPause) disabledFeatures.push('CalculateNativeWinOcclusion', 'IntensiveWakeUpThrottling');
   app.commandLine.appendSwitch('disable-features', disabledFeatures.join(','));
+  app.commandLine.appendSwitch('disable-site-isolation-trials');
+  // Sin árbol de accesibilidad: cada cambio del DOM (chat, lista) no lo actualiza.
+  app.commandLine.appendSwitch('disable-renderer-accessibility');
 
   if (perf.disableBackgroundThrottling) {
     app.commandLine.appendSwitch('disable-background-timer-throttling');
@@ -249,7 +257,9 @@ function applyBootFlags(perf) {
    * 768 MB es de sobra: medido, el cliente entero (sus dos renderers, el juego
    * incluido) se mueve bastante por debajo de eso.
    */
-  app.commandLine.appendSwitch('js-flags', '--max-old-space-size=768');
+  // Zona de objetos nuevos más grande: menos limpiezas por segundo, o sea menos
+  // pausas del recolector en mitad de la partida.
+  app.commandLine.appendSwitch('js-flags', '--max-old-space-size=768 --min-semi-space-size=16 --max-semi-space-size=32');
 
   // Nada de esto lo usa un cliente de juego, y todo levanta trabajo de fondo.
   app.commandLine.appendSwitch('disable-background-networking');
