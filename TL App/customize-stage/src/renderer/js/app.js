@@ -68,7 +68,7 @@ const TAB_ICONS = {
 const PANEL_TABS = {
   aspecto: [
     { id: 'estilo', label: 'tab.style', hint: 'tab.styleHint',
-      secs: ['tema', 'acento', 'interfaz', 'forma', 'densidad', 'animaciones', 'looks', 'menubg'] },
+      secs: ['tema', 'acento', 'interfaz', 'densidad', 'animaciones', 'looks', 'menubg'] },
     { id: 'cancha', label: 'tab.pitch', hint: 'tab.pitchHint',
       secs: ['cancha', 'acabado', 'trazos', 'replays'] },
     { id: 'fichas', label: 'tab.discs', hint: 'tab.discsHint',
@@ -839,17 +839,6 @@ async function guard(promise, prefix = 'Error') {
 }
 
 /* ── Config y tema ──────────────────────────────────────── */
-/* Valores de fábrica de la forma de la interfaz (ver más abajo `applyShape`). */
-const SHAPE_DEFAULTS = { shapeRadius: 100, glass: 0, glassBlur: 16, shadowK: 100, roomGlass: 0, roomGlassBlur: 14 };
-const SHAPE_ROWS = [
-  { key: 'shapeRadius', min: 0, max: 200, step: 5, unit: '%', es: 'Esquinas', en: 'Corners', hint: ['Del filo recto (0) a muy redondeado (200). 100 es el de fábrica.', 'From sharp (0) to very round (200). 100 is the default.'] },
-  { key: 'glass', min: 0, max: 100, step: 5, unit: '%', es: 'Vidrio', en: 'Glass', hint: ['Paneles translúcidos con el fondo desenfocado detrás. Usa GPU sólo en la interfaz.', 'Translucent panels with the background blurred behind. GPU use is limited to the interface.'] },
-  { key: 'glassBlur', min: 4, max: 40, step: 2, unit: 'px', es: 'Desenfoque del vidrio', en: 'Glass blur', showIf: (v) => v.glass > 0 },
-  { key: 'shadowK', min: 0, max: 200, step: 5, unit: '%', es: 'Sombras', en: 'Shadows', hint: ['Qué tan profundas se ven las tarjetas. 0 las deja planas.', 'How deep the cards look. 0 makes them flat.'] },
-  { key: 'roomGlass', min: 0, max: 100, step: 5, unit: '%', es: 'Vidrio dentro de la sala', en: 'Glass inside the room', hint: ['La pantalla de jugadores antes de jugar (rojo, azul y espectadores).', 'The players screen before the match (red, blue and spectators).'] },
-  { key: 'roomGlassBlur', min: 4, max: 30, step: 2, unit: 'px', es: 'Desenfoque en la sala', en: 'Blur inside the room', showIf: (v) => v.roomGlass > 0 }
-];
-
 function applyConfig(config) {
   state.config = config;
   const root = document.documentElement;
@@ -876,7 +865,6 @@ function applyConfig(config) {
   rd.pageTrans = config.appearance.pageTransition || 'fade';
   { const rr = config.appearance.roomRows; const prev = rd.roomRows; if (rr === 'dense' || rr === 'large') rd.roomRows = rr; else delete rd.roomRows; if (prev !== rd.roomRows) { try { if (roomParts) paintRoomWindow(true); } catch (e) { /* aún no hay lista */ } } }
   if (LAYOUT_IDS.includes(config.appearance.layout)) rd.layout = config.appearance.layout; else delete rd.layout;
-  applyShape(config.appearance);
   if (state.layoutSeen !== rd.layout) {
     state.layoutSeen = rd.layout;
     /* Consola arranca en el Inicio; al salir de ella el Inicio se cierra. */
@@ -928,8 +916,6 @@ function applyThemeVars(vars) {
   }
   // El tema claro necesita otros rojos/verdes y menos brillo en los blobs.
   root.dataset.scheme = isLightColor(vars['--bg-0']) ? 'light' : 'dark';
-  if (vars['--load-style'] && vars['--load-style'] !== 'clasico') root.dataset.load = vars['--load-style'];
-  else delete root.dataset.load;
   // Un atributo y no el valor de la variable: el CSS lo leía con
   // [style*="--aura-on: 0"], que depende de cómo el navegador serialice el
   // style inline y no acertaba nunca — por eso los temas VIP no animaban nada.
@@ -9304,7 +9290,6 @@ function renderAll() {
   renderPerf();
   renderVisual();
   renderLook();
-  paintShape();
   renderAspect();
   renderSettings();
   renderDiscord();
@@ -11199,133 +11184,6 @@ window.addEventListener('keydown', (e) => {
   if (next >= 0) { e.preventDefault(); tiles[Math.max(0, Math.min(tiles.length - 1, next))].focus(); }
 }, true);
 
-
-
-/* ── Forma de la interfaz: esquinas, vidrio y sombras ─────────────────────
- * Los controles escriben las variables en el acto (se ve mientras arrastrás) y
- * guardan al soltar. Con los valores de fábrica los atributos de <html> se sacan
- * y el CSS de la forma no se aplica para nada. */
-
-function shapeValues(a) {
-  const out = {};
-  for (const [k, def] of Object.entries(SHAPE_DEFAULTS)) {
-    const v = Number(a && a[k]);
-    out[k] = Number.isFinite(v) ? v : def;
-  }
-  return out;
-}
-
-function applyShape(appearance, override) {
-  const v = { ...shapeValues(appearance), ...(override || {}) };
-  const root = document.documentElement;
-  const rd = root.dataset;
-  if (v.shapeRadius !== 100) { rd.shape = 'on'; root.style.setProperty('--shape-k', String(v.shapeRadius / 100)); }
-  else { delete rd.shape; root.style.removeProperty('--shape-k'); }
-  if (v.glass > 0) { rd.glass = 'on'; root.style.setProperty('--glass', String(v.glass / 100)); root.style.setProperty('--glass-blur', `${v.glassBlur}px`); }
-  else { delete rd.glass; root.style.removeProperty('--glass'); root.style.removeProperty('--glass-blur'); }
-  if (v.shadowK !== 100) { rd.shadowk = String(v.shadowK === 0 ? 0 : 'on'); root.style.setProperty('--shadow-k', String(v.shadowK / 100)); }
-  else { delete rd.shadowk; root.style.removeProperty('--shadow-k'); }
-}
-
-
-const SHAPE_CHIPS = [
-  { key: 'lobbyMode', es: 'Lobby de la sala', en: 'Room lobby', def: 'normal',
-    hint: ['Cómo se ven los jugadores antes de jugar.', 'How players look before the match.'],
-    items: [['normal', 'Normal', 'Normal'], ['compacto', 'Compacto', 'Compact'], ['fichas', 'Fichas', 'Cards'], ['grande', 'Grande', 'Large']] },
-  { key: 'loadStyle', es: 'Pantalla de carga', en: 'Loading screen', def: 'clasico',
-    hint: ['Para «Iniciando…» y «Conectando…».', 'For startup and connecting.'],
-    items: [['clasico', 'Clásica', 'Classic'], ['minimo', 'Mínima', 'Minimal'], ['orbita', 'Órbita', 'Orbit'], ['latido', 'Latido', 'Heartbeat'], ['cine', 'Cine', 'Cinema']] },
-  { key: 'appIcon', es: 'Ícono de la ventana', en: 'Window icon', def: 'escudo',
-    hint: ['Barra de tareas y ventana; el .exe no cambia.', 'Taskbar and window; the .exe keeps its icon.'],
-    items: [['escudo', 'Escudo', 'Crest'], ['circulo', 'Círculo', 'Circle'], ['cuadrado', 'Cuadrado', 'Square'], ['blanco', 'Blanco', 'White'], ['acento', 'Acento', 'Accent']] }
-];
-
-function paintShape() {
-  const host = $('#shapeRows');
-  if (!host || !state.config) return;
-  const en = isEn();
-  const values = shapeValues(state.config.appearance);
-  $('#shapeTitle').textContent = en ? 'Interface shape' : 'Forma de la interfaz';
-  $('#shapeDesc').textContent = en
-    ? 'Corners, glass and shadows for the whole app. Nothing here touches the game FPS.'
-    : 'Esquinas, vidrio y sombras de toda la app. Nada de esto toca los FPS del juego.';
-  host.replaceChildren();
-  for (const row of SHAPE_ROWS) {
-    if (row.showIf && !row.showIf(values)) continue;
-    const wrap = document.createElement('div');
-    wrap.className = 'row';
-    const text = document.createElement('div');
-    text.className = 'row__text';
-    const label = document.createElement('span');
-    label.className = 'row__label';
-    label.textContent = en ? row.en : row.es;
-    text.append(label);
-    if (row.hint) {
-      const d = document.createElement('span');
-      d.className = 'row__desc';
-      d.textContent = row.hint[en ? 1 : 0];
-      text.append(d);
-    }
-    const ctl = document.createElement('div');
-    ctl.className = 'row__ctl';
-    const line = document.createElement('div');
-    line.className = 'shaperow';
-    const input = document.createElement('input');
-    input.type = 'range';
-    input.min = row.min; input.max = row.max; input.step = row.step;
-    input.value = values[row.key];
-    const out = document.createElement('output');
-    out.textContent = `${values[row.key]}${row.unit}`;
-    input.addEventListener('input', () => {
-      out.textContent = `${input.value}${row.unit}`;
-      applyShape(state.config.appearance, { [row.key]: Number(input.value) });
-    });
-    input.addEventListener('change', () => patchConfig({ appearance: { [row.key]: Number(input.value) } }).then(paintShape));
-    line.append(input, out);
-    ctl.append(line);
-    wrap.append(text, ctl);
-    host.append(wrap);
-  }
-  for (const spec of SHAPE_CHIPS) {
-    const wrap = document.createElement('div');
-    wrap.className = 'row';
-    const text = document.createElement('div');
-    text.className = 'row__text';
-    const label = document.createElement('span');
-    label.className = 'row__label';
-    label.textContent = en ? spec.en : spec.es;
-    const d = document.createElement('span');
-    d.className = 'row__desc';
-    d.textContent = spec.hint[en ? 1 : 0];
-    text.append(label, d);
-    const ctl = document.createElement('div');
-    ctl.className = 'row__ctl';
-    const chips = document.createElement('div');
-    chips.className = 'chips';
-    const cur = state.config.appearance[spec.key] || spec.def;
-    for (const it of spec.items) {
-      const b = document.createElement('button');
-      b.type = 'button';
-      b.className = 'chip' + (it[0] === cur ? ' is-active' : '');
-      b.textContent = en ? it[2] : it[1];
-      b.addEventListener('click', () => patchConfig({ appearance: { [spec.key]: it[0] } }).then(paintShape));
-      chips.append(b);
-    }
-    ctl.append(chips);
-    wrap.append(text, ctl);
-    host.append(wrap);
-  }
-  const reset = document.createElement('div');
-  reset.className = 'row';
-  const rb = document.createElement('button');
-  rb.type = 'button';
-  rb.className = 'btn btn--ghost';
-  rb.textContent = en ? 'Back to default' : 'Volver a lo de fábrica';
-  rb.addEventListener('click', () => patchConfig({ appearance: { ...SHAPE_DEFAULTS, lobbyMode: 'normal', loadStyle: 'clasico', appIcon: 'escudo' } }).then(paintShape));
-  reset.append(Object.assign(document.createElement('div'), { className: 'row__ctl' }));
-  reset.firstChild.append(rb);
-  host.append(reset);
-}
 
 /* Densidad de la interfaz: sólo espaciado de menús (CSS por `data-density`). */
 const DENSITIES = [['compact', 'Compacta', 'Compact'], ['normal', 'Normal', 'Normal'], ['comfy', 'Cómoda', 'Comfortable']];
