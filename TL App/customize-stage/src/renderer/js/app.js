@@ -8884,7 +8884,7 @@ const WS_LAYER_NAMES = {
   cross: ['Cruz', 'Cross'], heart: ['Corazón', 'Heart'], bolt: ['Rayo', 'Bolt'], spiral: ['Espiral', 'Spiral']
 };
 const WS_MAX = 12;
-const WS_MAX_LAYERS = 8;
+const WS_LAYERS_UI = 8;
 let wsDraft = null;
 let wsIsNew = false;
 let wsFrame = 0;
@@ -9089,7 +9089,7 @@ function wsBuildForm() {
   add.type = 'button';
   add.className = 'btn btn--ghost btn--sm';
   add.textContent = isEn() ? '+ Add layer' : '+ Agregar capa';
-  add.disabled = d.layers.length >= WS_MAX_LAYERS;
+  add.disabled = d.layers.length >= WS_LAYERS_UI;
   add.addEventListener('click', () => {
     d.layers.push({ t: 'disk', c: '#d94b4b', n: 5, s: 0.4, a: 0 });
     wsBuildForm();
