@@ -3533,6 +3533,33 @@ listen('game:board-image', async (_e, payload) => {
     send('game:toast', { message: 'No se pudo guardar la pizarra', kind: 'err' });
   }
 });
+/**
+ * Un clip armado por el juego (ver main/game-clip.js): se guarda en Videos\TL App\Clips
+ * y se avisa con el cartel de siempre. El juego manda los bytes del .webm.
+ */
+function clipsFolder() {
+  return path.join(app.getPath('videos'), 'TL App', 'Clips');
+}
+listen('game:clip-save', async (_e, payload) => {
+  try {
+    const bytes = payload && payload.bytes;
+    const size = bytes && bytes.byteLength;
+    if (!size || size < 1000 || size > 200 * 1024 * 1024) throw new Error('clip inválido');
+    const dir = clipsFolder();
+    await fs.promises.mkdir(dir, { recursive: true });
+    const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
+    const tag = payload.label === 'gol' ? 'gol' : 'clip';
+    await fs.promises.writeFile(path.join(dir, `TL-${tag}-${stamp}.webm`), Buffer.from(bytes));
+    send('game:toast', { message: `Clip guardado (${Math.round(Number(payload.seconds) || 0)} s) en Videos\\TL App\\Clips`, kind: 'ok' });
+  } catch (err) {
+    send('game:toast', { message: 'No se pudo guardar el clip', kind: 'err' });
+  }
+});
+handle('clips:openFolder', async () => {
+  const dir = clipsFolder();
+  await fs.promises.mkdir(dir, { recursive: true });
+  return shell.openPath(dir);
+});
 /** El engranaje del HUD del juego abre los ajustes del cliente, no los de HaxBall. */
 listen('game:open-settings', () => send('game:open-settings'));
 // La interfaz pide moderar o animar el avatar; el preload del juego lo ejecuta.

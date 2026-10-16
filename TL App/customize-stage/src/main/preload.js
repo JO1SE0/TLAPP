@@ -114,6 +114,9 @@ contextBridge.exposeInMainWorld('tvm', {
     onLive: (cb) => on('auth:live', cb)
   },
 
+  clips: {
+    openFolder: () => call('clips:openFolder')
+  },
   replays: {
     list: () => call('replays:list'),
     chooseFolder: () => call('replays:chooseFolder'),

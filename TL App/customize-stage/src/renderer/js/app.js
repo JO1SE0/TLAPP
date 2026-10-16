@@ -74,7 +74,7 @@ const PANEL_TABS = {
     { id: 'fichas', label: 'tab.discs', hint: 'tab.discsHint',
       secs: ['jugador', 'pelota', 'fichaslook', 'nombres'] },
     { id: 'partida', label: 'tab.ingame', hint: 'tab.ingameHint',
-      secs: ['chatlook', 'statslook', 'partida', 'teclashud', 'overlay', 'sonidos', 'lista'] }
+      secs: ['chatlook', 'statslook', 'partida', 'teclashud', 'overlay', 'sonidos', 'clips', 'lista'] }
   ],
   ajustes: [
     { id: 'rapido', group: 'tabg.perf', label: 'tab.quick', hint: 'tab.quickHint', secs: ['perfil', 'respuesta'] },
@@ -4385,6 +4385,7 @@ $('#npNext').addEventListener('click', () => window.TLMusic && window.TLMusic.ne
 /* Audio del menú (barra superior): música on/off, volumen y sonidos de botones. */
 function paintAudio() {
   try { paintGameExtras(); } catch (e) { /* adorno */ }
+  try { paintClips(); } catch (e) { /* adorno */ }
   try { paintAnimations(); } catch (e) { /* adorno */ }
   try { paintDensity(); } catch (e) { /* adorno */ }
   try { paintLayout(); paintStatusBar(); } catch (e) { /* adorno */ }
@@ -4610,6 +4611,77 @@ $('#goalSfxVolume').addEventListener('change', (e) => {
   if (window.TLGoalSfx && st && st !== 'default') window.TLGoalSfx.play(st, v);
   patchConfig({ appearance: { goalSfxVolume: v } });
 });
+/* ── Clips ───────────────────────────────────────────────────────────────
+ * Los últimos segundos de la partida como video, con una tecla. Apagado por
+ * defecto. El costo (memoria de video) se muestra en el momento, según lo que
+ * esté elegido. Ver main/game-clip.js. */
+const CLIP_KEYS = [['F6', 'F6'], ['F7', 'F7'], ['F8', 'F8'], ['F9', 'F9'], ['F10', 'F10'], ['Insert', 'Insert']];
+const CLIP_SECONDS = [10, 15, 20, 30];
+const CLIP_QUALITIES = [['liviana', 'Liviana', 'Light'], ['normal', 'Normal', 'Normal'], ['alta', 'Alta', 'High']];
+
+function paintClips() {
+  if (!$('#clipsSwitch') || !state.config) return;
+  const en = isEn();
+  const cfg = window.TLClip ? window.TLClip.clean(state.config.clips) : (state.config.clips || {});
+  $('#clipsTitle').textContent = en ? 'Clips' : 'Clips';
+  $('#clipsKeyLabel').textContent = en ? 'Clip key' : 'Tecla para clipear';
+  $('#clipsSecLabel').textContent = en ? 'Seconds it keeps' : 'Cuántos segundos guarda';
+  $('#clipsQualLabel').textContent = en ? 'Quality' : 'Calidad';
+  $('#clipsMemLabel').textContent = en ? 'What it uses' : 'Lo que usa';
+  $('#clipsOpen').textContent = en ? 'Open clips folder' : 'Abrir carpeta de clips';
+  buildSwitches($('#clipsSwitch'), [{
+    key: 'enabled',
+    label: en ? 'Save clips with a key' : 'Clipear con una tecla',
+    description: en
+      ? 'Saves the last seconds of the match as a video. Off by default: when on, it keeps a small buffer in video memory and nothing else runs until you clip.'
+      : 'Guarda los últimos segundos de la partida como video. Viene apagado: encendido guarda un buffer chico en la memoria de video y no corre nada más hasta que clipeás.',
+    value: () => !!(state.config.clips || {}).enabled
+  }], (item, value) => patchConfig({ clips: { enabled: value } }));
+  buildSwitches($('#clipsAuto'), [{
+    key: 'autoGoal',
+    label: en ? 'Clip every goal automatically' : 'Clipear cada gol solo',
+    description: en ? 'A few seconds after each goal it saves the clip by itself.' : 'Unos segundos después de cada gol guarda el clip solo.',
+    value: () => !!(state.config.clips || {}).autoGoal
+  }], (item, value) => patchConfig({ clips: { autoGoal: value } }));
+  $('#clipsOpts').hidden = !cfg.enabled;
+  $('#clipsAuto').hidden = !cfg.enabled;
+  const chips = (host, items, cur, attr) => {
+    host.innerHTML = '';
+    for (const it of items) {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'chip' + (String(it[0]) === String(cur) ? ' is-active' : '');
+      b.dataset[attr] = it[0];
+      b.textContent = it[1];
+      host.appendChild(b);
+    }
+  };
+  chips($('#clipsKeyChips'), CLIP_KEYS, cfg.key, 'ck');
+  chips($('#clipsSecChips'), CLIP_SECONDS.map((n) => [n, `${n} s`]), cfg.seconds, 'cs');
+  chips($('#clipsQualChips'), CLIP_QUALITIES.map((q) => [q[0], en ? q[2] : q[1]]), cfg.quality, 'cq');
+  if (window.TLClip) {
+    const plan = window.TLClip.plan(cfg);
+    const mb = Math.round(plan.bytes / 1048576);
+    $('#clipsMemDesc').textContent = en
+      ? `About ${mb} MB of video memory while it's on (${plan.w}×${plan.h}, ${plan.fps} fps). Saves to Videos\\TL App\\Clips as .webm (opens in your browser, VLC or Discord).`
+      : `Unos ${mb} MB de memoria de video mientras está prendido (${plan.w}×${plan.h}, ${plan.fps} cuadros por segundo). Se guarda en Videos\\TL App\\Clips como .webm (se abre con el navegador, VLC o Discord).`;
+  }
+}
+$('#clipsKeyChips').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-ck]');
+  if (b) patchConfig({ clips: { key: b.dataset.ck } });
+});
+$('#clipsSecChips').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-cs]');
+  if (b) patchConfig({ clips: { seconds: Number(b.dataset.cs) } });
+});
+$('#clipsQualChips').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-cq]');
+  if (b) patchConfig({ clips: { quality: b.dataset.cq } });
+});
+$('#clipsOpen').addEventListener('click', () => { try { tvm.clips.openFolder(); } catch (err) { /* sin carpeta */ } });
+try { if (state && state.config) paintClips(); } catch (e) { /* aún sin config */ }
+
 try { if (state && state.config) paintGameExtras(); } catch (e) { /* aún sin config */ }
 
 $('#hudScale').addEventListener('input', (e) => {

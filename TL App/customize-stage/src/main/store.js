@@ -180,6 +180,18 @@ const DEFAULTS = {
     folder: path.join(os.homedir(), 'Downloads')
   },
   /**
+   * Clips: los últimos segundos de la partida como video, con una tecla. Apagado
+   * por defecto: encendido guarda una grilla chica en la placa de video (ver
+   * main/game-clip.js). `quality`: liviana | normal | alta.
+   */
+  clips: {
+    enabled: false,
+    key: 'F9',
+    seconds: 15,
+    quality: 'normal',
+    autoGoal: false
+  },
+  /**
    * La última sala en la que estuviste, para poder volver. Ver `rememberRoom`
    * en main.js: se guarda el token porque es lo único con lo que se entra, y el
    * nombre sólo para poder decir a dónde se vuelve.

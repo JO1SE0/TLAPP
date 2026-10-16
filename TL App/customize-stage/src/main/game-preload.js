@@ -17,6 +17,7 @@
 
 const { ipcRenderer } = require('electron');
 const ball3d = require('./ball-3d');
+const gameClip = require('./game-clip');
 const lookfx = require('./look');
 const zoomControl = require('./game-zoom');
 const themes = require('./themes');
@@ -1169,6 +1170,7 @@ function watchScore(doc) {
             // extrapolación.
             noteGoalNames(goal);
             ipcRenderer.send('game:goal', goal);
+            scheduleGoalClip();
           }
         }
       }, 400);
@@ -10056,12 +10058,91 @@ function syncAvatar() {
   }
 }
 
+/* ------------------------------------------------------------------ *
+ * Clips
+ * ------------------------------------------------------------------ *
+ * Los últimos segundos de la partida como video, con una tecla. El trabajo
+ * pesado y el porqué de que no se note en los FPS están en `game-clip.js`.
+ * Acá sólo se prende y apaga según la config, se escucha la tecla y se manda
+ * el resultado al main para guardarlo.
+ */
+let clipper = null;
+let clipCanvasCache = null;
+
+function clipCanvas() {
+  if (clipCanvasCache && clipCanvasCache.isConnected) return clipCanvasCache;
+  const doc = gameDocument();
+  if (!doc) return null;
+  let best = null;
+  let area = 0;
+  for (const c of doc.querySelectorAll('canvas')) {
+    const a = c.width * c.height;
+    if (a > area) { best = c; area = a; }
+  }
+  clipCanvasCache = best;
+  return best;
+}
+
+/** Prende, apaga o reajusta los clips según la config actual. */
+function syncClips() {
+  const cfg = state.config && state.config.clips;
+  if (!cfg || !cfg.enabled) {
+    if (clipper) clipper.stop();
+    clipCanvasCache = null;
+    return;
+  }
+  if (!clipper) clipper = gameClip.create(window, { getCanvas: clipCanvas, onError: (m) => notify(m, 'warn') });
+  clipper.configure(cfg);
+}
+
+async function doClip(label) {
+  if (!clipper || !clipper.active()) return;
+  if (clipper.isBusy()) return notify('Ya se está guardando un clip…', 'warn');
+  if (clipper.ready() < 1) return notify('Todavía no hay nada para clipear', 'warn');
+  try {
+    notify('Guardando clip…');
+    const res = await clipper.clip();
+    if (!res.ok) {
+      const why = res.reason === 'unsupported' ? 'este equipo no puede grabar video' : 'no se pudo armar';
+      log('error', `clip: ${res.reason}${res.error ? ` (${res.error})` : ''}`, 'juego');
+      return notify(`No se pudo guardar el clip: ${why}`, 'err');
+    }
+    ipcRenderer.send('game:clip-save', { bytes: res.bytes, label, seconds: res.seconds });
+  } catch (err) {
+    log('error', `clip: ${err && err.message ? err.message : err}`, 'juego');
+    notify('No se pudo guardar el clip', 'err');
+  }
+}
+
+/** Clip automático unos segundos DESPUÉS de un gol (así sale el gol y la celebración). */
+function scheduleGoalClip() {
+  const cfg = state.config && state.config.clips;
+  if (!cfg || !cfg.enabled || !cfg.autoGoal) return;
+  setTimeout(() => { safe(doClip, 'gol'); }, 3500);
+}
+
+const clipKeyDocs = new WeakSet();
+function attachClipKey(doc) {
+  if (!doc || clipKeyDocs.has(doc)) return;
+  clipKeyDocs.add(doc);
+  doc.addEventListener('keydown', (event) => {
+    const cfg = state.config && state.config.clips;
+    if (!cfg || !cfg.enabled || event.repeat) return;
+    if (event.code !== (cfg.key || 'F9')) return;
+    event.preventDefault();
+    safe(doClip, 'clip');
+  }, true);
+}
+
 function attachHotkeys(doc) {
   // El foco casi siempre está dentro del iframe, así que escuchamos en los dos.
   // Las opciones tienen que ser las MISMAS al sacar y al poner: un `remove` sin
   // el `capture` no saca nada y se irían apilando manejadores.
   doc.removeEventListener('keydown', onKeyDown, HOTKEY_OPTS);
   doc.addEventListener('keydown', onKeyDown, HOTKEY_OPTS);
+  attachChatCommands(doc);
+  attachClipKey(doc);
+  attachClipKey(document);
   attachChatCommands(doc);
   // El cartel de teclas mira lo mismo, pero sin tocar el evento.
   watchKeystrokes(doc);
@@ -11197,6 +11278,7 @@ function boot() {
 
   syncCanvasHotFlags();
   refreshFrameBudget();
+  safe(syncClips);
 
   // Antes que nada: quedarse con lo que el jugador ya tenía y después dejar la
   // config donde HaxBall la va a leer.
@@ -11399,6 +11481,7 @@ function boot() {
     applyCameraZoom();
     syncCanvasHotFlags();
     refreshFrameBudget();
+    safe(syncClips);
 
     writeGameSettings();
     applyCleanMode(config.appearance.cleanMode);

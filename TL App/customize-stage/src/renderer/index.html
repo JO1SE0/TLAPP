@@ -1319,6 +1319,39 @@
             </div>
           </section>
 
+          <!-- ═══ Clips ═══ -->
+          <section class="sec" data-sec="clips" id="clipsCard">
+            <header class="sec__head">
+              <h2 class="sec__title" id="clipsTitle">Clips</h2>
+              <span class="tag" data-i18n="skin.tag">Sólo lo ves vos</span>
+            </header>
+            <div class="sec__body">
+              <div class="rows" id="clipsSwitch"></div>
+              <div class="row row--block" id="clipsOpts">
+                <div class="row__text">
+                  <span class="row__label" id="clipsKeyLabel">Tecla para clipear</span>
+                </div>
+                <div class="row__ctl"><div class="chips" id="clipsKeyChips"></div></div>
+                <div class="row__text">
+                  <span class="row__label" id="clipsSecLabel">Cuántos segundos guarda</span>
+                </div>
+                <div class="row__ctl"><div class="chips" id="clipsSecChips"></div></div>
+                <div class="row__text">
+                  <span class="row__label" id="clipsQualLabel">Calidad</span>
+                </div>
+                <div class="row__ctl"><div class="chips" id="clipsQualChips"></div></div>
+              </div>
+              <div class="rows" id="clipsAuto"></div>
+              <div class="row">
+                <div class="row__text">
+                  <span class="row__label" id="clipsMemLabel">Lo que usa</span>
+                  <span class="row__desc" id="clipsMemDesc"></span>
+                </div>
+                <div class="row__ctl"><button class="btn btn--ghost btn--sm" type="button" id="clipsOpen">Abrir carpeta de clips</button></div>
+              </div>
+            </div>
+          </section>
+
           <!-- ═══ Cómo te ven en la lista ═══ -->
           <section class="sec" data-sec="lista" id="vipCard">
             <header class="sec__head">
@@ -1940,6 +1973,7 @@
   <script src="js/music.js"></script>
   <script src="js/sfx.js"></script>
   <script src="js/goal-sfx.js"></script>
+  <script src="../main/game-clip.js"></script>
   <script src="js/novedades.js"></script>
   <script src="js/captain.js"></script>
   <script src="js/app.js"></script>
