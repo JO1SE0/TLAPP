@@ -9398,6 +9398,7 @@ function syncCanvasHotFlags() {
   visual.nameOutline = !!cfg.nameOutline;
   visual.nameFont = FONT_FAMILIES[cfg.nameFont] ? cfg.nameFont : 'default';
   visual.discFx = visual.shadows || visual.discStyle !== 'default' || !!visual.discEyes || visual.ballStyle !== 'default' || !!visual.ballColor || !!visual.discOutline || !!visual.ballOutline;
+  if (canvasHookSwap) canvasHookSwap();
   visual.names = visual.nameScale !== 1 || !!visual.nameColor || visual.nameOutline || visual.nameFont !== 'default';
 }
 
@@ -9469,6 +9470,9 @@ function ownDiscExtras(ctx, strokeFn) {
 
 /** > 0 mientras dibuja el propio cliente (ayudas, color de cancha): no se toca. */
 let ownDraw = 0;
+
+/** Pone o saca los ganchos de dibujo según las opciones activas. Lo arma `installCanvasHooks`. */
+let canvasHookSwap = null;
 
 function installCanvasHooks(doc) {
   const view = doc && doc.defaultView;
@@ -9781,6 +9785,45 @@ function installCanvasHooks(doc) {
     }
     return origArc.call(this, x, y, r, a0, a1, ccw);
   };
+
+  /*
+   * ── Ganchos que se sueltan solos ────────────────────────────────────────
+   *
+   * Relleno, trazo, arco, degradados y sombras sólo hacen algo con «Gráficos
+   * planos» o con alguna opción visual puesta (grosores, tamaños, estilos,
+   * líneas de color). Con todo eso apagado cada llamada de dibujo pasaba por una
+   * función intermedia para no hacer nada. Acá se dejan las originales y se
+   * vuelven a poner los ganchos en cuanto se prende algo (ver `syncCanvasHotFlags`).
+   *
+   * `createPattern` y `fillText` NO se sueltan: registran las texturas de los
+   * jugadores y el avatar, y tienen que ver cada textura desde que se crea.
+   */
+  const hookedShadowBlur = Object.getOwnPropertyDescriptor(proto, 'shadowBlur');
+  const hookedShadowColor = Object.getOwnPropertyDescriptor(proto, 'shadowColor');
+  const drawHooks = [
+    ['fill', origFill, proto.fill],
+    ['createRadialGradient', origCreateRadialGradient, proto.createRadialGradient],
+    ['createLinearGradient', origCreateLinearGradient, proto.createLinearGradient],
+    ['stroke', origStroke, proto.stroke],
+    ['arc', origArc, proto.arc]
+  ];
+  let drawHooksOn = true;
+  let shadowHooksOn = true;
+  canvasHookSwap = () => {
+    const flat = flatOn();
+    const need = flat || !!(visual.sizes || visual.lines || visual.discFx || visual.lineColor || visual.lineGlow);
+    if (need !== drawHooksOn) {
+      drawHooksOn = need;
+      pend.on = false;
+      for (const [name, orig, hooked] of drawHooks) proto[name] = need ? hooked : orig;
+    }
+    if (flat !== shadowHooksOn) {
+      shadowHooksOn = flat;
+      if (origShadowBlur && hookedShadowBlur) Object.defineProperty(proto, 'shadowBlur', flat ? hookedShadowBlur : origShadowBlur);
+      if (origShadowColor && hookedShadowColor) Object.defineProperty(proto, 'shadowColor', flat ? hookedShadowColor : origShadowColor);
+    }
+  };
+  canvasHookSwap();
 
   /* --- Hook de Avatar ---
    *
