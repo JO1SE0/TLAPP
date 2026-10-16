@@ -495,6 +495,20 @@
             <b id="lastRoomName"></b>
           </button>
 
+          <div class="roommodes" id="roomModes">
+            <div class="roommodes__set" role="tablist">
+              <button type="button" class="roommode" data-mode="all" data-i18n="rooms.mode.all">Todas</button>
+              <button type="button" class="roommode" data-mode="play" data-i18n="rooms.mode.play">Para jugar</button>
+              <button type="button" class="roommode" data-mode="favs" data-i18n="rooms.mode.favs">★ Favoritas</button>
+              <button type="button" class="roommode" data-mode="club" data-i18n="rooms.mode.club">Del club</button>
+              <button type="button" class="roommode" data-mode="full" data-i18n="rooms.mode.full">Llenas</button>
+            </div>
+            <div class="roommodes__view" role="group">
+              <button type="button" class="roomviewbtn" data-view="list" title="Lista" aria-label="Lista">☰</button>
+              <button type="button" class="roomviewbtn" data-view="cards" title="Tarjetas" aria-label="Tarjetas">▦</button>
+            </div>
+          </div>
+
           <div class="rtoolbar">
             <div class="rsearch">
               <svg data-icon viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.8"/><path d="M16.1 16.1 20.2 20.2"/></svg>
@@ -511,6 +525,14 @@
             <button class="filterchip" id="hideFull" type="button" aria-pressed="false">
               <span class="filterchip__ico">👥</span>
               <span data-i18n="rooms.hideFull">Ocultar llenas</span>
+            </button>
+            <button class="filterchip" id="onlyClub" type="button" aria-pressed="false">
+              <span class="filterchip__ico">🛡</span>
+              <span data-i18n="rooms.onlyClub">Del club</span>
+            </button>
+            <button class="filterchip" id="onlyFull" type="button" aria-pressed="false">
+              <span class="filterchip__ico">🔥</span>
+              <span data-i18n="rooms.onlyFull">Solo llenas</span>
             </button>
             <button class="filterchip" id="hostBtn" type="button" hidden><span class="filterchip__ico">🏟</span><span>Hostear</span></button>
             <select id="roomSort" class="sortselect">

@@ -10370,6 +10370,7 @@ const commandDocs = new WeakSet();
 function attachChatCommands(doc) {
   if (!doc || commandDocs.has(doc)) return;
   commandDocs.add(doc);
+  safe(attachSlashHelp, doc);
 
   doc.addEventListener('keydown', (event) => {
     if (event.key !== 'Enter') return;
@@ -10387,6 +10388,174 @@ function attachChatCommands(doc) {
 
     setInputValue(doc.defaultView, input, '');
     safe(runCommand, match[1].toLowerCase(), match[2].trim());
+  }, true);
+}
+
+/* ── Ayuda de comandos: escribir «/» en el chat ────────────────────────────
+ *
+ * Al escribir `/` arriba del chat aparece la lista de comandos de HaxBall (y los
+ * del cliente), que se va filtrando mientras seguís escribiendo. Flechas para
+ * moverse, Tab o click para completar. Enter manda lo que escribiste, igual que
+ * siempre: esto nunca envía nada por su cuenta.
+ *
+ * Sólo existe mientras el texto del chat empieza con «/»; el resto del tiempo no
+ * hay nada en pantalla ni escuchando más de lo necesario.
+ */
+const SLASH_COMMANDS = [
+  { name: 'avatar', args: '<texto>', text: 'Pone tu avatar (hasta 2 caracteres).' },
+  { name: 'clear_avatar', args: '', text: 'Borra tu avatar.' },
+  { name: 'colors', args: '<equipo> <ángulo> <texto> <colores…>', text: 'Cambia los colores de un equipo.', host: true },
+  { name: 'set_password', args: '<clave>', text: 'Pone una contraseña a la sala.', host: true },
+  { name: 'clear_password', args: '', text: 'Saca la contraseña de la sala.', host: true },
+  { name: 'clear_bans', args: '', text: 'Limpia todos los baneos.', host: true },
+  { name: 'kick_ratelimit', args: '<mín> <ritmo> <ráfaga>', text: 'Límite de expulsiones seguidas.', host: true },
+  { name: 'recaptcha', args: '<on|off>', text: 'Pide o no el captcha para entrar.', host: true },
+  { name: 'store', args: '', text: 'Guarda el estadio actual para usarlo después.' },
+  { name: 'checksum', args: '', text: 'Muestra si el estadio es de fábrica o su checksum.' },
+  { name: 'extrapolation', args: '<ms>', text: 'Extrapolación local (de -200 a 1000 ms).' },
+  { name: 'handicap', args: '<ms>', text: 'Ping extra a propósito (de 0 a 300 ms).' },
+  { name: 'anim', args: '<emojis|off>', text: 'Avatar animado del cliente: /anim ⚽🔥', club: true },
+  { name: 'tvm', args: '', text: 'Ayuda de los comandos del cliente.', club: true }
+];
+const slashDocs = new WeakSet();
+
+function attachSlashHelp(doc) {
+  if (!doc || slashDocs.has(doc)) return;
+  slashDocs.add(doc);
+  const view = doc.defaultView;
+  let box = null;
+  let items = [];
+  let index = 0;
+
+  const ensureBox = () => {
+    if (box && box.isConnected) return box;
+    if (!doc.getElementById('tvm-slash-style')) {
+      const style = doc.createElement('style');
+      style.id = 'tvm-slash-style';
+      style.textContent = `
+        #tvm-slash { position: fixed; z-index: 99999; max-height: 42vh; overflow-y: auto; padding: 6px; box-sizing: border-box;
+          background: rgba(14,18,32,.97); border: 1px solid rgba(255,255,255,.14); border-radius: 12px;
+          box-shadow: 0 14px 40px -12px rgba(0,0,0,.7); font: 13px "Segoe UI", system-ui, sans-serif; color: #e8ecf8; }
+        #tvm-slash .tvm-sl { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; padding: 6px 10px; border-radius: 8px; cursor: pointer; }
+        #tvm-slash .tvm-sl.is-on { background: rgba(255,255,255,.1); }
+        #tvm-slash .tvm-sl b { font-family: Consolas, "Courier New", monospace; font-weight: 700; color: #fff; white-space: nowrap; }
+        #tvm-slash .tvm-sl i { font-style: normal; font-family: Consolas, "Courier New", monospace; color: #8f9abd; white-space: nowrap; }
+        #tvm-slash .tvm-sl span { margin-left: auto; padding-left: 12px; color: #aab3cf; text-align: right; }
+        #tvm-slash .tvm-sl em { font-style: normal; font-size: 10px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase;
+          padding: 1px 6px; border-radius: 99px; background: rgba(255,181,74,.18); color: #ffb54a; white-space: nowrap; }
+        #tvm-slash .tvm-sl em.club { background: rgba(90,170,255,.18); color: #7bb8ff; }
+        #tvm-slash .tvm-hint { padding: 4px 10px 6px; font-size: 11px; color: #8f9abd; }`;
+      (doc.head || doc.documentElement).append(style);
+    }
+    box = doc.createElement('div');
+    box.id = 'tvm-slash';
+    box.addEventListener('mousedown', (e) => {
+      e.preventDefault(); // el chat no pierde el foco
+      const row = e.target.closest('.tvm-sl');
+      if (row) pick(Number(row.dataset.i));
+    });
+    doc.body.append(box);
+    return box;
+  };
+
+  const hide = () => {
+    items = [];
+    if (box) box.remove();
+    box = null;
+  };
+
+  const place = (input) => {
+    const rect = input.getBoundingClientRect();
+    box.style.left = `${Math.max(8, rect.left)}px`;
+    box.style.width = `${Math.min(view.innerWidth - 16, Math.max(rect.width, 440))}px`;
+    box.style.bottom = `${Math.max(8, view.innerHeight - rect.top + 6)}px`;
+  };
+
+  const paint = (input) => {
+    ensureBox();
+    box.replaceChildren();
+    items.forEach((cmd, i) => {
+      const row = doc.createElement('div');
+      row.className = 'tvm-sl' + (i === index ? ' is-on' : '');
+      row.dataset.i = String(i);
+      const name = doc.createElement('b');
+      name.textContent = '/' + cmd.name;
+      row.append(name);
+      if (cmd.args) {
+        const args = doc.createElement('i');
+        args.textContent = cmd.args;
+        row.append(args);
+      }
+      if (cmd.host || cmd.club) {
+        const tag = doc.createElement('em');
+        tag.textContent = cmd.host ? 'host' : 'cliente';
+        if (cmd.club) tag.className = 'club';
+        row.append(tag);
+      }
+      const text = doc.createElement('span');
+      text.textContent = cmd.text;
+      row.append(text);
+      box.append(row);
+    });
+    const hint = doc.createElement('div');
+    hint.className = 'tvm-hint';
+    hint.textContent = '↑↓ moverse · Tab completar · «host» = solo el host o admin';
+    box.append(hint);
+    place(input);
+    const on = box.querySelector('.is-on');
+    if (on && on.scrollIntoView) on.scrollIntoView({ block: 'nearest' });
+  };
+
+  const refresh = () => {
+    const input = chatInput(doc);
+    if (!input || doc.activeElement !== input) return hide();
+    const value = String(input.value || '');
+    const m = /^\/([a-z_]*)$/i.exec(value);
+    if (!m) return hide();
+    const q = m[1].toLowerCase();
+    const starts = SLASH_COMMANDS.filter((c) => c.name.startsWith(q));
+    const next = starts.length ? starts : SLASH_COMMANDS.filter((c) => c.name.includes(q));
+    if (!next.length || (next.length === 1 && next[0].name === q && !next[0].args)) return hide();
+    const keep = items[index] && items[index].name;
+    items = next;
+    const at = keep ? items.findIndex((c) => c.name === keep) : -1;
+    index = at >= 0 ? at : 0;
+    paint(input);
+  };
+
+  const pick = (i) => {
+    const input = chatInput(doc);
+    const cmd = items[i];
+    if (!input || !cmd) return;
+    setInputValue(view, input, '/' + cmd.name + (cmd.args ? ' ' : ''));
+    try { input.setSelectionRange(input.value.length, input.value.length); } catch (e) { /* sin selección */ }
+    input.focus();
+    hide();
+  };
+
+  doc.addEventListener('input', (e) => {
+    if (e.target && e.target === chatInput(doc)) refresh();
+  }, true);
+  doc.addEventListener('focusout', (e) => {
+    if (e.target && e.target === chatInput(doc)) hide();
+  }, true);
+  doc.addEventListener('keydown', (e) => {
+    if (!box || !items.length) return;
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      index = (index + (e.key === 'ArrowDown' ? 1 : items.length - 1)) % items.length;
+      e.preventDefault();
+      e.stopPropagation();
+      if (e.stopImmediatePropagation) e.stopImmediatePropagation();
+      paint(chatInput(doc));
+    } else if (e.key === 'Tab') {
+      // En captura y cortando acá: HaxBall usa Tab para entrar y salir del chat.
+      e.preventDefault();
+      e.stopPropagation();
+      if (e.stopImmediatePropagation) e.stopImmediatePropagation();
+      pick(index);
+    } else if (e.key === 'Escape') {
+      hide();
+    }
   }, true);
 }
 

@@ -155,6 +155,8 @@ const state = {
   sort: 'distance',
   flags: null,
   onlyFavs: false,
+  onlyClub: false,
+  onlyFull: false,
   hideLocked: (() => { try { return localStorage.getItem('tl_hide_locked') === '1'; } catch (e) { return false; } })(),
   hideFull: (() => { try { return localStorage.getItem('tl_hide_full') === '1'; } catch (e) { return false; } })(),
   /** Token de la sala que estamos esperando a que tenga lugar. */
@@ -2205,6 +2207,8 @@ function visibleRooms() {
   if (state.onlyFavs) list = list.filter((r) => isFavorite(r.token));
   if (state.hideLocked) list = list.filter((r) => !r.password);
   if (state.hideFull) list = list.filter((r) => r.players < r.maxPlayers);
+  if (state.onlyFull) list = list.filter((r) => r.players >= r.maxPlayers);
+  if (state.onlyClub) list = list.filter((r) => clubRoomMap.has(String(r.name || '').trim().slice(0, 40).toLowerCase()));
 
   const compare = roomComparator();
   const sponsored = [];
@@ -2239,6 +2243,12 @@ let roomView = [];
 let roomParts = null;
 let paintedFrom = -1;
 let paintedTo = -1;
+let paintedPer = 1;
+/* Tarjetas: alto, separación y ancho mínimo (ver `.rrow` en la vista de tarjetas). */
+const CARD_H = 76;
+const CARD_GAP = 10;
+const CARD_MIN_W = 250;
+const roomCardsOn = () => document.documentElement.dataset.roomview === 'cards';
 
 function roomListParts() {
   if (roomParts) return roomParts;
@@ -2269,10 +2279,13 @@ function roomListParts() {
      callback es la receta del bucle. */
   if (typeof ResizeObserver === 'function') {
     let lastHeight = 0;
+    let lastWidth = 0;
     new ResizeObserver(() => {
       const h = container.clientHeight;
-      if (h === lastHeight) return;
+      const w = roomCardsOn() ? container.clientWidth : 0;
+      if (h === lastHeight && w === lastWidth) return;
       lastHeight = h;
+      lastWidth = w;
       paintRoomWindow(true);
     }).observe(container);
   }
@@ -2294,24 +2307,33 @@ function paintRoomWindow(force = false) {
   }
 
   const height = container.clientHeight || 420;
-  const ROW_H = rowH();
+  /* En tarjetas hay varias por renglón: el dibujado por ventana cuenta
+     renglones y de ahí saca qué salas van. */
+  const cards = roomCardsOn();
+  const per = cards ? Math.max(1, Math.floor(((container.clientWidth || 800) - 24 + CARD_GAP) / (CARD_MIN_W + CARD_GAP))) : 1;
+  const ROW_H = cards ? CARD_H + CARD_GAP : rowH();
+  const totalRows = Math.ceil(total / per);
   const window_ = Math.ceil(height / ROW_H) + OVERSCAN * 2;
   /* El tope importa: si la lista se achica (una búsqueda, por ejemplo) mientras
      estabas abajo de todo, el scroll que quedó guardado apunta más allá del
      final. Sin recortarlo, la ventana caía fuera de la lista y no se dibujaba
      ni una fila: la búsqueda parecía no encontrar nada. */
-  const maxFirst = Math.max(0, total - window_);
+  const maxFirst = Math.max(0, totalRows - window_);
   const first = Math.min(maxFirst, Math.max(0, Math.floor(container.scrollTop / ROW_H) - OVERSCAN));
-  const last = Math.min(total, first + window_);
-  if (!force && first === paintedFrom && last === paintedTo) return;
+  const last = Math.min(totalRows, first + window_);
+  if (!force && first === paintedFrom && last === paintedTo && per === paintedPer) return;
   paintedFrom = first;
   paintedTo = last;
+  paintedPer = per;
 
   top.style.height = `${first * ROW_H}px`;
-  bottom.style.height = `${Math.max(0, total - last) * ROW_H}px`;
+  bottom.style.height = `${Math.max(0, totalRows - last) * ROW_H}px`;
+  rows.className = cards ? 'rtable__cards' : '';
+  rows.style.gridTemplateColumns = cards ? `repeat(${per}, minmax(0, 1fr))` : '';
 
   const frag = document.createDocumentFragment();
-  for (let i = first; i < last; i++) frag.append(roomRow(roomView[i]));
+  const end = Math.min(total, last * per);
+  for (let i = first * per; i < end; i++) frag.append(roomRow(roomView[i]));
   rows.replaceChildren(frag);
 }
 
@@ -2361,11 +2383,12 @@ function renderRooms() {
     rooms: state.rooms.totalRooms.toLocaleString('es-AR')
   });
   try { paintStatusBar(); if (state.hub) paintHub(); } catch (e) { /* adorno */ }
+  paintRoomModes();
 
   const list = visibleRooms();
 
   if (!list.length) {
-    const hasQuery = $('#roomSearch').value.trim().length > 0 || state.hideLocked || state.hideFull || state.onlyFavs;
+    const hasQuery = $('#roomSearch').value.trim().length > 0 || state.hideLocked || state.hideFull || state.onlyFavs || state.onlyClub || state.onlyFull;
     showRoomsMessage(emptyState(
       hasQuery ? t('rooms.noResults') : t('rooms.empty'),
       hasQuery ? t('rooms.noResultsText') : t('rooms.emptyText')
@@ -2388,6 +2411,69 @@ function renderRooms() {
 
   checkAutoJoin();
   syncJoinButton();
+}
+
+/* ── Modos de la lista de salas ───────────────────────────────────────
+ * Cada modo es una combinación de los filtros y el orden que ya existen, para
+ * pasar de «todas» a «las que puedo jugar ya» de un toque. Si después se toca un
+ * filtro a mano la combinación deja de coincidir y ningún modo queda marcado.
+ */
+const ROOM_MODES = {
+  all: { onlyFavs: false, onlyClub: false, onlyFull: false, hideLocked: false, hideFull: false, sort: 'distance' },
+  play: { onlyFavs: false, onlyClub: false, onlyFull: false, hideLocked: true, hideFull: true, sort: 'players' },
+  favs: { onlyFavs: true, onlyClub: false, onlyFull: false, hideLocked: false, hideFull: false, sort: 'distance' },
+  club: { onlyFavs: false, onlyClub: true, onlyFull: false, hideLocked: false, hideFull: false, sort: 'players' },
+  full: { onlyFavs: false, onlyClub: false, onlyFull: true, hideLocked: false, hideFull: false, sort: 'players' }
+};
+
+function currentRoomMode() {
+  for (const [name, preset] of Object.entries(ROOM_MODES)) {
+    if (Object.keys(preset).every((k) => state[k] === preset[k])) return name;
+  }
+  return '';
+}
+
+function syncRoomFilterUi() {
+  $('#favToggle').classList.toggle('is-on', state.onlyFavs);
+  for (const [id, key] of [['#hideLocked', 'hideLocked'], ['#hideFull', 'hideFull'], ['#onlyClub', 'onlyClub'], ['#onlyFull', 'onlyFull']]) {
+    const btn = $(id);
+    btn.classList.toggle('is-on', !!state[key]);
+    btn.setAttribute('aria-pressed', state[key] ? 'true' : 'false');
+  }
+  $('#roomSort').value = state.sort;
+}
+
+function paintRoomModes() {
+  const mode = currentRoomMode();
+  for (const btn of $$('#roomModes .roommode')) {
+    const on = btn.dataset.mode === mode;
+    btn.classList.toggle('is-on', on);
+    btn.setAttribute('aria-selected', on ? 'true' : 'false');
+  }
+  const view = document.documentElement.dataset.roomview === 'cards' ? 'cards' : 'list';
+  for (const btn of $$('#roomModes .roomviewbtn')) btn.classList.toggle('is-on', btn.dataset.view === view);
+}
+
+function applyRoomMode(name) {
+  const preset = ROOM_MODES[name];
+  if (!preset) return;
+  Object.assign(state, preset);
+  try {
+    localStorage.setItem('tl_hide_locked', state.hideLocked ? '1' : '0');
+    localStorage.setItem('tl_hide_full', state.hideFull ? '1' : '0');
+    localStorage.setItem('tl_room_mode', name);
+  } catch (e) { /* sin almacenamiento: dura la sesión */ }
+  syncRoomFilterUi();
+  renderRoomsFromTop();
+}
+
+function setRoomView(view) {
+  const next = view === 'cards' ? 'cards' : 'list';
+  document.documentElement.dataset.roomview = next;
+  try { localStorage.setItem('tl_room_view', next); } catch (e) { /* idem */ }
+  paintedFrom = paintedTo = -1;
+  paintRoomModes();
+  if (roomParts) { roomParts.container.scrollTop = 0; paintRoomWindow(true); }
 }
 
 /** Cambió el filtro o el orden: la lista es otra, así que se mira desde arriba. */
@@ -2432,6 +2518,7 @@ function roomRow(room) {
   if (mates) row.classList.add('is-club');
   if (state.selected === room.token) row.classList.add('is-selected');
   row.dataset.token = room.token;
+  row.style.setProperty('--fill', `${Math.min(100, Math.round((room.players / Math.max(1, room.maxPlayers)) * 100))}%`);
 
   const dist = document.createElement('span');
   dist.className = 'rrow__dist';
@@ -2814,6 +2901,21 @@ $('#favToggle').addEventListener('click', () => {
   $('#favToggle').classList.toggle('is-on', state.onlyFavs);
   renderRoomsFromTop();
 });
+
+/* Modos y vista de la lista de salas. */
+for (const [id, key] of [['#onlyClub', 'onlyClub'], ['#onlyFull', 'onlyFull']]) {
+  $(id).addEventListener('click', () => {
+    state[key] = !state[key];
+    syncRoomFilterUi();
+    renderRoomsFromTop();
+  });
+}
+for (const btn of $$('#roomModes .roommode')) btn.addEventListener('click', () => applyRoomMode(btn.dataset.mode));
+for (const btn of $$('#roomModes .roomviewbtn')) btn.addEventListener('click', () => setRoomView(btn.dataset.view));
+try {
+  document.documentElement.dataset.roomview = localStorage.getItem('tl_room_view') === 'cards' ? 'cards' : 'list';
+} catch (e) { document.documentElement.dataset.roomview = 'list'; }
+paintRoomModes();
 
 // El botón «Replays» de la barra de acciones ya no está: a Replays se entra por
 // la pestaña de la barra de navegación. El listener quedó colgado apuntando a un

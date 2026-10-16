@@ -5901,3 +5901,48 @@ html .app[data-stage="game"] .profcard { display: none; }
 .clip__meta b { color: var(--text); font-weight: 700; }
 .clipmodal { max-width: 860px; width: calc(100vw - 40px); }
 #clipVideo { width: 100%; max-height: 62vh; border-radius: 10px; background: #000; display: block; }
+
+/* ── Modos y vista de la lista de salas ───────────────────────────────── */
+.roommodes { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 0 0 8px; flex-wrap: wrap; }
+.roommodes__set { display: inline-flex; gap: 4px; padding: 3px; border-radius: 999px; background: var(--surface); border: 1px solid var(--line); }
+.roommode {
+  padding: 6px 14px; border: 0; border-radius: 999px; background: none; color: var(--text-dim);
+  font: inherit; font-size: 12.5px; font-weight: 700; cursor: pointer;
+  transition: background .15s ease, color .15s ease, transform .15s ease;
+}
+.roommode:hover { color: var(--text); }
+.roommode.is-on { background: var(--accent); color: #101010; box-shadow: 0 4px 14px -6px var(--accent); }
+.roommodes__view { display: inline-flex; gap: 2px; padding: 3px; border-radius: 10px; background: var(--surface); border: 1px solid var(--line); }
+.roomviewbtn { width: 32px; height: 28px; border: 0; border-radius: 8px; background: none; color: var(--text-dim); font-size: 15px; cursor: pointer; }
+.roomviewbtn:hover { color: var(--text); }
+.roomviewbtn.is-on { background: var(--accent-soft); color: var(--accent); }
+
+/* Tarjetas: varias por renglón, con una barra que muestra qué tan llena está. */
+html[data-roomview="cards"] .rtable__head { display: none; }
+html[data-roomview="cards"] .rtable { padding: 10px 12px; }
+.rtable__cards { display: grid; gap: 10px; }
+html[data-roomview="cards"] .rrow {
+  height: 76px; padding: 10px 12px 18px; gap: 4px 10px;
+  grid-template-columns: 22px minmax(0, 1fr) auto 20px;
+  grid-template-areas: "flag name players fav" "dist dist dist dist";
+  align-content: start; align-items: center;
+  border: 1px solid var(--line); border-radius: 12px; background: var(--surface);
+  transition: transform .12s ease, border-color .12s ease, background .12s ease;
+}
+html[data-roomview="cards"] .rrow:hover { transform: translateY(-2px); border-color: var(--accent); background: var(--surface-hi); }
+html[data-roomview="cards"] .rrow.is-selected { border-color: var(--accent); background: var(--accent-soft); }
+html[data-roomview="cards"] .rrow::before { display: none; }
+html[data-roomview="cards"] .rrow .rrow__flag { grid-area: flag; }
+html[data-roomview="cards"] .rrow .rrow__name { grid-area: name; font-size: 13px; }
+html[data-roomview="cards"] .rrow .rrow__players { grid-area: players; }
+html[data-roomview="cards"] .rrow .rrow__fav { grid-area: fav; opacity: .8; }
+html[data-roomview="cards"] .rrow .rrow__dist { grid-area: dist; font-size: 10.5px; }
+html[data-roomview="cards"] .rrow::after {
+  content: ""; position: absolute; left: 12px; right: 12px; bottom: 9px; height: 4px; border-radius: 2px;
+  background: linear-gradient(90deg, var(--bar, var(--text-faint)) var(--fill, 0%), rgb(255 255 255 / 8%) var(--fill, 0%));
+}
+html[data-roomview="cards"] .rrow.is-full { --bar: var(--danger); }
+html[data-roomview="cards"] .rrow.is-almost-full { --bar: var(--warn); }
+html[data-roomview="cards"] .rrow.is-open-room { --bar: var(--ok); }
+html[data-roomview="cards"] .rrow.is-club { background: linear-gradient(135deg, rgb(90 170 255 / 16%), var(--surface) 70%); }
+html[data-roomview="cards"][data-room-rows] .rrow { height: 76px; font-size: inherit; }
