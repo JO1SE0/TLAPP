@@ -1875,6 +1875,20 @@ function setView(name) {
    */
   $('#panel').dataset.nav = NAV_PAGES.includes(name) ? 'on' : 'off';
   openPanel(name !== 'play');
+  /*
+   * El foco sigue al panel. Con el foco adentro del <webview> las teclas no
+   * llegan a este documento y Escape no cerraba nada; al cerrar, nadie se lo
+   * devolvía a la cancha y había que hacer clic para volver a moverse.
+   */
+  if (name !== 'play') {
+    const panel = $('#panel');
+    if (panel.tabIndex !== -1) panel.tabIndex = -1;
+    try { panel.focus({ preventScroll: true }); } catch { /* sin foco no pasa nada grave */ }
+  } else {
+    const a = document.activeElement;
+    if (a && a !== document.body && a.closest && a.closest('#panel')) a.blur();
+    focusGame();
+  }
   // Para el juego las dos cosas son lo mismo: con cualquiera de ellas encima
   // nadie está mirando la cancha y puede bajar el ritmo.
   tvm.game.panel(name !== 'play');
@@ -1904,7 +1918,19 @@ function setView(name) {
  * cancha. Por eso el que se lo llevó tiene que devolverlo.
  */
 function focusGame() {
-  if (state.stage === 'game' && state.webview) state.webview.focus();
+  if (state.stage === 'game' && state.webview && state.view === 'play') state.webview.focus();
+}
+
+/**
+ * Lo mismo, pero insistiendo mientras dura la transición de pantalla completa.
+ *
+ * Windows entrega el foco a la ventana recién cuando termina de cambiar, y ese
+ * foco le gana a un `focus()` hecho en el momento del cambio: el juego quedaba
+ * sin teclas y se veía igual que uno congelado. Se repite unas veces.
+ */
+function focusGameSoon() {
+  focusGame();
+  for (const ms of [150, 450, 1000, 1800]) setTimeout(focusGame, ms);
 }
 
 /** Cortina con el escudo al entrar a una sala: un solo nodo que se borra al terminar. */
@@ -2092,6 +2118,11 @@ $('#meMenu').addEventListener('click', (e) => {
   else if (que === 'aspecto') goToSection('aspecto', 'jugador');
   else if (que === 'vip') goToSection('aspecto', 'sonidos');
   else if (que === 'ajustes') goToTab('ajustes', 'juego');
+});
+
+// Si la lista falló por falta de red, al volver la conexión se pide sola.
+window.addEventListener('online', () => {
+  if (state.rooms && state.rooms.error && !state.rooms.loading) loadRooms();
 });
 
 $('#panelClose').addEventListener('click', closePanel);
@@ -9490,7 +9521,7 @@ async function boot() {
 
     // F11 se aprieta jugando: sin esto las teclas se quedan en el documento de
     // la app y la cancha no responde. Ver `focusGame`.
-    focusGame();
+    focusGameSoon();
   }
 
   tvm.window.onState(onWindowState);

@@ -1918,6 +1918,31 @@ async function watchReplayView(doc) {
   view.setTimeout(syncHeight, 400);
   syncHeight();
 
+  /*
+   * Espacio pausa y reanuda la replay. Es el botón de play de HaxBall, así que
+   * pausa y reanuda exactamente igual que hacerle clic. Sólo cuando hay una
+   * replay en pantalla y no se está escribiendo en un campo. Se corta también el
+   * keyup: si el foco quedó en un botón, el Espacio lo activaría una vez más.
+   */
+  const playBtn = () => (controls.isConnected ? controls.querySelector('.tvm-play') : null);
+  const spaceOk = (e) => {
+    if (e.code !== 'Space' && e.key !== ' ') return false;
+    if (e.ctrlKey || e.altKey || e.metaKey || e.repeat) return false;
+    const a = doc.activeElement;
+    const tag = a && a.tagName;
+    if (tag === 'INPUT' || tag === 'TEXTAREA' || (a && a.isContentEditable)) return false;
+    return !!playBtn();
+  };
+  doc.addEventListener('keydown', (e) => {
+    if (!spaceOk(e)) return;
+    e.preventDefault();
+    e.stopPropagation();
+    playBtn().click();
+  }, true);
+  doc.addEventListener('keyup', (e) => {
+    if ((e.code === 'Space' || e.key === ' ') && playBtn()) { e.preventDefault(); e.stopPropagation(); }
+  }, true);
+
   const bar = doc.createElement('div');
   bar.className = 'tvm-speeds';
 

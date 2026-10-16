@@ -5984,3 +5984,4 @@ html[data-roomview="board"] .rtable, html[data-roomview="map"] .rtable { overflo
 .roommap__legend { position: absolute; left: 12px; top: 10px; display: flex; gap: 12px; font-size: 11px; color: var(--text-dim); }
 .roommap__legend span { display: inline-flex; align-items: center; gap: 5px; }
 .roommap__legend i { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+#panel:focus{outline:none}

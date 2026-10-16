@@ -1256,7 +1256,12 @@ function setWindowFullscreen(fullscreen) {
   const probe = (attempt) => {
     if (!mainWindow || mainWindow.isDestroyed() || windowFullscreen !== wasWanted) return;
     let answered = false;
-    mainWindow.webContents.executeJavaScript('1', true).then(() => { answered = true; }).catch(() => {});
+    // Se prueban los dos procesos: la interfaz y el juego. El juego es otro
+    // renderer y también puede quedarse colgado al cambiar de tamaño.
+    const alive = [mainWindow.webContents, gameContents]
+      .filter((wc) => wc && !wc.isDestroyed() && !wc.isCrashed() && !wc.isLoading())
+      .map((wc) => wc.executeJavaScript('1', true).catch(() => null));
+    Promise.all(alive).then(() => { answered = true; });
     setTimeout(() => {
       if (answered || !mainWindow || mainWindow.isDestroyed() || windowFullscreen !== wasWanted) return;
       if (attempt === 0) { repaintWindowSoon(); probe(1); return; }

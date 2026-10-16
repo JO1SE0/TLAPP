@@ -195,13 +195,27 @@ async function viaFetch(signal) {
 
 async function fetchRooms(origin) {
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 12000);
+  const timer = setTimeout(() => controller.abort(), 20000);
   try {
     let body;
-    try { body = await viaChromium(controller.signal); }
-    catch (first) {
-      if (controller.signal.aborted) throw first;
-      try { body = await viaFetch(controller.signal); } catch { throw first; }
+    /*
+     * Hasta tres intentos, pero sólo si falló la RED (DNS que todavía no
+     * resuelve, conexión cortada): es lo que pasa al abrir la app apenas
+     * arranca Windows o cuando el wifi se despierta. Un 403/429 de HaxBall no se
+     * reintenta: machacar una API que pide calma sólo empeora las cosas.
+     */
+    for (let attempt = 0; ; attempt++) {
+      try {
+        try { body = await viaChromium(controller.signal); }
+        catch (first) {
+          if (controller.signal.aborted) throw first;
+          try { body = await viaFetch(controller.signal); } catch { throw first; }
+        }
+        break;
+      } catch (err) {
+        if (err.status || controller.signal.aborted || attempt >= 2) throw err;
+        await new Promise((r) => setTimeout(r, attempt === 0 ? 900 : 2200));
+      }
     }
     const rooms = parse(body);
 
