@@ -643,37 +643,40 @@ function applyClientStyles(doc) {
     html.tvm-mirror .game-state-view .bar > .scoreboard { flex-direction: row-reverse; }
 
     /* ── Reproductor de replays: barra flotante ──────────────────────────
-       Una pastilla que flota abajo en el centro, con los botones agrupados y
-       con aire entre grupos. Se esconde sola si no movés el mouse. Sin blur ni
-       sombras animadas: sólo opacidad y transform. */
+       Una pastilla abajo en el centro, en UNA fila: reiniciar y play, las
+       velocidades, ir a gol, Resumen y Pizarra, y el tiempo con la barra de
+       progreso a lo ancho. Lo de HaxBall que se repite con nuestros botones
+       (el «1x» con su - y +) se esconde. Como flota, el chat se corre hacia
+       arriba lo que mide la barra (variable --tvm-replay-h, la pone el JS) para
+       que no le tape el cuadro de texto. Sin blur ni sombras animadas. */
     html .replay-controls-view {
       position: fixed !important;
       left: 50% !important;
       right: auto !important;
-      bottom: 18px !important;
-      width: min(1240px, calc(100vw - 32px)) !important;
-      flex-wrap: wrap !important;
-      row-gap: 8px !important;
+      bottom: 14px !important;
+      width: min(1280px, calc(100vw - 32px)) !important;
       box-sizing: border-box !important;
       transform: translateX(-50%);
       display: flex !important;
+      flex-wrap: wrap !important;
       align-items: center !important;
-      gap: 10px 12px !important;
-      padding: 10px 16px !important;
-      border-radius: 20px !important;
+      gap: 8px 10px !important;
+      padding: 9px 14px !important;
+      border-radius: 18px !important;
       border: 1px solid ${p.accent || p.blue}66 !important;
       background: linear-gradient(180deg, ${p.panel || '#141a2c'}f2, ${p.bg || '#0a0e1a'}f7) !important;
-      box-shadow: 0 20px 50px -14px rgba(0, 0, 0, .85), inset 0 1px 0 rgba(255, 255, 255, .06) !important;
+      box-shadow: 0 16px 40px -14px rgba(0, 0, 0, .85), inset 0 1px 0 rgba(255, 255, 255, .06) !important;
       z-index: 2147481000;
-      transition: opacity .25s ease, transform .25s ease;
     }
-    html .replay-controls-view.tvm-idle { opacity: 0; transform: translate(-50%, 16px); pointer-events: none; }
+    /* El chat sube lo que ocupa la barra: antes se la tapaba encima. */
+    html .game-view.replayer .chatbox-view { margin-bottom: calc(var(--tvm-replay-h, 56px) + 22px) !important; }
+    html .replay-controls-view > * { order: 8; }
     html .replay-controls-view button {
       height: 34px;
       flex: 0 0 auto;
       min-width: 36px;
       margin: 0 !important;
-      padding: 0 13px !important;
+      padding: 0 12px !important;
       border: 0 !important;
       border-radius: 11px !important;
       background: rgba(255, 255, 255, .07) !important;
@@ -685,24 +688,50 @@ function applyClientStyles(doc) {
     }
     html .replay-controls-view button:hover:not(:disabled) { background: rgba(255, 255, 255, .15) !important; transform: translateY(-1px); }
     html .replay-controls-view button:active:not(:disabled) { transform: translateY(0) scale(.97); }
-    html .replay-controls-view [data-hook="time"],
-    html .replay-controls-view [data-hook="spd"] { min-width: 52px; text-align: center; }
+    /* Lo que HaxBall repite con nuestras velocidades. */
+    html .replay-controls-view .tvm-dup { display: none !important; }
+    html .replay-controls-view > .tvm-restart { order: 1; }
+    html .replay-controls-view > .tvm-play {
+      order: 2;
+      min-width: 44px;
+      border-radius: 50% !important;
+      background: linear-gradient(135deg, ${p.accent || p.blue}, ${p.accent2 || p.accent || p.blue}) !important;
+    }
+    html .replay-controls-view > .tvm-speeds { order: 3; }
+    html .replay-controls-view > .tvm-goalnav { order: 4; }
+    html .replay-controls-view > .tvm-stats-btn { order: 6; }
+    html .replay-controls-view > .tvm-board-btn { order: 7; }
+    html .replay-controls-view > [data-hook="time"] {
+      order: 9;
+      min-width: 46px;
+      text-align: center;
+      font-variant-numeric: tabular-nums;
+      font-weight: 700;
+      color: #fff !important;
+    }
+    /* La barra de progreso se lleva todo el lugar que sobra: es lo que se arrastra. */
+    html .replay-controls-view > .timebar {
+      order: 10;
+      flex: 1 1 260px !important;
+      min-width: 200px;
+      padding: 6px 0;
+    }
 
     /* Cada grupo es un control segmentado con su propio fondo. */
     .replay-controls-view .tvm-speeds {
       flex: 0 0 auto;
       display: flex;
       align-items: center;
-      gap: 3px;
+      gap: 2px;
       padding: 3px;
       border-radius: 14px;
       background: rgba(0, 0, 0, .32);
       box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .06);
     }
     html .replay-controls-view .tvm-speeds button {
-      min-width: 40px;
+      min-width: 38px;
       height: 30px;
-      padding: 0 10px !important;
+      padding: 0 9px !important;
       border-radius: 11px !important;
       background: transparent !important;
     }
@@ -718,9 +747,8 @@ function applyClientStyles(doc) {
       background: ${p.accent || p.blue} !important;
       color: #fff !important;
     }
-    html .replay-controls-view .timebar { flex: 1 1 140px; min-width: 100px; }
-    html .replay-controls-view .timebar .barbg { height: 8px !important; border-radius: 8px !important; }
-    html .replay-controls-view .timebar .bar { border-radius: 8px !important; }
+    html .replay-controls-view .timebar .barbg { height: 8px !important; border-radius: 8px !important; background: rgba(255, 255, 255, .16) !important; }
+    html .replay-controls-view .timebar .bar { border-radius: 8px !important; background: linear-gradient(90deg, ${p.accent || p.blue}, ${p.accent2 || p.accent || p.blue}) !important; }
 
     /* ── Pizarra táctica ─────────────────────────────────────────────────
        La cancha congelada con tus dibujos encima. Los controles van arriba. */
@@ -1772,6 +1800,22 @@ async function watchReplayView(doc) {
   }
   controls.dataset.tvmSpeed = '1';
 
+  // Ordenar la barra: los dos primeros botones son reiniciar y play; el «1x» de
+  // HaxBall con su - y + se esconde (las velocidades directas ya lo cubren).
+  const own = [...controls.children].filter((el) => el.tagName === 'BUTTON');
+  if (own[0]) own[0].classList.add('tvm-restart');
+  if (own[1]) own[1].classList.add('tvm-play');
+  const spd = controls.querySelector('[data-hook="spd"]');
+  if (spd) spd.classList.add('tvm-dup');
+  for (const el of own) if (/^[-+−]$/.test((el.textContent || '').trim())) el.classList.add('tvm-dup');
+
+  // El chat se corre lo que mide la barra para no quedar tapado (ver el CSS).
+  const syncHeight = () => {
+    try { doc.documentElement.style.setProperty('--tvm-replay-h', `${controls.offsetHeight}px`); } catch (_) { /* sin altura */ }
+  };
+  if (view.ResizeObserver) new view.ResizeObserver(syncHeight).observe(controls);
+  syncHeight();
+
   const bar = doc.createElement('div');
   bar.className = 'tvm-speeds';
 
@@ -1844,26 +1888,13 @@ async function watchReplayView(doc) {
   controls.insertBefore(stats, time);
   controls.insertBefore(boardBtn, time);
 
-  // La barra es flotante: se esconde si no movés el mouse y vuelve al moverlo.
-  // Con la pizarra abierta o con el mouse encima no se esconde.
-  let idleTimer = 0;
-  const wake = () => {
-    controls.classList.remove('tvm-idle');
-    clearTimeout(idleTimer);
-    idleTimer = setTimeout(() => {
-      if (controls.matches(':hover') || boardState.open) return;
-      controls.classList.add('tvm-idle');
-    }, 3200);
-  };
-  doc.addEventListener('mousemove', wake, { passive: true });
+  // La tecla P abre y cierra la pizarra.
   doc.addEventListener('keydown', (event) => {
-    wake();
     const tag = event.target && event.target.tagName;
     if (event.key && event.key.toLowerCase() === 'p' && !event.ctrlKey && !event.metaKey && tag !== 'INPUT' && tag !== 'TEXTAREA') {
       safe(toggleBoard);
     }
   }, true);
-  wake();
   // Al salir del flujo, la cancha gana el alto de la barra: se le avisa para que se redibuje.
   setTimeout(() => { try { view.dispatchEvent(new view.Event('resize')); } catch (_) { /* sin resize */ } }, 60);
 
