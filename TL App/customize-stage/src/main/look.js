@@ -41,7 +41,7 @@ const TEXTURES = {
   stars: { tint: '#17224a', strength: 0.95, tile: 'stars', lum: -0.18 },
   brick: { tint: '#a0503c', strength: 0.92, tile: 'brick', lum: 0.06 },
   snow: { tint: '#e4eef6', strength: 0.92, tile: 'snow', lum: 0.5 },
-  neon: { tint: '#1b1a45', strength: 0.95, tile: 'neon', lum: -0.12 },
+  neon: { tint: '#150f3a', strength: 0.97, tile: 'neon', lum: -0.4 },
   lava: { tint: '#52180a', strength: 0.95, tile: 'lava', lum: -0.05 },
   waves: { tint: '#2d7fb8', strength: 0.92, tile: 'waves', lum: 0.1 }
 };
@@ -276,12 +276,13 @@ function tileFor(doc, name) {
       c.fillRect(Math.floor(rand() * size), Math.floor(rand() * size), 1, 1);
     }
   } else if (name === 'neon') {
-    // Cuadrícula de neón: líneas claras con un halo suave.
-    for (let k = 0; k <= size; k += 32) {
-      c.fillStyle = 'rgba(255,255,255,0.1)';
-      c.fillRect(k - 2, 0, 5, size); c.fillRect(0, k - 2, size, 5);
-      c.fillStyle = 'rgba(255,255,255,0.55)';
-      c.fillRect(k, 0, 1.5, size); c.fillRect(0, k, size, 1.5);
+    // Cuadrícula de neón: líneas finas y claras con un halo suave, sobre fondo
+    // bien oscuro para que brillen (más clara y gruesa se veía como una red).
+    for (let k = 0; k <= size; k += 48) {
+      c.fillStyle = 'rgba(255,255,255,0.07)';
+      c.fillRect(k - 2.5, 0, 6, size); c.fillRect(0, k - 2.5, size, 6);
+      c.fillStyle = 'rgba(255,255,255,0.6)';
+      c.fillRect(k, 0, 1, size); c.fillRect(0, k, size, 1);
     }
   } else if (name === 'lava') {
     // Magma: grietas brillantes sobre roca oscura.
@@ -435,17 +436,23 @@ function discOverlay(ctx, style, x, y, r, strokeFn) {
     ctx.clip();
     let fill = null;
     if (style === 'neon') {
+      // Tubo de neón: el centro se oscurece un poco para que el aro brille de
+      // verdad, y el aro lleva un halo ancho y tenue, uno medio y el filo claro.
       rebuild = true;
-      ctx.lineWidth = Math.max(0.6, r * 0.16);
-      ctx.strokeStyle = 'rgba(255,255,255,0.28)';
-      ctx.beginPath();
-      ctx.arc(x, y, r * 0.8, 0, TAU);
-      doStroke();
-      ctx.lineWidth = Math.max(0.5, r * 0.07);
-      ctx.strokeStyle = 'rgba(255,255,255,0.9)';
-      ctx.beginPath();
-      ctx.arc(x, y, r * 0.8, 0, TAU);
-      doStroke();
+      const core = ctx.createRadialGradient(x, y, 0, x, y, r * 0.78);
+      core.addColorStop(0, 'rgba(0,0,0,0.3)');
+      core.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = core;
+      ctx.fillRect(x - r, y - r, r * 2, r * 2);
+      ctx.strokeStyle = '#ffffff';
+      for (const [w, a] of [[0.3, 0.14], [0.17, 0.28], [0.07, 0.95]]) {
+        ctx.globalAlpha = a;
+        ctx.lineWidth = Math.max(0.5, r * w);
+        ctx.beginPath();
+        ctx.arc(x, y, r * 0.74, 0, TAU);
+        doStroke();
+      }
+      ctx.globalAlpha = 1;
     } else if (style === 'metal') {
       fill = ctx.createLinearGradient(x - r, y - r, x + r, y + r);
       fill.addColorStop(0, 'rgba(255,255,255,0.6)');
@@ -611,18 +618,34 @@ function ballOverlay(ctx, style, x, y, r, strokeFn, tint, fx3d) {
         doStroke();
       }
     } else if (style === 'neon') {
-      ctx.fillStyle = 'rgba(8,16,40,0.78)';
+      // Esfera de neón: fondo oscuro, luz que sube desde el borde y un aro
+      // brillante con su halo.
+      ctx.fillStyle = 'rgba(6,12,34,0.86)';
       ctx.fillRect(x - r, y - r, r * 2, r * 2);
-      ctx.lineWidth = Math.max(0.6, r * 0.2);
-      ctx.strokeStyle = 'rgba(0,229,255,0.35)';
+      const glow = ctx.createRadialGradient(x, y, r * 0.3, x, y, r);
+      glow.addColorStop(0, 'rgba(0,229,255,0)');
+      glow.addColorStop(1, 'rgba(0,229,255,0.55)');
+      ctx.fillStyle = glow;
+      ctx.fillRect(x - r, y - r, r * 2, r * 2);
+      ctx.strokeStyle = '#00e5ff';
+      for (const [w, a] of [[0.26, 0.16], [0.13, 0.4]]) {
+        ctx.globalAlpha = a;
+        ctx.lineWidth = Math.max(0.6, r * w);
+        ctx.beginPath();
+        ctx.arc(x, y, r * 0.66, 0, TAU);
+        doStroke();
+      }
+      ctx.globalAlpha = 1;
+      ctx.lineWidth = Math.max(0.5, r * 0.05);
+      ctx.strokeStyle = '#c9fdff';
       ctx.beginPath();
-      ctx.arc(x, y, r * 0.72, 0, TAU);
+      ctx.arc(x, y, r * 0.66, 0, TAU);
       doStroke();
-      ctx.lineWidth = Math.max(0.5, r * 0.08);
-      ctx.strokeStyle = '#7df9ff';
-      ctx.beginPath();
-      ctx.arc(x, y, r * 0.72, 0, TAU);
-      doStroke();
+      const core = ctx.createRadialGradient(x, y, 0, x, y, r * 0.3);
+      core.addColorStop(0, 'rgba(200,253,255,0.5)');
+      core.addColorStop(1, 'rgba(200,253,255,0)');
+      ctx.fillStyle = core;
+      ctx.fillRect(x - r, y - r, r * 2, r * 2);
     } else if (style === 'gold') {
       const g = ctx.createLinearGradient(x - r, y - r, x + r, y + r);
       g.addColorStop(0, 'rgba(255,240,170,0.95)');

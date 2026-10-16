@@ -8406,6 +8406,65 @@ function lookValue(key) {
   return v[key] === undefined ? LOOK_DEFAULTS[key] : v[key];
 }
 
+/*
+ * Galería con vista previa: los estilos que hay que VER para elegir (pelota,
+ * ficha, aro, textura y luz de la cancha) salen como miniaturas dibujadas con
+ * los mismos dibujos del juego y tu config actual (tu color de pelota, el 3D…),
+ * así se ve cómo queda antes de tocar. 'swatch' = un solo objeto; 'pitch' = la
+ * cancha entera. Las miniaturas se dibujan de a unas pocas por cuadro para que
+ * abrir la solapa no trabe el panel.
+ */
+const LOOK_GALLERY = { ballStyle: 'swatch', discStyle: 'swatch', ringStyle: 'swatch', texture: 'pitch', pitchLight: 'pitch' };
+// Una sola cola para todas las galerías: se vacía cada vez que se rearma la solapa.
+let lookGalleryQueue = [];
+let lookGalleryBusy = false;
+function lookGalleryPump() {
+  if (lookGalleryBusy) return;
+  lookGalleryBusy = true;
+  const step = () => {
+    for (let i = 0; i < 4 && lookGalleryQueue.length; i++) lookGalleryQueue.shift()();
+    if (lookGalleryQueue.length) requestAnimationFrame(step);
+    else lookGalleryBusy = false;
+  };
+  requestAnimationFrame(step);
+}
+
+function lookGalleryRow(item, value) {
+  const kind = LOOK_GALLERY[item.key];
+  const cfg = state.config;
+  const grid = document.createElement('div');
+  grid.className = 'lookgal';
+  for (const [val, label] of item.options) {
+    const tile = document.createElement('button');
+    tile.type = 'button';
+    tile.className = 'lookgal__item' + (val === value ? ' is-on' : '');
+    tile.setAttribute('aria-pressed', String(val === value));
+    const canvas = document.createElement('canvas');
+    canvas.width = 168;
+    canvas.height = 112;
+    const name = document.createElement('span');
+    name.textContent = t(label);
+    tile.append(canvas, name);
+    tile.addEventListener('click', () => {
+      if (val !== value) lookPatch({ visual: { [item.key]: val } });
+    });
+    grid.append(tile);
+    lookGalleryQueue.push(() => {
+      try {
+        if (kind === 'swatch') {
+          window.TLPreview.swatch(canvas, item.key, val, cfg);
+        } else {
+          const shown = (val === 'none') ? '' : val;
+          const demo = { ...cfg, visual: { ...(cfg.visual || {}), [item.key]: shown } };
+          window.TLPreview.draw(canvas, demo, { w: 640, cx: 0, cy: 0 });
+        }
+      } catch (e) { /* la miniatura es un adorno */ }
+    });
+  }
+  lookGalleryPump();
+  return settingRow({ label: t(item.label), description: item.desc ? t(item.desc) : '', control: grid, block: true });
+}
+
 function lookRow(item) {
   const value = lookValue(item.key);
   let control;
@@ -8417,6 +8476,9 @@ function lookRow(item) {
     toggle.setAttribute('aria-checked', String(!!value));
     toggle.addEventListener('click', () => lookPatch({ visual: { [item.key]: !lookValue(item.key) } }));
     return settingRow({ label: t(item.label), description: item.desc ? t(item.desc) : '', control: toggle });
+  }
+  if (item.type === 'select' && LOOK_GALLERY[item.key] && window.TLPreview) {
+    return lookGalleryRow(item, value);
   }
   if (item.type === 'select') {
     control = document.createElement('select');
@@ -8475,6 +8537,7 @@ function lookRow(item) {
 }
 
 function renderLookSections() {
+  lookGalleryQueue = [];
   const values = state.config.visual || {};
   for (const [hostId, items] of Object.entries(LOOK_SECTIONS)) {
     const host = $(`#${hostId}`);

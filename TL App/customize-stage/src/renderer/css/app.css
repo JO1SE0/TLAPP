@@ -5844,3 +5844,17 @@ html .app[data-stage="game"] .profcard { display: none; }
 .hostmut__list { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 8px 14px; }
 .hostmut { display: flex; flex-direction: column; gap: 6px; }
 .hostmut > .hostchk { justify-content: flex-start; }
+
+/* ═══ Galería de estilos con vista previa (Personalización) ═══ */
+.lookgal { display: grid; grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); gap: 10px; flex: 1 1 100%; min-width: 0; }
+.lookgal__item {
+  display: flex; flex-direction: column; gap: 6px; padding: 5px 5px 8px; text-align: center;
+  border-radius: 12px; border: 1px solid var(--line); background: var(--surface);
+  color: var(--text-dim); font-size: 12px; font-weight: 600; cursor: pointer;
+  transition: transform .12s var(--ease), border-color .12s, box-shadow .12s;
+}
+.lookgal__item canvas { display: block; width: 100%; height: auto; border-radius: 8px; background: #5f7a4c; }
+.lookgal__item:hover { transform: translateY(-2px); border-color: var(--line-hi); color: var(--text); }
+.lookgal__item:active { transform: scale(.97); }
+.lookgal__item.is-on { border-color: var(--accent); color: var(--text); box-shadow: 0 0 0 1px var(--accent), 0 10px 22px -12px var(--accent); }
+.row--block .row__ctl > .lookgal { flex: 1 1 100%; min-width: 0; }

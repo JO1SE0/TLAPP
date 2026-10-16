@@ -58,12 +58,22 @@
     ctx.closePath();
   }
 
+  /** El sombreado de la pelota 3D (el mismo de main/ball-3d.js). */
+  function shade3d(ctx, x, y, r) {
+    const light = ctx.createRadialGradient(x - r * 0.35, y - r * 0.4, r * 0.05, x, y, r);
+    light.addColorStop(0, 'rgba(255,255,255,0.5)');
+    light.addColorStop(0.45, 'rgba(255,255,255,0.04)');
+    light.addColorStop(1, 'rgba(0,0,0,0.55)');
+    ctx.fillStyle = light;
+    ctx.fillRect(x - r, y - r, r * 2, r * 2);
+  }
+
   function num(v, lo, hi, fb) {
     const n = Number(v);
     return Number.isFinite(n) ? Math.min(hi, Math.max(lo, n)) : fb;
   }
 
-  function draw(canvas, cfg) {
+  function draw(canvas, cfg, opts) {
     if (!canvas || !cfg) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
@@ -72,8 +82,12 @@
     const V = cfg.visual || {};
     const P = cfg.pitch || {};
     const skin = P.skin || {};
-    const sc = W / VIEW_W;
-    const tx = W / 2 - VIEW_CX * sc;
+    // `opts` acerca la cámara a una zona (las miniaturas de la galería): ancho
+    // visible y centro. Sin `opts` se ve el recorte de siempre.
+    const o = opts || {};
+    const sc = W / (o.w || VIEW_W);
+    const tx = W / 2 - (o.cx === undefined ? VIEW_CX : o.cx) * sc;
+    const ty = H / 2 - (o.cy || 0) * sc;
     const px = 1 / sc;
 
     const pitchLine = num(V.pitchLine, 0.3, 4, 1);
@@ -97,7 +111,7 @@
     /* ── Cancha de HaxBall, sin retocar ─────────────────────────────── */
     ctx.fillStyle = '#586f45';
     ctx.fillRect(0, 0, W, H);
-    ctx.setTransform(sc, 0, 0, sc, tx, H / 2);
+    ctx.setTransform(sc, 0, 0, sc, tx, ty);
     const world = ctx.getTransform();
     ctx.beginPath();
     rounded(ctx, -HALF_W, -HALF_H, 2 * HALF_W, 2 * HALF_H, 6);
@@ -241,7 +255,7 @@
     if (V.pitchLight && L.paintLight) L.paintLight(ctx, W, H, world, { halfW: HALF_W, halfH: HALF_H }, V.pitchLight);
 
     /* ── Fichas, pelota y nombres ───────────────────────────────────── */
-    ctx.setTransform(sc, 0, 0, sc, tx, H / 2);
+    ctx.setTransform(sc, 0, 0, sc, tx, ty);
     ctx.globalCompositeOperation = 'source-over';
     ctx.globalAlpha = 1;
     ctx.lineJoin = 'round';
@@ -312,7 +326,10 @@
     ctx.fillStyle = '#ffffff';
     ctx.fill();
     const ballTint = L.safeColor(V.ballColor);
-    if ((ballStyle !== 'default' || ballTint) && L.ballOverlay) L.ballOverlay(ctx, ballStyle, -122, 26, br, null, ballTint);
+    const ball3d = P.ball3d ? { spin: 0.6, shade: shade3d } : null;
+    if ((ballStyle !== 'default' || ballTint || ball3d) && L.ballOverlay) {
+      L.ballOverlay(ctx, ballStyle, -122, 26, br, null, ballTint, ball3d);
+    }
     ctx.lineWidth = 2 * ballLine;
     ctx.strokeStyle = ballOutline;
     ctx.stroke();
@@ -337,5 +354,79 @@
     ctx.restore();
   }
 
-  window.TLPreview = { draw };
+  /**
+   * Miniatura de UN estilo (la pelota, la ficha o el aro) con la config actual
+   * pero con el valor de la galería puesto: así se ve cómo queda antes de elegirlo.
+   * Barata a propósito: un fondo, un disco y el dibujo del estilo; nada de cancha.
+   */
+  function swatch(canvas, kind, value, cfg) {
+    const ctx = canvas && canvas.getContext('2d');
+    if (!ctx) return;
+    const W = canvas.width;
+    const H = canvas.height;
+    const V = (cfg && cfg.visual) || {};
+    const P = (cfg && cfg.pitch) || {};
+    ctx.save();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.globalAlpha = 1;
+    ctx.clearRect(0, 0, W, H);
+    const g = ctx.createLinearGradient(0, 0, 0, H);
+    g.addColorStop(0, '#6f8a58');
+    g.addColorStop(1, '#5a7447');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, W, H);
+    const r = Math.min(W, H) * 0.36;
+    const x = W / 2;
+    const y = H / 2;
+    const accent = css('--accent', '#d0b878');
+    try {
+      if (kind === 'ballStyle') {
+        const tint = L.safeColor(V.ballColor);
+        ctx.beginPath();
+        ctx.arc(x, y, r, 0, TAU);
+        ctx.fillStyle = '#ffffff';
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(x, y, r, 0, TAU);
+        const fx = P.ball3d ? { spin: 0.6, shade: shade3d } : null;
+        if (value !== 'default' || tint || fx) L.ballOverlay(ctx, value, x, y, r, null, tint, fx);
+        ctx.lineWidth = Math.max(1, r * 0.1);
+        ctx.strokeStyle = L.safeColor(V.ballOutline) || '#000000';
+        ctx.stroke();
+      } else if (kind === 'discStyle' || kind === 'ringStyle') {
+        const rr = r * 0.8;
+        // El grosor de un «píxel de pantalla» de la cancha, a esta escala.
+        const px = rr * 0.025;
+        if (kind === 'ringStyle') {
+          const col = L.safeColor(V.ringColor) || accent;
+          const ring = value === 'default' ? false : L.drawRing(ctx, value, col, x, y, rr, px);
+          if (!ring) {
+            ctx.beginPath();
+            ctx.lineWidth = 3;
+            ctx.strokeStyle = 'rgba(0,0,0,0.55)';
+            ctx.arc(x, y, rr + 3, 0, TAU);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.lineWidth = 1.8;
+            ctx.strokeStyle = col;
+            ctx.arc(x, y, rr + 3, 0, TAU);
+            ctx.stroke();
+          }
+        }
+        ctx.beginPath();
+        ctx.arc(x, y, rr, 0, TAU);
+        ctx.fillStyle = '#e56e56';
+        ctx.fill();
+        if (kind === 'discStyle' && value !== 'default') L.discOverlay(ctx, value, x, y, rr, null);
+        ctx.lineWidth = Math.max(1, rr * 0.14) * 1;
+        ctx.strokeStyle = L.safeColor(V.discOutline) || '#000000';
+        ctx.stroke();
+      }
+    } finally {
+      ctx.restore();
+    }
+  }
+
+  window.TLPreview = { draw, swatch };
 })();
