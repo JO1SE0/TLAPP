@@ -698,7 +698,8 @@ function applyClientStyles(doc) {
       background: linear-gradient(135deg, ${p.accent || p.blue}, ${p.accent2 || p.accent || p.blue}) !important;
     }
     html .replay-controls-view > .tvm-speeds { order: 3; }
-    html .replay-controls-view > .tvm-goalnav { order: 4; }
+    html .replay-controls-view > .tvm-skipnav { order: 4; }
+    html .replay-controls-view > .tvm-goalnav { order: 5; }
     html .replay-controls-view > .tvm-stats-btn { order: 6; }
     html .replay-controls-view > .tvm-board-btn { order: 7; }
     html .replay-controls-view > [data-hook="time"] {
@@ -1370,6 +1371,10 @@ const HIT_SOUND_MAX_MS = 3000;
  * propio o sin rol, HaxBall suena como siempre. Ver `patchSounds`.
  */
 function playHitSound() {
+  // Al saltar en una replay el reproductor simula de golpe todo lo que se saltea,
+  // y cada patada de esa simulación sonaría: una ráfaga seguida que asusta. Mientras
+  // busca no suena ninguna (ni la de fábrica: `true` es «ya me ocupé»).
+  if (replaySeeking()) return true;
   const cfg = state.config.vip;
   const file = cfg && cfg.hitSound;
   // Sin archivo propio: el sonido incluido que haya elegido (si eligió alguno).
@@ -1879,6 +1884,21 @@ async function watchReplayView(doc) {
     goalBar.append(b);
   }
 
+  // ⏪ 5s / 5s ⏩: saltos cortos para ver una jugada otra vez.
+  const skipBar = doc.createElement('div');
+  skipBar.className = 'tvm-speeds tvm-skipnav';
+  for (const sec of [-5, 5]) {
+    const b = doc.createElement('button');
+    b.type = 'button';
+    b.textContent = sec < 0 ? '⏪ 5s' : '5s ⏩';
+    b.title = sec < 0 ? 'Retroceder 5 segundos' : 'Adelantar 5 segundos';
+    b.addEventListener('click', (event) => {
+      event.preventDefault();
+      safe(skipReplay, sec);
+    });
+    skipBar.append(b);
+  }
+
   // La pizarra táctica: congela la cancha y deja dibujar encima.
   const boardBtn = doc.createElement('button');
   boardBtn.type = 'button';
@@ -1894,6 +1914,7 @@ async function watchReplayView(doc) {
   // barra de tiempo no se corre de lugar.
   const time = controls.querySelector('[data-hook="time"]');
   controls.insertBefore(bar, time);
+  controls.insertBefore(skipBar, time);
   controls.insertBefore(goalBar, time);
   controls.insertBefore(stats, time);
   controls.insertBefore(boardBtn, time);
@@ -8957,6 +8978,34 @@ function seekReplay(ms) {
   if (target < Number(player[R.clock])) player[R.rewind]();
   player[R.seek] = target;
   return true;
+}
+
+/** `true` mientras el reproductor está adelantando hacia un destino (un salto). */
+let seekMuteUntil = 0;
+function replaySeeking() {
+  const view = state.view === 'replay' ? (gameDocument() || {}).defaultView : null;
+  const control = view && view.__tvmReplay;
+  const f = view && view.__tvmF;
+  const R = f && f.replay;
+  const player = control && control.player;
+  if (!R || !player) return false;
+  const now = Date.now();
+  if (Number(player[R.seek]) > 0) { seekMuteUntil = now + 250; return true; }
+  // Un rato de gracia: el último cuadro del salto suena ya con la búsqueda terminada.
+  return now < seekMuteUntil;
+}
+
+/** Salta `sec` segundos (negativo: hacia atrás) desde donde está la grabación. */
+function skipReplay(sec) {
+  const it = replayPlayer();
+  if (!it) return;
+  const { R, player } = it;
+  const msPerFrame = Number(player[R.msPerFrame]) || 1000 / 60;
+  const end = Math.max(1, (Number(player[R.total]) - 1) * msPerFrame);
+  const now = Number(player[R.clock]) || 0;
+  safe(stopReel);
+  seekMuteUntil = Date.now() + 250;
+  seekReplay(Math.min(end, Math.max(1, now + sec * 1000)));
 }
 
 /** Goles de la grabación abierta, calculados una vez (ver `jumpToGoal`). */
