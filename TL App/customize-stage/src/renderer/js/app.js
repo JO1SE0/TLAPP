@@ -2234,7 +2234,8 @@ function visibleRooms() {
  * Todas las salas siguen estando: lo que cambia es cuántas hay dibujadas a la
  * vez, no cuántas se pueden ver. */
 const ROW_HEIGHTS = { dense: 26, normal: 32, large: 46 };
-const rowH = () => ROW_HEIGHTS[document.documentElement.dataset.roomRows] || 32;
+function roomViewName() { return document.documentElement.dataset.roomview || 'list'; }
+const rowH = () => (roomViewName() === 'bars' ? 40 : (ROW_HEIGHTS[document.documentElement.dataset.roomRows] || 32));
 /** Filas de más arriba y abajo del borde, para que el scroll no muestre huecos. */
 const OVERSCAN = 6;
 
@@ -2244,6 +2245,10 @@ let roomParts = null;
 let paintedFrom = -1;
 let paintedTo = -1;
 let paintedPer = 1;
+const mapUi = { wrap: null, canvas: null, tip: null, pts: [], cx: 0, cy: 0, s: 4, hover: null, drag: null };
+let mapFit = true;
+const FILL_COLORS = { full: '#ff5d6c', almost: '#ffb54a', open: '#3ddc97', empty: '#7d88ab' };
+
 /* Tarjetas: alto, separación y ancho mínimo (ver `.rrow` en la vista de tarjetas). */
 const CARD_H = 76;
 const CARD_GAP = 10;
@@ -2306,6 +2311,10 @@ function paintRoomWindow(force = false) {
     return;
   }
 
+  const alt = roomViewName();
+  if (alt === 'map') { top.style.height = '0px'; bottom.style.height = '0px'; paintedFrom = paintedTo = -1; return paintRoomMap(container, rows); }
+  if (alt === 'board') { top.style.height = '0px'; bottom.style.height = '0px'; paintedFrom = paintedTo = -1; return paintRoomBoard(container, rows); }
+
   const height = container.clientHeight || 420;
   /* En tarjetas hay varias por renglón: el dibujado por ventana cuenta
      renglones y de ahí saca qué salas van. */
@@ -2329,6 +2338,7 @@ function paintRoomWindow(force = false) {
   top.style.height = `${first * ROW_H}px`;
   bottom.style.height = `${Math.max(0, totalRows - last) * ROW_H}px`;
   rows.className = cards ? 'rtable__cards' : '';
+  rows.style.height = '';
   rows.style.gridTemplateColumns = cards ? `repeat(${per}, minmax(0, 1fr))` : '';
 
   const frag = document.createDocumentFragment();
@@ -2344,6 +2354,9 @@ function showRoomsMessage(node) {
   paintedFrom = paintedTo = -1;
   top.style.height = '0px';
   bottom.style.height = '0px';
+  rows.className = '';
+  rows.style.height = '';
+  rows.style.gridTemplateColumns = '';
   rows.replaceChildren(...(node ? [node] : []));
 }
 
@@ -2418,24 +2431,19 @@ function renderRooms() {
  * pasar de «todas» a «las que puedo jugar ya» de un toque. Si después se toca un
  * filtro a mano la combinación deja de coincidir y ningún modo queda marcado.
  */
-const ROOM_MODES = {
-  all: { onlyFavs: false, onlyClub: false, onlyFull: false, hideLocked: false, hideFull: false, sort: 'distance' },
-  play: { onlyFavs: false, onlyClub: false, onlyFull: false, hideLocked: true, hideFull: true, sort: 'players' },
-  favs: { onlyFavs: true, onlyClub: false, onlyFull: false, hideLocked: false, hideFull: false, sort: 'distance' },
-  club: { onlyFavs: false, onlyClub: true, onlyFull: false, hideLocked: false, hideFull: false, sort: 'players' },
-  full: { onlyFavs: false, onlyClub: false, onlyFull: true, hideLocked: false, hideFull: false, sort: 'players' }
-};
-
+/* Cada modo elige el ALCANCE (todas, favoritas, del club, llenas) y, los de abajo,
+   también el orden y los dos filtros de «con clave» y «llenas». */
 function currentRoomMode() {
-  for (const [name, preset] of Object.entries(ROOM_MODES)) {
-    if (Object.keys(preset).every((k) => state[k] === preset[k])) return name;
-  }
+  if (state.onlyFavs) return 'favs';
+  if (state.onlyClub) return 'club';
+  if (state.onlyFull) return 'full';
+  if (state.hideFull && state.hideLocked) return 'play';
+  if (!state.hideFull && !state.hideLocked && state.sort === 'distance') return 'all';
   return '';
 }
 
 function syncRoomFilterUi() {
-  $('#favToggle').classList.toggle('is-on', state.onlyFavs);
-  for (const [id, key] of [['#hideLocked', 'hideLocked'], ['#hideFull', 'hideFull'], ['#onlyClub', 'onlyClub'], ['#onlyFull', 'onlyFull']]) {
+  for (const [id, key] of [['#hideLocked', 'hideLocked'], ['#hideFull', 'hideFull']]) {
     const btn = $(id);
     btn.classList.toggle('is-on', !!state[key]);
     btn.setAttribute('aria-pressed', state[key] ? 'true' : 'false');
@@ -2450,34 +2458,292 @@ function paintRoomModes() {
     btn.classList.toggle('is-on', on);
     btn.setAttribute('aria-selected', on ? 'true' : 'false');
   }
-  const view = document.documentElement.dataset.roomview === 'cards' ? 'cards' : 'list';
+  const view = roomViewName();
   for (const btn of $$('#roomModes .roomviewbtn')) btn.classList.toggle('is-on', btn.dataset.view === view);
 }
 
 function applyRoomMode(name) {
-  const preset = ROOM_MODES[name];
-  if (!preset) return;
-  Object.assign(state, preset);
+  const scope = { onlyFavs: false, onlyClub: false, onlyFull: false };
+  if (name === 'all') Object.assign(state, scope, { hideLocked: false, hideFull: false, sort: 'distance' });
+  else if (name === 'play') Object.assign(state, scope, { hideLocked: true, hideFull: true, sort: 'players' });
+  else if (name === 'favs') Object.assign(state, scope, { onlyFavs: true });
+  else if (name === 'club') Object.assign(state, scope, { onlyClub: true, sort: 'players' });
+  else if (name === 'full') Object.assign(state, scope, { onlyFull: true, hideFull: false, sort: 'players' });
+  else return;
   try {
     localStorage.setItem('tl_hide_locked', state.hideLocked ? '1' : '0');
     localStorage.setItem('tl_hide_full', state.hideFull ? '1' : '0');
-    localStorage.setItem('tl_room_mode', name);
   } catch (e) { /* sin almacenamiento: dura la sesión */ }
   syncRoomFilterUi();
   renderRoomsFromTop();
 }
 
+const ROOM_VIEWS = ['list', 'cards', 'bars', 'board', 'map'];
 function setRoomView(view) {
-  const next = view === 'cards' ? 'cards' : 'list';
+  const next = ROOM_VIEWS.includes(view) ? view : 'list';
   document.documentElement.dataset.roomview = next;
   try { localStorage.setItem('tl_room_view', next); } catch (e) { /* idem */ }
   paintedFrom = paintedTo = -1;
+  mapFit = true;
   paintRoomModes();
   if (roomParts) { roomParts.container.scrollTop = 0; paintRoomWindow(true); }
 }
 
+/* ── Vista «Tablero»: cuatro columnas según qué tan llena está cada sala ── */
+const BOARD_MAX = 40;
+function roomFill(room) {
+  if (room.players >= room.maxPlayers) return 'full';
+  if (!room.players) return 'empty';
+  if (room.maxPlayers > 2 && room.players >= room.maxPlayers - 2) return 'almost';
+  return 'open';
+}
+
+function paintRoomBoard(container, rows) {
+  const en = isEn();
+  const cols = [
+    ['open', en ? 'Open' : 'Con lugar'],
+    ['almost', en ? 'Almost full' : 'Casi llenas'],
+    ['full', en ? 'Full' : 'Llenas'],
+    ['empty', en ? 'Empty' : 'Vacías']
+  ];
+  const groups = { open: [], almost: [], full: [], empty: [] };
+  for (const room of roomView) groups[roomFill(room)].push(room);
+  rows.className = 'roomboard';
+  rows.style.gridTemplateColumns = '';
+  rows.style.height = `${container.clientHeight || 420}px`;
+  const frag = document.createDocumentFragment();
+  for (const [key, title] of cols) {
+    const col = document.createElement('div');
+    col.className = `boardcol boardcol--${key}`;
+    const head = document.createElement('div');
+    head.className = 'boardcol__head';
+    head.innerHTML = '<b></b><span></span>';
+    head.firstChild.textContent = title;
+    head.lastChild.textContent = String(groups[key].length);
+    const body = document.createElement('div');
+    body.className = 'boardcol__body';
+    for (const room of groups[key].slice(0, BOARD_MAX)) body.append(roomRow(room));
+    if (groups[key].length > BOARD_MAX) {
+      const more = document.createElement('div');
+      more.className = 'boardcol__more';
+      more.textContent = en ? `+${groups[key].length - BOARD_MAX} more — narrow it with search` : `+${groups[key].length - BOARD_MAX} más — afiná con la búsqueda`;
+      body.append(more);
+    }
+    col.append(head, body);
+    frag.append(col);
+  }
+  rows.replaceChildren(frag);
+}
+
+/* ── Vista «Mapa»: cada sala es un punto en su latitud y longitud ─────────
+ * Tamaño = jugadores, color = qué tan llena. Rueda para acercar, arrastrar para
+ * mover, click para elegir y doble click para entrar. Se dibuja sólo cuando algo
+ * cambia (no hay bucle de cuadros), así que mirando el mapa quieto no gasta nada.
+ */
+
+function paintRoomMap(container, rows) {
+  rows.className = 'roommap';
+  rows.style.gridTemplateColumns = '';
+  rows.style.height = `${container.clientHeight || 420}px`;
+  if (!mapUi.wrap) buildRoomMap();
+  if (rows.firstChild !== mapUi.wrap || rows.childNodes.length !== 1) rows.replaceChildren(mapUi.wrap);
+  const rect = mapUi.wrap.getBoundingClientRect();
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  const w = Math.max(100, Math.round(rect.width || container.clientWidth || 600));
+  const h = Math.max(100, Math.round(rect.height || container.clientHeight || 400));
+  if (mapUi.canvas.width !== w * dpr || mapUi.canvas.height !== h * dpr) {
+    mapUi.canvas.width = w * dpr;
+    mapUi.canvas.height = h * dpr;
+  }
+  mapUi.w = w;
+  mapUi.h = h;
+  mapUi.dpr = dpr;
+  if (mapFit) fitRoomMap();
+  drawRoomMap();
+}
+
+function fitRoomMap() {
+  mapFit = false;
+  const list = roomView.filter((r) => Number.isFinite(r.lat) && Number.isFinite(r.lon));
+  if (!list.length) { mapUi.cx = 0; mapUi.cy = 20; mapUi.s = Math.min(mapUi.w / 360, mapUi.h / 160); return; }
+  let minLon = 180, maxLon = -180, minLat = 90, maxLat = -90;
+  for (const r of list) {
+    if (r.lon < minLon) minLon = r.lon;
+    if (r.lon > maxLon) maxLon = r.lon;
+    if (r.lat < minLat) minLat = r.lat;
+    if (r.lat > maxLat) maxLat = r.lat;
+  }
+  const spanLon = Math.max(2, maxLon - minLon);
+  const spanLat = Math.max(2, maxLat - minLat);
+  mapUi.cx = (minLon + maxLon) / 2;
+  mapUi.cy = (minLat + maxLat) / 2;
+  mapUi.s = Math.max(1, Math.min(60, (mapUi.w - 90) / spanLon, (mapUi.h - 90) / spanLat));
+}
+
+function mapXY(lon, lat) {
+  return [mapUi.w / 2 + (lon - mapUi.cx) * mapUi.s, mapUi.h / 2 - (lat - mapUi.cy) * mapUi.s];
+}
+
+function drawRoomMap() {
+  if (!mapUi.canvas || roomViewName() !== 'map') return;
+  const ctx = mapUi.canvas.getContext('2d');
+  const { w, h, dpr } = mapUi;
+  const css = getComputedStyle(document.documentElement);
+  const accent = (css.getPropertyValue('--accent') || '#d4af37').trim();
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, w, h);
+  // Cuadrícula de latitud y longitud: sirve de referencia al acercar y alejar.
+  const steps = [1, 2, 5, 10, 15, 30, 45, 90];
+  const step = steps.find((v) => v * mapUi.s >= 56) || 90;
+  ctx.lineWidth = 1;
+  ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+  ctx.fillStyle = 'rgba(255,255,255,0.28)';
+  ctx.font = '10px "Segoe UI", sans-serif';
+  const lon0 = Math.floor((mapUi.cx - w / 2 / mapUi.s) / step) * step;
+  const lon1 = mapUi.cx + w / 2 / mapUi.s;
+  for (let lon = lon0; lon <= lon1; lon += step) {
+    const [x] = mapXY(lon, 0);
+    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke();
+    ctx.fillText(`${lon}°`, x + 3, h - 5);
+  }
+  const lat0 = Math.floor((mapUi.cy - h / 2 / mapUi.s) / step) * step;
+  const lat1 = mapUi.cy + h / 2 / mapUi.s;
+  for (let lat = lat0; lat <= lat1; lat += step) {
+    const [, y] = mapXY(0, lat);
+    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
+    ctx.fillText(`${lat}°`, 5, y - 3);
+  }
+  // Puntos: primero los chicos, así los grandes quedan arriba.
+  const pts = [];
+  for (const room of roomView) {
+    if (!Number.isFinite(room.lat) || !Number.isFinite(room.lon)) continue;
+    const [x, y] = mapXY(room.lon, room.lat);
+    if (x < -20 || y < -20 || x > w + 20 || y > h + 20) continue;
+    pts.push({ x, y, r: 3.2 + Math.sqrt(room.players) * 1.7, room });
+  }
+  pts.sort((a, b) => a.r - b.r);
+  for (const p of pts) {
+    const kind = roomFill(p.room);
+    ctx.globalAlpha = kind === 'empty' ? 0.55 : 0.9;
+    ctx.fillStyle = FILL_COLORS[kind];
+    ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2); ctx.fill();
+    ctx.globalAlpha = 1;
+    if (clubRoomMap.has(String(p.room.name || '').trim().slice(0, 40).toLowerCase())) {
+      ctx.strokeStyle = '#5aaaff'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(p.x, p.y, p.r + 3, 0, Math.PI * 2); ctx.stroke();
+    }
+    if (p.room.token === state.selected) {
+      ctx.strokeStyle = accent; ctx.lineWidth = 2.5;
+      ctx.beginPath(); ctx.arc(p.x, p.y, p.r + 5, 0, Math.PI * 2); ctx.stroke();
+    }
+  }
+  mapUi.pts = pts;
+}
+
+function mapHit(ev) {
+  const rect = mapUi.canvas.getBoundingClientRect();
+  const x = ev.clientX - rect.left;
+  const y = ev.clientY - rect.top;
+  let best = null;
+  let bestD = Infinity;
+  // De atrás para adelante: la última dibujada (la más grande) está arriba.
+  for (let i = mapUi.pts.length - 1; i >= 0; i--) {
+    const p = mapUi.pts[i];
+    const d = Math.hypot(p.x - x, p.y - y);
+    if (d <= p.r + 5 && d < bestD) { best = p; bestD = d; }
+  }
+  return { x, y, hit: best };
+}
+
+function buildRoomMap() {
+  const wrap = document.createElement('div');
+  wrap.className = 'roommap__wrap';
+  const canvas = document.createElement('canvas');
+  const tip = document.createElement('div');
+  tip.className = 'roommap__tip';
+  tip.hidden = true;
+  const fitBtn = document.createElement('button');
+  fitBtn.type = 'button';
+  fitBtn.className = 'roommap__fit';
+  fitBtn.textContent = '⤢';
+  fitBtn.title = isEn() ? 'Fit all rooms' : 'Ver todas las salas';
+  const legend = document.createElement('div');
+  legend.className = 'roommap__legend';
+  const en = isEn();
+  for (const [kind, label] of [['open', en ? 'Open' : 'Con lugar'], ['almost', en ? 'Almost full' : 'Casi llena'], ['full', en ? 'Full' : 'Llena'], ['empty', en ? 'Empty' : 'Vacía']]) {
+    const item = document.createElement('span');
+    item.innerHTML = '<i></i>';
+    item.firstChild.style.background = FILL_COLORS[kind];
+    item.append(label);
+    legend.append(item);
+  }
+  wrap.append(canvas, tip, fitBtn, legend);
+  Object.assign(mapUi, { wrap, canvas, tip });
+
+  fitBtn.addEventListener('click', () => { mapFit = true; paintRoomMap(roomParts.container, roomParts.rows); });
+  let moved = false;
+  canvas.addEventListener('pointerdown', (e) => {
+    mapUi.drag = { x: e.clientX, y: e.clientY, cx: mapUi.cx, cy: mapUi.cy };
+    moved = false;
+    canvas.setPointerCapture(e.pointerId);
+  });
+  canvas.addEventListener('pointermove', (e) => {
+    if (mapUi.drag) {
+      const dx = e.clientX - mapUi.drag.x;
+      const dy = e.clientY - mapUi.drag.y;
+      if (Math.abs(dx) + Math.abs(dy) > 3) moved = true;
+      if (moved) {
+        mapUi.cx = mapUi.drag.cx - dx / mapUi.s;
+        mapUi.cy = mapUi.drag.cy + dy / mapUi.s;
+        tip.hidden = true;
+        if (!mapUi.raf) mapUi.raf = requestAnimationFrame(() => { mapUi.raf = 0; drawRoomMap(); });
+      }
+      return;
+    }
+    const { x, y, hit } = mapHit(e);
+    if (!hit) { tip.hidden = true; canvas.style.cursor = 'grab'; return; }
+    canvas.style.cursor = 'pointer';
+    const room = hit.room;
+    tip.textContent = '';
+    const b = document.createElement('b');
+    b.textContent = room.name;
+    const small = document.createElement('span');
+    small.textContent = `${room.players}/${room.maxPlayers}${room.password ? ' 🔒' : ''}${room.distance != null ? ` · ${room.distance.toLocaleString('es-AR')} km` : ''}`;
+    tip.append(b, small);
+    tip.hidden = false;
+    tip.style.left = `${Math.min(mapUi.w - 200, x + 14)}px`;
+    tip.style.top = `${Math.max(6, y - 10)}px`;
+  });
+  canvas.addEventListener('pointerup', (e) => {
+    const wasDrag = moved;
+    mapUi.drag = null;
+    if (wasDrag) return;
+    const { hit } = mapHit(e);
+    if (hit) selectRoom(hit.room.token);
+  });
+  canvas.addEventListener('pointerleave', () => { tip.hidden = true; });
+  canvas.addEventListener('dblclick', (e) => {
+    const { hit } = mapHit(e);
+    if (hit) joinRoom(hit.room.token);
+  });
+  canvas.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    const lon = mapUi.cx + (x - mapUi.w / 2) / mapUi.s;
+    const lat = mapUi.cy - (y - mapUi.h / 2) / mapUi.s;
+    mapUi.s = Math.min(3000, Math.max(0.6, mapUi.s * Math.pow(1.0018, -e.deltaY)));
+    // El punto bajo el mouse se queda donde estaba.
+    mapUi.cx = lon - (x - mapUi.w / 2) / mapUi.s;
+    mapUi.cy = lat + (y - mapUi.h / 2) / mapUi.s;
+    if (!mapUi.raf) mapUi.raf = requestAnimationFrame(() => { mapUi.raf = 0; drawRoomMap(); });
+  }, { passive: false });
+}
+
 /** Cambió el filtro o el orden: la lista es otra, así que se mira desde arriba. */
 function renderRoomsFromTop() {
+  mapFit = true;
   roomListParts().container.scrollTop = 0;
   renderRooms();
 }
@@ -2629,6 +2895,7 @@ function applyFlags(data) {
 function selectRoom(token) {
   state.selected = token;
   $$('.rrow').forEach((row) => row.classList.toggle('is-selected', row.dataset.token === token));
+  if (roomViewName() === 'map') drawRoomMap();
   syncJoinButton();
 }
 
@@ -2896,24 +3163,12 @@ for (const [id, key, store] of [['#hideLocked', 'hideLocked', 'tl_hide_locked'],
   });
 }
 
-$('#favToggle').addEventListener('click', () => {
-  state.onlyFavs = !state.onlyFavs;
-  $('#favToggle').classList.toggle('is-on', state.onlyFavs);
-  renderRoomsFromTop();
-});
-
 /* Modos y vista de la lista de salas. */
-for (const [id, key] of [['#onlyClub', 'onlyClub'], ['#onlyFull', 'onlyFull']]) {
-  $(id).addEventListener('click', () => {
-    state[key] = !state[key];
-    syncRoomFilterUi();
-    renderRoomsFromTop();
-  });
-}
 for (const btn of $$('#roomModes .roommode')) btn.addEventListener('click', () => applyRoomMode(btn.dataset.mode));
 for (const btn of $$('#roomModes .roomviewbtn')) btn.addEventListener('click', () => setRoomView(btn.dataset.view));
 try {
-  document.documentElement.dataset.roomview = localStorage.getItem('tl_room_view') === 'cards' ? 'cards' : 'list';
+  const savedView = localStorage.getItem('tl_room_view');
+  document.documentElement.dataset.roomview = ROOM_VIEWS.includes(savedView) ? savedView : 'list';
 } catch (e) { document.documentElement.dataset.roomview = 'list'; }
 paintRoomModes();
 

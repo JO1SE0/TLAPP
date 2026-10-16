@@ -506,6 +506,9 @@
             <div class="roommodes__view" role="group">
               <button type="button" class="roomviewbtn" data-view="list" title="Lista" aria-label="Lista">☰</button>
               <button type="button" class="roomviewbtn" data-view="cards" title="Tarjetas" aria-label="Tarjetas">▦</button>
+              <button type="button" class="roomviewbtn" data-view="bars" title="Barras: se ve cuál está más llena" aria-label="Barras">▤</button>
+              <button type="button" class="roomviewbtn" data-view="board" title="Tablero por ocupación" aria-label="Tablero">▥</button>
+              <button type="button" class="roomviewbtn" data-view="map" title="Mapa de salas" aria-label="Mapa">🌍</button>
             </div>
           </div>
 
@@ -514,10 +517,6 @@
               <svg data-icon viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.8"/><path d="M16.1 16.1 20.2 20.2"/></svg>
               <input type="text" id="roomSearch" data-i18n-placeholder="rooms.search" placeholder="Buscar sala por nombre…" />
             </div>
-            <button class="filterchip filterchip--fav" id="favToggle">
-              <span class="filterchip__star">★</span>
-              <span data-i18n="rooms.onlyFavs">Favoritos</span>
-            </button>
             <button class="filterchip" id="hideLocked" type="button" aria-pressed="false">
               <span class="filterchip__ico">🔒</span>
               <span data-i18n="rooms.hideLocked">Ocultar con clave</span>
@@ -525,14 +524,6 @@
             <button class="filterchip" id="hideFull" type="button" aria-pressed="false">
               <span class="filterchip__ico">👥</span>
               <span data-i18n="rooms.hideFull">Ocultar llenas</span>
-            </button>
-            <button class="filterchip" id="onlyClub" type="button" aria-pressed="false">
-              <span class="filterchip__ico">🛡</span>
-              <span data-i18n="rooms.onlyClub">Del club</span>
-            </button>
-            <button class="filterchip" id="onlyFull" type="button" aria-pressed="false">
-              <span class="filterchip__ico">🔥</span>
-              <span data-i18n="rooms.onlyFull">Solo llenas</span>
             </button>
             <button class="filterchip" id="hostBtn" type="button" hidden><span class="filterchip__ico">🏟</span><span>Hostear</span></button>
             <select id="roomSort" class="sortselect">
