@@ -11,6 +11,7 @@ window.TL_NEWS = {
   title: { es: 'Qué hay de nuevo', en: "What's new" },
   items: {
     es: [
+      'Personalización → Fichas: Taller para armar tu propia pelota o ficha con capas y guardarla con nombre, ojos en tu ficha que siguen la pelota (opcional), y la vista previa ahora se anima y se juega con flechas o WASD (solo mientras la ves).',
       'Clips: ahora tus clips se ven adentro de la app (Personalización → Partida → Clips → Mis clips): miniaturas, reproductor, mostrar en la carpeta y borrar (va a la papelera). Y arriba hay un botón para abrir la carpeta.',
       'Pelota 3D de verdad: con un estilo, un color o una imagen propia, la pelota ahora rueda como una esfera (el dibujo se corre, se achata hacia el borde, pasa por atrás y vuelve) en vez de girar en el lugar. Y el acabado de la cancha (textura y luz) pasó a opciones en píldoras, sin miniaturas: ya se ve en la vista previa de arriba. En las replays, la barra de controles ahora es una franja abajo con la línea de tiempo, saltos de ±5 s, y la cancha (el chat de la replay queda oculto) queda arriba sin que nada la tape.',
       'Nuevo: Clips. Apretás una tecla (F9 por defecto) y se guardan los últimos 10 a 30 segundos de la partida como video, en Videos\\TL App\\Clips. También puede clipear cada gol solo. Viene apagado (Personalización → En partida → Clips) y no se nota en los FPS: mientras jugás sólo copia la cancha achicada a la memoria de video, y el video se arma recién al clipear.',

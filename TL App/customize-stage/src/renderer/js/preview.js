@@ -80,6 +80,7 @@
     const W = canvas.width;
     const H = canvas.height;
     const V = cfg.visual || {};
+    if (L.setWorkshop) L.setWorkshop(V.workshop);
     const P = cfg.pitch || {};
     const skin = P.skin || {};
     // `opts` acerca la cámara a una zona (las miniaturas de la galería): ancho
@@ -262,11 +263,14 @@
 
     const accent = css('--accent', '#d0b878');
     const nick = String((cfg.general && cfg.general.nickname) || '').trim() || 'Vos';
+    const lv = o.live || null;
     const discs = [
-      { x: -178, y: 6, team: '#e56e56', name: nick, mine: true },
-      { x: -62, y: -30, team: '#5689e5', name: 'Rival' },
-      { x: -34, y: 42, team: '#e56e56', name: 'Amigo' }
+      { x: lv ? lv.me.x : -178, y: lv ? lv.me.y : 6, team: '#e56e56', name: nick, mine: true },
+      { x: lv ? lv.rival.x : -62, y: lv ? lv.rival.y : -30, team: '#5689e5', name: 'Rival' },
+      { x: lv ? lv.mate.x : -34, y: lv ? lv.mate.y : 42, team: '#e56e56', name: 'Amigo' }
     ];
+    const bx = lv ? lv.ball.x : -122;
+    const by = lv ? lv.ball.y : 26;
     const r0 = 15 * discSize;
 
     // Detrás de las fichas: el aro y la cola de tu ficha.
@@ -313,6 +317,7 @@
       ctx.fill();
       // El estilo de ficha es sólo de la tuya, igual que en el juego.
       if (d.mine && V.discStyle && V.discStyle !== 'default') L.discOverlay(ctx, V.discStyle, d.x, d.y, r0, null);
+      if (d.mine && ['normal', 'angry', 'cute'].includes(V.discEyes) && L.discEyes) L.discEyes(ctx, V.discEyes, d.x, d.y, r0, bx, by, null);
       ctx.lineWidth = 2 * discLine;
       ctx.strokeStyle = discOutline;
       ctx.stroke();
@@ -320,15 +325,15 @@
 
     // La pelota.
     const br = 10 * ballSize;
-    if (V.softShadows) shadow(-122, 26, br);
+    if (V.softShadows) shadow(bx, by, br);
     ctx.beginPath();
-    ctx.arc(-122, 26, br, 0, TAU);
+    ctx.arc(bx, by, br, 0, TAU);
     ctx.fillStyle = '#ffffff';
     ctx.fill();
     const ballTint = L.safeColor(V.ballColor);
-    const ball3d = P.ball3d ? { spin: 0.6, shade: shade3d } : null;
+    const ball3d = P.ball3d ? { spin: lv ? lv.ball.spin : 0.6, shade: shade3d } : null;
     if ((ballStyle !== 'default' || ballTint || ball3d) && L.ballOverlay) {
-      L.ballOverlay(ctx, ballStyle, -122, 26, br, null, ballTint, ball3d);
+      L.ballOverlay(ctx, ballStyle, bx, by, br, null, ballTint, ball3d);
     }
     ctx.lineWidth = 2 * ballLine;
     ctx.strokeStyle = ballOutline;
@@ -365,6 +370,7 @@
     const W = canvas.width;
     const H = canvas.height;
     const V = (cfg && cfg.visual) || {};
+    if (L.setWorkshop) L.setWorkshop(V.workshop);
     const P = (cfg && cfg.pitch) || {};
     ctx.save();
     ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -428,5 +434,158 @@
     }
   }
 
-  window.TLPreview = { draw, swatch };
+  /* ── Vista previa viva ─────────────────────────────────────────────────
+   * Una mini simulación (tu ficha, la pelota, dos fichas quietas) que se anima
+   * sólo mientras `isOn()` dice que la vista previa se ve. A lo sumo 30 cuadros
+   * por segundo, y se detiene sola con la ventana oculta. Con el mouse encima
+   * se juega con flechas o WASD; sin tocar nada, la ficha juega sola.
+   */
+  const FW = 300 - 8;
+  const FH = 150 - 8;
+  function createLive(canvas, getCfg, isOn) {
+    const keys = new Set();
+    const sim = {
+      me: { x: -178, y: 6, vx: 0, vy: 0 },
+      rival: { x: -62, y: -30 },
+      mate: { x: -34, y: 42 },
+      ball: { x: -122, y: 26, vx: 0, vy: 0, spin: 0 }
+    };
+    let hover = false;
+    let raf = 0;
+    let last = 0;
+    let idleSince = 0;
+    let wander = { x: -100, y: 0, until: 0 };
+    let running = false;
+    let paused = false;
+
+    const typing = (e) => /^(INPUT|SELECT|TEXTAREA)$/.test((e.target && e.target.tagName) || '');
+    const MAP = { ArrowLeft: 'l', KeyA: 'l', ArrowRight: 'r', KeyD: 'r', ArrowUp: 'u', KeyW: 'u', ArrowDown: 'd', KeyS: 'd' };
+    const onDown = (e) => {
+      if (!hover || typing(e) || !MAP[e.code]) return;
+      keys.add(MAP[e.code]);
+      idleSince = 0;
+      e.preventDefault();
+    };
+    const onUp = (e) => { if (MAP[e.code]) keys.delete(MAP[e.code]); };
+    const onEnter = () => { hover = true; };
+    const onLeave = () => { hover = false; keys.clear(); };
+    canvas.addEventListener('mouseenter', onEnter);
+    canvas.addEventListener('mouseleave', onLeave);
+    window.addEventListener('keydown', onDown);
+    window.addEventListener('keyup', onUp);
+
+    function step(dt, now) {
+      const cfg = getCfg();
+      const V = (cfg && cfg.visual) || {};
+      const r0 = 15 * num(V.discSize, 0.5, 2, 1);
+      const br = 10 * num(V.ballSize, 0.5, 2, 1);
+      const me = sim.me;
+      const ball = sim.ball;
+      let ax = 0;
+      let ay = 0;
+      if (keys.size) {
+        ax = (keys.has('r') ? 1 : 0) - (keys.has('l') ? 1 : 0);
+        ay = (keys.has('d') ? 1 : 0) - (keys.has('u') ? 1 : 0);
+      } else {
+        // Sin teclas: juega solo. Va hacia la pelota y de vez en cuando se da una vuelta.
+        if (!idleSince) idleSince = now;
+        if (now - idleSince > 1200) {
+          if (now > wander.until) {
+            wander = { x: -230 + Math.random() * 190, y: -110 + Math.random() * 220, until: now + 1400 + Math.random() * 1500 };
+          }
+          const chase = ((now / 3200) | 0) % 2 === 0;
+          const tx = chase ? ball.x - 40 : wander.x;
+          const ty = chase ? ball.y : wander.y;
+          const dx = tx - me.x;
+          const dy = ty - me.y;
+          const dist = Math.hypot(dx, dy) || 1;
+          if (dist > 6) { ax = dx / dist; ay = dy / dist; }
+        }
+      }
+      const len = Math.hypot(ax, ay) || 1;
+      me.vx += (ax / len) * 520 * dt * (ax || ay ? 1 : 0);
+      me.vy += (ay / len) * 520 * dt * (ax || ay ? 1 : 0);
+      const damp = Math.pow(0.02, dt);
+      me.vx *= damp;
+      me.vy *= damp;
+      me.x += me.vx * dt;
+      me.y += me.vy * dt;
+      ball.x += ball.vx * dt;
+      ball.y += ball.vy * dt;
+      const bd = Math.pow(0.35, dt);
+      ball.vx *= bd;
+      ball.vy *= bd;
+      // Choques de la pelota con las tres fichas.
+      for (const d of [me, sim.rival, sim.mate]) {
+        const dx = ball.x - d.x;
+        const dy = ball.y - d.y;
+        const dist = Math.hypot(dx, dy);
+        const min = r0 + br;
+        if (dist > 0 && dist < min) {
+          const nx = dx / dist;
+          const ny = dy / dist;
+          ball.x = d.x + nx * min;
+          ball.y = d.y + ny * min;
+          const rvx = ball.vx - (d.vx || 0);
+          const rvy = ball.vy - (d.vy || 0);
+          const vn = rvx * nx + rvy * ny;
+          if (vn < 0) {
+            const kick = d === me ? 1.9 : 1.5;
+            ball.vx -= (1 + 0.5) * vn * nx;
+            ball.vy -= (1 + 0.5) * vn * ny;
+            ball.vx += nx * 40 * kick * (d === me ? 1 : 0);
+            ball.vy += ny * 40 * kick * (d === me ? 1 : 0);
+          }
+        }
+      }
+      // Paredes: la ficha se frena y la pelota rebota.
+      const clampDisc = (d, r) => {
+        const lx = FW - r;
+        const ly = FH - r;
+        if (d.x < -lx) { d.x = -lx; d.vx = 0; }
+        if (d.x > lx) { d.x = lx; d.vx = 0; }
+        if (d.y < -ly) { d.y = -ly; d.vy = 0; }
+        if (d.y > ly) { d.y = ly; d.vy = 0; }
+      };
+      clampDisc(me, r0);
+      const lx = FW - br;
+      const ly = FH - br;
+      if (ball.x < -lx) { ball.x = -lx; ball.vx = Math.abs(ball.vx) * 0.7; }
+      if (ball.x > lx) { ball.x = lx; ball.vx = -Math.abs(ball.vx) * 0.7; }
+      if (ball.y < -ly) { ball.y = -ly; ball.vy = Math.abs(ball.vy) * 0.7; }
+      if (ball.y > ly) { ball.y = ly; ball.vy = -Math.abs(ball.vy) * 0.7; }
+      ball.spin += (Math.hypot(ball.vx, ball.vy) * dt) / br;
+      return cfg;
+    }
+
+    function frame(now) {
+      raf = 0;
+      if (!running) return;
+      if (document.hidden || !isOn()) { running = false; return; }
+      raf = requestAnimationFrame(frame);
+      if (now - last < 33) return;
+      const dt = Math.min(0.05, (now - last) / 1000 || 0.033);
+      last = now;
+      if (paused) return;
+      const cfg = step(dt, now);
+      try { draw(canvas, cfg, { live: sim }); } catch (e) { /* adorno */ }
+    }
+
+    return {
+      /** Arranca el bucle si la vista previa se ve; no hace nada si ya corre. */
+      start() {
+        if (running || paused || document.hidden || !isOn()) return;
+        running = true;
+        last = 0;
+        raf = requestAnimationFrame(frame);
+      },
+      stop() { running = false; cancelAnimationFrame(raf); raf = 0; },
+      setPaused(v) { paused = !!v; if (!paused) this.start(); },
+      isPaused() { return paused; },
+      redraw() { try { draw(canvas, getCfg(), { live: sim }); } catch (e) { /* adorno */ } },
+      reset() { sim.me = { x: -178, y: 6, vx: 0, vy: 0 }; sim.ball = { x: -122, y: 26, vx: 0, vy: 0, spin: 0 }; }
+    };
+  }
+
+  window.TLPreview = { draw, swatch, createLive };
 })();
