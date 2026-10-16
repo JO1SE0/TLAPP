@@ -4617,7 +4617,8 @@ $('#goalSfxVolume').addEventListener('change', (e) => {
  * esté elegido. Ver main/game-clip.js. */
 const CLIP_KEYS = [['F6', 'F6'], ['F7', 'F7'], ['F8', 'F8'], ['F9', 'F9'], ['F10', 'F10'], ['Insert', 'Insert']];
 const CLIP_SECONDS = [10, 15, 20, 30];
-const CLIP_QUALITIES = [['liviana', 'Liviana', 'Light'], ['normal', 'Normal', 'Normal'], ['alta', 'Alta', 'High']];
+const CLIP_QUALITIES = [['liviana', 'Liviana · 270p', 'Light · 270p'], ['normal', 'Normal · 360p', 'Normal · 360p'], ['alta', 'Alta · 540p', 'High · 540p'], ['ultra', 'Ultra · 720p', 'Ultra · 720p']];
+const CLIP_FPS = [12, 15, 24, 30, 60];
 const CLIP_ZOOMS = [[1, 'Pantalla completa', 'Full screen'], [0.7, 'Cerca', 'Closer'], [0.5, 'Muy cerca', 'Closest']];
 
 // Estado de la lista de clips (se declara antes de `paintClips`, que lo consulta).
@@ -4631,6 +4632,8 @@ function paintClips() {
   $('#clipsKeyLabel').textContent = en ? 'Clip key' : 'Tecla para clipear';
   $('#clipsSecLabel').textContent = en ? 'Seconds it keeps' : 'Cuántos segundos guarda';
   $('#clipsQualLabel').textContent = en ? 'Quality' : 'Calidad';
+  $('#clipsFpsLabel').textContent = en ? 'Smoothness' : 'Fluidez';
+  $('#clipsFpsDesc').textContent = en ? 'Frames per second of the clip. More frames and more resolution use more video memory, so it keeps fewer seconds.' : 'Cuadros por segundo del clip. Más cuadros y más resolución usan más memoria de video, y entonces guarda menos segundos.';
   $('#clipsZoomLabel').textContent = en ? 'Framing' : 'Encuadre';
   $('#clipsZoomDesc').textContent = en ? 'Closer records only the middle of the screen, so a small map looks bigger.' : 'Cerca graba sólo el centro de la pantalla: en un mapa chico se ve todo más grande.';
   $('#clipsMemLabel').textContent = en ? 'What it uses' : 'Lo que usa';
@@ -4665,6 +4668,7 @@ function paintClips() {
   chips($('#clipsKeyChips'), CLIP_KEYS, cfg.key, 'ck');
   chips($('#clipsSecChips'), CLIP_SECONDS.map((n) => [n, `${n} s`]), cfg.seconds, 'cs');
   chips($('#clipsQualChips'), CLIP_QUALITIES.map((q) => [q[0], en ? q[2] : q[1]]), cfg.quality, 'cq');
+  chips($('#clipsFpsChips'), CLIP_FPS.map((f) => [f, `${f} fps`]), cfg.fps, 'cf');
   chips($('#clipsZoomChips'), CLIP_ZOOMS.map((z) => [z[0], en ? z[2] : z[1]]), cfg.zoom, 'cz');
   if (window.TLClip) {
     const plan = window.TLClip.plan(cfg);
@@ -4682,6 +4686,10 @@ $('#clipsKeyChips').addEventListener('click', (e) => {
 $('#clipsSecChips').addEventListener('click', (e) => {
   const b = e.target.closest('[data-cs]');
   if (b) patchConfig({ clips: { seconds: Number(b.dataset.cs) } });
+});
+$('#clipsFpsChips').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-cf]');
+  if (b) patchConfig({ clips: { fps: Number(b.dataset.cf) } });
 });
 $('#clipsZoomChips').addEventListener('click', (e) => {
   const b = e.target.closest('[data-cz]');

@@ -189,6 +189,7 @@ const DEFAULTS = {
     key: 'F9',
     seconds: 15,
     quality: 'normal',
+    fps: 15,
     zoom: 1,
     autoGoal: false
   },

@@ -23,13 +23,15 @@
   else root.TLClip = factory();
 })(typeof self !== 'undefined' ? self : this, function () {
   const PRESETS = {
-    liviana: { w: 480, h: 270, fps: 12, bps: 1000000 },
-    normal: { w: 640, h: 360, fps: 15, bps: 1600000 },
-    alta: { w: 960, h: 540, fps: 12, bps: 3000000 }
+    liviana: { w: 480, h: 270, bps: 1000000 },
+    normal: { w: 640, h: 360, bps: 1600000 },
+    alta: { w: 960, h: 540, bps: 3000000 },
+    ultra: { w: 1280, h: 720, bps: 5000000 }
   };
-  const COLS = 15;
+  const FPS_LIST = [12, 15, 24, 30, 60];
+  const MAX_COLS = 15;
   const MAX_SIDE = 16384; // lado máximo de un canvas en Chromium
-  const MAX_BYTES = 400 * 1048576; // tope de memoria de video de la grilla
+  const MAX_BYTES = 600 * 1048576; // tope de memoria de video de la grilla
   const ZOOMS = [1, 0.7, 0.5]; // qué parte de la pantalla se graba (centrada): 1 = toda
 
   /** Defaults y límites de la config de clips. */
@@ -39,6 +41,7 @@
     return {
       enabled: !!c.enabled,
       quality: PRESETS[c.quality] ? c.quality : 'normal',
+      fps: FPS_LIST.indexOf(Number(c.fps)) >= 0 ? Number(c.fps) : 15,
       seconds: Number.isFinite(sec) ? Math.min(30, Math.max(5, Math.round(sec))) : 15,
       autoGoal: !!c.autoGoal,
       zoom: ZOOMS.indexOf(Number(c.zoom)) >= 0 ? Number(c.zoom) : 1,
@@ -49,18 +52,20 @@
   /**
    * Medidas de la grilla para una config. `bytes` es lo que ocupa en la placa de
    * video (RGBA): se muestra en los ajustes para que nadie se lleve sorpresas.
+   * Con mucha resolución y muchos cuadros por segundo, el tope de memoria
+   * recorta cuántos segundos entran (`seconds` es lo que de verdad guarda).
    */
   function plan(cfg) {
     const c = clean(cfg);
-    const p = PRESETS[c.quality];
+    const p = { ...PRESETS[c.quality], fps: c.fps };
+    const cols = Math.max(1, Math.min(MAX_COLS, Math.floor(MAX_SIDE / p.w)));
     let cap = p.fps * c.seconds;
-    let rows = Math.ceil(cap / COLS);
-    // Un tope de memoria: con calidad alta y muchos segundos, guarda menos tiempo.
-    while (rows * p.h > MAX_SIDE || COLS * p.w > MAX_SIDE || COLS * p.w * rows * p.h * 4 > MAX_BYTES) {
-      cap -= COLS;
-      rows = Math.ceil(cap / COLS);
+    let rows = Math.ceil(cap / cols);
+    while (cap > cols && (rows * p.h > MAX_SIDE || cols * p.w * rows * p.h * 4 > MAX_BYTES)) {
+      cap -= cols;
+      rows = Math.ceil(cap / cols);
     }
-    return { ...p, cols: COLS, rows, cap, seconds: Math.min(c.seconds, Math.floor(cap / p.fps)), bytes: COLS * p.w * rows * p.h * 4 };
+    return { ...p, cols, rows, cap, seconds: Math.min(c.seconds, Math.floor(cap / p.fps)), bytes: cols * p.w * rows * p.h * 4 };
   }
 
   /*
@@ -119,15 +124,29 @@
   }
 
   /** Empaqueta cuadros VP8 (todos clave) en un .webm. */
-  function mux(frames, w, h, fps) {
-    const ms = (i) => Math.round((i * 1000) / fps);
+  function mux(frames, w, h, fps, times) {
+    // Con los tiempos reales de captura el video dura lo que duró la partida
+    // (el temporizador del juego no es exacto); una pausa larga se acorta.
+    const at = [];
+    if (times && times.length === frames.length) {
+      const maxGap = (4 * 1000) / fps;
+      let acc = 0;
+      for (let i = 0; i < frames.length; i++) {
+        if (i) acc += Math.min(Math.max(times[i] - times[i - 1], 1), maxGap);
+        at.push(Math.round(acc));
+      }
+    } else {
+      for (let i = 0; i < frames.length; i++) at.push(Math.round((i * 1000) / fps));
+    }
+    const ms = (i) => at[i];
+    const endMs = at.length ? at[at.length - 1] + Math.round(1000 / fps) : 0;
     const header = el([0x1a, 0x45, 0xdf, 0xa3], [
       el([0x42, 0x86], uint(1)), el([0x42, 0xf7], uint(1)), el([0x42, 0xf2], uint(4)), el([0x42, 0xf3], uint(8)),
       el([0x42, 0x82], text('webm')), el([0x42, 0x87], uint(2)), el([0x42, 0x85], uint(2))
     ]);
     const info = el([0x15, 0x49, 0xa9, 0x66], [
       el([0x2a, 0xd7, 0xb1], uint(1000000)),
-      el([0x44, 0x89], float64(ms(frames.length))),
+      el([0x44, 0x89], float64(endMs)),
       el([0x4d, 0x80], text('TL App')), el([0x57, 0x41], text('TL App'))
     ]);
     const tracks = el([0x16, 0x54, 0xae, 0x6b], [
@@ -141,10 +160,13 @@
     let offset = info.length + tracks.length;
     const cues = [];
     // Un grupo por segundo de video: cada uno con su entrada en el índice.
-    for (let start = 0; start < frames.length; start += fps) {
+    let start = 0;
+    while (start < frames.length) {
       const t0 = ms(start);
+      let end = start;
+      while (end < frames.length && ms(end) - t0 < 1000) end++;
       const blocks = [el([0xe7], uint(t0))];
-      for (let i = start; i < Math.min(frames.length, start + fps); i++) {
+      for (let i = start; i < end; i++) {
         const rel = ms(i) - t0;
         blocks.push(el([0xa3], [Uint8Array.from([0x81, (rel >> 8) & 255, rel & 255, 0x80]), frames[i]]));
       }
@@ -152,6 +174,7 @@
       cues.push(el([0xbb], [el([0xb3], uint(t0)), el([0xb7], [el([0xf7], uint(1)), el([0xf1], uint(offset))])]));
       children.push(cluster);
       offset += cluster.length;
+      start = end;
     }
     children.push(el([0x1c, 0x53, 0xbb, 0x6b], cues));
     return concat([header, el([0x18, 0x53, 0x80, 0x67], children)]);
@@ -168,6 +191,7 @@
     let atlas = null;
     let actx = null;
     let n = 0; // cuadros copiados desde que arrancó
+    let times = null; // cuándo se copió cada cuadro (ms), en el mismo orden circular
     let timer = 0;
     let busy = false;
     let failures = 0;
@@ -176,7 +200,7 @@
       if (timer) view.clearInterval(timer);
       timer = 0;
       if (atlas) { atlas.width = 0; atlas.height = 0; }
-      atlas = null; actx = null; geo = null; n = 0; failures = 0;
+      atlas = null; actx = null; geo = null; times = null; n = 0; failures = 0;
     }
 
     function build() {
@@ -188,6 +212,7 @@
       actx.imageSmoothingEnabled = true;
       // «high» filtra bien al achicar (con «low» las líneas y los textos salían escalonados).
       actx.imageSmoothingQuality = 'high';
+      times = new Float64Array(geo.cap);
       n = 0;
       timer = view.setInterval(tick, Math.round(1000 / geo.fps));
     }
@@ -216,6 +241,7 @@
           actx.fillRect(x, y, geo.w, geo.h);
         }
         actx.drawImage(src, sx, sy, sw, sh, x + (geo.w - dw) / 2, y + (geo.h - dh) / 2, dw, dh);
+        times[i] = view.performance.now();
         n++;
         failures = 0;
       } catch (e) {
@@ -231,7 +257,7 @@
       const prev = cfg;
       cfg = clean(next);
       if (!cfg.enabled) { release(); return; }
-      const changed = !geo || prev.quality !== cfg.quality || prev.seconds !== cfg.seconds || prev.zoom !== cfg.zoom;
+      const changed = !geo || prev.quality !== cfg.quality || prev.seconds !== cfg.seconds || prev.zoom !== cfg.zoom || prev.fps !== cfg.fps;
       if (changed) { release(); build(); }
     }
 
@@ -274,6 +300,7 @@
         const encode = () => new Promise((resolve) => out.toBlob(resolve, 'image/webp', quality));
 
         const frames = [];
+        const stamps = [];
         for (let k = 0; k < count; k++) {
           const i = (first + k) % g.cap;
           octx.drawImage(snap, (i % g.cols) * g.w, Math.floor(i / g.cols) * g.h, g.w, g.h, 0, 0, g.w, g.h);
@@ -282,11 +309,13 @@
           const frame = vp8Of(new Uint8Array(await blob.arrayBuffer()));
           if (!frame) return { ok: false, reason: 'error', error: 'el cuadro WebP no tiene VP8' };
           frames.push(frame);
+          stamps.push(times[i]);
           // Un respiro cada tanto: el juego sigue dibujando mientras se codifica.
           if (k % 4 === 3) await sleep(0);
         }
-        const bytes = mux(frames, g.w, g.h, g.fps);
-        return { ok: true, bytes, seconds: count / g.fps, width: g.w, height: g.h };
+        const bytes = mux(frames, g.w, g.h, g.fps, stamps);
+        const real = stamps.length > 1 ? (stamps[stamps.length - 1] - stamps[0]) / 1000 : count / g.fps;
+        return { ok: true, bytes, seconds: real, width: g.w, height: g.h };
       } catch (e) {
         return { ok: false, reason: 'error', error: e && e.message };
       } finally {
