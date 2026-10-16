@@ -706,17 +706,19 @@ function applyClientStyles(doc) {
     /* El chat de la replay se esconde (tapaba la cancha): el botón «Chat» de la
        barra lo muestra, y entonces sube lo que ocupa la barra para no quedar debajo. */
     html .game-view.replayer .chatbox-view { display: none !important; }
-    /* Abierto, el chat va DENTRO de la franja, arriba de los controles (el JS le suma
-       su alto a lo reservado), y los FPS/ping en su esquina de abajo a la izquierda. */
+    /* Abierto, el chat es una columna a la derecha, sobre la franja: la cancha cede
+       ANCHO (que le sobra) y no alto, así no se corta más. */
+    html.tvm-chat-on .game-view.replayer { padding-right: 372px !important; }
     html.tvm-chat-on .game-view.replayer .chatbox-view {
       display: block !important;
       position: fixed !important;
-      left: var(--tvm-side) !important;
-      right: auto !important;
+      left: auto !important;
+      right: 10px !important;
       top: auto !important;
-      bottom: calc(var(--tvm-replay-h, 100px) + 28px + var(--tvm-dy, 0px)) !important;
-      width: min(560px, calc(100vw - 32px)) !important;
-      height: 124px !important;
+      bottom: calc(var(--tvm-reserve, 90px) + 8px) !important;
+      width: 352px !important;
+      height: calc(100vh - var(--tvm-reserve, 90px) - 70px) !important;
+      max-height: 560px !important;
       margin: 0 !important;
       transform: none !important;
       z-index: 2147481200 !important;
@@ -804,6 +806,14 @@ function applyClientStyles(doc) {
     html .replay-controls-view > .tvm-stats-btn { order: 9; }
     html .replay-controls-view > .tvm-board-btn { order: 10; }
     html .replay-controls-view > .tvm-chat-btn { order: 10; }
+    /* En pantallas anchas todo entra en UNA fila (botones y después la línea de
+       tiempo): la franja queda baja y la cancha tiene más alto. */
+    @media (min-width: 1760px) {
+      html { --tvm-card: min(1640px, calc(100vw - 32px)); }
+      html .replay-controls-view::after { display: none; }
+      html .replay-controls-view > [data-hook="time"] { order: 12; margin-left: 10px; }
+      html .replay-controls-view > .timebar { order: 13; flex: 1 1 300px !important; min-width: 240px !important; }
+    }
 
     /* Cada grupo es un control segmentado con su propio fondo. */
     .replay-controls-view .tvm-speeds {
@@ -1914,7 +1924,7 @@ async function watchReplayView(doc) {
       const dy = Math.round(14 - gap);
       root.style.setProperty('--tvm-dy', `${dy}px`);
       // Lo que se le reserva a la cancha: la barra, su margen y un respiro.
-      const reserve = controls.offsetHeight + 14 + Math.max(0, dy) + 8 + (root.classList.contains('tvm-chat-on') ? 140 : 0);
+      const reserve = controls.offsetHeight + 14 + Math.max(0, dy) + 8;
       if (reserve !== lastReserve) {
         lastReserve = reserve;
         root.style.setProperty('--tvm-reserve', `${reserve}px`);
@@ -2019,6 +2029,8 @@ async function watchReplayView(doc) {
     const on = doc.documentElement.classList.toggle('tvm-chat-on');
     chatBtn.classList.toggle('is-on', on);
     setTimeout(syncHeight, 0);
+    // La cancha cambia de ancho (el chat es una columna): se le avisa.
+    setTimeout(() => { try { view.dispatchEvent(new view.Event('resize')); } catch (_) { /* sin resize */ } }, 30);
   });
 
   // Antes del cronómetro: los botones de velocidad quedan todos juntos y la
