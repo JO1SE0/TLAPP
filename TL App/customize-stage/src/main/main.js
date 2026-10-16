@@ -3545,14 +3545,14 @@ function clipsFolder() {
 }
 listen('game:clip-save', async (_e, payload) => {
   try {
-    const bytes = payload && payload.bytes;
-    const size = bytes && bytes.byteLength;
-    if (!size || size < 1000 || size > 200 * 1024 * 1024) throw new Error('clip inválido');
+    const data = payload && typeof payload.b64 === 'string' ? Buffer.from(payload.b64, 'base64') : null;
+    const size = data ? data.length : 0;
+    if (size < 1000 || size > 200 * 1024 * 1024) throw new Error(`clip inválido: llegaron ${size} bytes`);
     const dir = clipsFolder();
     await fs.promises.mkdir(dir, { recursive: true });
     const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
     const tag = payload.label === 'gol' ? 'gol' : 'clip';
-    await fs.promises.writeFile(path.join(dir, `TL-${tag}-${stamp}.webm`), Buffer.from(bytes));
+    await fs.promises.writeFile(path.join(dir, `TL-${tag}-${stamp}.webm`), data);
     send('game:toast', { message: `Clip guardado (${Math.round(Number(payload.seconds) || 0)} s) en Videos\\TL App\\Clips`, kind: 'ok' });
   } catch (err) {
     console.error('[clips]', err);

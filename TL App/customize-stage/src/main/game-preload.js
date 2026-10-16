@@ -10302,7 +10302,12 @@ async function doClip(label) {
       log('error', `clip: ${res.reason}${res.error ? ` (${res.error})` : ''}`, 'juego');
       return notify(`No se pudo guardar el clip: ${why}`, 'err');
     }
-    ipcRenderer.send('game:clip-save', { bytes: res.bytes, label, seconds: res.seconds });
+    const size = res.bytes && res.bytes.length;
+    log('info', `clip: ${size} bytes, ${res.seconds} s`, 'juego');
+    if (!size || size < 1000) return notify(`El video del clip salió vacío (${size || 0} bytes)`, 'err');
+    // Como texto (base64): un Uint8Array grande por IPC puede llegar como cualquier cosa.
+    const b64 = Buffer.from(res.bytes.buffer, res.bytes.byteOffset, res.bytes.byteLength).toString('base64');
+    ipcRenderer.send('game:clip-save', { b64, size, label, seconds: res.seconds });
   } catch (err) {
     log('error', `clip: ${err && err.message ? err.message : err}`, 'juego');
     notify(`No se pudo guardar el clip (${err && err.message ? err.message : 'error'})`, 'err');
