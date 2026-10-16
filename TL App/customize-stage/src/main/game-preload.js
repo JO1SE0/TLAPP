@@ -656,7 +656,7 @@ function applyClientStyles(doc) {
       bottom: 14px !important;
       width: min(1280px, calc(100vw - 32px)) !important;
       box-sizing: border-box !important;
-      transform: translateX(-50%);
+      transform: translate(-50%, calc(var(--tvm-dy, 0px) * -1));
       display: flex !important;
       flex-wrap: wrap !important;
       align-items: center !important;
@@ -1809,11 +1809,21 @@ async function watchReplayView(doc) {
   if (spd) spd.classList.add('tvm-dup');
   for (const el of own) if (/^[-+−]$/.test((el.textContent || '').trim())) el.classList.add('tvm-dup');
 
-  // El chat se corre lo que mide la barra para no quedar tapado (ver el CSS).
+  // El chat se corre lo que mide la barra para no quedar tapado (ver el CSS), y
+  // la barra se sube lo que haga falta si el contenedor de HaxBall la corre y el
+  // borde de la pantalla la corta: se mide dónde quedó y se compensa.
+  const root = doc.documentElement;
   const syncHeight = () => {
-    try { doc.documentElement.style.setProperty('--tvm-replay-h', `${controls.offsetHeight}px`); } catch (_) { /* sin altura */ }
+    try {
+      root.style.setProperty('--tvm-replay-h', `${controls.offsetHeight}px`);
+      root.style.setProperty('--tvm-dy', '0px');
+      const gap = view.innerHeight - controls.getBoundingClientRect().bottom;
+      root.style.setProperty('--tvm-dy', `${Math.round(14 - gap)}px`);
+    } catch (_) { /* sin medidas */ }
   };
   if (view.ResizeObserver) new view.ResizeObserver(syncHeight).observe(controls);
+  view.addEventListener('resize', syncHeight);
+  view.setTimeout(syncHeight, 400);
   syncHeight();
 
   const bar = doc.createElement('div');
