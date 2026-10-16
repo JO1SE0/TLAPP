@@ -333,8 +333,11 @@ const ASSET_SCHEME = 'tvm-asset';
 
 protocol.registerSchemesAsPrivileged([{
   scheme: ASSET_SCHEME,
-  privileges: { standard: true, secure: true, supportFetchAPI: true, stream: true, bypassCSP: true }
+  privileges: { standard: true, secure: true, supportFetchAPI: true, stream: true, bypassCSP: true, corsEnabled: true }
 }]);
+
+/** Las imágenes propias se dibujan en la cancha: sin este permiso la dejan «contaminada» y no se puede grabar (clips). */
+const ASSET_CORS = { 'Access-Control-Allow-Origin': '*' };
 
 const ASSET_TYPES = {
   '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg',
@@ -1086,7 +1089,7 @@ function registerAssetProtocol(partition) {
 
     if (kind === 'logo') {
       try {
-        return callback({ mimeType: 'image/png', data: logoBuffer() });
+        return callback({ mimeType: 'image/png', data: logoBuffer(), headers: ASSET_CORS });
       } catch {
         return notFound();
       }
@@ -1094,7 +1097,7 @@ function registerAssetProtocol(partition) {
 
     if (kind === 'crest') {
       try {
-        return callback({ mimeType: 'image/png', data: flashLogoBuffer() });
+        return callback({ mimeType: 'image/png', data: flashLogoBuffer(), headers: ASSET_CORS });
       } catch {
         return notFound();
       }
@@ -1105,7 +1108,7 @@ function registerAssetProtocol(partition) {
 
     const type = ASSET_TYPES[path.extname(file).toLowerCase()] || 'application/octet-stream';
     try {
-      return callback({ mimeType: type, data: fs.readFileSync(file) });
+      return callback({ mimeType: type, data: fs.readFileSync(file), headers: ASSET_CORS });
     } catch {
       return notFound();
     }
@@ -3552,7 +3555,8 @@ listen('game:clip-save', async (_e, payload) => {
     await fs.promises.writeFile(path.join(dir, `TL-${tag}-${stamp}.webm`), Buffer.from(bytes));
     send('game:toast', { message: `Clip guardado (${Math.round(Number(payload.seconds) || 0)} s) en Videos\\TL App\\Clips`, kind: 'ok' });
   } catch (err) {
-    send('game:toast', { message: 'No se pudo guardar el clip', kind: 'err' });
+    console.error('[clips]', err);
+    send('game:toast', { message: `No se pudo guardar el clip (${err && err.message ? err.message : 'error'})`, kind: 'err' });
   }
 });
 /** Un clip de la carpeta por su nombre: sólo el nombre, nunca una ruta de afuera. */

@@ -5301,6 +5301,9 @@ function loadAvatarImage(view) {
   avatarImageSrc = file;
   avatarImage = null;
   const img = new view.Image();
+  // Con permiso CORS: una imagen sin él deja la cancha «contaminada» y el navegador
+  // no la deja pasar a video (los clips fallaban por eso). Ver `registerAssetProtocol`.
+  img.crossOrigin = 'anonymous';
   img.onload = () => {
     if (avatarImageSrc !== file) return;
     avatarImage = img;
@@ -5348,6 +5351,7 @@ function loadBallImage(view) {
   ballImageSrc = file;
   ballImage = null;
   const img = new view.Image();
+  img.crossOrigin = 'anonymous';
   img.onload = () => { if (ballImageSrc === file) ballImage = img; };
   img.onerror = () => {
     if (ballImageSrc !== file) return;
@@ -6686,6 +6690,7 @@ function crestImage(ctx) {
   const view = doc && doc.defaultView;
   if (!view) return null;
   const img = new view.Image();
+  img.crossOrigin = 'anonymous';
   img.onload = () => flushStadiumCache(view);
   img.src = assetUrl('crest');
   crestImg = img;
@@ -10290,14 +10295,17 @@ async function doClip(label) {
     notify('Guardando clip…');
     const res = await clipper.clip();
     if (!res.ok) {
-      const why = res.reason === 'unsupported' ? 'este equipo no puede grabar video' : 'no se pudo armar';
+      const tainted = /origin-clean|SecurityError/i.test(`${res.error || ''}`);
+      const why = res.reason === 'unsupported'
+        ? 'este equipo no puede grabar video'
+        : tainted ? 'la cancha tiene una imagen externa que bloquea el video' : `no se pudo armar${res.error ? ` (${res.error})` : ''}`;
       log('error', `clip: ${res.reason}${res.error ? ` (${res.error})` : ''}`, 'juego');
       return notify(`No se pudo guardar el clip: ${why}`, 'err');
     }
     ipcRenderer.send('game:clip-save', { bytes: res.bytes, label, seconds: res.seconds });
   } catch (err) {
     log('error', `clip: ${err && err.message ? err.message : err}`, 'juego');
-    notify('No se pudo guardar el clip', 'err');
+    notify(`No se pudo guardar el clip (${err && err.message ? err.message : 'error'})`, 'err');
   }
 }
 
