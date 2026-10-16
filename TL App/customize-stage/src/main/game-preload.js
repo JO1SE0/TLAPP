@@ -10298,7 +10298,8 @@ async function doClip(label) {
       const tainted = /origin-clean|SecurityError/i.test(`${res.error || ''}`);
       const why = res.reason === 'unsupported'
         ? 'este equipo no puede grabar video'
-        : tainted ? 'la cancha tiene una imagen externa que bloquea el video' : `no se pudo armar${res.error ? ` (${res.error})` : ''}`;
+        : tainted ? 'la cancha tiene una imagen externa que bloquea el video'
+          : res.reason === 'empty' && res.error ? `el grabador no entregó nada (${res.error})` : `no se pudo armar${res.error ? ` (${res.error})` : ''}`;
       log('error', `clip: ${res.reason}${res.error ? ` (${res.error})` : ''}`, 'juego');
       return notify(`No se pudo guardar el clip: ${why}`, 'err');
     }

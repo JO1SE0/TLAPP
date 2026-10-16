@@ -172,44 +172,65 @@
         out = doc.createElement('canvas');
         out.width = g.w;
         out.height = g.h;
+        // Dentro del documento (y casi invisible): un lienzo suelto puede no
+        // entregar cuadros al grabador en algunos Chromium, y salía un video de 0 bytes.
+        out.style.cssText = 'position:fixed;left:0;top:0;width:2px;height:2px;opacity:0.02;pointer-events:none;z-index:-1';
+        (doc.body || doc.documentElement).appendChild(out);
         const octx = out.getContext('2d', { alpha: false });
         const drawFrame = (k) => {
           const i = (first + k) % g.cap;
           octx.drawImage(snap, (i % g.cols) * g.w, Math.floor(i / g.cols) * g.h, g.w, g.h, 0, 0, g.w, g.h);
         };
 
-        const stream = out.captureStream();
-        const rec = new view.MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: g.bps });
-        const chunks = [];
-        rec.ondataavailable = (e) => { if (e.data && e.data.size) chunks.push(e.data); };
-        const stopped = new Promise((r) => { rec.onstop = r; });
+        const record = async (mimeType) => {
+          const stream = out.captureStream(g.fps);
+          const opts = { videoBitsPerSecond: g.bps };
+          if (mimeType) opts.mimeType = mimeType;
+          const rec = new view.MediaRecorder(stream, opts);
+          const chunks = [];
+          let recError = '';
+          rec.ondataavailable = (e) => { if (e.data && e.data.size) chunks.push(e.data); };
+          rec.onerror = (e) => { recError = (e && e.error && e.error.message) || 'error del grabador'; };
+          const stopped = new Promise((r) => { rec.onstop = r; });
 
-        drawFrame(0);
-        rec.start(500);
-        const t0 = view.performance.now();
-        const step = 1000 / g.fps;
-        let last = 0;
-        await new Promise((resolve) => {
-          const iv = view.setInterval(() => {
-            const k = Math.floor((view.performance.now() - t0) / step);
-            if (k >= count) { view.clearInterval(iv); resolve(); return; }
-            if (k !== last) { drawFrame(k); last = k; }
-          }, Math.max(8, Math.floor(step / 2)));
-        });
-        await sleep(150);
-        rec.stop();
-        await stopped;
-        stream.getTracks().forEach((t) => t.stop());
+          drawFrame(0);
+          rec.start(500);
+          const t0 = view.performance.now();
+          const step = 1000 / g.fps;
+          let last = 0;
+          await new Promise((resolve) => {
+            const iv = view.setInterval(() => {
+              const k = Math.floor((view.performance.now() - t0) / step);
+              if (k >= count) { view.clearInterval(iv); resolve(); return; }
+              if (k !== last) { drawFrame(k); last = k; }
+            }, Math.max(8, Math.floor(step / 2)));
+          });
+          await sleep(150);
+          try { if (rec.state === 'recording') rec.requestData(); } catch (e) { /* ya no graba */ }
+          const state = rec.state;
+          if (state !== 'inactive') rec.stop();
+          await Promise.race([stopped, sleep(2000)]);
+          stream.getTracks().forEach((t) => t.stop());
+          const blob = new view.Blob(chunks, { type: mimeType || 'video/webm' });
+          return { blob, info: `${mimeType || 'por defecto'}: ${chunks.length} trozos, grabador ${state}${recError ? `, ${recError}` : ''}` };
+        };
 
-        const blob = new view.Blob(chunks, { type: mime });
-        const bytes = new Uint8Array(await blob.arrayBuffer());
+        // Con el códec elegido y, si no sale nada, con el que traiga el equipo.
+        let got = await record(mime);
+        if (!got.blob.size) {
+          const retry = await record('');
+          retry.info = `${got.info} → ${retry.info}`;
+          got = retry;
+        }
+        if (!got.blob.size) return { ok: false, reason: 'empty', error: got.info };
+        const bytes = new Uint8Array(await got.blob.arrayBuffer());
         return { ok: true, bytes, seconds: count / g.fps, width: g.w, height: g.h };
       } catch (e) {
         return { ok: false, reason: 'error', error: e && e.message };
       } finally {
         // Se suelta la memoria de la foto enseguida: no tiene que quedar nada.
         if (snap) { snap.width = 0; snap.height = 0; }
-        if (out) { out.width = 0; out.height = 0; }
+        if (out) { out.width = 0; out.height = 0; if (out.parentNode) out.parentNode.removeChild(out); }
         busy = false;
       }
     }
