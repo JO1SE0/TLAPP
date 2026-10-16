@@ -659,8 +659,6 @@ function applyClientStyles(doc) {
        salto al hacer clic) salía corrido. La tarjeta que se ve es el ::before,
        centrado, y el contenedor deja pasar el mouse (sólo los botones lo toman). */
     html .replay-controls-view {
-      --tvm-card: min(1180px, calc(100vw - 32px));
-      --tvm-side: calc((100vw - var(--tvm-card)) / 2);
       position: fixed !important;
       left: 0 !important;
       right: 0 !important;
@@ -687,24 +685,50 @@ function applyClientStyles(doc) {
       pointer-events: none;
       z-index: 2147481000;
     }
+    /* La franja de abajo («cine»): una banda sólida a todo el ancho donde viven los
+       controles, el chat y los FPS. La cancha se acaba arriba de ella, así que ni
+       con zoom queda nada tapado. Es el ::before del contenedor (que ya mide todo
+       el ancho) y llega hasta el borde de la pantalla. */
+    html { --tvm-card: min(1180px, calc(100vw - 32px)); --tvm-side: calc((100vw - var(--tvm-card)) / 2); }
     html .replay-controls-view::before {
       content: '';
       position: absolute;
-      top: 0;
-      bottom: 0;
-      left: var(--tvm-side);
-      right: var(--tvm-side);
+      left: 0;
+      right: 0;
+      bottom: calc(-14px - var(--tvm-dy, 0px));
+      height: var(--tvm-reserve, 0px);
       z-index: -1;
-      border-radius: 22px;
-      border: 1px solid ${p.accent || p.blue}55;
-      background: linear-gradient(180deg, ${p.panel || '#141a2c'}f4, ${p.bg || '#0a0e1a'}f8);
-      box-shadow: 0 18px 44px -14px rgba(0, 0, 0, .9), inset 0 1px 0 rgba(255, 255, 255, .07);
+      border-top: 1px solid ${p.accent || p.blue}66;
+      background: linear-gradient(180deg, ${p.panel || '#141a2c'}, ${p.bg || '#0a0e1a'});
+      box-shadow: 0 -12px 28px -14px rgba(0, 0, 0, .85), inset 0 1px 0 rgba(255, 255, 255, .06);
     }
     html .replay-controls-view > * { pointer-events: auto; }
     /* El chat de la replay se esconde (tapaba la cancha): el botón «Chat» de la
        barra lo muestra, y entonces sube lo que ocupa la barra para no quedar debajo. */
     html .game-view.replayer .chatbox-view { display: none !important; }
-    html.tvm-chat-on .game-view.replayer .chatbox-view { display: block !important; }
+    /* Abierto, el chat va DENTRO de la franja, arriba de los controles (el JS le suma
+       su alto a lo reservado), y los FPS/ping en su esquina de abajo a la izquierda. */
+    html.tvm-chat-on .game-view.replayer .chatbox-view {
+      display: block !important;
+      position: fixed !important;
+      left: var(--tvm-side) !important;
+      right: auto !important;
+      top: auto !important;
+      bottom: calc(var(--tvm-replay-h, 100px) + 28px + var(--tvm-dy, 0px)) !important;
+      width: min(560px, calc(100vw - 32px)) !important;
+      height: 124px !important;
+      margin: 0 !important;
+      transform: none !important;
+      z-index: 2147481200 !important;
+    }
+    html .game-view.replayer .stats-view {
+      position: fixed !important;
+      left: 8px !important;
+      bottom: 4px !important;
+      top: auto !important;
+      right: auto !important;
+      z-index: 2147481100 !important;
+    }
     /* La barra flota, así que la cancha ocuparía toda la pantalla y quedaría
        tapada abajo: se le reserva lo que mide la barra y HaxBall la redibuja
        entera por encima (el JS pone --tvm-reserve y avisa el cambio de tamaño). */
@@ -1890,7 +1914,7 @@ async function watchReplayView(doc) {
       const dy = Math.round(14 - gap);
       root.style.setProperty('--tvm-dy', `${dy}px`);
       // Lo que se le reserva a la cancha: la barra, su margen y un respiro.
-      const reserve = controls.offsetHeight + 14 + Math.max(0, dy) + 8;
+      const reserve = controls.offsetHeight + 14 + Math.max(0, dy) + 8 + (root.classList.contains('tvm-chat-on') ? 140 : 0);
       if (reserve !== lastReserve) {
         lastReserve = reserve;
         root.style.setProperty('--tvm-reserve', `${reserve}px`);
