@@ -643,34 +643,46 @@ function applyClientStyles(doc) {
     html.tvm-mirror .game-state-view .bar > .scoreboard { flex-direction: row-reverse; }
 
     /* ── Reproductor de replays: barra flotante ──────────────────────────
-       Una pastilla abajo en el centro, en UNA fila: reiniciar y play, las
-       velocidades, ir a gol, Resumen y Pizarra, y el tiempo con la barra de
-       progreso a lo ancho. Lo de HaxBall que se repite con nuestros botones
-       (el «1x» con su - y +) se esconde. Como flota, el chat se corre hacia
-       arriba lo que mide la barra (variable --tvm-replay-h, la pone el JS) para
-       que no le tape el cuadro de texto. Sin blur ni sombras animadas. */
+       Una tarjeta abajo en el centro con DOS filas:
+         1. el tiempo y la línea de tiempo a todo lo ancho (con las marcas de
+            colores de cada gol, que son de HaxBall);
+         2. los botones: reiniciar y play, velocidades, ±5 s, ir a gol, Resumen,
+            Pizarra y Salir, centrados.
+       Lo de HaxBall que se repite con nuestros botones (el «1x» con su - y +) se
+       esconde. El alto lo decide el contenido (HaxBall lo fija y cortaba la
+       línea de tiempo cuando no entraba todo en una fila). Como flota, el chat
+       sube lo que mide la barra (--tvm-replay-h, la pone el JS) para no quedar
+       tapado. Sin blur ni sombras animadas. */
     html .replay-controls-view {
       position: fixed !important;
       left: 50% !important;
       right: auto !important;
+      top: auto !important;
       bottom: 14px !important;
-      width: min(1280px, calc(100vw - 32px)) !important;
+      width: min(1080px, calc(100vw - 32px)) !important;
+      height: auto !important;
+      min-height: 0 !important;
+      max-height: none !important;
+      overflow: visible !important;
       box-sizing: border-box !important;
       transform: translate(-50%, calc(var(--tvm-dy, 0px) * -1));
       display: flex !important;
       flex-wrap: wrap !important;
+      justify-content: center !important;
       align-items: center !important;
-      gap: 8px 10px !important;
-      padding: 9px 14px !important;
-      border-radius: 18px !important;
-      border: 1px solid ${p.accent || p.blue}66 !important;
-      background: linear-gradient(180deg, ${p.panel || '#141a2c'}f2, ${p.bg || '#0a0e1a'}f7) !important;
-      box-shadow: 0 16px 40px -14px rgba(0, 0, 0, .85), inset 0 1px 0 rgba(255, 255, 255, .06) !important;
+      gap: 10px 8px !important;
+      padding: 12px 18px 12px !important;
+      border-radius: 22px !important;
+      border: 1px solid ${p.accent || p.blue}55 !important;
+      background: linear-gradient(180deg, ${p.panel || '#141a2c'}f4, ${p.bg || '#0a0e1a'}f8) !important;
+      box-shadow: 0 18px 44px -14px rgba(0, 0, 0, .9), inset 0 1px 0 rgba(255, 255, 255, .07) !important;
       z-index: 2147481000;
     }
     /* El chat sube lo que ocupa la barra: antes se la tapaba encima. */
-    html .game-view.replayer .chatbox-view { margin-bottom: calc(var(--tvm-replay-h, 56px) + 22px) !important; }
-    html .replay-controls-view > * { order: 8; }
+    html .game-view.replayer .chatbox-view { margin-bottom: calc(var(--tvm-replay-h, 100px) + 22px) !important; }
+    html .replay-controls-view > * { order: 11; }
+    /* Salto de fila entre la línea de tiempo y los botones. */
+    html .replay-controls-view::after { content: ''; order: 3; flex: 0 0 100%; height: 0; }
     html .replay-controls-view button {
       height: 34px;
       flex: 0 0 auto;
@@ -690,33 +702,54 @@ function applyClientStyles(doc) {
     html .replay-controls-view button:active:not(:disabled) { transform: translateY(0) scale(.97); }
     /* Lo que HaxBall repite con nuestras velocidades. */
     html .replay-controls-view .tvm-dup { display: none !important; }
-    html .replay-controls-view > .tvm-restart { order: 1; }
-    html .replay-controls-view > .tvm-play {
+
+    /* Fila 1: tiempo + línea de tiempo (la ancha es lo que se arrastra). */
+    html .replay-controls-view > [data-hook="time"] {
+      order: 1;
+      flex: 0 0 auto;
+      min-width: 48px;
+      text-align: left;
+      font-variant-numeric: tabular-nums;
+      font-weight: 800;
+      font-size: 15px;
+      color: #fff !important;
+    }
+    html .replay-controls-view > .timebar {
       order: 2;
+      position: relative !important;
+      flex: 1 1 0 !important;
+      min-width: 0 !important;
+      width: auto !important;
+      height: auto !important;
+      min-height: 18px;
+      margin: 0 !important;
+      padding: 0 !important;
+    }
+    html .replay-controls-view .timebar .barbg {
+      height: 8px !important;
+      margin-top: 5px !important;
+      border-radius: 8px !important;
+      background: rgba(255, 255, 255, .16) !important;
+    }
+    html .replay-controls-view .timebar .bar {
+      border-radius: 8px !important;
+      background: linear-gradient(90deg, ${p.accent || p.blue}, ${p.accent2 || p.accent || p.blue}) !important;
+    }
+
+    /* Fila 2: botones, en este orden. */
+    html .replay-controls-view > .tvm-restart { order: 4; }
+    html .replay-controls-view > .tvm-play {
+      order: 5;
       min-width: 44px;
+      height: 38px;
       border-radius: 50% !important;
       background: linear-gradient(135deg, ${p.accent || p.blue}, ${p.accent2 || p.accent || p.blue}) !important;
     }
-    html .replay-controls-view > .tvm-speeds { order: 3; }
-    html .replay-controls-view > .tvm-skipnav { order: 4; }
-    html .replay-controls-view > .tvm-goalnav { order: 5; }
-    html .replay-controls-view > .tvm-stats-btn { order: 6; }
-    html .replay-controls-view > .tvm-board-btn { order: 7; }
-    html .replay-controls-view > [data-hook="time"] {
-      order: 9;
-      min-width: 46px;
-      text-align: center;
-      font-variant-numeric: tabular-nums;
-      font-weight: 700;
-      color: #fff !important;
-    }
-    /* La barra de progreso se lleva todo el lugar que sobra: es lo que se arrastra. */
-    html .replay-controls-view > .timebar {
-      order: 10;
-      flex: 1 1 260px !important;
-      min-width: 200px;
-      padding: 6px 0;
-    }
+    html .replay-controls-view > .tvm-speeds { order: 6; }
+    html .replay-controls-view > .tvm-skipnav { order: 7; }
+    html .replay-controls-view > .tvm-goalnav { order: 8; }
+    html .replay-controls-view > .tvm-stats-btn { order: 9; }
+    html .replay-controls-view > .tvm-board-btn { order: 10; }
 
     /* Cada grupo es un control segmentado con su propio fondo. */
     .replay-controls-view .tvm-speeds {
@@ -748,8 +781,6 @@ function applyClientStyles(doc) {
       background: ${p.accent || p.blue} !important;
       color: #fff !important;
     }
-    html .replay-controls-view .timebar .barbg { height: 8px !important; border-radius: 8px !important; background: rgba(255, 255, 255, .16) !important; }
-    html .replay-controls-view .timebar .bar { border-radius: 8px !important; background: linear-gradient(90deg, ${p.accent || p.blue}, ${p.accent2 || p.accent || p.blue}) !important; }
 
     /* ── Pizarra táctica ─────────────────────────────────────────────────
        La cancha congelada con tus dibujos encima. Los controles van arriba. */
