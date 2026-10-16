@@ -423,8 +423,6 @@ const DEFAULTS = {
     softShadows: false,
     /** Aspecto de las fichas: `default` · `sphere` · `glass` · `neon` · `metal` · `bubble` · `target` · `stripes` · `gem` · `cartoon` · `dots`. */
     discStyle: 'default',
-    discEyes: 'none',
-    workshop: [],
     /** Tu aro: `default` · `double` · `dashed` · `crown`. Color vacío = el acento. */
     ringStyle: 'default',
     ringColor: '',

@@ -80,7 +80,6 @@
     const W = canvas.width;
     const H = canvas.height;
     const V = cfg.visual || {};
-    if (L.setWorkshop) L.setWorkshop(V.workshop);
     const P = cfg.pitch || {};
     const skin = P.skin || {};
     // `opts` acerca la cámara a una zona (las miniaturas de la galería): ancho
@@ -263,14 +262,11 @@
 
     const accent = css('--accent', '#d0b878');
     const nick = String((cfg.general && cfg.general.nickname) || '').trim() || 'Vos';
-    const lv = o.live || null;
     const discs = [
-      { x: lv ? lv.me.x : -178, y: lv ? lv.me.y : 6, team: '#e56e56', name: nick, mine: true },
-      { x: lv ? lv.rival.x : -62, y: lv ? lv.rival.y : -30, team: '#5689e5', name: 'Rival' },
-      { x: lv ? lv.mate.x : -34, y: lv ? lv.mate.y : 42, team: '#e56e56', name: 'Amigo' }
+      { x: -178, y: 6, team: '#e56e56', name: nick, mine: true },
+      { x: -62, y: -30, team: '#5689e5', name: 'Rival' },
+      { x: -34, y: 42, team: '#e56e56', name: 'Amigo' }
     ];
-    const bx = lv ? lv.ball.x : -122;
-    const by = lv ? lv.ball.y : 26;
     const r0 = 15 * discSize;
 
     // Detrás de las fichas: el aro y la cola de tu ficha.
@@ -317,7 +313,6 @@
       ctx.fill();
       // El estilo de ficha es sólo de la tuya, igual que en el juego.
       if (d.mine && V.discStyle && V.discStyle !== 'default') L.discOverlay(ctx, V.discStyle, d.x, d.y, r0, null);
-      if (d.mine && ['normal', 'angry', 'cute'].includes(V.discEyes) && L.discEyes) L.discEyes(ctx, V.discEyes, d.x, d.y, r0, bx, by, null);
       ctx.lineWidth = 2 * discLine;
       ctx.strokeStyle = discOutline;
       ctx.stroke();
@@ -325,15 +320,15 @@
 
     // La pelota.
     const br = 10 * ballSize;
-    if (V.softShadows) shadow(bx, by, br);
+    if (V.softShadows) shadow(-122, 26, br);
     ctx.beginPath();
-    ctx.arc(bx, by, br, 0, TAU);
+    ctx.arc(-122, 26, br, 0, TAU);
     ctx.fillStyle = '#ffffff';
     ctx.fill();
     const ballTint = L.safeColor(V.ballColor);
-    const ball3d = P.ball3d ? { spin: lv ? lv.ball.spin : 0.6, shade: shade3d } : null;
+    const ball3d = P.ball3d ? { spin: 0.6, shade: shade3d } : null;
     if ((ballStyle !== 'default' || ballTint || ball3d) && L.ballOverlay) {
-      L.ballOverlay(ctx, ballStyle, bx, by, br, null, ballTint, ball3d);
+      L.ballOverlay(ctx, ballStyle, -122, 26, br, null, ballTint, ball3d);
     }
     ctx.lineWidth = 2 * ballLine;
     ctx.strokeStyle = ballOutline;
@@ -370,7 +365,6 @@
     const W = canvas.width;
     const H = canvas.height;
     const V = (cfg && cfg.visual) || {};
-    if (L.setWorkshop) L.setWorkshop(V.workshop);
     const P = (cfg && cfg.pitch) || {};
     ctx.save();
     ctx.setTransform(1, 0, 0, 1, 0, 0);

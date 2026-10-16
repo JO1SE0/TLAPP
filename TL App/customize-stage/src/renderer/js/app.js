@@ -72,7 +72,7 @@ const PANEL_TABS = {
     { id: 'cancha', label: 'tab.pitch', hint: 'tab.pitchHint',
       secs: ['cancha', 'acabado', 'trazos', 'replays'] },
     { id: 'fichas', label: 'tab.discs', hint: 'tab.discsHint',
-      secs: ['jugador', 'pelota', 'fichaslook', 'taller', 'nombres'] },
+      secs: ['jugador', 'pelota', 'fichaslook', 'nombres'] },
     { id: 'partida', label: 'tab.ingame', hint: 'tab.ingameHint',
       secs: ['chatlook', 'statslook', 'partida', 'teclashud', 'overlay', 'sonidos', 'clips', 'lista'] }
   ],
@@ -901,7 +901,6 @@ function paintPreview() {
     try { window.TLPreview.draw(document.getElementById('pvCanvas'), state.config); } catch (e) { box.hidden = true; }
   });
 }
-
 
 /**
  * El tema ya no vive sólo dentro del juego: el main resuelve la paleta y manda
@@ -8611,7 +8610,6 @@ const LOOK_SECTIONS = {
   ],
   lookDiscs: [
     { key: 'discStyle', type: 'select', label: 'look.discStyle', options: [['default', 'look.opt.none'], ['sphere', 'look.ds.sphere'], ['glass', 'look.ds.glass'], ['neon', 'look.ds.neon'], ['metal', 'look.ds.metal'], ['bubble', 'look.ds.bubble'], ['target', 'look.ds.target'], ['stripes', 'look.ds.stripes'], ['gem', 'look.ds.gem'], ['cartoon', 'look.ds.cartoon'], ['dots', 'look.ds.dots']] },
-    { key: 'discEyes', type: 'select', label: 'look.discEyes', desc: 'look.discEyesHelp', options: [['none', 'look.opt.none'], ['normal', 'look.eyes.normal'], ['angry', 'look.eyes.angry'], ['cute', 'look.eyes.cute']] },
     { key: 'softShadows', type: 'switch', label: 'look.softShadows', desc: 'look.softShadowsHelp' },
     { key: 'discOutline', type: 'color', label: 'look.discOutline' },
     { key: 'ballStyle', type: 'select', label: 'look.ballStyle', options: [['default', 'look.opt.none'], ['soccer', 'look.bs.soccer'], ['neon', 'look.bs.neon'], ['gold', 'look.bs.gold'], ['beach', 'look.bs.beach'], ['eight', 'look.bs.eight'], ['star', 'look.bs.star'], ['panels', 'look.bs.panels'], ['triangles', 'look.bs.triangles'], ['vintage', 'look.bs.vintage'], ['tennis', 'look.bs.tennis'], ['basket', 'look.bs.basket'], ['volley', 'look.bs.volley'], ['baseball', 'look.bs.baseball'], ['golf', 'look.bs.golf'], ['bowling', 'look.bs.bowling'], ['earth', 'look.bs.earth'], ['moon', 'look.bs.moon'], ['disco', 'look.bs.disco'], ['orb', 'look.bs.orb'], ['pumpkin', 'look.bs.pumpkin'], ['melon', 'look.bs.melon'], ['eye', 'look.bs.eye']] },
@@ -8647,7 +8645,7 @@ const LOOK_SECTIONS = {
 
 const LOOK_DEFAULTS = {
   texture: 'none', pitchLight: 'none', softShadows: false, crest: false, crestOpacity: 0.18, crestSize: 0.45, lineColor: '', postColor: '',
-  discStyle: 'default', discEyes: 'none', ballStyle: 'default', ballColor: '', lineGlow: false, discOutline: '', ballOutline: '', ringStyle: 'default', ringColor: '',
+  discStyle: 'default', ballStyle: 'default', ballColor: '', lineGlow: false, discOutline: '', ballOutline: '', ringStyle: 'default', ringColor: '',
   selfTrail: false, selfTrailColor: '', nameScale: 1, nameColor: '', nameOutline: false, nameFont: 'default',
   chatScale: 1, chatBg: -1, chatFont: 'default', chatOpacity: 1, statsOpacity: 1, statsStyle: 'default', menuBg: 'none'
 };
@@ -8730,7 +8728,7 @@ function lookGalleryRow(item, value) {
   const cfg = state.config;
   const grid = document.createElement('div');
   grid.className = 'lookgal';
-  for (const [val, label] of lookOptionsWithCustom(item)) {
+  for (const [val, label] of item.options) {
     const tile = document.createElement('button');
     tile.type = 'button';
     tile.className = 'lookgal__item' + (val === value ? ' is-on' : '');
@@ -8739,7 +8737,7 @@ function lookGalleryRow(item, value) {
     canvas.width = 168;
     canvas.height = 112;
     const name = document.createElement('span');
-    name.textContent = String(val).startsWith('cust:') ? label : t(label);
+    name.textContent = t(label);
     tile.append(canvas, name);
     tile.addEventListener('click', () => {
       if (val !== value) lookPatch({ visual: { [item.key]: val } });
@@ -8849,258 +8847,6 @@ function renderLookSections() {
   if (app) app.dataset.menubg = lookValue('menuBg') || 'none';
 }
 
-
-/* ── Taller de pelota y ficha ───────────────────────────────────────────────
- * Diseños propios: color de base + capas. Viven en `config.visual.workshop` y se
- * usan con el estilo `cust:ID`. El editor tiene vista previa en vivo (un recuadro
- * grande y la escena); sólo dibuja mientras la ventana está abierta.
- */
-const WS_LAYER_NAMES = {
-  stripes: ['Bandas', 'Stripes'], half: ['Mitad', 'Half'], quarters: ['Cuartos', 'Quarters'],
-  dots: ['Puntos en círculo', 'Ring of dots'], checker: ['Damero', 'Checker'], ring: ['Aro', 'Ring'],
-  disk: ['Círculo', 'Circle'], star: ['Estrella', 'Star'], polygon: ['Polígono', 'Polygon'],
-  cross: ['Cruz', 'Cross'], heart: ['Corazón', 'Heart'], bolt: ['Rayo', 'Bolt'], spiral: ['Espiral', 'Spiral']
-};
-const WS_MAX = 12;
-const WS_LAYERS_UI = 8;
-let wsDraft = null;
-let wsIsNew = false;
-let wsFrame = 0;
-
-function wsList() {
-  const list = (state.config.visual || {}).workshop;
-  return Array.isArray(list) ? list : [];
-}
-
-/** Opciones de las galerías: las de siempre + los diseños propios del tipo que va. */
-function lookOptionsWithCustom(item) {
-  const kind = item.key === 'ballStyle' ? 'ball' : item.key === 'discStyle' ? 'disc' : '';
-  if (!kind) return item.options;
-  const own = wsList().filter((d) => d.kind === kind).map((d) => ['cust:' + d.id, d.name || (isEn() ? 'My design' : 'Mi diseño')]);
-  return own.length ? item.options.concat(own) : item.options;
-}
-
-function wsStyleKey(kind) { return kind === 'disc' ? 'discStyle' : 'ballStyle'; }
-
-function wsCfgWith(design) {
-  const cfg = state.config;
-  const others = wsList().filter((d) => d.id !== design.id);
-  return { ...cfg, visual: { ...(cfg.visual || {}), workshop: others.concat([design]), [wsStyleKey(design.kind)]: 'cust:' + design.id } };
-}
-
-function renderWorkshop() {
-  const host = $('#wsList');
-  if (!host) return;
-  host.replaceChildren();
-  const list = wsList();
-  const cfg = state.config;
-  $('#wsNew').disabled = list.length >= WS_MAX;
-  if (!list.length) {
-    const empty = document.createElement('p');
-    empty.className = 'sec__desc';
-    empty.textContent = isEn() ? 'No designs yet.' : 'Todavía no hay diseños.';
-    host.append(empty);
-    return;
-  }
-  for (const d of list) {
-    const key = wsStyleKey(d.kind);
-    const on = (cfg.visual || {})[key] === 'cust:' + d.id;
-    const card = document.createElement('div');
-    card.className = 'wscard' + (on ? ' is-on' : '');
-    const canvas = document.createElement('canvas');
-    canvas.width = 168;
-    canvas.height = 112;
-    const name = document.createElement('b');
-    name.textContent = d.name || (isEn() ? 'My design' : 'Mi diseño');
-    const kind = document.createElement('small');
-    kind.textContent = d.kind === 'disc' ? (isEn() ? 'Disc' : 'Ficha') : (isEn() ? 'Ball' : 'Pelota');
-    const btns = document.createElement('div');
-    btns.className = 'wscard__btns';
-    const use = document.createElement('button');
-    use.type = 'button';
-    use.className = 'btn btn--sm' + (on ? ' btn--ghost' : '');
-    use.textContent = on ? (isEn() ? 'Stop using' : 'Dejar de usar') : (isEn() ? 'Use' : 'Usar');
-    use.addEventListener('click', () => lookPatch({ visual: { [key]: on ? 'default' : 'cust:' + d.id } }));
-    const edit = document.createElement('button');
-    edit.type = 'button';
-    edit.className = 'btn btn--ghost btn--sm';
-    edit.textContent = isEn() ? 'Edit' : 'Editar';
-    edit.addEventListener('click', () => wsOpen(d));
-    btns.append(use, edit);
-    card.append(canvas, name, kind, btns);
-    host.append(card);
-    requestAnimationFrame(() => {
-      try { if (window.TLPreview) window.TLPreview.swatch(canvas, key, 'cust:' + d.id, wsCfgWith(d)); } catch (e) { /* adorno */ }
-    });
-  }
-}
-
-function wsOpen(design) {
-  wsIsNew = !design;
-  wsDraft = design
-    ? JSON.parse(JSON.stringify(design))
-    : { id: 'w' + Date.now().toString(36), kind: 'ball', name: '', base: '#f4f4f0', layers: [{ t: 'star', c: '#1c1f26', n: 5, s: 0.5, a: 0 }] };
-  $('#wsDelete').hidden = wsIsNew;
-  $('#wsModal').hidden = false;
-  wsBuildForm();
-  wsPaint();
-}
-
-function wsClose() {
-  cancelAnimationFrame(wsFrame);
-  $('#wsModal').hidden = true;
-  wsDraft = null;
-}
-
-/** Redibuja la vista previa (a lo sumo una vez por cuadro, y sólo con la ventana abierta). */
-function wsPaint() {
-  if (!wsDraft || $('#wsModal').hidden || !window.TLPreview) return;
-  cancelAnimationFrame(wsFrame);
-  wsFrame = requestAnimationFrame(() => {
-    if (!wsDraft) return;
-    const cfg = wsCfgWith(wsDraft);
-    try {
-      window.TLPreview.swatch($('#wsBig'), wsStyleKey(wsDraft.kind), 'cust:' + wsDraft.id, cfg);
-      window.TLPreview.draw($('#wsScene'), cfg, { w: 520 });
-    } catch (e) { /* la vista previa es un adorno */ }
-  });
-}
-
-function wsField(label, node) {
-  const row = document.createElement('div');
-  row.className = 'wsrow';
-  const l = document.createElement('label');
-  l.textContent = label;
-  row.append(l, node);
-  return row;
-}
-
-function wsRange(min, max, step, value, onInput) {
-  const input = document.createElement('input');
-  input.type = 'range';
-  input.min = min;
-  input.max = max;
-  input.step = step;
-  input.value = value;
-  input.addEventListener('input', () => { onInput(Number(input.value)); wsPaint(); });
-  return input;
-}
-
-function wsBuildForm() {
-  const form = $('#wsForm');
-  form.replaceChildren();
-  const d = wsDraft;
-
-  const name = document.createElement('input');
-  name.type = 'text';
-  name.maxLength = 24;
-  name.value = d.name;
-  name.placeholder = isEn() ? 'Design name' : 'Nombre del diseño';
-  name.addEventListener('input', () => { d.name = name.value; });
-  form.append(wsField(isEn() ? 'Name' : 'Nombre', name));
-
-  const kind = document.createElement('select');
-  kind.innerHTML = `<option value="ball">${isEn() ? 'Ball' : 'Pelota'}</option><option value="disc">${isEn() ? 'Disc (yours)' : 'Ficha (la tuya)'}</option>`;
-  kind.value = d.kind;
-  kind.disabled = !wsIsNew;
-  kind.addEventListener('change', () => { d.kind = kind.value; wsPaint(); });
-  form.append(wsField(isEn() ? 'Type' : 'Tipo', kind));
-
-  const baseWrap = document.createElement('div');
-  baseWrap.className = 'wsrow';
-  const base = document.createElement('input');
-  base.type = 'color';
-  base.value = d.base || '#ffffff';
-  base.addEventListener('input', () => { d.base = base.value; wsPaint(); });
-  const none = document.createElement('button');
-  none.type = 'button';
-  none.className = 'btn btn--ghost btn--sm';
-  none.textContent = isEn() ? 'No base (keep original)' : 'Sin base (dejar la original)';
-  none.addEventListener('click', () => { d.base = ''; wsPaint(); });
-  baseWrap.append(base, none);
-  form.append(wsField(isEn() ? 'Base' : 'Base', baseWrap));
-
-  d.layers.forEach((layer, i) => {
-    const box = document.createElement('div');
-    box.className = 'wslayer';
-    const head = document.createElement('div');
-    head.className = 'wslayer__head';
-    const type = document.createElement('select');
-    for (const [id, names] of Object.entries(WS_LAYER_NAMES)) {
-      const o = document.createElement('option');
-      o.value = id;
-      o.textContent = names[isEn() ? 1 : 0];
-      type.append(o);
-    }
-    type.value = layer.t;
-    type.addEventListener('change', () => { layer.t = type.value; wsPaint(); });
-    const color = document.createElement('input');
-    color.type = 'color';
-    color.value = layer.c;
-    color.addEventListener('input', () => { layer.c = color.value; wsPaint(); });
-    const mk = (txt, title, fn, disabled) => {
-      const b = document.createElement('button');
-      b.type = 'button';
-      b.className = 'btn btn--ghost btn--sm';
-      b.textContent = txt;
-      b.title = title;
-      b.disabled = !!disabled;
-      b.addEventListener('click', fn);
-      return b;
-    };
-    head.append(
-      type, color,
-      mk('▲', isEn() ? 'Move up' : 'Subir', () => { d.layers.splice(i - 1, 0, d.layers.splice(i, 1)[0]); wsBuildForm(); wsPaint(); }, i === 0),
-      mk('▼', isEn() ? 'Move down' : 'Bajar', () => { d.layers.splice(i + 1, 0, d.layers.splice(i, 1)[0]); wsBuildForm(); wsPaint(); }, i === d.layers.length - 1),
-      mk('✕', isEn() ? 'Remove' : 'Quitar', () => { d.layers.splice(i, 1); wsBuildForm(); wsPaint(); })
-    );
-    box.append(
-      head,
-      wsField(isEn() ? 'Amount' : 'Cantidad', wsRange(1, 12, 1, layer.n, (v) => { layer.n = v; })),
-      wsField(isEn() ? 'Size' : 'Tamaño', wsRange(0.1, 1, 0.01, layer.s, (v) => { layer.s = v; })),
-      wsField(isEn() ? 'Rotation' : 'Giro', wsRange(0, 360, 1, layer.a, (v) => { layer.a = v; }))
-    );
-    form.append(box);
-  });
-
-  const add = document.createElement('button');
-  add.type = 'button';
-  add.className = 'btn btn--ghost btn--sm';
-  add.textContent = isEn() ? '+ Add layer' : '+ Agregar capa';
-  add.disabled = d.layers.length >= WS_LAYERS_UI;
-  add.addEventListener('click', () => {
-    d.layers.push({ t: 'disk', c: '#d94b4b', n: 5, s: 0.4, a: 0 });
-    wsBuildForm();
-    wsPaint();
-  });
-  form.append(add);
-}
-
-$('#wsNew').addEventListener('click', () => wsOpen(null));
-$('#wsClose').addEventListener('click', wsClose);
-$('#wsCancel').addEventListener('click', wsClose);
-$('#wsModal').addEventListener('click', (e) => { if (e.target === $('#wsModal')) wsClose(); });
-window.addEventListener('keydown', (e) => { if (e.key === 'Escape' && wsDraft && !$('#wsModal').hidden) wsClose(); });
-$('#wsSave').addEventListener('click', async () => {
-  if (!wsDraft) return;
-  const d = JSON.parse(JSON.stringify(wsDraft));
-  if (!d.name.trim()) d.name = isEn() ? 'My design' : 'Mi diseño';
-  const rest = wsList().filter((x) => x.id !== d.id);
-  const list = rest.concat([d]).slice(-WS_MAX);
-  wsClose();
-  await lookPatch({ visual: { workshop: list } });
-});
-$('#wsDelete').addEventListener('click', async () => {
-  if (!wsDraft) return;
-  const id = wsDraft.id;
-  wsClose();
-  const v = state.config.visual || {};
-  const patch = { workshop: wsList().filter((x) => x.id !== id) };
-  if (v.ballStyle === 'cust:' + id) patch.ballStyle = 'default';
-  if (v.discStyle === 'cust:' + id) patch.discStyle = 'default';
-  await lookPatch({ visual: patch });
-});
-
 /* Looks guardados: una foto de los ajustes visuales, con nombre. */
 const LOOK_PITCH_KEYS = ['ball3d', 'selfRing', 'teamRings', 'goalFlash', 'goalShake', 'goalClub', 'skin'];
 const LOOK_MAX = 12;
@@ -9157,7 +8903,6 @@ $('#lookSave').addEventListener('click', async () => {
 function renderLook() {
   renderLookSections();
   renderLooks();
-  renderWorkshop();
 }
 
 function renderAll() {

@@ -5135,7 +5135,6 @@ function softShadow(ctx, x, y, r, rebuild) {
 }
 
 function drawBall(ctx, x, y, r, indice) {
-  if (indice === 0) { ballAt.x = x; ballAt.y = y; ballAt.on = true; }
   const wantSize = indice === 0 && visual.ballSize !== 1;
   if (wantSize) {
     // El trazo del círculo ya está armado con el radio de HaxBall, y un trazo
@@ -9345,7 +9344,7 @@ const visual = {
   pitchLine: 1, discLine: 1, ballLine: 1, ballSize: 1, discSize: 1, lines: false, sizes: false,
   texture: 'none', crest: false, crestOpacity: 0.18, crestSize: 0.45,
   lineColor: '', postColor: '', discOutline: '', ballOutline: '',
-  discStyle: 'default', discEyes: '', ballStyle: 'default', ringStyle: 'default', ringColor: '', light: '', shadows: false, ballColor: '', lineGlow: false,
+  discStyle: 'default', ballStyle: 'default', ringStyle: 'default', ringColor: '', light: '', shadows: false, ballColor: '', lineGlow: false,
   selfTrail: false, selfTrailColor: '',
   nameScale: 1, nameColor: '', nameOutline: false, nameFont: 'default',
   /** Hay algo que hacerle a las fichas o a la pelota en el `stroke()`. */
@@ -9381,14 +9380,12 @@ function syncCanvasHotFlags() {
   visual.postColor = lookfx.safeColor(cfg.postColor);
   visual.discOutline = lookfx.safeColor(cfg.discOutline);
   visual.ballOutline = lookfx.safeColor(cfg.ballOutline);
-  lookfx.setWorkshop(cfg.workshop);
-  visual.discStyle = ['sphere', 'glass', 'neon', 'metal', 'bubble', 'target', 'stripes', 'gem', 'cartoon', 'dots'].includes(cfg.discStyle) || lookfx.hasCustom(cfg.discStyle) ? cfg.discStyle : 'default';
-  visual.discEyes = ['normal', 'angry', 'cute'].includes(cfg.discEyes) ? cfg.discEyes : '';
+  visual.discStyle = ['sphere', 'glass', 'neon', 'metal', 'bubble', 'target', 'stripes', 'gem', 'cartoon', 'dots'].includes(cfg.discStyle) ? cfg.discStyle : 'default';
   visual.light = ['vignette', 'spot', 'corners'].includes(cfg.pitchLight) ? cfg.pitchLight : '';
   visual.shadows = !!cfg.softShadows;
   visual.ballColor = lookfx.safeColor(cfg.ballColor);
   visual.lineGlow = !!cfg.lineGlow;
-  visual.ballStyle = BALL_STYLES.includes(cfg.ballStyle) || lookfx.hasCustom(cfg.ballStyle) ? cfg.ballStyle : 'default';
+  visual.ballStyle = BALL_STYLES.includes(cfg.ballStyle) ? cfg.ballStyle : 'default';
   visual.ringStyle = ['double', 'dashed', 'crown', 'glow', 'dots', 'arrow'].includes(cfg.ringStyle) ? cfg.ringStyle : 'default';
   visual.ringColor = lookfx.safeColor(cfg.ringColor);
   visual.selfTrail = !!cfg.selfTrail;
@@ -9397,8 +9394,7 @@ function syncCanvasHotFlags() {
   visual.nameColor = lookfx.safeColor(cfg.nameColor);
   visual.nameOutline = !!cfg.nameOutline;
   visual.nameFont = FONT_FAMILIES[cfg.nameFont] ? cfg.nameFont : 'default';
-  visual.discFx = visual.shadows || visual.discStyle !== 'default' || !!visual.discEyes || visual.ballStyle !== 'default' || !!visual.ballColor || !!visual.discOutline || !!visual.ballOutline;
-  if (canvasHookSwap) canvasHookSwap();
+  visual.discFx = visual.shadows || visual.discStyle !== 'default' || visual.ballStyle !== 'default' || !!visual.ballColor || !!visual.discOutline || !!visual.ballOutline;
   visual.names = visual.nameScale !== 1 || !!visual.nameColor || visual.nameOutline || visual.nameFont !== 'default';
 }
 
@@ -9454,25 +9450,8 @@ const playerPatterns = new WeakSet();
  */
 const pend = { on: false, kind: '', k: 1, x: 0, y: 0, r: 0, mine: false };
 
-/** Dónde está la pelota en este cuadro (la dibuja HaxBall antes que las fichas): hacia ahí miran los ojos. */
-const ballAt = { x: 0, y: 0, on: false };
-
-/** Estilo de ficha y ojos de la ficha propia, con el trazo en curso como recorte. */
-function ownDiscExtras(ctx, strokeFn) {
-  ownDraw++;
-  try {
-    if (visual.discStyle !== 'default') lookfx.discOverlay(ctx, visual.discStyle, pend.x, pend.y, pend.r, strokeFn);
-    if (visual.discEyes) lookfx.discEyes(ctx, visual.discEyes, pend.x, pend.y, pend.r, ballAt.on ? ballAt.x : pend.x, ballAt.on ? ballAt.y : pend.y, strokeFn);
-  } finally {
-    ownDraw--;
-  }
-}
-
 /** > 0 mientras dibuja el propio cliente (ayudas, color de cancha): no se toca. */
 let ownDraw = 0;
-
-/** Pone o saca los ganchos de dibujo según las opciones activas. Lo arma `installCanvasHooks`. */
-let canvasHookSwap = null;
 
 function installCanvasHooks(doc) {
   const view = doc && doc.defaultView;
@@ -9654,7 +9633,7 @@ function installCanvasHooks(doc) {
         } else if (pend.kind === 'disc') {
           mul = visual.discLine;
           color = visual.discOutline;
-          overlay = (visual.discStyle !== 'default' || !!visual.discEyes) && pend.mine;
+          overlay = visual.discStyle !== 'default' && pend.mine;
         } else {
           mul = visual.pitchLine;
         }
@@ -9663,7 +9642,7 @@ function installCanvasHooks(doc) {
         if (visual.lineColor && lookfx.isLightLine(this.strokeStyle)) color = visual.lineColor;
         if (visual.lineGlow && lookfx.isLightLine(this.strokeStyle)) glow = color || this.strokeStyle;
       }
-      if (overlay) ownDiscExtras(this, origStroke);
+      if (overlay) lookfx.discOverlay(this, visual.discStyle, pend.x, pend.y, pend.r, origStroke);
       if (ballFx) {
         ownDraw++;
         try {
@@ -9710,12 +9689,12 @@ function installCanvasHooks(doc) {
     // Con gráficos planos tu estilo de ficha (metal, vidrio…) se ve igual: es
     // del cliente, no de HaxBall.
     if (pend.on && ownDraw === 0) {
-      const discFx = pend.kind === 'disc' && pend.mine && (visual.discStyle !== 'default' || !!visual.discEyes);
+      const discFx = pend.kind === 'disc' && pend.mine && visual.discStyle !== 'default';
       const ballFx = pend.kind === 'ball' && (visual.ballStyle !== 'default' || !!visual.ballColor);
       if (discFx || ballFx) {
         ownDraw++;
         try {
-          if (discFx) ownDiscExtras(this, origStroke);
+          if (discFx) lookfx.discOverlay(this, visual.discStyle, pend.x, pend.y, pend.r, origStroke);
           else lookfx.ballOverlay(this, visual.ballStyle, pend.x, pend.y, pend.r, origStroke, visual.ballColor, ballFx3dOn ? ballFx3d : null);
         } finally {
           ownDraw--;
@@ -9785,45 +9764,6 @@ function installCanvasHooks(doc) {
     }
     return origArc.call(this, x, y, r, a0, a1, ccw);
   };
-
-  /*
-   * ── Ganchos que se sueltan solos ────────────────────────────────────────
-   *
-   * Relleno, trazo, arco, degradados y sombras sólo hacen algo con «Gráficos
-   * planos» o con alguna opción visual puesta (grosores, tamaños, estilos,
-   * líneas de color). Con todo eso apagado cada llamada de dibujo pasaba por una
-   * función intermedia para no hacer nada. Acá se dejan las originales y se
-   * vuelven a poner los ganchos en cuanto se prende algo (ver `syncCanvasHotFlags`).
-   *
-   * `createPattern` y `fillText` NO se sueltan: registran las texturas de los
-   * jugadores y el avatar, y tienen que ver cada textura desde que se crea.
-   */
-  const hookedShadowBlur = Object.getOwnPropertyDescriptor(proto, 'shadowBlur');
-  const hookedShadowColor = Object.getOwnPropertyDescriptor(proto, 'shadowColor');
-  const drawHooks = [
-    ['fill', origFill, proto.fill],
-    ['createRadialGradient', origCreateRadialGradient, proto.createRadialGradient],
-    ['createLinearGradient', origCreateLinearGradient, proto.createLinearGradient],
-    ['stroke', origStroke, proto.stroke],
-    ['arc', origArc, proto.arc]
-  ];
-  let drawHooksOn = true;
-  let shadowHooksOn = true;
-  canvasHookSwap = () => {
-    const flat = flatOn();
-    const need = flat || !!(visual.sizes || visual.lines || visual.discFx || visual.lineColor || visual.lineGlow);
-    if (need !== drawHooksOn) {
-      drawHooksOn = need;
-      pend.on = false;
-      for (const [name, orig, hooked] of drawHooks) proto[name] = need ? hooked : orig;
-    }
-    if (flat !== shadowHooksOn) {
-      shadowHooksOn = flat;
-      if (origShadowBlur && hookedShadowBlur) Object.defineProperty(proto, 'shadowBlur', flat ? hookedShadowBlur : origShadowBlur);
-      if (origShadowColor && hookedShadowColor) Object.defineProperty(proto, 'shadowColor', flat ? hookedShadowColor : origShadowColor);
-    }
-  };
-  canvasHookSwap();
 
   /* --- Hook de Avatar ---
    *

@@ -435,11 +435,7 @@ function discOverlay(ctx, style, x, y, r, strokeFn) {
   try {
     ctx.clip();
     let fill = null;
-    const own = customOf(style);
-    if (own) {
-      rebuild = true;
-      paintDesign(ctx, own, x, y, r);
-    } else if (style === 'neon') {
+    if (style === 'neon') {
       // Tubo de neón: el centro se oscurece un poco para que el aro brille de
       // verdad, y el aro lleva un halo ancho y tenue, uno medio y el filo claro.
       rebuild = true;
@@ -559,243 +555,6 @@ function discOverlay(ctx, style, x, y, r, strokeFn) {
   }
 }
 
-/* ── Taller: diseños propios de pelota y ficha ──────────────────────────
- * Un diseño es un color de base y hasta 8 capas (tipo, color, cantidad, tamaño,
- * giro). Se guarda en la config como datos y se dibuja con las mismas pocas
- * formas simples que el resto: sin imágenes ni cuentas pesadas por cuadro.
- * Se usa con el estilo `cust:ID`. Con la pelota 3D se hornea una vez en la
- * textura (ver `ballTexture`), igual que cualquier estilo.
- */
-const WS_TYPES = ['stripes', 'half', 'quarters', 'dots', 'checker', 'ring', 'disk', 'star', 'polygon', 'cross', 'heart', 'bolt', 'spiral'];
-const WS_MAX_ITEMS = 12;
-const WS_MAX_LAYERS = 8;
-const workshop = new Map();
-let workshopSig = '';
-let workshopRev = 0;
-
-function wsNum(v, lo, hi, def) {
-  const n = Number(v);
-  return Number.isFinite(n) ? Math.min(hi, Math.max(lo, n)) : def;
-}
-
-function cleanDesign(d) {
-  if (!d || typeof d !== 'object') return null;
-  const id = String(d.id || '').replace(/[^a-z0-9_-]/gi, '').slice(0, 24);
-  if (!id) return null;
-  const layers = [];
-  for (const l of (Array.isArray(d.layers) ? d.layers : []).slice(0, WS_MAX_LAYERS)) {
-    if (!l || !WS_TYPES.includes(l.t)) continue;
-    layers.push({
-      t: l.t,
-      c: safeColor(l.c) || '#000000',
-      n: Math.round(wsNum(l.n, 1, 12, 5)),
-      s: wsNum(l.s, 0.1, 1, 0.5),
-      a: wsNum(l.a, 0, 360, 0)
-    });
-  }
-  return {
-    id,
-    kind: d.kind === 'disc' ? 'disc' : 'ball',
-    name: String(d.name || '').slice(0, 24),
-    base: safeColor(d.base) || '',
-    layers
-  };
-}
-
-/** Carga los diseños de la config. Sólo rehace algo si cambiaron. */
-function setWorkshop(list) {
-  const items = (Array.isArray(list) ? list : []).slice(0, WS_MAX_ITEMS).map(cleanDesign).filter(Boolean);
-  const sig = JSON.stringify(items);
-  if (sig === workshopSig) return;
-  workshopSig = sig;
-  workshopRev++;
-  workshop.clear();
-  for (const it of items) workshop.set(it.id, it);
-}
-
-function customOf(style) {
-  return typeof style === 'string' && style.charCodeAt(0) === 99 && style.startsWith('cust:') ? workshop.get(style.slice(5)) || null : null;
-}
-
-/** ¿Es un estilo propio que existe? (para validar la config) */
-function hasCustom(style) {
-  return !!customOf(style);
-}
-
-function wsPoly(ctx, n, rad, rot, inner) {
-  const pts = inner ? n * 2 : n;
-  ctx.beginPath();
-  for (let i = 0; i < pts; i++) {
-    const a = rot + (i * TAU) / pts;
-    const q = inner && i % 2 ? rad * inner : rad;
-    if (i) ctx.lineTo(Math.cos(a) * q, Math.sin(a) * q);
-    else ctx.moveTo(Math.cos(a) * q, Math.sin(a) * q);
-  }
-  ctx.closePath();
-}
-
-function wsLayer(ctx, l) {
-  const { t, n, s } = l;
-  ctx.fillStyle = l.c;
-  ctx.strokeStyle = l.c;
-  ctx.lineJoin = 'round';
-  ctx.lineCap = 'round';
-  if (t === 'stripes') {
-    const bands = Math.max(2, n);
-    const w = 2 / bands;
-    for (let i = 1; i < bands; i += 2) ctx.fillRect(-1 + i * w, -1, w, 2);
-  } else if (t === 'half') {
-    ctx.fillRect(0, -1, 1, 2);
-  } else if (t === 'quarters') {
-    ctx.fillRect(0, -1, 1, 1);
-    ctx.fillRect(-1, 0, 1, 1);
-  } else if (t === 'dots') {
-    const rad = s * 0.24;
-    for (let i = 0; i < n; i++) {
-      const a = (i * TAU) / n;
-      ctx.beginPath();
-      ctx.arc(Math.cos(a) * 0.62, Math.sin(a) * 0.62, rad, 0, TAU);
-      ctx.fill();
-    }
-  } else if (t === 'checker') {
-    const cells = Math.max(2, n);
-    const w = 2 / cells;
-    for (let i = 0; i < cells; i++) for (let j = 0; j < cells; j++) if ((i + j) & 1) ctx.fillRect(-1 + i * w, -1 + j * w, w, w);
-  } else if (t === 'ring') {
-    ctx.lineWidth = 0.09 * (0.6 + n / 8);
-    ctx.beginPath();
-    ctx.arc(0, 0, s, 0, TAU);
-    ctx.stroke();
-  } else if (t === 'disk') {
-    ctx.beginPath();
-    ctx.arc(0, 0, s, 0, TAU);
-    ctx.fill();
-  } else if (t === 'star') {
-    wsPoly(ctx, Math.max(3, n), s, -Math.PI / 2, 0.45);
-    ctx.fill();
-  } else if (t === 'polygon') {
-    wsPoly(ctx, Math.max(3, n), s, -Math.PI / 2, 0);
-    ctx.fill();
-  } else if (t === 'cross') {
-    const w = 0.16 + 0.03 * n;
-    ctx.fillRect(-s, -w / 2, s * 2, w);
-    ctx.fillRect(-w / 2, -s, w, s * 2);
-  } else if (t === 'heart') {
-    ctx.save();
-    ctx.scale(s, s);
-    ctx.beginPath();
-    ctx.moveTo(0, 0.7);
-    ctx.bezierCurveTo(-1.1, -0.05, -0.75, -0.85, 0, -0.35);
-    ctx.bezierCurveTo(0.75, -0.85, 1.1, -0.05, 0, 0.7);
-    ctx.fill();
-    ctx.restore();
-  } else if (t === 'bolt') {
-    ctx.beginPath();
-    ctx.moveTo(0.2 * s, -s);
-    ctx.lineTo(-0.55 * s, 0.1 * s);
-    ctx.lineTo(-0.05 * s, 0.1 * s);
-    ctx.lineTo(-0.25 * s, s);
-    ctx.lineTo(0.6 * s, -0.2 * s);
-    ctx.lineTo(0.08 * s, -0.2 * s);
-    ctx.closePath();
-    ctx.fill();
-  } else if (t === 'spiral') {
-    ctx.lineWidth = 0.08;
-    ctx.beginPath();
-    const turns = Math.max(1, n / 2);
-    const steps = 48;
-    for (let i = 0; i <= steps; i++) {
-      const f = i / steps;
-      const a = f * turns * TAU;
-      const q = f * s * 1.15;
-      if (i) ctx.lineTo(Math.cos(a) * q, Math.sin(a) * q);
-      else ctx.moveTo(0, 0);
-    }
-    ctx.stroke();
-  }
-}
-
-/** Pinta un diseño. Va dentro del recorte del disco/pelota (lo pone el que llama). */
-function paintDesign(ctx, d, x, y, r) {
-  if (d.base) {
-    ctx.fillStyle = d.base;
-    ctx.fillRect(x - r, y - r, r * 2, r * 2);
-  }
-  for (const l of d.layers) {
-    ctx.save();
-    ctx.translate(x, y);
-    ctx.scale(r, r);
-    if (l.a) ctx.rotate((l.a * Math.PI) / 180);
-    wsLayer(ctx, l);
-    ctx.restore();
-  }
-}
-
-/* ── Ojos que siguen la pelota ───────────────────────────────────────── */
-
-/**
- * Dos ojos sobre tu ficha cuyas pupilas miran hacia la pelota (`tx`, `ty`).
- * Son un par de círculos: cuesta lo mismo que un disco más. Se llama justo antes
- * del `stroke()` del disco, y al terminar rearma el trazo del círculo del disco
- * porque el contorno que sigue lo usa. `strokeFn` es el `stroke` original, para
- * no re-entrar al parche.
- */
-function discEyes(ctx, style, x, y, r, tx, ty, strokeFn) {
-  if (!(r > 0)) return;
-  const doStroke = () => (strokeFn ? strokeFn.call(ctx) : ctx.stroke());
-  let dx = tx - x;
-  let dy = ty - y;
-  const dist = Math.hypot(dx, dy);
-  if (dist > 0.001) { dx /= dist; dy /= dist; } else { dx = 0; dy = 0; }
-  // Con la pelota encima las pupilas quedan al centro; lejos, miran al borde.
-  const look = Math.min(1, dist / (r * 2.6));
-  const eyeR = r * (style === 'cute' ? 0.3 : 0.26);
-  const gap = r * 0.32;
-  const eyeY = y - r * 0.12;
-  ctx.save();
-  try {
-    ctx.lineJoin = 'round';
-    ctx.lineCap = 'round';
-    for (const side of [-1, 1]) {
-      const ex = x + side * gap;
-      ctx.beginPath();
-      ctx.arc(ex, eyeY, eyeR, 0, TAU);
-      ctx.fillStyle = '#ffffff';
-      ctx.fill();
-      ctx.lineWidth = Math.max(0.4, r * 0.055);
-      ctx.strokeStyle = '#14161c';
-      doStroke();
-      const pupilR = eyeR * (style === 'cute' ? 0.68 : 0.5);
-      const reach = (eyeR - pupilR) * 0.92 * look;
-      const px = ex + dx * reach;
-      const py = eyeY + dy * reach;
-      ctx.beginPath();
-      ctx.arc(px, py, pupilR, 0, TAU);
-      ctx.fillStyle = '#14161c';
-      ctx.fill();
-      if (style === 'cute') {
-        ctx.beginPath();
-        ctx.arc(px - pupilR * 0.3, py - pupilR * 0.35, pupilR * 0.3, 0, TAU);
-        ctx.fillStyle = '#ffffff';
-        ctx.fill();
-      }
-      if (style === 'angry') {
-        // Cejas caídas hacia el centro.
-        ctx.beginPath();
-        ctx.moveTo(ex + side * eyeR * 1.25, eyeY - eyeR * 1.7);
-        ctx.lineTo(ex - side * eyeR * 0.95, eyeY - eyeR * 0.95);
-        ctx.lineWidth = Math.max(0.7, r * 0.11);
-        ctx.strokeStyle = '#14161c';
-        doStroke();
-      }
-    }
-  } finally {
-    ctx.restore();
-    ctx.beginPath();
-    ctx.arc(x, y, r, 0, TAU);
-  }
-}
-
 /* ── Aspecto de la pelota ───────────────────────────────────────────── */
 
 function pentagon(ctx, cx, cy, r, rot) {
@@ -818,7 +577,7 @@ function pentagon(ctx, cx, cy, r, rot) {
 const BALL_TEX = 128;
 const ballTextures = new Map();
 function ballTexture(ctx, style, tint) {
-  const key = `${style}|${tint || ''}${style.startsWith('cust:') ? '|' + workshopRev : ''}`;
+  const key = `${style}|${tint || ''}`;
   let tex = ballTextures.get(key);
   if (tex) return tex;
   const c = ctx.canvas.ownerDocument.createElement('canvas');
@@ -875,10 +634,7 @@ function ballOverlay(ctx, style, x, y, r, strokeFn, tint, fx3d) {
       ctx.rotate(fx3d.spin);
       ctx.translate(-x, -y);
     }
-    const own = customOf(style);
-    if (own) {
-      paintDesign(ctx, own, x, y, r);
-    } else if (style === 'soccer') {
+    if (style === 'soccer') {
       // Pentágono negro al medio y cinco más cortados por el borde.
       ctx.fillStyle = '#16181d';
       pentagon(ctx, x, y, r * 0.36, -Math.PI / 2);
@@ -1493,11 +1249,6 @@ module.exports = {
   paintCrest,
   paintLight,
   discOverlay,
-  discEyes,
-  setWorkshop,
-  hasCustom,
-  paintDesign,
-  WS_TYPES,
   ballOverlay,
   drawRing,
   noteTrail,
