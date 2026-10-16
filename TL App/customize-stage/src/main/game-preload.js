@@ -4927,6 +4927,14 @@ function ballFrameIndex() {
 let currentStadium = null;
 let ballDrawFailed = false;
 let ball3dLogged = false;
+const BALL_STYLES = [
+  'soccer', 'neon', 'gold', 'beach', 'eight', 'star',
+  'panels', 'triangles', 'vintage', 'tennis', 'basket', 'volley', 'baseball', 'golf', 'bowling',
+  'earth', 'moon', 'disco', 'orb', 'pumpkin', 'melon', 'eye'
+];
+/** Para que el estilo/color de la pelota gire y se sombree con la pelota 3D. */
+const ballFx3d = { spin: 0, shade: ball3d.shade };
+let ballFx3dOn = false;
 
 /**
  * Lo que el juego llama por cada disco sin jugador. Acá se resuelve el tamaño
@@ -4992,6 +5000,7 @@ function drawBallInner(ctx, x, y, r, indice) {
   if (!(r > 0)) return false;
   const animada = ballGifOn();
   const depth = !!(state.config.pitch && state.config.pitch.ball3d);
+  ballFx3dOn = false;
   if (!animada && !ballImage && !depth) return false;
   if (depth && !ball3dLogged) { ball3dLogged = true; log('info', 'pelota 3D: dibujando', 'juego'); }
 
@@ -5012,6 +5021,8 @@ function drawBallInner(ctx, x, y, r, indice) {
       ctx.scale(-1, 1);
     }
     const roll = depth ? ball3d.motion(ctx, x, y, r, performance.now()) : null;
+    ballFx3dOn = depth && (visual.ballStyle !== 'default' || !!visual.ballColor);
+    if (ballFx3dOn) ballFx3d.spin = roll.a + roll.b;
     if (depth) {
       ctx.fillRect(x - r, y - r, 2 * r, 2 * r);
       ctx.save();
@@ -5025,7 +5036,7 @@ function drawBallInner(ctx, x, y, r, indice) {
     } else if (ballImage) {
       ctx.drawImage(ballImage, x - r, y - r, 2 * r, 2 * r);
     } } finally { if (depth) ctx.restore(); }
-    if (depth) {
+    if (depth && !ballFx3dOn) {
       if (!animada && !ballImage) ball3d.surface(ctx, x, y, r, roll);
       ball3d.shade(ctx, x, y, r);
     }
@@ -9155,7 +9166,7 @@ function syncCanvasHotFlags() {
   visual.shadows = !!cfg.softShadows;
   visual.ballColor = lookfx.safeColor(cfg.ballColor);
   visual.lineGlow = !!cfg.lineGlow;
-  visual.ballStyle = ['soccer', 'neon', 'gold', 'beach', 'eight', 'star'].includes(cfg.ballStyle) ? cfg.ballStyle : 'default';
+  visual.ballStyle = BALL_STYLES.includes(cfg.ballStyle) ? cfg.ballStyle : 'default';
   visual.ringStyle = ['double', 'dashed', 'crown', 'glow', 'dots', 'arrow'].includes(cfg.ringStyle) ? cfg.ringStyle : 'default';
   visual.ringColor = lookfx.safeColor(cfg.ringColor);
   visual.selfTrail = !!cfg.selfTrail;
@@ -9416,7 +9427,7 @@ function installCanvasHooks(doc) {
       if (ballFx) {
         ownDraw++;
         try {
-          lookfx.ballOverlay(this, visual.ballStyle, pend.x, pend.y, pend.r, origStroke, visual.ballColor);
+          lookfx.ballOverlay(this, visual.ballStyle, pend.x, pend.y, pend.r, origStroke, visual.ballColor, ballFx3dOn ? ballFx3d : null);
         } finally {
           ownDraw--;
         }
@@ -9465,7 +9476,7 @@ function installCanvasHooks(doc) {
         ownDraw++;
         try {
           if (discFx) lookfx.discOverlay(this, visual.discStyle, pend.x, pend.y, pend.r, origStroke);
-          else lookfx.ballOverlay(this, visual.ballStyle, pend.x, pend.y, pend.r, origStroke, visual.ballColor);
+          else lookfx.ballOverlay(this, visual.ballStyle, pend.x, pend.y, pend.r, origStroke, visual.ballColor, ballFx3dOn ? ballFx3d : null);
         } finally {
           ownDraw--;
         }

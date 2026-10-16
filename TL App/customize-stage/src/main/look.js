@@ -567,9 +567,12 @@ function pentagon(ctx, cx, cy, r, rot) {
  * curso (el círculo de la pelota) como recorte y se llama justo antes del
  * `stroke()`. `strokeFn` es el `stroke` original, para no re-entrar al parche.
  */
-function ballOverlay(ctx, style, x, y, r, strokeFn, tint) {
+function ballOverlay(ctx, style, x, y, r, strokeFn, tint, fx3d) {
   if (!(r > 0)) return;
   const doStroke = () => (strokeFn ? strokeFn.call(ctx) : ctx.stroke());
+  // Con la pelota 3D puesta el dibujo gira con ella y el sombreado va ENCIMA
+  // (antes el estilo se pintaba plano sobre el sombreado y lo tapaba).
+  let turned = false;
   ctx.save();
   try {
     ctx.clip();
@@ -580,6 +583,13 @@ function ballOverlay(ctx, style, x, y, r, strokeFn, tint) {
       ctx.fillStyle = tint;
       ctx.fillRect(x - r, y - r, r * 2, r * 2);
       ctx.globalCompositeOperation = 'source-over';
+    }
+    if (fx3d) {
+      ctx.save();
+      turned = true;
+      ctx.translate(x, y);
+      ctx.rotate(fx3d.spin);
+      ctx.translate(-x, -y);
     }
     if (style === 'soccer') {
       // Pentágono negro al medio y cinco más cortados por el borde.
@@ -659,12 +669,306 @@ function ballOverlay(ctx, style, x, y, r, strokeFn, tint) {
       ctx.lineWidth = Math.max(0.4, r * 0.07);
       ctx.strokeStyle = 'rgba(0,0,0,0.6)';
       doStroke();
+    } else if (style !== 'default') {
+      extraBall(ctx, style, x, y, r);
     }
+    if (turned) {
+      turned = false;
+      ctx.restore();
+    }
+    if (fx3d) fx3d.shade(ctx, x, y, r);
   } finally {
+    if (turned) ctx.restore();
     ctx.restore();
     // El contorno que viene después usa el trazo del círculo: se vuelve a armar.
     ctx.beginPath();
     ctx.arc(x, y, r, 0, TAU);
+  }
+}
+
+/* ── Más pelotas ────────────────────────────────────────────────────────
+ * Todas se dibujan ya recortadas contra el círculo de la pelota (ver
+ * `ballOverlay`), con trazados simples: nada de imágenes ni de cuentas por
+ * cuadro más allá de unas decenas de líneas. Cada una pinta su propio fondo.
+ */
+function disc(ctx, x, y, r, fill) {
+  ctx.fillStyle = fill;
+  ctx.fillRect(x - r, y - r, r * 2, r * 2);
+}
+
+function polygon(ctx, cx, cy, r, sides, rot) {
+  ctx.beginPath();
+  for (let i = 0; i < sides; i++) {
+    const a = rot + (i * TAU) / sides;
+    if (i) ctx.lineTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r);
+    else ctx.moveTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r);
+  }
+  ctx.closePath();
+}
+
+/** Dos costuras curvas, como las del tenis y el béisbol. */
+function twoSeams(ctx, x, y, r, off, sweep) {
+  ctx.beginPath();
+  ctx.arc(x - r * off, y, r * 1.02, -sweep, sweep);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(x + r * off, y, r * 1.02, Math.PI - sweep, Math.PI + sweep);
+  ctx.stroke();
+}
+
+function extraBall(ctx, style, x, y, r) {
+  const lw = Math.max(0.4, r * 0.07);
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  if (style === 'panels') {
+    // Fútbol moderno: tres palas curvas que giran desde el centro.
+    disc(ctx, x, y, r, '#f6f6f4');
+    for (let k = 0; k < 3; k++) {
+      const a = (k * TAU) / 3 - Math.PI / 2;
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.rotate(a);
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.quadraticCurveTo(r * 0.5, -r * 0.95, r * 1.2, -r * 0.25);
+      ctx.quadraticCurveTo(r * 0.85, r * 0.3, 0, 0);
+      ctx.fillStyle = k === 1 ? '#e8a21a' : '#2563c9';
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(20,24,34,0.55)';
+      ctx.lineWidth = lw;
+      ctx.stroke();
+      ctx.restore();
+    }
+    ctx.strokeStyle = 'rgba(20,24,34,0.35)';
+    ctx.lineWidth = lw * 0.8;
+    ctx.beginPath();
+    ctx.arc(x, y, r * 0.62, 0, TAU);
+    ctx.stroke();
+  } else if (style === 'triangles') {
+    // Fútbol de triángulos: uno al medio y tres cortados por el borde.
+    disc(ctx, x, y, r, '#f4f4f2');
+    ctx.fillStyle = '#d4312b';
+    polygon(ctx, x, y, r * 0.42, 3, -Math.PI / 2);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(20,24,34,0.55)';
+    ctx.lineWidth = lw;
+    ctx.stroke();
+    ctx.fillStyle = '#1f3f8f';
+    for (let k = 0; k < 3; k++) {
+      const a = Math.PI / 6 + (k * TAU) / 3;
+      polygon(ctx, x + Math.cos(a) * r * 1.0, y + Math.sin(a) * r * 1.0, r * 0.5, 3, a + Math.PI);
+      ctx.fill();
+      ctx.stroke();
+    }
+  } else if (style === 'vintage') {
+    // Fútbol de cuero: marrón, con costuras y la tira de cordones.
+    const g = ctx.createRadialGradient(x - r * 0.3, y - r * 0.3, r * 0.1, x, y, r);
+    g.addColorStop(0, '#b9703a');
+    g.addColorStop(1, '#6e3a18');
+    ctx.fillStyle = g;
+    ctx.fillRect(x - r, y - r, r * 2, r * 2);
+    ctx.strokeStyle = 'rgba(40,20,8,0.7)';
+    ctx.lineWidth = lw;
+    twoSeams(ctx, x, y, r, 1.3, 0.9);
+    ctx.strokeStyle = '#f0e2c0';
+    ctx.lineWidth = lw * 0.9;
+    ctx.beginPath();
+    ctx.moveTo(x, y - r * 0.55);
+    ctx.lineTo(x, y + r * 0.55);
+    ctx.stroke();
+    for (let i = -2; i <= 2; i++) {
+      ctx.beginPath();
+      ctx.moveTo(x - r * 0.18, y + i * r * 0.22 - r * 0.05);
+      ctx.lineTo(x + r * 0.18, y + i * r * 0.22 + r * 0.05);
+      ctx.stroke();
+    }
+  } else if (style === 'tennis') {
+    disc(ctx, x, y, r, '#cfe232');
+    ctx.fillStyle = 'rgba(120,140,10,0.22)';
+    for (const [dx, dy] of [[-0.5, -0.3], [0.2, -0.6], [0.55, 0.1], [-0.2, 0.45], [0.3, 0.6], [-0.65, 0.3]]) {
+      ctx.beginPath();
+      ctx.arc(x + dx * r, y + dy * r, r * 0.16, 0, TAU);
+      ctx.fill();
+    }
+    ctx.strokeStyle = '#fbfbf2';
+    ctx.lineWidth = Math.max(0.6, r * 0.11);
+    twoSeams(ctx, x, y, r, 1.28, 0.95);
+  } else if (style === 'basket') {
+    disc(ctx, x, y, r, '#df7a2b');
+    ctx.strokeStyle = '#2a1608';
+    ctx.lineWidth = lw;
+    ctx.beginPath();
+    ctx.moveTo(x, y - r);
+    ctx.lineTo(x, y + r);
+    ctx.moveTo(x - r, y);
+    ctx.lineTo(x + r, y);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(x - r * 1.35, y, r * 1.02, -0.78, 0.78);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(x + r * 1.35, y, r * 1.02, Math.PI - 0.78, Math.PI + 0.78);
+    ctx.stroke();
+  } else if (style === 'volley') {
+    disc(ctx, x, y, r, '#f7f4ea');
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(-0.7);
+    ctx.fillStyle = '#2f6fdb';
+    ctx.fillRect(-r * 1.4, -r * 0.62, r * 2.8, r * 0.42);
+    ctx.fillStyle = '#f2c230';
+    ctx.fillRect(-r * 1.4, -r * 0.2, r * 2.8, r * 0.42);
+    ctx.fillStyle = '#2f6fdb';
+    ctx.fillRect(-r * 1.4, r * 0.22, r * 2.8, r * 0.42);
+    ctx.restore();
+    ctx.strokeStyle = 'rgba(30,30,40,0.45)';
+    ctx.lineWidth = lw * 0.8;
+    for (const k of [-0.62, -0.2, 0.22, 0.64]) {
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.rotate(-0.7);
+      ctx.beginPath();
+      ctx.moveTo(-r * 1.4, k * r);
+      ctx.lineTo(r * 1.4, k * r);
+      ctx.stroke();
+      ctx.restore();
+    }
+  } else if (style === 'baseball') {
+    disc(ctx, x, y, r, '#f6f1e4');
+    ctx.strokeStyle = '#c4282f';
+    ctx.lineWidth = Math.max(0.5, r * 0.09);
+    ctx.setLineDash([r * 0.13, r * 0.1]);
+    twoSeams(ctx, x, y, r, 1.2, 0.85);
+    ctx.setLineDash([]);
+  } else if (style === 'golf') {
+    disc(ctx, x, y, r, '#f8f8f6');
+    ctx.fillStyle = 'rgba(70,80,95,0.2)';
+    ctx.beginPath();
+    const step = r * 0.36;
+    for (let j = -3; j <= 3; j++) {
+      for (let i = -3; i <= 3; i++) {
+        const px = x + i * step + (j & 1 ? step / 2 : 0);
+        const py = y + j * step * 0.87;
+        if ((px - x) * (px - x) + (py - y) * (py - y) < r * r * 1.2) {
+          ctx.moveTo(px + step * 0.34, py);
+          ctx.arc(px, py, step * 0.34, 0, TAU);
+        }
+      }
+    }
+    ctx.fill();
+  } else if (style === 'bowling') {
+    const g = ctx.createLinearGradient(x - r, y - r, x + r, y + r);
+    g.addColorStop(0, '#2c4aa8');
+    g.addColorStop(0.5, '#171f4a');
+    g.addColorStop(1, '#3a1a5c');
+    ctx.fillStyle = g;
+    ctx.fillRect(x - r, y - r, r * 2, r * 2);
+    ctx.fillStyle = '#05060c';
+    for (const [dx, dy, k] of [[-0.22, -0.5, 0.13], [0.2, -0.5, 0.13], [0, -0.22, 0.16]]) {
+      ctx.beginPath();
+      ctx.arc(x + dx * r, y + dy * r, r * k, 0, TAU);
+      ctx.fill();
+    }
+  } else if (style === 'earth') {
+    disc(ctx, x, y, r, '#2b6fb8');
+    ctx.fillStyle = '#4ea35b';
+    for (const [dx, dy, rx, ry, rot] of [[-0.35, -0.2, 0.42, 0.28, 0.5], [0.45, 0.25, 0.3, 0.45, -0.3], [-0.1, 0.62, 0.35, 0.16, 0.1], [0.3, -0.62, 0.3, 0.14, -0.2]]) {
+      ctx.beginPath();
+      ctx.ellipse(x + dx * r, y + dy * r, rx * r, ry * r, rot, 0, TAU);
+      ctx.fill();
+    }
+    ctx.fillStyle = 'rgba(255,255,255,0.55)';
+    for (const [dx, dy, rx, ry] of [[0.1, -0.1, 0.4, 0.07], [-0.4, 0.4, 0.3, 0.06]]) {
+      ctx.beginPath();
+      ctx.ellipse(x + dx * r, y + dy * r, rx * r, ry * r, 0.3, 0, TAU);
+      ctx.fill();
+    }
+  } else if (style === 'moon') {
+    disc(ctx, x, y, r, '#b8b6ae');
+    for (const [dx, dy, k] of [[-0.35, -0.3, 0.3], [0.38, 0.1, 0.22], [-0.05, 0.5, 0.2], [0.35, -0.55, 0.14], [-0.6, 0.25, 0.13]]) {
+      ctx.fillStyle = 'rgba(70,70,66,0.38)';
+      ctx.beginPath();
+      ctx.arc(x + dx * r, y + dy * r, r * k, 0, TAU);
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(255,255,255,0.4)';
+      ctx.lineWidth = lw * 0.8;
+      ctx.beginPath();
+      ctx.arc(x + dx * r - r * 0.02, y + dy * r - r * 0.02, r * k, Math.PI * 0.9, Math.PI * 1.7);
+      ctx.stroke();
+    }
+  } else if (style === 'disco') {
+    disc(ctx, x, y, r, '#8d939c');
+    const n = 6;
+    const cell = (r * 2) / n;
+    for (let j = 0; j < n; j++) {
+      for (let i = 0; i < n; i++) {
+        const h = (i * 37 + j * 53 + i * j * 11) % 5;
+        ctx.fillStyle = ['#e9edf2', '#b4bac4', '#7d848f', '#d3d8e0', '#5d636d'][h];
+        ctx.fillRect(x - r + i * cell + 0.4, y - r + j * cell + 0.4, cell - 0.8, cell - 0.8);
+      }
+    }
+  } else if (style === 'orb') {
+    // Orbe: espiral clara sobre un fondo violeta profundo, con núcleo brillante.
+    const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+    g.addColorStop(0, '#5ff0d0');
+    g.addColorStop(0.3, '#2a8f9e');
+    g.addColorStop(0.7, '#2a1466');
+    g.addColorStop(1, '#0d0722');
+    ctx.fillStyle = g;
+    ctx.fillRect(x - r, y - r, r * 2, r * 2);
+    ctx.strokeStyle = 'rgba(190,255,240,0.55)';
+    ctx.lineWidth = Math.max(0.5, r * 0.08);
+    ctx.beginPath();
+    for (let i = 0; i <= 40; i++) {
+      const t = i / 40;
+      const a = t * TAU * 1.6;
+      const rad = r * (0.12 + t * 0.8);
+      if (i) ctx.lineTo(x + Math.cos(a) * rad, y + Math.sin(a) * rad);
+      else ctx.moveTo(x + Math.cos(a) * rad, y + Math.sin(a) * rad);
+    }
+    ctx.stroke();
+  } else if (style === 'pumpkin') {
+    disc(ctx, x, y, r, '#e8741c');
+    ctx.strokeStyle = 'rgba(110,40,0,0.5)';
+    ctx.lineWidth = lw * 1.2;
+    for (const k of [0, 0.38, 0.72]) {
+      ctx.beginPath();
+      ctx.ellipse(x, y, r * (1 - k) * 0.9 + r * 0.05, r * 1.05, 0, 0, TAU);
+      ctx.stroke();
+    }
+  } else if (style === 'melon') {
+    disc(ctx, x, y, r, '#3f9a45');
+    ctx.strokeStyle = '#1d5a29';
+    ctx.lineWidth = r * 0.16;
+    for (const k of [-0.62, -0.2, 0.22, 0.64]) {
+      ctx.beginPath();
+      ctx.moveTo(x + k * r, y - r);
+      ctx.quadraticCurveTo(x + k * r * 1.5, y, x + k * r, y + r);
+      ctx.stroke();
+    }
+  } else if (style === 'eye') {
+    disc(ctx, x, y, r, '#f4efe9');
+    ctx.strokeStyle = 'rgba(200,60,60,0.45)';
+    ctx.lineWidth = lw * 0.7;
+    for (let i = 0; i < 6; i++) {
+      const a = (i * TAU) / 6 + 0.3;
+      ctx.beginPath();
+      ctx.moveTo(x + Math.cos(a) * r * 1.05, y + Math.sin(a) * r * 1.05);
+      ctx.lineTo(x + Math.cos(a + 0.15) * r * 0.7, y + Math.sin(a + 0.15) * r * 0.7);
+      ctx.stroke();
+    }
+    ctx.fillStyle = '#2a8bd6';
+    ctx.beginPath();
+    ctx.arc(x, y, r * 0.52, 0, TAU);
+    ctx.fill();
+    ctx.fillStyle = '#05080f';
+    ctx.beginPath();
+    ctx.arc(x, y, r * 0.24, 0, TAU);
+    ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.85)';
+    ctx.beginPath();
+    ctx.arc(x - r * 0.16, y - r * 0.16, r * 0.1, 0, TAU);
+    ctx.fill();
   }
 }
 
