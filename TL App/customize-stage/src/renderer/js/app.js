@@ -895,35 +895,13 @@ function paintPreview() {
     && ['cancha', 'fichas'].includes(currentTab('aspecto'))
     && !(panel && panel.classList.contains('is-searching'));
   box.hidden = !on;
-  if (!window.TLPreview || !state.config) return;
-  const live = pvLiveGet();
-  if (!on) { if (live) live.stop(); return; }
+  if (!on || !window.TLPreview || !state.config) return;
   cancelAnimationFrame(previewFrame);
   previewFrame = requestAnimationFrame(() => {
-    try {
-      if (live) { live.redraw(); live.start(); }
-      else window.TLPreview.draw(document.getElementById('pvCanvas'), state.config);
-    } catch (e) { box.hidden = true; }
+    try { window.TLPreview.draw(document.getElementById('pvCanvas'), state.config); } catch (e) { box.hidden = true; }
   });
 }
 
-/* Vista previa viva: corre sólo mientras la caja se ve y la ventana está a la vista. */
-let pvLive = null;
-function pvLiveGet() {
-  if (pvLive) return pvLive;
-  const canvas = document.getElementById('pvCanvas');
-  if (!canvas || !window.TLPreview || !window.TLPreview.createLive) return null;
-  pvLive = window.TLPreview.createLive(canvas, () => state.config, () => !document.getElementById('pv').hidden);
-  const btn = document.getElementById('pvPlay');
-  if (btn) {
-    btn.addEventListener('click', () => {
-      pvLive.setPaused(!pvLive.isPaused());
-      btn.textContent = pvLive.isPaused() ? '▶' : '⏸';
-    });
-  }
-  document.addEventListener('visibilitychange', () => { if (!document.hidden) pvLive.start(); });
-  return pvLive;
-}
 
 /**
  * El tema ya no vive sólo dentro del juego: el main resuelve la paleta y manda
