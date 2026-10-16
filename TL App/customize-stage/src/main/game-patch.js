@@ -216,7 +216,7 @@ const SPEED_LIST_SITE =
   /(\w+)\s*=\s*!0\s*,\s*(\w+)\s*=\s*2\s*,\s*(\w+)\s*=\s*\[\s*\.5\s*,\s*\.75\s*,\s*1\s*,\s*2\s*,\s*3\s*\]/;
 
 /** Las que quedan en el `-`/`+`. El cliente además pone botones directos. */
-const SPEEDS = [0.1, 0.25, 0.5, 0.75, 1, 2, 3, 4, 6, 8, 16];
+const SPEEDS = [0.1, 0.25, 0.5, 0.75, 1, 2, 3, 4, 6, 8];
 
 const SPEED_APPLY_SITE = new RegExp(
   [

@@ -3510,6 +3510,29 @@ listen('game:log', (_e, payload) => {
 });
 /** El preload pide mostrar un aviso: hay un solo sistema de carteles, el de la app. */
 listen('game:toast', (_e, payload) => send('game:toast', payload));
+/** La pizarra táctica de las replays: guardar la imagen o copiarla al portapapeles. */
+listen('game:board-image', async (_e, payload) => {
+  try {
+    const url = String((payload && payload.url) || '');
+    if (!url.startsWith('data:image/png;base64,') || url.length > 30 * 1024 * 1024) return;
+    const buf = Buffer.from(url.slice(22), 'base64');
+    if (payload.mode === 'copy') {
+      require('electron').clipboard.writeImage(nativeImage.createFromBuffer(buf));
+      send('game:toast', { message: 'Pizarra copiada: pegala donde quieras', kind: 'ok' });
+      return;
+    }
+    const res = await dialog.showSaveDialog(mainWindow, {
+      title: 'Guardar pizarra',
+      defaultPath: path.join(app.getPath('pictures'), `TL-pizarra-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')}.png`),
+      filters: [{ name: 'Imagen PNG', extensions: ['png'] }]
+    });
+    if (res.canceled || !res.filePath) return;
+    fs.writeFileSync(res.filePath, buf);
+    send('game:toast', { message: 'Pizarra guardada', kind: 'ok' });
+  } catch (err) {
+    send('game:toast', { message: 'No se pudo guardar la pizarra', kind: 'err' });
+  }
+});
 /** El engranaje del HUD del juego abre los ajustes del cliente, no los de HaxBall. */
 listen('game:open-settings', () => send('game:open-settings'));
 // La interfaz pide moderar o animar el avatar; el preload del juego lo ejecuta.

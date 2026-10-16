@@ -641,14 +641,131 @@ function applyClientStyles(doc) {
      */
     html.tvm-mirror .game-state-view .bar > .scoreboard { flex-direction: row-reverse; }
 
-    /* Botones de velocidad y resumen del reproductor de replays. */
-    .replay-controls-view .tvm-speeds { display: flex; align-items: stretch; }
-    .replay-controls-view .tvm-speeds button { min-width: 38px; }
-    .replay-controls-view .tvm-speeds button.is-on {
+    /* ── Reproductor de replays: barra flotante ──────────────────────────
+       Una pastilla que flota abajo en el centro, con los botones agrupados y
+       con aire entre grupos. Se esconde sola si no movés el mouse. Sin blur ni
+       sombras animadas: sólo opacidad y transform. */
+    html .replay-controls-view {
+      position: fixed !important;
+      left: 50% !important;
+      right: auto !important;
+      bottom: 18px !important;
+      width: min(1240px, calc(100vw - 32px)) !important;
+      flex-wrap: wrap !important;
+      row-gap: 8px !important;
+      box-sizing: border-box !important;
+      transform: translateX(-50%);
+      display: flex !important;
+      align-items: center !important;
+      gap: 10px 12px !important;
+      padding: 10px 16px !important;
+      border-radius: 20px !important;
+      border: 1px solid ${p.accent || p.blue}66 !important;
+      background: linear-gradient(180deg, ${p.panel || '#141a2c'}f2, ${p.bg || '#0a0e1a'}f7) !important;
+      box-shadow: 0 20px 50px -14px rgba(0, 0, 0, .85), inset 0 1px 0 rgba(255, 255, 255, .06) !important;
+      z-index: 2147481000;
+      transition: opacity .25s ease, transform .25s ease;
+    }
+    html .replay-controls-view.tvm-idle { opacity: 0; transform: translate(-50%, 16px); pointer-events: none; }
+    html .replay-controls-view button {
+      height: 34px;
+      flex: 0 0 auto;
+      min-width: 36px;
+      margin: 0 !important;
+      padding: 0 13px !important;
+      border: 0 !important;
+      border-radius: 11px !important;
+      background: rgba(255, 255, 255, .07) !important;
+      box-shadow: none !important;
+      font-weight: 700;
+      color: #fff !important;
+      white-space: nowrap;
+      transition: background .15s ease, transform .15s ease;
+    }
+    html .replay-controls-view button:hover:not(:disabled) { background: rgba(255, 255, 255, .15) !important; transform: translateY(-1px); }
+    html .replay-controls-view button:active:not(:disabled) { transform: translateY(0) scale(.97); }
+    html .replay-controls-view [data-hook="time"],
+    html .replay-controls-view [data-hook="spd"] { min-width: 52px; text-align: center; }
+
+    /* Cada grupo es un control segmentado con su propio fondo. */
+    .replay-controls-view .tvm-speeds {
+      flex: 0 0 auto;
+      display: flex;
+      align-items: center;
+      gap: 3px;
+      padding: 3px;
+      border-radius: 14px;
+      background: rgba(0, 0, 0, .32);
+      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .06);
+    }
+    html .replay-controls-view .tvm-speeds button {
+      min-width: 40px;
+      height: 30px;
+      padding: 0 10px !important;
+      border-radius: 11px !important;
+      background: transparent !important;
+    }
+    html .replay-controls-view .tvm-speeds button:hover:not(.is-on) { background: rgba(255, 255, 255, .1) !important; }
+    html .replay-controls-view .tvm-speeds button.is-on {
+      background: linear-gradient(135deg, ${p.accent || p.blue}, ${p.accent2 || p.accent || p.blue}) !important;
+      color: #fff !important;
+      box-shadow: 0 6px 16px -6px ${p.accent || p.blue} !important;
+    }
+    html .replay-controls-view .tvm-stats-btn,
+    html .replay-controls-view .tvm-board-btn { padding: 0 14px !important; }
+    html .replay-controls-view .tvm-board-btn.is-on {
       background: ${p.accent || p.blue} !important;
       color: #fff !important;
     }
-    .replay-controls-view .tvm-stats-btn { padding: 0 10px; }
+    html .replay-controls-view .timebar { flex: 1 1 140px; min-width: 100px; }
+    html .replay-controls-view .timebar .barbg { height: 8px !important; border-radius: 8px !important; }
+    html .replay-controls-view .timebar .bar { border-radius: 8px !important; }
+
+    /* ── Pizarra táctica ─────────────────────────────────────────────────
+       La cancha congelada con tus dibujos encima. Los controles van arriba. */
+    .tvm-board { position: fixed; inset: 0; z-index: 2147480500; touch-action: none; cursor: crosshair; background: #000; }
+    .tvm-boardbar {
+      position: fixed;
+      top: 14px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 2147481200;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 8px 12px;
+      border-radius: 18px;
+      border: 1px solid ${p.accent || p.blue}66;
+      background: linear-gradient(180deg, ${p.panel || '#141a2c'}f5, ${p.bg || '#0a0e1a'}f8);
+      box-shadow: 0 18px 44px -14px rgba(0, 0, 0, .85);
+      color: #fff;
+      font: 600 12.5px/1 system-ui, sans-serif;
+      user-select: none;
+    }
+    .tvm-boardbar .grp { display: flex; align-items: center; gap: 4px; padding: 3px; border-radius: 13px; background: rgba(0, 0, 0, .32); }
+    .tvm-boardbar button {
+      all: unset;
+      box-sizing: border-box;
+      cursor: pointer;
+      height: 32px;
+      min-width: 32px;
+      padding: 0 11px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      white-space: nowrap;
+      border-radius: 10px;
+      color: #fff;
+      opacity: .8;
+      transition: background .15s, opacity .15s;
+    }
+    .tvm-boardbar button:hover { opacity: 1; background: rgba(255, 255, 255, .12); }
+    .tvm-boardbar button.is-on { opacity: 1; background: linear-gradient(135deg, ${p.accent || p.blue}, ${p.accent2 || p.accent || p.blue}); }
+    .tvm-boardbar button.sw { width: 26px; min-width: 26px; height: 26px; padding: 0; border-radius: 50%; margin: 0 2px; border: 2px solid transparent; opacity: 1; }
+    .tvm-boardbar button.sw.is-on { border-color: #fff; background: none; }
+    .tvm-boardbar button.sw i { width: 16px; height: 16px; border-radius: 50%; display: block; }
+    .tvm-boardbar button.cta { background: ${p.accent || p.blue}; opacity: 1; }
 
     /* El cartelito del carrete de goles. Arriba y al medio, que es donde no
        tapa ni el marcador ni el chat, y por encima de todo lo del juego. */
@@ -1619,7 +1736,7 @@ function waitForReplayInput(doc) {
  * grabación entera no se usa la velocidad: se la simula aparte y sin dibujarla,
  * ver `analyzeReplay`.
  */
-const REPLAY_SPEEDS = [0.25, 0.5, 1, 2, 4, 8, 16];
+const REPLAY_SPEEDS = [0.25, 0.5, 1, 2, 4, 8];
 
 async function watchReplayView(doc) {
   const controls = await waitFor(doc, '.replay-controls-view');
@@ -1687,12 +1804,47 @@ async function watchReplayView(doc) {
     goalBar.append(b);
   }
 
+  // La pizarra táctica: congela la cancha y deja dibujar encima.
+  const boardBtn = doc.createElement('button');
+  boardBtn.type = 'button';
+  boardBtn.className = 'tvm-board-btn';
+  boardBtn.textContent = '✎ Pizarra';
+  boardBtn.title = 'Dibujar jugadas sobre la cancha (P)';
+  boardBtn.addEventListener('click', (event) => {
+    event.preventDefault();
+    safe(toggleBoard);
+  });
+
   // Antes del cronómetro: los botones de velocidad quedan todos juntos y la
   // barra de tiempo no se corre de lugar.
   const time = controls.querySelector('[data-hook="time"]');
   controls.insertBefore(bar, time);
   controls.insertBefore(goalBar, time);
   controls.insertBefore(stats, time);
+  controls.insertBefore(boardBtn, time);
+
+  // La barra es flotante: se esconde si no movés el mouse y vuelve al moverlo.
+  // Con la pizarra abierta o con el mouse encima no se esconde.
+  let idleTimer = 0;
+  const wake = () => {
+    controls.classList.remove('tvm-idle');
+    clearTimeout(idleTimer);
+    idleTimer = setTimeout(() => {
+      if (controls.matches(':hover') || boardState.open) return;
+      controls.classList.add('tvm-idle');
+    }, 3200);
+  };
+  doc.addEventListener('mousemove', wake, { passive: true });
+  doc.addEventListener('keydown', (event) => {
+    wake();
+    const tag = event.target && event.target.tagName;
+    if (event.key && event.key.toLowerCase() === 'p' && !event.ctrlKey && !event.metaKey && tag !== 'INPUT' && tag !== 'TEXTAREA') {
+      safe(toggleBoard);
+    }
+  }, true);
+  wake();
+  // Al salir del flujo, la cancha gana el alto de la barra: se le avisa para que se redibuje.
+  setTimeout(() => { try { view.dispatchEvent(new view.Event('resize')); } catch (_) { /* sin resize */ } }, 60);
 
   const paint = () => {
     const current = view.__tvmReplay && view.__tvmReplay.speed;
@@ -1716,6 +1868,222 @@ async function watchReplayView(doc) {
   controls.addEventListener('pointerdown', () => safe(stopReel), true);
 
   paint();
+}
+
+
+/* ------------------------------------------------------------------ *
+ * Pizarra táctica
+ * ------------------------------------------------------------------ *
+ * Sobre una replay: se toma una foto de la cancha tal como está en ese
+ * momento y se dibuja encima. Como trabaja con la foto, no depende de
+ * pausar el reproductor ni de cómo esté hecho el de HaxBall.
+ *
+ * Herramientas: lápiz, flecha y zona. Atajos: P abre y cierra, Esc cierra,
+ * Ctrl+Z deshace. Se puede guardar como imagen o copiar para pegarla en un
+ * chat. Todo corre sólo mientras está abierta.
+ */
+const boardState = { open: false, root: null };
+const BOARD_COLORS = ['#ff5a5f', '#4dabff', '#ffffff', '#ffd23f', '#3ddc97'];
+
+function toggleBoard() {
+  if (boardState.open) return closeBoard();
+  const doc = gameDocument();
+  if (!doc) return;
+  const game = [...doc.querySelectorAll('canvas')].sort((a, b) => (b.width * b.height) - (a.width * a.height))[0];
+  if (!game) return notify('No encontré la cancha para dibujar', 'err');
+  openBoard(doc, game);
+}
+
+function closeBoard() {
+  if (boardState.root) boardState.root.forEach((el) => el.remove());
+  boardState.root = null;
+  boardState.open = false;
+  const btn = gameDocument() && gameDocument().querySelector('.tvm-board-btn');
+  if (btn) btn.classList.remove('is-on');
+}
+
+function openBoard(doc, game) {
+  const view = doc.defaultView;
+  const W = view.innerWidth;
+  const H = view.innerHeight;
+  const dpr = Math.min(2, view.devicePixelRatio || 1);
+
+  // La cancha se estira para llenar el alto y el ancho sin deformarse.
+  const canvas = doc.createElement('canvas');
+  canvas.className = 'tvm-board';
+  canvas.width = Math.round(W * dpr);
+  canvas.height = Math.round(H * dpr);
+  canvas.style.width = `${W}px`;
+  canvas.style.height = `${H}px`;
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+
+  const rect = game.getBoundingClientRect();
+  let frozen = null;
+  try {
+    frozen = doc.createElement('canvas');
+    frozen.width = game.width;
+    frozen.height = game.height;
+    frozen.getContext('2d').drawImage(game, 0, 0);
+  } catch (_) { frozen = null; }
+
+  const shapes = [];
+  let tool = 'pen';
+  let color = BOARD_COLORS[0];
+  let size = 4;
+  let cur = null;
+
+  const paint = () => {
+    ctx.clearRect(0, 0, W, H);
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, W, H);
+    if (frozen) ctx.drawImage(frozen, rect.left, rect.top, rect.width, rect.height);
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    for (const s of cur ? [...shapes, cur] : shapes) drawShape(ctx, s);
+  };
+
+  const pos = (e) => ({ x: e.clientX, y: e.clientY });
+  canvas.addEventListener('pointerdown', (e) => {
+    canvas.setPointerCapture(e.pointerId);
+    const a = pos(e);
+    cur = { tool, color, size, pts: [a], a, b: a };
+  });
+  canvas.addEventListener('pointermove', (e) => {
+    if (!cur) return;
+    const b = pos(e);
+    if (cur.tool === 'pen') cur.pts.push(b);
+    cur.b = b;
+    paint();
+  });
+  const end = () => {
+    if (!cur) return;
+    const moved = Math.hypot(cur.b.x - cur.a.x, cur.b.y - cur.a.y) > 3 || cur.pts.length > 2;
+    if (moved) shapes.push(cur);
+    cur = null;
+    paint();
+  };
+  canvas.addEventListener('pointerup', end);
+  canvas.addEventListener('pointercancel', end);
+
+  // La barra de herramientas.
+  const bar = doc.createElement('div');
+  bar.className = 'tvm-boardbar';
+  const group = () => { const g = doc.createElement('div'); g.className = 'grp'; bar.append(g); return g; };
+  const mk = (parent, label, title, fn, cls = '') => {
+    const b = doc.createElement('button');
+    b.type = 'button';
+    b.textContent = label;
+    b.title = title;
+    if (cls) b.className = cls;
+    b.addEventListener('click', (e) => { e.preventDefault(); fn(b); });
+    parent.append(b);
+    return b;
+  };
+
+  const tools = group();
+  const toolBtns = {};
+  for (const [id, label, title] of [['pen', '✎ Lápiz', 'Dibujo libre'], ['arrow', '➚ Flecha', 'Flecha: arrastrá de un punto a otro'], ['zone', '◯ Zona', 'Marcar una zona']]) {
+    toolBtns[id] = mk(tools, label, title, () => {
+      tool = id;
+      for (const k in toolBtns) toolBtns[k].classList.toggle('is-on', k === id);
+    });
+  }
+  toolBtns.pen.classList.add('is-on');
+
+  const colors = group();
+  const swBtns = [];
+  for (const c of BOARD_COLORS) {
+    const b = mk(colors, '', 'Color', () => {
+      color = c;
+      swBtns.forEach((x) => x.classList.toggle('is-on', x === b));
+    }, 'sw');
+    const dot = doc.createElement('i');
+    dot.style.background = c;
+    b.append(dot);
+    swBtns.push(b);
+  }
+  swBtns[0].classList.add('is-on');
+
+  const sizes = group();
+  const sizeBtns = [];
+  for (const [n, label] of [[3, '·'], [6, '●'], [10, '⬤']]) {
+    const b = mk(sizes, label, 'Grosor', () => {
+      size = n;
+      sizeBtns.forEach((x) => x.classList.toggle('is-on', x === b));
+    });
+    sizeBtns.push(b);
+  }
+  sizeBtns[0].classList.add('is-on');
+  size = 3;
+
+  const acts = group();
+  mk(acts, '↶ Deshacer', 'Deshacer (Ctrl+Z)', () => { shapes.pop(); paint(); });
+  mk(acts, 'Limpiar', 'Borrar todo', () => { shapes.length = 0; paint(); });
+
+  const out = group();
+  const png = () => new Promise((resolve) => canvas.toBlob((b) => {
+    const r = new view.FileReader();
+    r.onload = () => resolve(String(r.result));
+    r.readAsDataURL(b);
+  }, 'image/png'));
+  mk(out, 'Copiar', 'Copiar la imagen para pegarla en un chat', async () => ipcRenderer.send('game:board-image', { mode: 'copy', url: await png() }));
+  mk(out, 'Guardar', 'Guardar como imagen', async () => ipcRenderer.send('game:board-image', { mode: 'save', url: await png() }), 'cta');
+  mk(out, '✕', 'Cerrar (Esc)', closeBoard);
+
+  const onKey = (e) => {
+    if (e.key === 'Escape') { e.preventDefault(); closeBoard(); doc.removeEventListener('keydown', onKey, true); }
+    else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); shapes.pop(); paint(); }
+  };
+  doc.addEventListener('keydown', onKey, true);
+
+  doc.body.append(canvas, bar);
+  boardState.root = [canvas, bar];
+  boardState.open = true;
+  const btn = doc.querySelector('.tvm-board-btn');
+  if (btn) btn.classList.add('is-on');
+  paint();
+}
+
+function drawShape(ctx, s) {
+  ctx.strokeStyle = s.color;
+  ctx.fillStyle = s.color;
+  ctx.lineWidth = s.size;
+  ctx.shadowColor = 'rgba(0,0,0,.6)';
+  ctx.shadowBlur = 4;
+  if (s.tool === 'pen') {
+    ctx.beginPath();
+    s.pts.forEach((p, i) => (i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y)));
+    ctx.stroke();
+  } else if (s.tool === 'arrow') {
+    const { a, b } = s;
+    const ang = Math.atan2(b.y - a.y, b.x - a.x);
+    const head = 10 + s.size * 2.2;
+    ctx.beginPath();
+    ctx.moveTo(a.x, a.y);
+    ctx.lineTo(b.x - Math.cos(ang) * head * 0.6, b.y - Math.sin(ang) * head * 0.6);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(b.x, b.y);
+    ctx.lineTo(b.x - head * Math.cos(ang - 0.45), b.y - head * Math.sin(ang - 0.45));
+    ctx.lineTo(b.x - head * Math.cos(ang + 0.45), b.y - head * Math.sin(ang + 0.45));
+    ctx.closePath();
+    ctx.fill();
+  } else if (s.tool === 'zone') {
+    const cx = (s.a.x + s.b.x) / 2;
+    const cy = (s.a.y + s.b.y) / 2;
+    const rx = Math.abs(s.b.x - s.a.x) / 2;
+    const ry = Math.abs(s.b.y - s.a.y) / 2;
+    ctx.beginPath();
+    ctx.ellipse(cx, cy, Math.max(1, rx), Math.max(1, ry), 0, 0, Math.PI * 2);
+    ctx.globalAlpha = 0.18;
+    ctx.fill();
+    ctx.globalAlpha = 1;
+    ctx.setLineDash([10, 7]);
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+  ctx.shadowBlur = 0;
 }
 
 /** Espera a que aparezca un selector, pasando la pantalla de nickname si estorba. */
