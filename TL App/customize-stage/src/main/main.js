@@ -3555,6 +3555,36 @@ listen('game:clip-save', async (_e, payload) => {
     send('game:toast', { message: 'No se pudo guardar el clip', kind: 'err' });
   }
 });
+/** Un clip de la carpeta por su nombre: sólo el nombre, nunca una ruta de afuera. */
+function clipPath(name) {
+  const base = path.basename(String(name || ''));
+  if (!/\.(webm|mp4)$/i.test(base)) throw new Error('clip inválido');
+  return path.join(clipsFolder(), base);
+}
+handle('clips:list', async () => {
+  const dir = clipsFolder();
+  let names = [];
+  try { names = await fs.promises.readdir(dir); } catch { return { dir, items: [] }; }
+  const { pathToFileURL } = require('url');
+  const items = [];
+  for (const name of names) {
+    if (!/\.(webm|mp4)$/i.test(name)) continue;
+    try {
+      const st = await fs.promises.stat(path.join(dir, name));
+      if (st.isFile()) items.push({ name, size: st.size, mtime: st.mtimeMs, url: pathToFileURL(path.join(dir, name)).href });
+    } catch { /* se borró mientras se listaba */ }
+  }
+  items.sort((a, b) => b.mtime - a.mtime);
+  return { dir, items: items.slice(0, 60), total: items.length };
+});
+handle('clips:open', async (_e, name) => shell.openPath(clipPath(name)));
+handle('clips:reveal', async (_e, name) => { shell.showItemInFolder(clipPath(name)); return true; });
+handle('clips:delete', async (_e, name) => {
+  const file = clipPath(name);
+  // A la papelera: un clip borrado de más se puede recuperar.
+  try { await shell.trashItem(file); } catch { await fs.promises.unlink(file); }
+  return true;
+});
 handle('clips:openFolder', async () => {
   const dir = clipsFolder();
   await fs.promises.mkdir(dir, { recursive: true });

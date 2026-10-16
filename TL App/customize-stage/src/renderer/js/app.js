@@ -4619,6 +4619,9 @@ const CLIP_KEYS = [['F6', 'F6'], ['F7', 'F7'], ['F8', 'F8'], ['F9', 'F9'], ['F10
 const CLIP_SECONDS = [10, 15, 20, 30];
 const CLIP_QUALITIES = [['liviana', 'Liviana', 'Light'], ['normal', 'Normal', 'Normal'], ['alta', 'Alta', 'High']];
 
+// Estado de la lista de clips (se declara antes de `paintClips`, que lo consulta).
+let clipsShown = null;
+let clipsSeen = null;
 function paintClips() {
   if (!$('#clipsSwitch') || !state.config) return;
   const en = isEn();
@@ -4666,6 +4669,7 @@ function paintClips() {
       ? `About ${mb} MB of video memory while it's on (${plan.w}×${plan.h}, ${plan.fps} fps). Saves to Videos\\TL App\\Clips as .webm (opens in your browser, VLC or Discord).`
       : `Unos ${mb} MB de memoria de video mientras está prendido (${plan.w}×${plan.h}, ${plan.fps} cuadros por segundo). Se guarda en Videos\\TL App\\Clips como .webm (se abre con el navegador, VLC o Discord).`;
   }
+  if (clipsShown === null) clipsLoad();
 }
 $('#clipsKeyChips').addEventListener('click', (e) => {
   const b = e.target.closest('[data-ck]');
@@ -4680,6 +4684,134 @@ $('#clipsQualChips').addEventListener('click', (e) => {
   if (b) patchConfig({ clips: { quality: b.dataset.cq } });
 });
 $('#clipsOpen').addEventListener('click', () => { try { tvm.clips.openFolder(); } catch (err) { /* sin carpeta */ } });
+$('#clipsOpen2').addEventListener('click', () => { try { tvm.clips.openFolder(); } catch (err) { /* sin carpeta */ } });
+
+/*
+ * Mis clips: la lista de lo guardado, con miniatura, y un reproductor adentro de
+ * la app. Las miniaturas son el primer cuadro del propio video, que se carga
+ * recién cuando la tarjeta entra en pantalla (nada se decodifica de más).
+ */
+function clipSize(bytes) {
+  return bytes >= 1048576 ? `${(bytes / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(bytes / 1024))} KB`;
+}
+function clipDate(ms) {
+  const d = new Date(ms);
+  const p2 = (n) => String(n).padStart(2, '0');
+  return `${p2(d.getDate())}/${p2(d.getMonth() + 1)} ${p2(d.getHours())}:${p2(d.getMinutes())}`;
+}
+async function clipsLoad() {
+  const grid = $('#clipsGrid');
+  if (!grid || !window.tvm || !tvm.clips || !tvm.clips.list) return;
+  const en = isEn();
+  let res = null;
+  try { res = await tvm.clips.list(); } catch (err) { res = null; }
+  const items = (res && res.items) || [];
+  clipsShown = items;
+  $('#clipsOpen2').textContent = en ? 'Open folder' : 'Abrir carpeta';
+  $('#clipsRefresh').textContent = en ? 'Refresh' : 'Actualizar';
+  $('#clipsCount').textContent = items.length
+    ? (en ? `My clips (${(res && res.total) || items.length})` : `Mis clips (${(res && res.total) || items.length})`)
+    : (en ? 'My clips' : 'Mis clips');
+  $('#clipsPath').textContent = (res && res.dir) || '';
+  grid.innerHTML = '';
+  if (clipsSeen) clipsSeen.disconnect();
+  if (!items.length) {
+    const empty = document.createElement('div');
+    empty.className = 'clips__empty';
+    empty.textContent = en
+      ? 'No clips yet. Turn on "Save clips with a key" below and press the key during a match.'
+      : 'Todavía no hay clips. Prendé «Clipear con una tecla» acá abajo y apretá la tecla durante una partida.';
+    grid.append(empty);
+    return;
+  }
+  const lazy = 'IntersectionObserver' in window;
+  if (lazy) {
+    clipsSeen = new IntersectionObserver((entries) => {
+      for (const en2 of entries) {
+        if (!en2.isIntersecting) continue;
+        const v = en2.target;
+        if (v.dataset.src) { v.src = v.dataset.src; v.removeAttribute('data-src'); }
+        clipsSeen.unobserve(v);
+      }
+    }, { root: null, rootMargin: '120px' });
+  }
+  items.forEach((clip, i) => {
+    const card = document.createElement('button');
+    card.type = 'button';
+    card.className = 'clip';
+    card.dataset.i = String(i);
+    const thumb = document.createElement('div');
+    thumb.className = 'clip__thumb';
+    const v = document.createElement('video');
+    v.muted = true;
+    v.preload = 'metadata';
+    v.dataset.src = `${clip.url}#t=0.2`;
+    thumb.append(v);
+    const play = document.createElement('div');
+    play.className = 'clip__play';
+    play.textContent = '▶';
+    thumb.append(play);
+    if (/-gol-/.test(clip.name)) {
+      const tag = document.createElement('span');
+      tag.className = 'clip__tag';
+      tag.textContent = en ? 'Goal' : 'Gol';
+      thumb.append(tag);
+    }
+    const meta = document.createElement('div');
+    meta.className = 'clip__meta';
+    const when = document.createElement('b');
+    when.textContent = clipDate(clip.mtime);
+    const size = document.createElement('span');
+    size.textContent = clipSize(clip.size);
+    meta.append(when, size);
+    card.append(thumb, meta);
+    grid.append(card);
+    if (lazy) clipsSeen.observe(v);
+    else { v.src = v.dataset.src; v.removeAttribute('data-src'); }
+  });
+}
+let clipOpenName = '';
+function clipOpenPlayer(clip) {
+  if (!clip) return;
+  clipOpenName = clip.name;
+  $('#clipModalTitle').textContent = `${/-gol-/.test(clip.name) ? (isEn() ? 'Goal clip' : 'Clip de gol') : 'Clip'} · ${clipDate(clip.mtime)}`;
+  $('#clipDelete').textContent = isEn() ? 'Delete' : 'Borrar';
+  $('#clipReveal').textContent = isEn() ? 'Show in folder' : 'Mostrar en la carpeta';
+  $('#clipExternal').textContent = isEn() ? 'Open with another app' : 'Abrir con otro programa';
+  const video = $('#clipVideo');
+  video.src = clip.url;
+  $('#clipModal').hidden = false;
+  video.play().catch(() => { /* el usuario le da play */ });
+}
+function clipClosePlayer() {
+  const video = $('#clipVideo');
+  video.pause();
+  video.removeAttribute('src');
+  video.load();
+  $('#clipModal').hidden = true;
+  clipOpenName = '';
+}
+$('#clipsGrid').addEventListener('click', (e) => {
+  const card = e.target.closest('.clip');
+  if (card && clipsShown) clipOpenPlayer(clipsShown[Number(card.dataset.i)]);
+});
+$('#clipsRefresh').addEventListener('click', () => clipsLoad());
+$('#clipModalClose').addEventListener('click', clipClosePlayer);
+$('#clipModal').addEventListener('click', (e) => { if (e.target === $('#clipModal')) clipClosePlayer(); });
+$('#clipReveal').addEventListener('click', () => { if (clipOpenName) tvm.clips.reveal(clipOpenName); });
+$('#clipExternal').addEventListener('click', () => { if (clipOpenName) tvm.clips.open(clipOpenName); });
+$('#clipDelete').addEventListener('click', async () => {
+  if (!clipOpenName) return;
+  const name = clipOpenName;
+  clipClosePlayer();
+  try { await tvm.clips.remove(name); toast(isEn() ? 'Clip moved to the recycle bin' : 'Clip enviado a la papelera', 'ok'); } catch (err) { toast(isEn() ? 'Could not delete it' : 'No se pudo borrar', 'err'); }
+  clipsLoad();
+});
+// Al volver a la app (después de clipear jugando) se actualiza la lista si está a la vista.
+window.addEventListener('focus', () => {
+  const card = $('#clipsCard');
+  if (card && card.offsetParent) clipsLoad();
+});
 try { if (state && state.config) paintClips(); } catch (e) { /* aún sin config */ }
 
 try { if (state && state.config) paintGameExtras(); } catch (e) { /* aún sin config */ }
@@ -8275,6 +8407,7 @@ function flushPlayTime() {
 window.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') {
     if (secModal) { e.preventDefault(); closeSecModal(); return; }
+    if (!$('#clipModal').hidden) { e.preventDefault(); clipClosePlayer(); return; }
     if (!$('#askModal').hidden) { e.preventDefault(); closeAsk(null); return; }
     if (!$('#themeModal').hidden) { e.preventDefault(); $('#themeModal').hidden = true; return; }
     if (!$('#createModal').hidden) { e.preventDefault(); closeCreateModal(); return; }

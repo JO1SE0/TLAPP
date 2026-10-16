@@ -115,7 +115,11 @@ contextBridge.exposeInMainWorld('tvm', {
   },
 
   clips: {
-    openFolder: () => call('clips:openFolder')
+    openFolder: () => call('clips:openFolder'),
+    list: () => call('clips:list'),
+    open: (name) => call('clips:open', name),
+    reveal: (name) => call('clips:reveal', name),
+    remove: (name) => call('clips:delete', name)
   },
   replays: {
     list: () => call('replays:list'),
