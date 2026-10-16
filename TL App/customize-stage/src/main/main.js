@@ -1191,6 +1191,59 @@ function currentDisplayState() {
 }
 
 /**
+ * Tamaño de la interfaz según el monitor.
+ *
+ * El diseño se pensó para una pantalla de 1920×1080. En un monitor más chico o
+ * más cuadrado (un 5:4 de 1280×1024, un portátil de 1366×768) todo quedaba
+ * apretado y los carteles flotantes se montaban sobre la lista. En vez de
+ * achicar cada cosa por separado, se le da a la interfaz el zoom que hace que
+ * su ancho útil se parezca al de una pantalla de referencia: ve lo mismo que
+ * se ve en 1920×1080, sólo que más chico en pantalla.
+ *
+ * Es zoom del documento de la INTERFAZ: el juego sigue a 100 % (su cámara y su
+ * resolución no se tocan; ver `applyGameZoom`). Se mide sobre la pantalla —en
+ * píxeles independientes del dispositivo— y no sobre la ventana, así que
+ * achicar o maximizar la ventana no mueve nada. 'auto' o un porcentaje fijo.
+ */
+const UI_REF_W = 1920;
+const UI_REF_H = 1080;
+const UI_SCALE_MIN = 0.8;
+const UI_SCALE_MAX = 1.25;
+let appliedUiScale = 1;
+
+function uiScaleWanted() {
+  const pref = store.get().appearance.uiScale;
+  const manual = Number(pref);
+  if (pref !== 'auto' && manual >= 60 && manual <= 150) return manual / 100;
+  const display = currentDisplayState();
+  if (!display || !display.size.width || !display.size.height) return 1;
+  const fit = Math.min(display.size.width / UI_REF_W, display.size.height / UI_REF_H);
+  // Por encima de 1 sólo se agranda un poco: en un monitor enorme no hace falta
+  // que todo se vea del tamaño de una pantalla de TV.
+  const clamped = Math.max(UI_SCALE_MIN, Math.min(UI_SCALE_MAX, fit));
+  // Pasos de 5 %: las escalas raras (0,837…) dejan los bordes borrosos.
+  return Math.round(clamped * 20) / 20;
+}
+
+function applyUiScale() {
+  if (!mainWindow || mainWindow.isDestroyed()) return;
+  const wanted = uiScaleWanted();
+  try {
+    if (Math.abs(mainWindow.webContents.getZoomFactor() - wanted) > 0.001) {
+      mainWindow.webContents.setZoomFactor(wanted);
+    }
+  } catch { return; }
+  if (wanted !== appliedUiScale) {
+    appliedUiScale = wanted;
+    emitWindowState();
+    // El zoom de la interfaz no tiene que contagiarle nada al juego.
+    applyGameZoom();
+    setTimeout(applyGameZoom, 300);
+    repaintWindowSoon();
+  }
+}
+
+/**
  * Fuerza cuadros nuevos en los dos renderers.
  *
  * La corrupción que desaparece con Alt+Tab no es un layout roto: es una
@@ -1449,6 +1502,7 @@ function createWindow() {
   windowRestored = !!saved;
 
   mainWindow.once('ready-to-show', () => {
+    applyUiScale();
     // Maximizar ANTES de mostrar: al revés se ve un cuadro en tamaño ventana y
     // enseguida el salto, que es justo lo que se está tratando de sacar.
     if (saved && saved.maximized) mainWindow.maximize();
@@ -1466,6 +1520,7 @@ function createWindow() {
    * cuando el renderer se cae).
    */
   mainWindow.webContents.on('did-finish-load', () => {
+    applyUiScale();
     sentAvatars = new Set();
     pushMyAvatar();
   });
@@ -1496,7 +1551,8 @@ function createWindow() {
   emitWindowState = () => send('win:state', {
     maximized: mainWindow.isMaximized(),
     fullscreen: windowFullscreen,
-    display: currentDisplayState()
+    display: currentDisplayState(),
+    uiScale: appliedUiScale
   });
   mainWindow.on('maximize', () => { emitWindowState(); saveWindowState(); });
   mainWindow.on('unmaximize', () => { emitWindowState(); saveWindowState(); });
@@ -1517,7 +1573,7 @@ function createWindow() {
   mainWindow.on('move', () => {
     saveWindowState();
     clearTimeout(displayMoveTimer);
-    displayMoveTimer = setTimeout(() => emitWindowState(), 120);
+    displayMoveTimer = setTimeout(() => { applyUiScale(); emitWindowState(); }, 120);
   });
   // El agrupado de 500 ms no llega a saltar si cerrás justo después de mover:
   // acá se escribe sin esperar.
@@ -1703,6 +1759,7 @@ function broadcastConfig(next) {
   sendToGames('game:vip', isVip());
   send('cfg:changed', next);
   send('theme:vars', themeVars());
+  applyUiScale();
   return next;
 }
 
@@ -2057,6 +2114,7 @@ if (!app.requestSingleInstanceLock()) {
     createWindow();
     const syncActiveDisplay = () => {
       if (!mainWindow || mainWindow.isDestroyed()) return;
+      applyUiScale();
       emitWindowState();
       repaintWindowSoon();
     };
@@ -2244,7 +2302,8 @@ listen('win:action', (_e, action) => {
 handle('win:state', () => ({
   maximized: !!mainWindow && mainWindow.isMaximized(),
   fullscreen: windowFullscreen,
-  display: currentDisplayState()
+  display: currentDisplayState(),
+  uiScale: appliedUiScale
 }));
 
 /**

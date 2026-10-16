@@ -11,6 +11,7 @@ window.TL_NEWS = {
   title: { es: 'Qué hay de nuevo', en: "What's new" },
   items: {
     es: [
+      'Nuevo: la interfaz se adapta sola al monitor. En pantallas más chicas o más cuadradas (1280×1024, 1366×768…) todo se ve con las mismas proporciones que en 1920×1080, sin cosas apretadas ni carteles encima de la lista. Se puede cambiar en Personalización → Estilo → Tamaño de la interfaz (Automático o un porcentaje fijo). El juego no cambia.',
       'Lista de salas con modos: Todas, Para jugar, Favoritas, Del club y Llenas (un toque aplica los filtros y el orden), y cinco vistas: lista, tarjetas, barras, tablero por ocupación y mapa de salas. Y en el chat de la sala, escribir «/» muestra todos los comandos de HaxBall: flechas para moverte, Tab o click para completar.',
       'Clips: ahora tus clips se ven adentro de la app (Personalización → Partida → Clips → Mis clips): miniaturas, reproductor, mostrar en la carpeta y borrar (va a la papelera). Y arriba hay un botón para abrir la carpeta.',
       'Pelota 3D de verdad: con un estilo, un color o una imagen propia, la pelota ahora rueda como una esfera (el dibujo se corre, se achata hacia el borde, pasa por atrás y vuelve) en vez de girar en el lugar. Y el acabado de la cancha (textura y luz) pasó a opciones en píldoras, sin miniaturas: ya se ve en la vista previa de arriba. En las replays, la barra de controles ahora es una franja abajo con la línea de tiempo, saltos de ±5 s, y la cancha (el chat de la replay queda oculto) queda arriba sin que nada la tape.',

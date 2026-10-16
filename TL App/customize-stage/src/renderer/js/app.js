@@ -4799,6 +4799,7 @@ function paintAudio() {
   try { paintClips(); } catch (e) { /* adorno */ }
   try { paintAnimations(); } catch (e) { /* adorno */ }
   try { paintDensity(); } catch (e) { /* adorno */ }
+  try { paintScale(); } catch (e) { /* adorno */ }
   try { paintLayout(); paintStatusBar(); } catch (e) { /* adorno */ }
   try { paintMixer(); } catch (e) { /* adorno */ }
   const ap = (state.config && state.config.appearance) || {};
@@ -8561,7 +8562,10 @@ function verifyBounds() {
   // Ahí se lo manda lejos en vez de dejarlo pegado arriba a la izquierda,
   // porque un BrowserView no se puede achicar hasta desaparecer.
   if (!box.width || !box.height) return { x: -20000, y: -20000, width: 10, height: 10 };
-  return { x: box.left, y: box.top, width: box.width, height: box.height };
+  // El BrowserView habla en píxeles de la ventana; con zoom de interfaz, el
+  // layout mide en píxeles de documento. Se pasa de uno a otro.
+  const k = state.uiScale || 1;
+  return { x: box.left * k, y: box.top * k, width: box.width * k, height: box.height * k };
 }
 
 /**
@@ -9486,6 +9490,10 @@ async function boot() {
    */
   function onWindowState(next) {
     const fullscreen = !!(next && next.fullscreen);
+    if (next && next.uiScale && next.uiScale !== state.uiScale) {
+      state.uiScale = next.uiScale;
+      syncVerifyBounds();
+    }
     if (next && next.display) {
       const antes = state.display && state.display.id;
       const distinta = antes !== next.display.id
@@ -11237,6 +11245,29 @@ function paintDensity() {
     return b;
   }));
 }
+const UI_SCALES = [['auto', 'Automático', 'Automatic'], [80, '80%', '80%'], [90, '90%', '90%'], [100, '100%', '100%'], [110, '110%', '110%'], [125, '125%', '125%']];
+function paintScale() {
+  const host = $('#scaleChips');
+  if (!host || !state.config) return;
+  const en = isEn();
+  $('#scaleLabel').textContent = en ? 'Interface size' : 'Tamaño de la interfaz';
+  $('#scaleDesc').textContent = en
+    ? 'Automatic fits everything to your monitor so it looks the same as on a 1920×1080 screen.'
+    : 'Automático adapta todo a tu monitor para que se vea igual que en una pantalla de 1920×1080.';
+  const cur = String(state.config.appearance.uiScale || 'auto');
+  host.replaceChildren(...UI_SCALES.map((d) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'chip' + (String(d[0]) === cur ? ' is-active' : '');
+    b.dataset.scale = d[0];
+    b.textContent = en ? d[2] : d[1];
+    return b;
+  }));
+}
+$('#scaleChips').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-scale]');
+  if (b) patchConfig({ appearance: { uiScale: b.dataset.scale === 'auto' ? 'auto' : Number(b.dataset.scale) } }).then(paintScale);
+});
 $('#denChips').addEventListener('click', (e) => {
   const b = e.target.closest('[data-den]');
   if (b) patchConfig({ appearance: { density: b.dataset.den } });

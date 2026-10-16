@@ -84,6 +84,8 @@ const DEFAULTS = {
     themeHover: false,
     /** Densidad de los menús: compact | normal | comfy. Sólo espaciado, no toca el juego. */
     density: 'normal',
+    // Tamaño de la interfaz: 'auto' (según el monitor) o un porcentaje fijo (60–150).
+    uiScale: 'auto',
     /** Estructura de la interfaz: classic | top (barra superior) | dock (dock flotante). */
     layout: 'classic',
     /** Alto de las filas de la lista de salas: dense | normal | large. */
