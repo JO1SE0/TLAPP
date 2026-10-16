@@ -382,6 +382,80 @@ function clubImage() {
   return clubIcon;
 }
 
+/**
+ * Ícono de la ventana elegible (`appearance.appIcon`). El .exe y su acceso
+ * directo llevan el escudo de fábrica y eso no se puede cambiar en marcha; lo
+ * que sí cambia es el de la ventana y la barra de tareas mientras la app corre.
+ * Se arma a 256 px a mano sobre el bitmap del escudo, sin canvas ni archivos.
+ */
+const APP_ICONS = new Set(['escudo', 'circulo', 'cuadrado', 'blanco', 'acento']);
+let appIconCache = { key: '', image: null };
+
+function appIconImage() {
+  const look = store.get().appearance;
+  const kind = APP_ICONS.has(look.appIcon) ? look.appIcon : 'escudo';
+  if (kind === 'escudo') return clubImage();
+  const pal = themes.palette(look.theme, look.accent, look.customThemes);
+  const hex = /^#[0-9a-f]{6}$/i.test(String(pal.accent)) ? pal.accent : '#d4af37';
+  const key = `${kind}:${hex}`;
+  if (appIconCache.key === key) return appIconCache.image;
+  const S = 256;
+  const ar = parseInt(hex.slice(1, 3), 16), ag = parseInt(hex.slice(3, 5), 16), ab = parseInt(hex.slice(5, 7), 16);
+  const inner = kind === 'circulo' || kind === 'cuadrado' ? 176 : 240;
+  const crest = clubImage().resize({ width: inner, height: inner, quality: 'best' }).toBitmap(); // BGRA
+  const out = Buffer.alloc(S * S * 4);
+  const put = (i, r, g, b, a) => { out[i] = b; out[i + 1] = g; out[i + 2] = r; out[i + 3] = a; };
+  // Fondo
+  for (let y = 0; y < S; y++) {
+    for (let x = 0; x < S; x++) {
+      const i = (y * S + x) * 4;
+      if (kind === 'circulo') {
+        const d = Math.hypot(x - S / 2 + 0.5, y - S / 2 + 0.5);
+        if (d <= S / 2 - 1) put(i, ar, ag, ab, 255);
+      } else if (kind === 'cuadrado') {
+        const R = 52, m = 6;
+        const cx = Math.min(Math.max(x, m + R), S - m - R - 1), cy = Math.min(Math.max(y, m + R), S - m - R - 1);
+        const d = Math.hypot(x - cx, y - cy);
+        if (x >= m && y >= m && x < S - m && y < S - m && d <= R) {
+          put(i, d > R - 8 ? ar : 14, d > R - 8 ? ag : 16, d > R - 8 ? ab : 28, 255);
+        }
+      }
+    }
+  }
+  // Escudo encima, centrado
+  const off = Math.round((S - inner) / 2);
+  for (let y = 0; y < inner; y++) {
+    for (let x = 0; x < inner; x++) {
+      const s = (y * inner + x) * 4;
+      let b = crest[s], g = crest[s + 1], r = crest[s + 2];
+      const a = crest[s + 3] / 255;
+      if (!a) continue;
+      if (kind === 'blanco') { r = g = b = 255; }
+      else if (kind === 'acento') { r = ar; g = ag; b = ab; }
+      const i = ((y + off) * S + x + off) * 4;
+      const ba = out[i + 3] / 255;
+      const oa = a + ba * (1 - a);
+      put(i,
+        Math.round((r * a + out[i + 2] * ba * (1 - a)) / oa),
+        Math.round((g * a + out[i + 1] * ba * (1 - a)) / oa),
+        Math.round((b * a + out[i] * ba * (1 - a)) / oa),
+        Math.round(oa * 255));
+    }
+  }
+  const image = nativeImage.createFromBitmap(out, { width: S, height: S });
+  appIconCache = { key, image };
+  return image;
+}
+
+/** Cambia el ícono de la ventana en marcha (se llama al cambiar la config). */
+function applyAppIcon() {
+  try {
+    if (mainWindow && !mainWindow.isDestroyed() && typeof mainWindow.setIcon === 'function') {
+      mainWindow.setIcon(appIconImage());
+    }
+  } catch { /* un ícono que no se puede armar no vale una excepción */ }
+}
+
 function logoBuffer() {
   if (logoIcon) return logoIcon;
   logoIcon = clubImage().resize({ width: 32, height: 32, quality: 'best' }).toPNG();
@@ -1426,7 +1500,7 @@ function createWindow() {
      */
     backgroundColor: bootBackground(),
     title: 'TL App',
-    icon: clubImage(),
+    icon: appIconImage(),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -1672,16 +1746,21 @@ function reply(event, channel, payload) {
 }
 
 /** Variables CSS del tema actual, para que la interfaz se pinte igual que el juego. */
-function themeVars(accentOverride) {
+function themeVars(accentOverride, themeId) {
   const look = store.get().appearance;
-  const pal = themes.palette(look.theme, look.accent, look.customThemes);
+  // `themeId` es sólo para probar un tema al pasar el mouse: no se guarda nada.
+  const probe = typeof themeId === 'string' && themeId ? themeId : look.theme;
+  const pal = themes.palette(probe, look.accent, look.customThemes);
   // `accentOverride` es el acento «que cambia solo»: se pinta encima del tema, pero no se guarda.
   if (/^#[0-9a-f]{6}$/i.test(String(accentOverride || ''))) {
     pal.accent = accentOverride;
     pal.accentText = themes.readableOn(accentOverride);
     pal.duo = false;
   }
-  return themes.appVars(pal);
+  const out = themes.appVars(pal);
+  // No es un color: el cliente lo vuelve el atributo `data-load` (pantallas de carga).
+  out['--load-style'] = String(look.loadStyle || 'clasico');
+  return out;
 }
 
 /** Avisa a los dos lados de un cambio de configuración. */
@@ -1696,6 +1775,7 @@ function broadcastConfig(next) {
   sendToGames('game:vip', isVip());
   send('cfg:changed', next);
   send('theme:vars', themeVars());
+  applyAppIcon();
   return next;
 }
 
@@ -2309,7 +2389,7 @@ handle('cfg:schema', () => ({
   countries: countries.COUNTRIES
 }));
 
-handle('theme:vars', (_e, accent) => themeVars(accent));
+handle('theme:vars', (_e, accent, themeId) => themeVars(accent, themeId));
 
 /**
  * Las mismas variables, pero síncronas y para el arranque de la ventana.

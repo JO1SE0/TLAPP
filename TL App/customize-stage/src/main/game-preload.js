@@ -561,6 +561,83 @@ function applyGameTheme(doc) {
  * contenido con `content-visibility: hidden`: eso también la deja vacía cuando
  * vuelve a mostrarse y los filtros ya no pueden repintar las filas.
  */
+/**
+ * Vidrio dentro de la sala: la pantalla de jugadores (rojo, azul, espectadores y
+ * chat) con paneles translúcidos y el fondo desenfocado detrás. Viene apagado
+ * (`roomGlass` 0) y entonces no agrega ni una regla. Sólo se aplica en la sala
+ * antes de jugar: la cancha no lleva nada de esto.
+ */
+function roomGlassCss(p) {
+  const a = state.config.appearance || {};
+  const level = clampNum(a.roomGlass, 0, 100, 0) / 100;
+  if (!(level > 0)) return '';
+  const blur = clampNum(a.roomGlassBlur, 4, 30, 14);
+  const rgb = (hex, fb) => {
+    const m = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(String(hex || ''));
+    return m ? m.slice(1).map((h) => parseInt(h, 16)).join(',') : fb;
+  };
+  const bg = rgb(p.bg, '16,20,32');
+  const accent = rgb(p.accent, '212,175,55');
+  const alpha = (0.86 - level * 0.56).toFixed(2);
+  const edge = (0.08 + level * 0.1).toFixed(2);
+  const panels = ['', '.t-red', '.t-blue', '.t-spec'].map((t) => `html .room-view .player-list-view${t}`).join(',\n    ');
+  return `
+    .room-view { position: relative; }
+    .room-view::before {
+      content: ""; position: fixed; inset: 0; z-index: 0; pointer-events: none;
+      background:
+        radial-gradient(42vmax 42vmax at 14% 20%, rgba(${accent}, ${(0.18 + level * 0.2).toFixed(2)}), transparent 62%),
+        radial-gradient(38vmax 38vmax at 86% 76%, rgba(${accent}, ${(0.14 + level * 0.16).toFixed(2)}), transparent 62%);
+    }
+    .room-view > .container { position: relative; z-index: 1; }
+    ${panels},
+    html .room-view .chatbox-view,
+    html .room-view .teams > .tools {
+      background: rgba(${bg}, ${alpha}) !important;
+      -webkit-backdrop-filter: blur(${blur}px) saturate(1.3);
+      backdrop-filter: blur(${blur}px) saturate(1.3);
+      border: 1px solid rgba(255, 255, 255, ${edge}) !important;
+      border-radius: 12px !important;
+    }
+  `;
+}
+
+/**
+ * Modos del lobby: cómo se ven los jugadores en la pantalla de la sala (antes
+ * de jugar). Sólo estilos sobre las filas que ya existen: no se mueve ni se
+ * recrea nada del DOM del juego. `normal` no agrega ni una regla.
+ *   compacto — filas finas, más jugadores a la vista.
+ *   fichas   — cada jugador como una ficha con la banda del color del equipo.
+ *   grande   — letra y banderas grandes, para verlo de lejos.
+ */
+function lobbyModeCss() {
+  const mode = String((state.config.appearance || {}).lobbyMode || 'normal');
+  const item = '.room-view .player-list-item';
+  if (mode === 'compacto') {
+    return `
+    html ${item} { padding: 1px 6px !important; margin: 0 3px !important; font-size: 12.5px !important; line-height: 1.25 !important; }
+    html ${item} .flagico { margin-right: 5px !important; transform: scale(.85); }
+    html .room-view .player-list-view .list { padding: 1px 0 !important; }`;
+  }
+  if (mode === 'fichas') {
+    return `
+    html ${item} { margin: 4px 6px !important; padding: 8px 10px !important; border-radius: 9px !important;
+      background: rgba(255,255,255,.05) !important; border: 1px solid rgba(255,255,255,.08) !important;
+      border-left-width: 4px !important; border-left-color: rgba(255,255,255,.35) !important; }
+    html .room-view .player-list-view.t-red ${item} { border-left-color: #ff6b6b !important; }
+    html .room-view .player-list-view.t-blue ${item} { border-left-color: #5aa0ff !important; }
+    html .room-view .player-list-view.t-spec ${item} { border-left-color: rgba(255,255,255,.25) !important; }
+    html ${item}:hover { background: rgba(255,255,255,.1) !important; }`;
+  }
+  if (mode === 'grande') {
+    return `
+    html ${item} { padding: 9px 12px !important; font-size: 17px !important; font-weight: 600 !important; }
+    html ${item} .flagico { transform: scale(1.35); margin-right: 12px !important; }
+    html ${item} [data-hook="name"] { letter-spacing: .01em; }`;
+  }
+  return '';
+}
+
 function applyClientStyles(doc) {
   if (!doc) return;
   const mount = doc.head || doc.documentElement;
@@ -1004,6 +1081,8 @@ function applyClientStyles(doc) {
 
     ${hideChat ? '.game-view .chatbox-view, .room-view .chatbox-view { display: none !important; }' : ''}
     ${chatCss}
+    ${roomGlassCss(p)}
+    ${lobbyModeCss()}
   `;
 }
 

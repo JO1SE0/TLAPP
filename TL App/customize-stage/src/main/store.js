@@ -85,6 +85,18 @@ const DEFAULTS = {
     density: 'normal',
     /** Estructura de la interfaz: classic | top (barra superior) | dock (dock flotante). */
     layout: 'classic',
+    /** Forma de la interfaz: esquinas (%), vidrio (%), desenfoque (px), sombras (%). 100/0/16/100 = de fábrica. */
+    themeHover: false,
+    loadStyle: 'clasico',
+    lobbyMode: 'normal',
+    appIcon: 'escudo',
+    shapeRadius: 100,
+    glass: 0,
+    glassBlur: 16,
+    shadowK: 100,
+    /** Vidrio dentro de la sala (la pantalla de jugadores antes de jugar), 0 a 100. */
+    roomGlass: 0,
+    roomGlassBlur: 14,
     /** Alto de las filas de la lista de salas: dense | normal | large. */
     roomRows: 'normal',
     /** Barra fina de estado abajo (hora, club conectado, jugadores online). Apagada por defecto. */

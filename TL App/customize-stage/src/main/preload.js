@@ -28,6 +28,8 @@ function paintBootTheme() {
     for (const [name, value] of Object.entries(vars)) {
       if (value) root.style.setProperty(name, value);
     }
+    const load = vars['--load-style'];
+    if (load && load !== 'clasico') root.dataset.load = load;
   } catch {
     // Sin tema, la pantalla de carga usa los valores de respaldo del CSS. No es
     // motivo para dejar la ventana sin preload.
@@ -97,7 +99,7 @@ contextBridge.exposeInMainWorld('tvm', {
   },
 
   theme: {
-    vars: (accent) => call('theme:vars', accent),
+    vars: (accent, themeId) => call('theme:vars', accent, themeId),
     onVars: (cb) => on('theme:vars', cb),
     save: (theme) => call('themes:save', theme),
     remove: (id) => call('themes:delete', id)
