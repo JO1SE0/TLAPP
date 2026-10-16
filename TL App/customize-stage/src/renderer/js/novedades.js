@@ -12,6 +12,7 @@ window.TL_NEWS = {
   items: {
     es: [
       'Nuevo: pestaña Informes (capitán y habilitados). Elegís una replay y se arma el informe del partido: quiénes jugaron, los cambios (quién por quién), goles y asistencias, goles en contra y hasta qué minuto cada arco mantuvo la valla invicta. Ya no se guarda nada solo: sólo lo que cargues ahí.',
+      'Interno: nuevos Mutadores de gol. Al hostear en modo Interno podés activarlos: después de cada gol la sala cambia una regla al azar un rato (pelota gigante, mini, pesada o resbalosa, discos chicos o grandes, viento) para los dos equipos, y todo vuelve a la normalidad solo. Con !mutadores se prenden o apagan en pleno partido.',
       'Replays: nueva barra flotante con los botones agrupados y más aire, que se esconde sola si no movés el mouse. Las velocidades llegan hasta x8. Nuevo: Pizarra táctica (botón ✎ Pizarra o tecla P): congela la cancha y dibujás flechas, zonas y trazos encima; la guardás como imagen o la copiás para pegarla en un chat.',
       'Arreglo: la app ya no se congela al pasar a pantalla completa en algunas PCs. si la ventana no responde tras el cambio, se deshace sola.',
       'Nuevo: tarjeta de perfil con anillo de nivel, barra de XP y tus partidos / goles / asistencias, con un destello dorado en el borde. Cambia de lugar según la interfaz: tarjeta en el menú lateral, chip en la barra de arriba o de abajo, o solo tu foto con el nivel en dock, isla e íconos. Tocala para abrir tu perfil.',

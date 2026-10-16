@@ -9684,6 +9684,8 @@ async function loadHostState() {
 function paintHostMode() {
   for (const b of $$('#hostMode button')) b.classList.toggle('is-on', b.dataset.mode === hostMode);
   if ($('#hostRecordRow')) $('#hostRecordRow').hidden = hostMode !== 'interno';
+  if ($('#hostMutRow')) $('#hostMutRow').hidden = hostMode !== 'interno';
+  if ($('#hostMutBody') && $('#hostMut')) $('#hostMutBody').hidden = hostMode !== 'interno' || !$('#hostMut').checked;
   if ($('#hostScriptRow')) $('#hostScriptRow').hidden = hostMode === 'interno';
   const nameEl = $('#hostName');
   if (nameEl && (!nameEl.value || nameEl.dataset.auto === '1')) { nameEl.value = hostMode === 'interno' ? 'Interno TL' : 'Amistoso TL'; nameEl.dataset.auto = '1'; }
@@ -9697,6 +9699,7 @@ function bindHost() {
   if (!window.tvm.host || !$('#hostSec')) return;
   for (const b of $$('#hostMode button')) b.addEventListener('click', () => { hostMode = b.dataset.mode; paintHostMode(); });
   if ($('#hostName')) $('#hostName').addEventListener('input', (e) => { e.target.dataset.auto = '0'; });
+  if ($('#hostMut')) $('#hostMut').addEventListener('change', paintHostMode);
   if ($('#hostSize')) $('#hostSize').addEventListener('change', (e) => { e.target.dataset.touched = '1'; });
   if ($('#hostScriptPick')) $('#hostScriptPick').addEventListener('click', async () => {
     try { hostScript = (await window.tvm.host.pickScript()) || hostScript; } catch (e) { /* cancelado */ }
@@ -9715,7 +9718,8 @@ function bindHost() {
       hostSt = await window.tvm.host.start({
         mode: hostMode, name: $('#hostName').value, size: ($('#hostSize').value === 'train' ? 'train' : Number($('#hostSize').value)), maxPlayers: Number($('#hostMax').value),
         password: $('#hostPass').value, adminKey: $('#hostAdminKey').value, hostNick: $('#hostNick').value,
-        record: $('#hostRecord').checked, listed: $('#hostListed').checked, mapFiles: hostMapFiles, customPath: hostMode === 'amistoso' ? hostScript : ''
+        record: $('#hostRecord').checked, listed: $('#hostListed').checked,
+        mutators: { on: hostMode === 'interno' && $('#hostMut').checked, secs: Number($('#hostMutSecs').value), list: $$('#hostMutList input:checked').map((i) => i.dataset.mut) }, mapFiles: hostMapFiles, customPath: hostMode === 'amistoso' ? hostScript : ''
       });
       try { localStorage.setItem('tl_host_prefs', JSON.stringify({ nick: $('#hostNick').value, adminKey: $('#hostAdminKey').value })); } catch (e) { /* sin guardar */ }
     } catch (e) {

@@ -1504,6 +1504,23 @@
                 <div class="hostmaps" id="hostMaps"></div>
                 <p class="note">Elegí un archivo <code>.hbs</code> para cada modo, o dejalos en la carpeta con los nombres <code>x1.hbs</code>, <code>x3.hbs</code>… y se cargan solos. Lo que elijas acá pisa a la carpeta.</p></div>
               <label class="hostchk" id="hostRecordRow"><input type="checkbox" id="hostRecord" checked /> Grabar replay de cada partido</label>
+              <div class="hostmut" id="hostMutRow" hidden>
+                <label class="hostchk"><input type="checkbox" id="hostMut" /> Mutadores de gol</label>
+                <p class="note">Después de cada gol la sala cambia una regla al azar durante un rato (la pelota, los discos o el viento). Vale para los dos equipos por igual y todo vuelve a la normalidad solo. Con <code>!mutadores</code> lo prendés o apagás en pleno partido.</p>
+                <div class="hostmut__body" id="hostMutBody" hidden>
+                  <div class="field"><label for="hostMutSecs">Duración de cada mutación</label>
+                    <select id="hostMutSecs" class="sortselect"><option value="30">30 segundos</option><option value="45" selected>45 segundos</option><option value="60">1 minuto</option><option value="90">1 minuto y medio</option></select></div>
+                  <div class="hostmut__list" id="hostMutList">
+                    <label class="hostchk"><input type="checkbox" data-mut="gigante" checked /> Pelota gigante</label>
+                    <label class="hostchk"><input type="checkbox" data-mut="mini" checked /> Pelota mini</label>
+                    <label class="hostchk"><input type="checkbox" data-mut="pesada" checked /> Pelota pesada</label>
+                    <label class="hostchk"><input type="checkbox" data-mut="resbalosa" checked /> Pelota resbalosa</label>
+                    <label class="hostchk"><input type="checkbox" data-mut="chicos" checked /> Discos chicos</label>
+                    <label class="hostchk"><input type="checkbox" data-mut="grandes" checked /> Discos grandes</label>
+                    <label class="hostchk"><input type="checkbox" data-mut="viento" checked /> Viento</label>
+                  </div>
+                </div>
+              </div>
               <label class="hostchk"><input type="checkbox" id="hostListed" checked /> Sala pública (aparece en la lista)</label>
               <div class="field" id="hostScriptRow" hidden>
                 <label>Script propio (opcional)</label>

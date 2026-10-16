@@ -22,6 +22,10 @@
   var RECORD = CFG.record === true;
   var ADMIN_KEY = String(CFG.adminKey || '');
   var HOST_NICK = String(CFG.hostNick || '').toLowerCase();
+  // Mutadores de gol: sólo en el interno. Se pueden prender y apagar con !mutadores.
+  var MUT_LIST = (CFG.mutators && CFG.mutators.on && MODE === 'interno') ? CFG.mutators.list : [];
+  var MUT_SECS = Math.max(15, Math.min(180, Number(CFG.mutators && CFG.mutators.secs) || 45));
+  var mutOn = MUT_LIST.length > 0;
 
   /* ── Canchas y reglas por modo ─────────────────────────────────────────── */
   var SIZES = {
@@ -270,9 +274,77 @@
 
   room.onPlayerTeamChange = function (p) { if (game && !game.done) ensure(byId(p.id)); };
 
-  room.onGameStart = function () { startGame(); };
+
+  /* ── Mutadores de gol ───────────────────────────────────────────────────
+     Después de cada gol, y cuando el partido ya está de nuevo en el medio, se
+     cambia una propiedad de la cancha al azar durante unos segundos. Vale para
+     los dos equipos por igual. Los valores de antes se guardan y se devuelven
+     al terminar, al próximo gol, o cuando el partido se frena. */
+  var MUTATORS = {
+    gigante:    { name: 'Pelota gigante',    ball: function (b) { return { radius: b.radius * 1.8 }; } },
+    mini:       { name: 'Pelota mini',       ball: function (b) { return { radius: Math.max(3, b.radius * 0.6) }; } },
+    pesada:     { name: 'Pelota pesada',     ball: function (b) { return { invMass: b.invMass * 0.35, damping: Math.min(0.999, b.damping - 0.004) }; } },
+    resbalosa:  { name: 'Pelota resbalosa',  ball: function () { return { damping: 0.999 }; } },
+    chicos:     { name: 'Discos chicos',     all: function (d) { return { radius: Math.max(6, d.radius * 0.65) }; } },
+    grandes:    { name: 'Discos grandes',    all: function (d) { return { radius: d.radius * 1.5 }; } },
+    viento:     { name: 'Viento',            ball: function () { return { xgravity: (Math.random() < 0.5 ? -1 : 1) * 0.02 }; } }
+  };
+  var mut = { pending: null, saved: null, timer: 0, last: '' };
+
+  function mutRestore() {
+    clearTimeout(mut.timer);
+    mut.timer = 0;
+    var s = mut.saved;
+    mut.saved = null;
+    if (!s) return;
+    try { room.setDiscProperties(0, s.ball); } catch (e) { /* sin pelota */ }
+    Object.keys(s.players).forEach(function (id) {
+      try { room.setPlayerDiscProperties(Number(id), s.players[id]); } catch (e) { /* ya se fue */ }
+    });
+  }
+
+  function pick() {
+    var pool = MUT_LIST.filter(function (id) { return id !== mut.last; });
+    if (!pool.length) pool = MUT_LIST;
+    return pool[Math.floor(Math.random() * pool.length)];
+  }
+
+  function mutApply(id) {
+    var m = MUTATORS[id];
+    if (!m || !game || game.done) return;
+    var ball = room.getDiscProperties(0);
+    if (!ball) return;
+    mutRestore();
+    mut.saved = { ball: { radius: ball.radius, invMass: ball.invMass, damping: ball.damping, xgravity: ball.xgravity || 0, ygravity: ball.ygravity || 0 }, players: {} };
+    if (m.ball) room.setDiscProperties(0, m.ball(ball));
+    if (m.all) {
+      players().forEach(function (p) {
+        if (p.team === 0) return;
+        var d = room.getPlayerDiscProperties(p.id);
+        if (!d) return;
+        mut.saved.players[p.id] = { radius: d.radius };
+        room.setPlayerDiscProperties(p.id, m.all(d));
+      });
+    }
+    mut.last = id;
+    say('Mutador: ' + m.name + ' durante ' + MUT_SECS + ' s.', null, 0xFFD23F);
+    mut.timer = setTimeout(function () {
+      mutRestore();
+      say('Vuelve todo a la normalidad.', null, 0xB8C0D0);
+    }, MUT_SECS * 1000);
+  }
+
+  // Los discos vuelven al medio después del gol: ahí recién se aplica, para que
+  // el cambio no los agarre en pleno festejo ni en una posición rara.
+  room.onPositionsReset = function () {
+    if (mut.pending) { var id = mut.pending; mut.pending = null; try { mutApply(id); } catch (e) { /* sin mutador */ } }
+  };
+
+  room.onGameStart = function () { mut.pending = null; mutRestore(); startGame(); };
 
   room.onGameStop = function () {
+    mut.pending = null;
+    mutRestore();
     if (game && !game.done) {
       game.done = true;
       if (MODE === 'interno' && RECORD) { try { room.stopRecording(); } catch (e) { /* nada */ } }
@@ -308,6 +380,7 @@
     }
     game.kicks = [];
     say(line + '.');
+    if (mutOn) { mutRestore(); mut.pending = pick(); }
   };
 
   room.onTeamVictory = function (scores) { finishGame(scores); };
@@ -315,7 +388,7 @@
   /* ── Comandos ──────────────────────────────────────────────────────────── */
   var HELP = [
     'Comandos de todos: !ayuda · !stats · !admin <clave>',
-    'Admin: !x1 !x3 !x4 !x5 !x7 !train · !swap · !mezclar · !camis · !start · !stop · !pausa · !limite N · !tiempo N · !mapa nombre · !spec · !kick nombre'
+    'Admin: !x1 !x3 !x4 !x5 !x7 !train · !swap · !mezclar · !camis · !mutadores (interno) · !start · !stop · !pausa · !limite N · !tiempo N · !mapa nombre · !spec · !kick nombre'
   ];
 
   function isAdmin(p) { var cur = byId(p.id); return !!(cur && cur.admin); }
@@ -347,6 +420,12 @@
         if (running()) { say('Con el partido en juego no. Usá !stop primero.', p.id); return; }
         shuffleTeams(); return;
       case 'camis': case 'camisetas': case 'camiseta': kitCommand(args); return;
+      case 'mutadores': case 'mutador':
+        if (MODE !== 'interno' || !MUT_LIST.length) { say('Los mutadores sólo existen en el interno y se eligen al hostear.', p.id); return; }
+        mutOn = !mutOn;
+        if (!mutOn) { mut.pending = null; mutRestore(); }
+        say('Mutadores ' + (mutOn ? 'activados' : 'desactivados') + '.');
+        return;
       case 'start': case 'iniciar': room.startGame(); return;
       case 'stop': case 'parar': room.stopGame(); return;
       case 'pausa': room.pauseGame(!room.isGamePaused()); return;

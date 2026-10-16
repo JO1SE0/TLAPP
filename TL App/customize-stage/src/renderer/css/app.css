@@ -5839,3 +5839,8 @@ html[data-layout="top"] .profcard__stats span + span, html[data-layout="bottom"]
 html[data-layout="consola"] .profcard, html[data-layout="comando"] .profcard, html[data-layout="radial"] .profcard,
 html .app[data-stage="game"] .profcard { display: none; }
 @media (prefers-reduced-motion: reduce) { .profcard__glow::before { animation: none; } }
+
+.hostmut__body { display: flex; flex-direction: column; gap: 10px; margin-top: 8px; padding: 12px 14px; border-radius: 12px; background: var(--surface); border: 1px solid var(--line); }
+.hostmut__list { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 8px 14px; }
+.hostmut { display: flex; flex-direction: column; gap: 6px; }
+.hostmut > .hostchk { justify-content: flex-start; }

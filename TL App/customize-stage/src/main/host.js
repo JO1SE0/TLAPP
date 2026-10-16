@@ -92,6 +92,8 @@ function create(deps) {
 
   const set = (patch) => { state = { ...state, ...patch }; try { onState && onState({ ...state }); } catch { /* sin panel */ } };
 
+  const MUT_IDS = ['gigante', 'mini', 'pesada', 'resbalosa', 'chicos', 'grandes', 'viento'];
+
   function sanitize(raw) {
     const r = raw || {};
     const mode = MODES.has(r.mode) ? r.mode : 'amistoso';
@@ -107,6 +109,13 @@ function create(deps) {
       token: clean(r.token, 200),
       record: mode === 'interno' && r.record !== false,
       customPath: clean(r.customPath, 500),
+      // Mutadores de gol: sólo existen en el interno.
+      mutators: (() => {
+        const m = r.mutators;
+        const list = m && Array.isArray(m.list) ? MUT_IDS.filter((id) => m.list.includes(id)) : [];
+        if (mode !== 'interno' || !m || m.on !== true || !list.length) return { on: false, secs: 45, list: [] };
+        return { on: true, secs: Math.max(15, Math.min(180, Math.round(Number(m.secs)) || 45)), list };
+      })(),
       mapFiles: MAP_KEYS.reduce((o, k) => { const v = r.mapFiles && clean(r.mapFiles[k], 500); if (v) o[k] = v; return o; }, {})
     };
   }
