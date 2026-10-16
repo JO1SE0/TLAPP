@@ -653,14 +653,21 @@ function applyClientStyles(doc) {
        línea de tiempo cuando no entraba todo en una fila). Como flota, el chat
        sube lo que mide la barra (--tvm-replay-h, la pone el JS) para no quedar
        tapado. Sin blur ni sombras animadas. */
+    /* El contenedor ocupa TODO el ancho, como el original: HaxBall calcula dónde
+       está el mouse sobre la línea de tiempo contando con que la barra arranca en
+       el borde izquierdo, y con una tarjeta angosta y centrada el tiempo (y el
+       salto al hacer clic) salía corrido. La tarjeta que se ve es el ::before,
+       centrado, y el contenedor deja pasar el mouse (sólo los botones lo toman). */
     html .replay-controls-view {
+      --tvm-card: min(1180px, calc(100vw - 32px));
+      --tvm-side: calc((100vw - var(--tvm-card)) / 2);
       position: fixed !important;
       left: 0 !important;
       right: 0 !important;
-      margin: 0 auto !important;
+      margin: 0 !important;
       top: auto !important;
       bottom: calc(14px + var(--tvm-dy, 0px)) !important;
-      width: min(1080px, calc(100vw - 32px)) !important;
+      width: auto !important;
       height: auto !important;
       min-height: 0 !important;
       max-height: none !important;
@@ -672,13 +679,28 @@ function applyClientStyles(doc) {
       justify-content: center !important;
       align-items: center !important;
       gap: 10px 8px !important;
-      padding: 12px 18px 12px !important;
-      border-radius: 22px !important;
-      border: 1px solid ${p.accent || p.blue}55 !important;
-      background: linear-gradient(180deg, ${p.panel || '#141a2c'}f4, ${p.bg || '#0a0e1a'}f8) !important;
-      box-shadow: 0 18px 44px -14px rgba(0, 0, 0, .9), inset 0 1px 0 rgba(255, 255, 255, .07) !important;
+      padding: 12px calc(var(--tvm-side) + 18px) !important;
+      border: 0 !important;
+      border-radius: 0 !important;
+      background: none !important;
+      box-shadow: none !important;
+      pointer-events: none;
       z-index: 2147481000;
     }
+    html .replay-controls-view::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      left: var(--tvm-side);
+      right: var(--tvm-side);
+      z-index: -1;
+      border-radius: 22px;
+      border: 1px solid ${p.accent || p.blue}55;
+      background: linear-gradient(180deg, ${p.panel || '#141a2c'}f4, ${p.bg || '#0a0e1a'}f8);
+      box-shadow: 0 18px 44px -14px rgba(0, 0, 0, .9), inset 0 1px 0 rgba(255, 255, 255, .07);
+    }
+    html .replay-controls-view > * { pointer-events: auto; }
     /* El chat de la replay se esconde (tapaba la cancha): el botón «Chat» de la
        barra lo muestra, y entonces sube lo que ocupa la barra para no quedar debajo. */
     html .game-view.replayer .chatbox-view { display: none !important; }
@@ -691,7 +713,7 @@ function applyClientStyles(doc) {
       flex: 0 0 auto;
       min-width: 36px;
       margin: 0 !important;
-      padding: 0 12px !important;
+      padding: 0 11px !important;
       border: 0 !important;
       border-radius: 11px !important;
       background: rgba(255, 255, 255, .07) !important;
