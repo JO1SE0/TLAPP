@@ -204,19 +204,13 @@ function applyBootFlags(perf) {
     'HardwareMediaKeyHandling',
     'Translate',
     'OptimizationHints',
-    'AutofillServerCommunication',
-    // El juego va en un iframe de otro dominio: con el aislamiento de sitios
-    // Chromium lo manda a un proceso aparte y cada tecla y cada cuadro cruza
-    // entre procesos. Sin aislamiento corre en el mismo.
-    'IsolateOrigins',
-    'site-per-process'
+    'AutofillServerCommunication'
   ];
   // Va con el unlock: si el unlock no se aplica, esto tampoco tiene sentido.
   if (unlockFpsSupported() && perf.unlockFps) disabledFeatures.push('FrameRateThrottling');
   // Windows pausa el render cuando cree que otra ventana tapa la nuestra.
   if (perf.noOcclusionPause) disabledFeatures.push('CalculateNativeWinOcclusion', 'IntensiveWakeUpThrottling');
   app.commandLine.appendSwitch('disable-features', disabledFeatures.join(','));
-  app.commandLine.appendSwitch('disable-site-isolation-trials');
   // Sin árbol de accesibilidad: cada cambio del DOM (chat, lista) no lo actualiza.
   app.commandLine.appendSwitch('disable-renderer-accessibility');
 
