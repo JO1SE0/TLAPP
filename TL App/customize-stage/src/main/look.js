@@ -570,6 +570,35 @@ function pentagon(ctx, cx, cy, r, rot) {
 }
 
 /**
+ * El dibujo de un estilo (con su color) como textura cuadrada, para la pelota
+ * 3D: se pinta UNA vez sobre un lienzo aparte con el mismo código de siempre y
+ * se guardan los píxeles. Se reusa mientras no cambie el estilo ni el color.
+ */
+const BALL_TEX = 128;
+const ballTextures = new Map();
+function ballTexture(ctx, style, tint) {
+  const key = `${style}|${tint || ''}`;
+  let tex = ballTextures.get(key);
+  if (tex) return tex;
+  const c = ctx.canvas.ownerDocument.createElement('canvas');
+  c.width = c.height = BALL_TEX;
+  const g = c.getContext('2d');
+  const h = BALL_TEX / 2;
+  g.fillStyle = '#ffffff';
+  g.beginPath();
+  g.arc(h, h, h, 0, TAU);
+  g.fill();
+  g.beginPath();
+  g.arc(h, h, h, 0, TAU);
+  ballOverlay(g, style, h, h, h, null, tint, null);
+  tex = { size: BALL_TEX, data: g.getImageData(0, 0, BALL_TEX, BALL_TEX).data };
+  c.width = 0;
+  if (ballTextures.size > 24) ballTextures.clear();
+  ballTextures.set(key, tex);
+  return tex;
+}
+
+/**
  * Dibujo sobre la pelota ya rellenada. Igual que `discOverlay`: usa el trazo en
  * curso (el círculo de la pelota) como recorte y se llama justo antes del
  * `stroke()`. `strokeFn` es el `stroke` original, para no re-entrar al parche.
@@ -583,6 +612,13 @@ function ballOverlay(ctx, style, x, y, r, strokeFn, tint, fx3d) {
   ctx.save();
   try {
     ctx.clip();
+    // Pelota 3D de verdad: el dibujo se mapea sobre una esfera que rueda.
+    if (fx3d && fx3d.sphere && fx3d.state) {
+      fx3d.sphere(ctx, x, y, r, fx3d.state, ballTexture(ctx, style, tint));
+      if (style === 'default' && fx3d.surface) fx3d.surface(ctx, x, y, r, fx3d.state);
+      fx3d.shade(ctx, x, y, r);
+      return;
+    }
     // El color de la pelota: se multiplica sobre el relleno, así una blanca toma el
     // color elegido y una con imagen sólo se tiñe.
     if (tint) {

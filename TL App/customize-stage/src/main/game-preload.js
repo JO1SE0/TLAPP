@@ -5128,8 +5128,9 @@ const BALL_STYLES = [
   'earth', 'moon', 'disco', 'orb', 'pumpkin', 'melon', 'eye'
 ];
 /** Para que el estilo/color de la pelota gire y se sombree con la pelota 3D. */
-const ballFx3d = { spin: 0, shade: ball3d.shade };
+const ballFx3d = { spin: 0, shade: ball3d.shade, sphere: ball3d.sphere, surface: ball3d.surface, state: null };
 let ballFx3dOn = false;
+const ballTexCache = new WeakMap();
 
 /**
  * Lo que el juego llama por cada disco sin jugador. Acá se resuelve el tamaño
@@ -5217,7 +5218,16 @@ function drawBallInner(ctx, x, y, r, indice) {
     }
     const roll = depth ? ball3d.motion(ctx, x, y, r, performance.now()) : null;
     ballFx3dOn = depth && (visual.ballStyle !== 'default' || !!visual.ballColor);
-    if (ballFx3dOn) ballFx3d.spin = roll.a + roll.b;
+    if (ballFx3dOn) { ballFx3d.spin = roll.a + roll.b; ballFx3d.state = roll; }
+    if (depth && ballImage && !animada && !ballFx3dOn) {
+      // Imagen propia con pelota 3D: se la mapea sobre la esfera y rueda de verdad.
+      let tex = ballTexCache.get(ballImage);
+      if (!tex) { tex = ball3d.textureOf(ctx.canvas.ownerDocument, ballImage, 128); ballTexCache.set(ballImage, tex); }
+      ball3d.sphere(ctx, x, y, r, roll, tex);
+      ball3d.shade(ctx, x, y, r);
+      ctx.restore();
+      return true;
+    }
     if (depth) {
       ctx.fillRect(x - r, y - r, 2 * r, 2 * r);
       ctx.save();
