@@ -9,7 +9,7 @@ const haxball = require('./haxball-settings');
 const FILE = 'config.json';
 
 const DEFAULTS = {
-  version: 24,
+  version: 25,
   general: {
     gameUrl: 'https://www.haxball.com/play',
     nickname: '',
@@ -744,9 +744,18 @@ function migrate(stored) {
   // quiera lo vuelve a prender en Fichas y queda así.
   if (!(next.version >= 24) && next.pitch) next.pitch.teamRings = false;
 
+  // v25: la música del menú vuelve a venir prendida para todos, una sola vez (con la canción de
+  // arranque nueva). Quien la tenía apagada o con el volumen en cero la escucha al actualizar; la
+  // puede volver a apagar o bajar desde la barra de arriba y queda así.
+  if (!(next.version >= 25) && next.appearance) {
+    next.appearance.music = true;
+    next.appearance.musicClub = true;
+    if (!(Number(next.appearance.musicVolume) >= 0.1)) next.appearance.musicVolume = DEFAULTS.appearance.musicVolume;
+  }
+
   if (next.vip) next.vip.discord = null;
   delete next.privacy;
-  next.version = 24;
+  next.version = 25;
   return next;
 }
 
