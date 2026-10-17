@@ -5985,3 +5985,5 @@ html[data-roomview="board"] .rtable, html[data-roomview="map"] .rtable { overflo
 .roommap__legend span { display: inline-flex; align-items: center; gap: 5px; }
 .roommap__legend i { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
 #panel:focus{outline:none}
+/* Sin cartel «Ahora suena»: sólo quedan el silencio y el volumen de la barra. */
+.nowplaying { display: none !important; }

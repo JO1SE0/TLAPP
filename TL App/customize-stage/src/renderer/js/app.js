@@ -4745,6 +4745,9 @@ function layoutNowPlaying() {
   return card;
 }
 function showNowPlaying(ms) {
+  // El cartel «Ahora suena» ya no se muestra: la música se controla (silencio y
+  // volumen) desde la barra de arriba. Se deja el código por si vuelve como opción.
+  return;
   const el = $('#nowPlaying');
   if (!el || !npTitle) return;
   const card = layoutNowPlaying();
