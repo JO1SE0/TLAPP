@@ -1,4 +1,5 @@
 Poné acá las canciones del menú (mp3, ogg, m4a, wav o flac).
 Suenan una tras otra, en orden alfabético, y vuelven a empezar.
 Para elegir el orden, numerá los nombres: 01 - tema.mp3, 02 - otro.mp3, etc.
-Hoy hay una sola: la primera canción de Free Fire (2017), que se repite en el menú y se corta al entrar a una sala.
+
+La que empieza con "00" es la de bienvenida: suena sola, una vez, al abrir la app. Después siguen las demás.

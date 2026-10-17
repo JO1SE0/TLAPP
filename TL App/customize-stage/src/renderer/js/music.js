@@ -6,6 +6,7 @@
  * - Si te quedás, siguen en orden (la 5, la 6, la 7...) y se funden una con otra.
  * - Al entrar a una sala se silencia (hay que oír el juego).
  * - Arranca cuando termina la bienvenida.
+ * - La canción que empieza con «00» es la de arranque: suena primero y no vuelve.
  *
  * Dos reproductores se turnan para poder fundir el final de un tema con el
  * principio del siguiente. Cada cambio de tema avisa con el evento `tl:track`.
@@ -18,12 +19,14 @@
     all: [], tracks: [], index: 0, pool: [], cur: 0,
     enabled: true, volume: 0.35, club: true,
     allowed: false, inGame: false, started: false,
-    errors: 0, xfade: 3000, crossing: false, loading: null, timers: new WeakMap()
+    introDone: false, errors: 0, xfade: 3000, crossing: false, loading: null, timers: new WeakMap()
   };
 
   const gain = () => Math.min(1, Math.max(0, M.volume));
   const wantPlaying = () => M.enabled && M.allowed && !M.inGame && M.tracks.length > 0;
   const current = () => M.pool[M.cur];
+  /** La de bienvenida lleva «00» al principio del nombre: suena una sola vez, al abrir la app. */
+  const isIntro = (t) => !!t && !t.user && /^\s*0+\s*[-.)]/.test(t.name || '');
 
   function titleOf(name) {
     return String(name || '').replace(/\.[a-z0-9]+$/i, '').replace(/^\s*\d+\s*[-.)]\s*/, '').replace(/_/g, ' ').trim();
@@ -93,6 +96,8 @@
     if (!M.tracks.length) return;
     const n = M.tracks.length;
     M.index = ((M.index + dir) % n + n) % n;
+    // Ya sonó la de bienvenida: no vuelve (salvo que no haya otra).
+    for (let i = 0; M.introDone && isIntro(M.tracks[M.index]) && i < n; i++) M.index = ((M.index + (dir || 1)) % n + n) % n;
     if (wantPlaying()) playIndex(smooth ? M.xfade : 0);
   }
 
@@ -165,7 +170,11 @@
       if (!M.loading) M.loading = loadTracks();
       await M.loading;
       // La primera de la sesión es al azar; después van en orden.
-      if (M.tracks.length > 1 && !M.started) M.index = Math.floor(Math.random() * M.tracks.length);
+      if (!M.started) {
+        const intro = M.tracks.findIndex(isIntro);
+        if (intro >= 0) { M.index = intro; M.introDone = true; }
+        else if (M.tracks.length > 1) M.index = Math.floor(Math.random() * M.tracks.length);
+      }
       M.started = true;
       sync();
     },
@@ -187,6 +196,7 @@
         if (M.tracks.length > 1) {
           const pick = Math.floor(Math.random() * (M.tracks.length - 1));
           M.index = (M.index % M.tracks.length + 1 + pick) % M.tracks.length;
+          for (let i = 0; M.introDone && isIntro(M.tracks[M.index]) && i < M.tracks.length; i++) M.index = (M.index + 1) % M.tracks.length;
         }
         playIndex(0);
         return;
