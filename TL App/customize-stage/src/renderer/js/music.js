@@ -6,7 +6,7 @@
  * - Si te quedás, siguen en orden (la 5, la 6, la 7...) y se funden una con otra.
  * - Al entrar a una sala se silencia (hay que oír el juego).
  * - Arranca cuando termina la bienvenida.
- * - La canción que empieza con «00» es la de arranque: suena primero y no vuelve.
+ * - La canción que empieza con «00» es la de arranque: es la primera que suena al abrir la app.
  *
  * Dos reproductores se turnan para poder fundir el final de un tema con el
  * principio del siguiente. Cada cambio de tema avisa con el evento `tl:track`.
@@ -172,7 +172,7 @@
       // La primera de la sesión es al azar; después van en orden.
       if (!M.started) {
         const intro = M.tracks.findIndex(isIntro);
-        if (intro >= 0) { M.index = intro; M.introDone = true; }
+        if (intro >= 0) M.index = intro;
         else if (M.tracks.length > 1) M.index = Math.floor(Math.random() * M.tracks.length);
       }
       M.started = true;

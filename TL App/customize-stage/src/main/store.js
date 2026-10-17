@@ -745,12 +745,13 @@ function migrate(stored) {
   if (!(next.version >= 24) && next.pitch) next.pitch.teamRings = false;
 
   // v25: la música del menú vuelve a venir prendida para todos, una sola vez (con la canción de
-  // arranque nueva). Quien la tenía apagada o con el volumen en cero la escucha al actualizar; la
+  // arranque nueva) y con el volumen al 50 %. Quien la tenía apagada la escucha al actualizar; la
   // puede volver a apagar o bajar desde la barra de arriba y queda así.
   if (!(next.version >= 25) && next.appearance) {
     next.appearance.music = true;
     next.appearance.musicClub = true;
-    if (!(Number(next.appearance.musicVolume) >= 0.1)) next.appearance.musicVolume = DEFAULTS.appearance.musicVolume;
+    // Y el volumen, a la mitad: la canción nueva se tiene que oír aunque lo hubieran bajado.
+    next.appearance.musicVolume = 0.5;
   }
 
   if (next.vip) next.vip.discord = null;

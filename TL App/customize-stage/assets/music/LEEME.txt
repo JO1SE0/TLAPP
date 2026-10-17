@@ -1,5 +1,4 @@
 Poné acá las canciones del menú (mp3, ogg, m4a, wav o flac).
-Suenan una tras otra, en orden alfabético, y vuelven a empezar.
-Para elegir el orden, numerá los nombres: 01 - tema.mp3, 02 - otro.mp3, etc.
-
-La que empieza con "00" es la de bienvenida: suena sola, una vez, al abrir la app. Después siguen las demás.
+Hoy sólo suena la que empieza con "00" (la primera canción de Free Fire), y se repite.
+Las otras están guardadas en esta carpeta pero apagadas: no se ofrecen en el menú.
+Cada jugador puede sumar las suyas desde Personalización, y apagar o bajar la música desde la barra de arriba.
