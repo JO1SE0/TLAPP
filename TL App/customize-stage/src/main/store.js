@@ -164,6 +164,8 @@ const DEFAULTS = {
     forceGpu: false,
     highPerformanceGpu: true,
     noOcclusionPause: true,
+    /** Preferencia de GPU de alto rendimiento y sin optimizaciones de pantalla completa de Windows para TL App.exe. */
+    windowsTweaks: false,
     // Audio
     lowLatencyAudio: true,
     // Diagnóstico
@@ -181,20 +183,6 @@ const DEFAULTS = {
   },
   replays: {
     folder: path.join(os.homedir(), 'Downloads')
-  },
-  /**
-   * Clips: los últimos segundos de la partida como video, con una tecla. Apagado
-   * por defecto: encendido guarda una grilla chica en la placa de video (ver
-   * main/game-clip.js). `quality`: liviana | normal | alta.
-   */
-  clips: {
-    enabled: false,
-    key: 'F9',
-    seconds: 15,
-    quality: 'normal',
-    fps: 15,
-    zoom: 1,
-    autoGoal: false
   },
   /**
    * La última sala en la que estuviste, para poder volver. Ver `rememberRoom`

@@ -329,6 +329,52 @@ function applyRuntimeFlags(perf) {
   }
 }
 
+/**
+ * Ajustes de Windows para TL App.exe (opcional: `perf.windowsTweaks`).
+ *
+ * Dos valores en el registro del USUARIO (no piden administrador) que Windows
+ * lee al abrir el programa:
+ *   · Preferencia de gráficos «alto rendimiento» (la GPU dedicada en notebooks;
+ *     Chromium la pide, pero la que manda es la de Windows).
+ *   · Sin «optimizaciones de pantalla completa»: Windows deja de tratar la
+ *     ventana como un juego a pantalla completa con su propia presentación, que
+ *     es donde nacen varios tirones y congelamientos al pasar con F11.
+ * Se aplican al reabrir la app. Apagado, se borran (sólo lo que puso esto).
+ */
+const GPU_PREF_KEY = 'HKCU\\Software\\Microsoft\\DirectX\\UserGpuPreferences';
+const COMPAT_KEY = 'HKCU\\Software\\Microsoft\\Windows NT\\CurrentVersion\\AppCompatFlags\\Layers';
+const COMPAT_FLAG = 'DISABLEDXMAXIMIZEDWINDOWEDMODE';
+
+function regRun(args) {
+  return new Promise((resolve) => {
+    require('child_process').execFile('reg', args, { timeout: 5000, windowsHide: true }, (err, out) => resolve(err ? null : String(out || '')));
+  });
+}
+
+async function applyWindowsTweaks(enabled) {
+  if (process.platform !== 'win32' || !app.isPackaged) return;
+  const exe = process.execPath;
+  try {
+    // Banderas de compatibilidad que ya hubiera (p. ej. «~ HIGHDPIAWARE»): se conservan.
+    const out = await regRun(['query', COMPAT_KEY, '/v', exe]);
+    const m = out && out.match(/REG_SZ\s+(.*)/);
+    const flags = (m ? m[1].trim().split(/\s+/) : []).filter((f) => f && f !== '~' && f !== COMPAT_FLAG);
+    if (enabled) {
+      await regRun(['add', GPU_PREF_KEY, '/v', exe, '/t', 'REG_SZ', '/d', 'GpuPreference=2;', '/f']);
+      await regRun(['add', COMPAT_KEY, '/v', exe, '/t', 'REG_SZ', '/d', `~ ${[...flags, COMPAT_FLAG].join(' ')}`, '/f']);
+    } else {
+      const had = await regRun(['query', GPU_PREF_KEY, '/v', exe]);
+      if (had && /GpuPreference=2;/.test(had)) await regRun(['delete', GPU_PREF_KEY, '/v', exe, '/f']);
+      if (m && m[1].includes(COMPAT_FLAG)) {
+        if (flags.length) await regRun(['add', COMPAT_KEY, '/v', exe, '/t', 'REG_SZ', '/d', `~ ${flags.join(' ')}`, '/f']);
+        else await regRun(['delete', COMPAT_KEY, '/v', exe, '/f']);
+      }
+    }
+  } catch (err) {
+    console.error('[windowsTweaks]', err && err.message);
+  }
+}
+
 function applyStartupFlag(general) {
   if (!app.isPackaged) return; // en desarrollo registraría la ruta de electron.exe
   app.setLoginItemSettings({ openAtLogin: !!general.launchOnStartup, args: [] });
@@ -2418,6 +2464,7 @@ handle('cfg:set', (_e, patch) => {
   if (patch.vip && (Object.prototype.hasOwnProperty.call(patch.vip, 'discord') || '__replace' in patch.vip)) throw new Error('La sesión sólo se cambia con Discord');
   const next = store.set(patch);
   if (patch && patch.perf) applyRuntimeFlags(next.perf);
+  if (patch && patch.perf && 'windowsTweaks' in patch.perf) applyWindowsTweaks(!!next.perf.windowsTweaks);
   if (patch && patch.general && 'launchOnStartup' in patch.general) applyStartupFlag(next.general);
   // Cambiar de color o de fuente se tiene que ver en la sala sin esperar al
   // próximo latido.
@@ -3624,64 +3671,6 @@ listen('game:board-image', async (_e, payload) => {
   } catch (err) {
     send('game:toast', { message: 'No se pudo guardar la pizarra', kind: 'err' });
   }
-});
-/**
- * Un clip armado por el juego (ver main/game-clip.js): se guarda en Videos\TL App\Clips
- * y se avisa con el cartel de siempre. El juego manda los bytes del .webm.
- */
-function clipsFolder() {
-  return path.join(app.getPath('videos'), 'TL App', 'Clips');
-}
-listen('game:clip-save', async (_e, payload) => {
-  try {
-    const data = payload && typeof payload.b64 === 'string' ? Buffer.from(payload.b64, 'base64') : null;
-    const size = data ? data.length : 0;
-    if (size < 1000 || size > 200 * 1024 * 1024) throw new Error(`clip inválido: llegaron ${size} bytes`);
-    const dir = clipsFolder();
-    await fs.promises.mkdir(dir, { recursive: true });
-    const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
-    const tag = payload.label === 'gol' ? 'gol' : 'clip';
-    await fs.promises.writeFile(path.join(dir, `TL-${tag}-${stamp}.webm`), data);
-    send('game:toast', { message: `Clip guardado (${Math.round(Number(payload.seconds) || 0)} s) en Videos\\TL App\\Clips`, kind: 'ok' });
-  } catch (err) {
-    console.error('[clips]', err);
-    send('game:toast', { message: `No se pudo guardar el clip (${err && err.message ? err.message : 'error'})`, kind: 'err' });
-  }
-});
-/** Un clip de la carpeta por su nombre: sólo el nombre, nunca una ruta de afuera. */
-function clipPath(name) {
-  const base = path.basename(String(name || ''));
-  if (!/\.(webm|mp4)$/i.test(base)) throw new Error('clip inválido');
-  return path.join(clipsFolder(), base);
-}
-handle('clips:list', async () => {
-  const dir = clipsFolder();
-  let names = [];
-  try { names = await fs.promises.readdir(dir); } catch { return { dir, items: [] }; }
-  const { pathToFileURL } = require('url');
-  const items = [];
-  for (const name of names) {
-    if (!/\.(webm|mp4)$/i.test(name)) continue;
-    try {
-      const st = await fs.promises.stat(path.join(dir, name));
-      if (st.isFile()) items.push({ name, size: st.size, mtime: st.mtimeMs, url: pathToFileURL(path.join(dir, name)).href });
-    } catch { /* se borró mientras se listaba */ }
-  }
-  items.sort((a, b) => b.mtime - a.mtime);
-  return { dir, items: items.slice(0, 60), total: items.length };
-});
-handle('clips:open', async (_e, name) => shell.openPath(clipPath(name)));
-handle('clips:reveal', async (_e, name) => { shell.showItemInFolder(clipPath(name)); return true; });
-handle('clips:delete', async (_e, name) => {
-  const file = clipPath(name);
-  // A la papelera: un clip borrado de más se puede recuperar.
-  try { await shell.trashItem(file); } catch { await fs.promises.unlink(file); }
-  return true;
-});
-handle('clips:openFolder', async () => {
-  const dir = clipsFolder();
-  await fs.promises.mkdir(dir, { recursive: true });
-  return shell.openPath(dir);
 });
 /** El engranaje del HUD del juego abre los ajustes del cliente, no los de HaxBall. */
 listen('game:open-settings', () => send('game:open-settings'));

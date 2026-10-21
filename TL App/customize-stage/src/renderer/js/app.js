@@ -74,7 +74,7 @@ const PANEL_TABS = {
     { id: 'fichas', label: 'tab.discs', hint: 'tab.discsHint',
       secs: ['jugador', 'pelota', 'fichaslook', 'nombres'] },
     { id: 'partida', label: 'tab.ingame', hint: 'tab.ingameHint',
-      secs: ['chatlook', 'statslook', 'partida', 'teclashud', 'overlay', 'sonidos', 'clips', 'lista'] }
+      secs: ['chatlook', 'statslook', 'partida', 'teclashud', 'overlay', 'sonidos', 'lista'] }
   ],
   ajustes: [
     { id: 'rapido', group: 'tabg.perf', label: 'tab.quick', hint: 'tab.quickHint', secs: ['perfil', 'respuesta'] },
@@ -3592,6 +3592,7 @@ const PERF_GROUPS = {
     // eran 676 MB contra 1033 MB y tres procesos menos. Nadie ganaba nada
     // apagándolo, así que dejó de ser una decisión del jugador.
     { key: 'noOcclusionPause', label: 'No pausar si algo tapa la ventana', description: 'Windows pausa si cree que está tapada.', restart: true },
+    { key: 'windowsTweaks', label: 'Ajustes de Windows para el juego', description: 'Pide la GPU de alto rendimiento y saca las «optimizaciones de pantalla completa» de Windows para TL App.', hint: 'Escribe dos valores en tu usuario de Windows (no pide administrador) y se aplican al reabrir la app. Al apagarlo se borran. Ayuda en notebooks con dos placas y con los tirones al pasar a pantalla completa.', restart: true },
     { key: 'lowLatencyAudio', label: 'Audio de baja latencia', description: 'Usa la ruta de audio directa de Windows.', restart: true },
     { key: 'disableHardwareAcceleration', label: 'Desactivar aceleración por hardware', description: 'Sólo para diagnosticar: el render pasa a la CPU.', hint: 'Va bastante más lento. Sirve para saber si una falla gráfica viene del driver de video.', restart: true }
   ]
@@ -3613,6 +3614,7 @@ const PERF_GROUPS_EN = {
   ],
   perfSystem: [
     { key: 'noOcclusionPause', label: 'Do not pause when covered', description: 'Windows pauses when it thinks it is hidden.', restart: true },
+    { key: 'windowsTweaks', label: 'Windows tweaks for the game', description: 'Asks for the high-performance GPU and removes Windows fullscreen optimizations for TL App.', hint: 'Writes two values under your Windows user (no admin needed), applied when you reopen the app. Turning it off deletes them. Helps on dual-GPU laptops and with stutter when going fullscreen.', restart: true },
     { key: 'lowLatencyAudio', label: 'Low latency audio', description: 'Uses the direct Windows audio path.', restart: true },
     { key: 'disableHardwareAcceleration', label: 'Disable hardware acceleration', description: 'Diagnostics only: rendering moves to the CPU.', hint: 'It runs noticeably slower. Use it to tell whether a graphics glitch comes from the video driver.', restart: true }
   ]
@@ -4799,7 +4801,6 @@ $('#npNext').addEventListener('click', () => window.TLMusic && window.TLMusic.ne
 /* Audio del menú (barra superior): música on/off, volumen y sonidos de botones. */
 function paintAudio() {
   try { paintGameExtras(); } catch (e) { /* adorno */ }
-  try { paintClips(); } catch (e) { /* adorno */ }
   try { paintAnimations(); } catch (e) { /* adorno */ }
   try { paintDensity(); } catch (e) { /* adorno */ }
   try { paintScale(); } catch (e) { /* adorno */ }
@@ -5026,225 +5027,6 @@ $('#goalSfxVolume').addEventListener('change', (e) => {
   if (window.TLGoalSfx && st && st !== 'default') window.TLGoalSfx.play(st, v);
   patchConfig({ appearance: { goalSfxVolume: v } });
 });
-/* ── Clips ───────────────────────────────────────────────────────────────
- * Los últimos segundos de la partida como video, con una tecla. Apagado por
- * defecto. El costo (memoria de video) se muestra en el momento, según lo que
- * esté elegido. Ver main/game-clip.js. */
-const CLIP_KEYS = [['F6', 'F6'], ['F7', 'F7'], ['F8', 'F8'], ['F9', 'F9'], ['F10', 'F10'], ['Insert', 'Insert']];
-const CLIP_SECONDS = [10, 15, 20, 30];
-const CLIP_QUALITIES = [['liviana', 'Liviana · 270p', 'Light · 270p'], ['normal', 'Normal · 360p', 'Normal · 360p'], ['alta', 'Alta · 540p', 'High · 540p'], ['ultra', 'Ultra · 720p', 'Ultra · 720p']];
-const CLIP_FPS = [12, 15, 24, 30, 60];
-const CLIP_ZOOMS = [[1, 'Pantalla completa', 'Full screen'], [0.7, 'Cerca', 'Closer'], [0.5, 'Muy cerca', 'Closest']];
-
-// Estado de la lista de clips (se declara antes de `paintClips`, que lo consulta).
-let clipsShown = null;
-let clipsSeen = null;
-function paintClips() {
-  if (!$('#clipsSwitch') || !state.config) return;
-  const en = isEn();
-  const cfg = window.TLClip ? window.TLClip.clean(state.config.clips) : (state.config.clips || {});
-  $('#clipsTitle').textContent = en ? 'Clips' : 'Clips';
-  $('#clipsKeyLabel').textContent = en ? 'Clip key' : 'Tecla para clipear';
-  $('#clipsSecLabel').textContent = en ? 'Seconds it keeps' : 'Cuántos segundos guarda';
-  $('#clipsQualLabel').textContent = en ? 'Quality' : 'Calidad';
-  $('#clipsFpsLabel').textContent = en ? 'Smoothness' : 'Fluidez';
-  $('#clipsFpsDesc').textContent = en ? 'Frames per second of the clip. More frames and more resolution use more video memory, so it keeps fewer seconds.' : 'Cuadros por segundo del clip. Más cuadros y más resolución usan más memoria de video, y entonces guarda menos segundos.';
-  $('#clipsZoomLabel').textContent = en ? 'Framing' : 'Encuadre';
-  $('#clipsZoomDesc').textContent = en ? 'Closer records only the middle of the screen, so a small map looks bigger.' : 'Cerca graba sólo el centro de la pantalla: en un mapa chico se ve todo más grande.';
-  $('#clipsMemLabel').textContent = en ? 'What it uses' : 'Lo que usa';
-  $('#clipsOpen').textContent = en ? 'Open clips folder' : 'Abrir carpeta de clips';
-  buildSwitches($('#clipsSwitch'), [{
-    key: 'enabled',
-    label: en ? 'Save clips with a key' : 'Clipear con una tecla',
-    description: en
-      ? 'Saves the last seconds of the match as a video. Off by default: when on, it keeps a small buffer in video memory and nothing else runs until you clip.'
-      : 'Guarda los últimos segundos de la partida como video. Viene apagado: encendido guarda un buffer chico en la memoria de video y no corre nada más hasta que clipeás.',
-    value: () => !!(state.config.clips || {}).enabled
-  }], (item, value) => patchConfig({ clips: { enabled: value } }));
-  buildSwitches($('#clipsAuto'), [{
-    key: 'autoGoal',
-    label: en ? 'Clip every goal automatically' : 'Clipear cada gol solo',
-    description: en ? 'A few seconds after each goal it saves the clip by itself.' : 'Unos segundos después de cada gol guarda el clip solo.',
-    value: () => !!(state.config.clips || {}).autoGoal
-  }], (item, value) => patchConfig({ clips: { autoGoal: value } }));
-  $('#clipsOpts').hidden = !cfg.enabled;
-  $('#clipsAuto').hidden = !cfg.enabled;
-  const chips = (host, items, cur, attr) => {
-    host.innerHTML = '';
-    for (const it of items) {
-      const b = document.createElement('button');
-      b.type = 'button';
-      b.className = 'chip' + (String(it[0]) === String(cur) ? ' is-active' : '');
-      b.dataset[attr] = it[0];
-      b.textContent = it[1];
-      host.appendChild(b);
-    }
-  };
-  chips($('#clipsKeyChips'), CLIP_KEYS, cfg.key, 'ck');
-  chips($('#clipsSecChips'), CLIP_SECONDS.map((n) => [n, `${n} s`]), cfg.seconds, 'cs');
-  chips($('#clipsQualChips'), CLIP_QUALITIES.map((q) => [q[0], en ? q[2] : q[1]]), cfg.quality, 'cq');
-  chips($('#clipsFpsChips'), CLIP_FPS.map((f) => [f, `${f} fps`]), cfg.fps, 'cf');
-  chips($('#clipsZoomChips'), CLIP_ZOOMS.map((z) => [z[0], en ? z[2] : z[1]]), cfg.zoom, 'cz');
-  if (window.TLClip) {
-    const plan = window.TLClip.plan(cfg);
-    const mb = Math.round(plan.bytes / 1048576);
-    $('#clipsMemDesc').textContent = en
-      ? `About ${mb} MB of video memory while it's on (${plan.w}×${plan.h}, ${plan.fps} fps${plan.seconds < cfg.seconds ? `, up to ${plan.seconds} s at this quality` : ''}). Saves to Videos\\TL App\\Clips as .webm (opens in your browser, VLC or Discord).`
-      : `Unos ${mb} MB de memoria de video mientras está prendido (${plan.w}×${plan.h}, ${plan.fps} cuadros por segundo${plan.seconds < cfg.seconds ? `, hasta ${plan.seconds} s con esta calidad` : ''}). Se guarda en Videos\\TL App\\Clips como .webm (se abre con el navegador, VLC o Discord).`;
-  }
-  if (clipsShown === null) clipsLoad();
-}
-$('#clipsKeyChips').addEventListener('click', (e) => {
-  const b = e.target.closest('[data-ck]');
-  if (b) patchConfig({ clips: { key: b.dataset.ck } });
-});
-$('#clipsSecChips').addEventListener('click', (e) => {
-  const b = e.target.closest('[data-cs]');
-  if (b) patchConfig({ clips: { seconds: Number(b.dataset.cs) } });
-});
-$('#clipsFpsChips').addEventListener('click', (e) => {
-  const b = e.target.closest('[data-cf]');
-  if (b) patchConfig({ clips: { fps: Number(b.dataset.cf) } });
-});
-$('#clipsZoomChips').addEventListener('click', (e) => {
-  const b = e.target.closest('[data-cz]');
-  if (b) patchConfig({ clips: { zoom: Number(b.dataset.cz) } });
-});
-$('#clipsQualChips').addEventListener('click', (e) => {
-  const b = e.target.closest('[data-cq]');
-  if (b) patchConfig({ clips: { quality: b.dataset.cq } });
-});
-$('#clipsOpen').addEventListener('click', () => { try { tvm.clips.openFolder(); } catch (err) { /* sin carpeta */ } });
-$('#clipsOpen2').addEventListener('click', () => { try { tvm.clips.openFolder(); } catch (err) { /* sin carpeta */ } });
-
-/*
- * Mis clips: la lista de lo guardado, con miniatura, y un reproductor adentro de
- * la app. Las miniaturas son el primer cuadro del propio video, que se carga
- * recién cuando la tarjeta entra en pantalla (nada se decodifica de más).
- */
-function clipSize(bytes) {
-  return bytes >= 1048576 ? `${(bytes / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(bytes / 1024))} KB`;
-}
-function clipDate(ms) {
-  const d = new Date(ms);
-  const p2 = (n) => String(n).padStart(2, '0');
-  return `${p2(d.getDate())}/${p2(d.getMonth() + 1)} ${p2(d.getHours())}:${p2(d.getMinutes())}`;
-}
-async function clipsLoad() {
-  const grid = $('#clipsGrid');
-  if (!grid || !window.tvm || !tvm.clips || !tvm.clips.list) return;
-  const en = isEn();
-  let res = null;
-  try { res = await tvm.clips.list(); } catch (err) { res = null; }
-  const items = (res && res.items) || [];
-  clipsShown = items;
-  $('#clipsOpen2').textContent = en ? 'Open folder' : 'Abrir carpeta';
-  $('#clipsRefresh').textContent = en ? 'Refresh' : 'Actualizar';
-  $('#clipsCount').textContent = items.length
-    ? (en ? `My clips (${(res && res.total) || items.length})` : `Mis clips (${(res && res.total) || items.length})`)
-    : (en ? 'My clips' : 'Mis clips');
-  $('#clipsPath').textContent = (res && res.dir) || '';
-  grid.innerHTML = '';
-  if (clipsSeen) clipsSeen.disconnect();
-  if (!items.length) {
-    const empty = document.createElement('div');
-    empty.className = 'clips__empty';
-    empty.textContent = en
-      ? 'No clips yet. Turn on "Save clips with a key" below and press the key during a match.'
-      : 'Todavía no hay clips. Prendé «Clipear con una tecla» acá abajo y apretá la tecla durante una partida.';
-    grid.append(empty);
-    return;
-  }
-  const lazy = 'IntersectionObserver' in window;
-  if (lazy) {
-    clipsSeen = new IntersectionObserver((entries) => {
-      for (const en2 of entries) {
-        if (!en2.isIntersecting) continue;
-        const v = en2.target;
-        if (v.dataset.src) { v.src = v.dataset.src; v.removeAttribute('data-src'); }
-        clipsSeen.unobserve(v);
-      }
-    }, { root: null, rootMargin: '120px' });
-  }
-  items.forEach((clip, i) => {
-    const card = document.createElement('button');
-    card.type = 'button';
-    card.className = 'clip';
-    card.dataset.i = String(i);
-    const thumb = document.createElement('div');
-    thumb.className = 'clip__thumb';
-    const v = document.createElement('video');
-    v.muted = true;
-    v.preload = 'metadata';
-    v.dataset.src = `${clip.url}#t=0.2`;
-    thumb.append(v);
-    const play = document.createElement('div');
-    play.className = 'clip__play';
-    play.textContent = '▶';
-    thumb.append(play);
-    if (/-gol-/.test(clip.name)) {
-      const tag = document.createElement('span');
-      tag.className = 'clip__tag';
-      tag.textContent = en ? 'Goal' : 'Gol';
-      thumb.append(tag);
-    }
-    const meta = document.createElement('div');
-    meta.className = 'clip__meta';
-    const when = document.createElement('b');
-    when.textContent = clipDate(clip.mtime);
-    const size = document.createElement('span');
-    size.textContent = clipSize(clip.size);
-    meta.append(when, size);
-    card.append(thumb, meta);
-    grid.append(card);
-    if (lazy) clipsSeen.observe(v);
-    else { v.src = v.dataset.src; v.removeAttribute('data-src'); }
-  });
-}
-let clipOpenName = '';
-function clipOpenPlayer(clip) {
-  if (!clip) return;
-  clipOpenName = clip.name;
-  $('#clipModalTitle').textContent = `${/-gol-/.test(clip.name) ? (isEn() ? 'Goal clip' : 'Clip de gol') : 'Clip'} · ${clipDate(clip.mtime)}`;
-  $('#clipDelete').textContent = isEn() ? 'Delete' : 'Borrar';
-  $('#clipReveal').textContent = isEn() ? 'Show in folder' : 'Mostrar en la carpeta';
-  $('#clipExternal').textContent = isEn() ? 'Open with another app' : 'Abrir con otro programa';
-  const video = $('#clipVideo');
-  video.src = clip.url;
-  $('#clipModal').hidden = false;
-  video.play().catch(() => { /* el usuario le da play */ });
-}
-function clipClosePlayer() {
-  const video = $('#clipVideo');
-  video.pause();
-  video.removeAttribute('src');
-  video.load();
-  $('#clipModal').hidden = true;
-  clipOpenName = '';
-}
-$('#clipsGrid').addEventListener('click', (e) => {
-  const card = e.target.closest('.clip');
-  if (card && clipsShown) clipOpenPlayer(clipsShown[Number(card.dataset.i)]);
-});
-$('#clipsRefresh').addEventListener('click', () => clipsLoad());
-$('#clipModalClose').addEventListener('click', clipClosePlayer);
-$('#clipModal').addEventListener('click', (e) => { if (e.target === $('#clipModal')) clipClosePlayer(); });
-$('#clipReveal').addEventListener('click', () => { if (clipOpenName) tvm.clips.reveal(clipOpenName); });
-$('#clipExternal').addEventListener('click', () => { if (clipOpenName) tvm.clips.open(clipOpenName); });
-$('#clipDelete').addEventListener('click', async () => {
-  if (!clipOpenName) return;
-  const name = clipOpenName;
-  clipClosePlayer();
-  try { await tvm.clips.remove(name); toast(isEn() ? 'Clip moved to the recycle bin' : 'Clip enviado a la papelera', 'ok'); } catch (err) { toast(isEn() ? 'Could not delete it' : 'No se pudo borrar', 'err'); }
-  clipsLoad();
-});
-// Al volver a la app (después de clipear jugando) se actualiza la lista si está a la vista.
-window.addEventListener('focus', () => {
-  const card = $('#clipsCard');
-  if (card && card.offsetParent) clipsLoad();
-});
-try { if (state && state.config) paintClips(); } catch (e) { /* aún sin config */ }
-
 try { if (state && state.config) paintGameExtras(); } catch (e) { /* aún sin config */ }
 
 $('#hudScale').addEventListener('input', (e) => {
@@ -8841,7 +8623,6 @@ function flushPlayTime() {
 window.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') {
     if (secModal) { e.preventDefault(); closeSecModal(); return; }
-    if (!$('#clipModal').hidden) { e.preventDefault(); clipClosePlayer(); return; }
     if (!$('#askModal').hidden) { e.preventDefault(); closeAsk(null); return; }
     if (!$('#themeModal').hidden) { e.preventDefault(); $('#themeModal').hidden = true; return; }
     if (!$('#createModal').hidden) { e.preventDefault(); closeCreateModal(); return; }
