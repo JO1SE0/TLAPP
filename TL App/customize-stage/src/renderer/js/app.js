@@ -8886,6 +8886,8 @@ const LOOK_SECTIONS = {
   ],
   lookDiscs: [
     { key: 'discStyle', type: 'select', label: 'look.discStyle', options: [['default', 'look.opt.none'], ['sphere', 'look.ds.sphere'], ['glass', 'look.ds.glass'], ['neon', 'look.ds.neon'], ['metal', 'look.ds.metal'], ['bubble', 'look.ds.bubble'], ['target', 'look.ds.target'], ['stripes', 'look.ds.stripes'], ['gem', 'look.ds.gem'], ['cartoon', 'look.ds.cartoon'], ['dots', 'look.ds.dots']] },
+    { key: 'discFilter', type: 'select', label: 'look.discFilter', desc: 'look.discFilterHelp', options: [['', 'look.opt.none'], ['pixel', 'look.df.pixel'], ['toon', 'look.df.toon'], ['mono', 'look.df.mono']] },
+    { key: 'discFilterScope', type: 'select', label: 'look.discFilterScope', options: [['all', 'look.dfs.all'], ['mine', 'look.dfs.mine']] },
     { key: 'softShadows', type: 'switch', label: 'look.softShadows', desc: 'look.softShadowsHelp' },
     { key: 'discOutline', type: 'color', label: 'look.discOutline' },
     { key: 'ballStyle', type: 'select', label: 'look.ballStyle', options: [['default', 'look.opt.none'], ['soccer', 'look.bs.soccer'], ['neon', 'look.bs.neon'], ['gold', 'look.bs.gold'], ['beach', 'look.bs.beach'], ['eight', 'look.bs.eight'], ['star', 'look.bs.star'], ['panels', 'look.bs.panels'], ['triangles', 'look.bs.triangles'], ['vintage', 'look.bs.vintage'], ['tennis', 'look.bs.tennis'], ['basket', 'look.bs.basket'], ['volley', 'look.bs.volley'], ['baseball', 'look.bs.baseball'], ['golf', 'look.bs.golf'], ['bowling', 'look.bs.bowling'], ['earth', 'look.bs.earth'], ['moon', 'look.bs.moon'], ['disco', 'look.bs.disco'], ['orb', 'look.bs.orb'], ['pumpkin', 'look.bs.pumpkin'], ['melon', 'look.bs.melon'], ['eye', 'look.bs.eye']] },
@@ -8921,7 +8923,7 @@ const LOOK_SECTIONS = {
 
 const LOOK_DEFAULTS = {
   texture: 'none', pitchLight: 'none', softShadows: false, crest: false, crestOpacity: 0.18, crestSize: 0.45, lineColor: '', postColor: '',
-  discStyle: 'default', ballStyle: 'default', ballColor: '', lineGlow: false, discOutline: '', ballOutline: '', ringStyle: 'default', ringColor: '',
+  discStyle: 'default', discFilter: '', discFilterScope: 'all', ballStyle: 'default', ballColor: '', lineGlow: false, discOutline: '', ballOutline: '', ringStyle: 'default', ringColor: '',
   selfTrail: false, selfTrailColor: '', nameScale: 1, nameColor: '', nameOutline: false, nameFont: 'default',
   chatScale: 1, chatBg: -1, chatFont: 'default', chatOpacity: 1, statsOpacity: 1, statsStyle: 'default', menuBg: 'none',
   goalFxStyle: 'off', goalFxWhen: 'mine', goalFxReplace: true, goalFxColorMode: 'team', goalFxColor: '', goalFxColor2: '', goalFxShowText: true,

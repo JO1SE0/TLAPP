@@ -524,6 +524,40 @@ function discOverlay(ctx, style, x, y, r, strokeFn) {
       ctx.arc(x - r * 0.42, y - r * 0.44, r * 0.14, 0, TAU);
       ctx.fill();
       rebuild = true;
+    } else if (style === 'mono') {
+      // Blanco y negro: se mezcla un gris en modo «saturación», que le quita el
+      // color a lo que ya está dibujado en la ficha y deja la luz intacta.
+      ctx.globalCompositeOperation = 'saturation';
+      ctx.fillStyle = '#808080';
+      ctx.fillRect(x - r, y - r, r * 2, r * 2);
+    } else if (style === 'pixel') {
+      // Mosaico: una grilla oscura sobre la ficha, con celdas de ~1/5 del radio.
+      rebuild = true;
+      const cell = Math.max(1.5, r / 5);
+      ctx.strokeStyle = 'rgba(0,0,0,0.3)';
+      ctx.lineWidth = Math.max(0.4, cell * 0.16);
+      ctx.beginPath();
+      for (let g = -r; g <= r + 0.01; g += cell) {
+        ctx.moveTo(x + g, y - r); ctx.lineTo(x + g, y + r);
+        ctx.moveTo(x - r, y + g); ctx.lineTo(x + r, y + g);
+      }
+      doStroke();
+      // Un reflejo escalonado arriba a la izquierda, como en un sprite.
+      ctx.fillStyle = 'rgba(255,255,255,0.35)';
+      ctx.fillRect(x - cell * 2.6, y - cell * 2.6, cell * 1.6, cell);
+      ctx.fillRect(x - cell * 2.6, y - cell * 1.6, cell, cell);
+    } else if (style === 'toon') {
+      // Dibujo animado: contorno grueso adentro de la ficha y un brillo plano.
+      rebuild = true;
+      ctx.strokeStyle = 'rgba(0,0,0,0.9)';
+      ctx.lineWidth = Math.max(1, r * 0.3);
+      ctx.beginPath();
+      ctx.arc(x, y, r, 0, TAU);
+      doStroke();
+      ctx.fillStyle = 'rgba(255,255,255,0.9)';
+      ctx.beginPath();
+      ctx.ellipse(x - r * 0.36, y - r * 0.4, r * 0.16, r * 0.1, -0.7, 0, TAU);
+      ctx.fill();
     } else if (style === 'dots') {
       // Lunares claros.
       ctx.fillStyle = 'rgba(255,255,255,0.4)';

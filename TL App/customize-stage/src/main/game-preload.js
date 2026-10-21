@@ -9464,7 +9464,7 @@ const visual = {
   pitchLine: 1, discLine: 1, ballLine: 1, ballSize: 1, discSize: 1, lines: false, sizes: false,
   texture: 'none', crest: false, crestOpacity: 0.18, crestSize: 0.45,
   lineColor: '', postColor: '', discOutline: '', ballOutline: '',
-  discStyle: 'default', ballStyle: 'default', ringStyle: 'default', ringColor: '', light: '', shadows: false, ballColor: '', lineGlow: false,
+  discStyle: 'default', discFilter: '', discFilterAll: true, ballStyle: 'default', ringStyle: 'default', ringColor: '', light: '', shadows: false, ballColor: '', lineGlow: false,
   selfTrail: false, selfTrailColor: '',
   nameScale: 1, nameColor: '', nameOutline: false, nameFont: 'default',
   /** Hay algo que hacerle a las fichas o a la pelota en el `stroke()`. */
@@ -9501,6 +9501,8 @@ function syncCanvasHotFlags() {
   visual.discOutline = lookfx.safeColor(cfg.discOutline);
   visual.ballOutline = lookfx.safeColor(cfg.ballOutline);
   visual.discStyle = ['sphere', 'glass', 'neon', 'metal', 'bubble', 'target', 'stripes', 'gem', 'cartoon', 'dots'].includes(cfg.discStyle) ? cfg.discStyle : 'default';
+  visual.discFilter = ['pixel', 'mono', 'toon'].includes(cfg.discFilter) ? cfg.discFilter : '';
+  visual.discFilterAll = cfg.discFilterScope !== 'mine';
   visual.light = ['vignette', 'spot', 'corners'].includes(cfg.pitchLight) ? cfg.pitchLight : '';
   visual.shadows = !!cfg.softShadows;
   visual.ballColor = lookfx.safeColor(cfg.ballColor);
@@ -9514,7 +9516,7 @@ function syncCanvasHotFlags() {
   visual.nameColor = lookfx.safeColor(cfg.nameColor);
   visual.nameOutline = !!cfg.nameOutline;
   visual.nameFont = FONT_FAMILIES[cfg.nameFont] ? cfg.nameFont : 'default';
-  visual.discFx = visual.shadows || visual.discStyle !== 'default' || visual.ballStyle !== 'default' || !!visual.ballColor || !!visual.discOutline || !!visual.ballOutline;
+  visual.discFx = visual.shadows || visual.discStyle !== 'default' || !!visual.discFilter || visual.ballStyle !== 'default' || !!visual.ballColor || !!visual.discOutline || !!visual.ballOutline;
   visual.names = visual.nameScale !== 1 || !!visual.nameColor || visual.nameOutline || visual.nameFont !== 'default';
 }
 
@@ -9763,6 +9765,9 @@ function installCanvasHooks(doc) {
         if (visual.lineGlow && lookfx.isLightLine(this.strokeStyle)) glow = color || this.strokeStyle;
       }
       if (overlay) lookfx.discOverlay(this, visual.discStyle, pend.x, pend.y, pend.r, origStroke);
+      if (pend.on && pend.kind === 'disc' && visual.discFilter && (visual.discFilterAll || pend.mine)) {
+        lookfx.discOverlay(this, visual.discFilter, pend.x, pend.y, pend.r, origStroke);
+      }
       if (ballFx) {
         ownDraw++;
         try {
@@ -9797,7 +9802,13 @@ function installCanvasHooks(doc) {
       const prevWidth = this.lineWidth;
       const prevStyle = color ? this.strokeStyle : null;
       this.lineWidth = prevWidth * mul;
-      if (color) this.strokeStyle = color;
+      if (color) {
+        this.strokeStyle = color;
+        // Con un contorno de color elegido, nunca por debajo de 1 píxel de pantalla:
+        // más fino se desvanece y el color parece no andar.
+        const px = 1 / (Math.abs(this.getTransform().a) || 1);
+        if (this.lineWidth < px) this.lineWidth = px;
+      }
       try {
         return origStroke.apply(this, args);
       } finally {
@@ -9822,17 +9833,43 @@ function installCanvasHooks(doc) {
       }
     }
 
+    // El filtro de fichas es del cliente: se ve igual con gráficos planos.
+    if (pend.on && ownDraw === 0 && pend.kind === 'disc' && visual.discFilter && (visual.discFilterAll || pend.mine)) {
+      lookfx.discOverlay(this, visual.discFilter, pend.x, pend.y, pend.r, origStroke);
+    }
+
     const style = this.strokeStyle;
     const width = this.lineWidth;
     const recolor = typeof style === 'string' && !BLACK_STROKES.has(style);
 
-    this.lineWidth = 1;
-    if (recolor) this.strokeStyle = '#FFFFFF';
+    /*
+     * Gráficos planos deja todo en 1 px, pero lo que el jugador ELIGIÓ a mano
+     * (grosor y color de contorno de pelota, fichas y líneas) tiene que ganar:
+     * no cuesta nada de rendimiento y antes se ignoraba sin decir nada.
+     */
+    let mul = 1;
+    let custom = '';
+    if (ownDraw === 0) {
+      if (pend.on) {
+        if (pend.kind === 'ball') { mul = visual.ballLine; custom = visual.ballOutline; }
+        else if (pend.kind === 'disc') { mul = visual.discLine; custom = visual.discOutline; }
+        else mul = visual.pitchLine;
+      } else if (Math.abs(width - 3) < 0.01) {
+        mul = visual.pitchLine;
+        if (visual.lineColor && lookfx.isLightLine(style)) custom = visual.lineColor;
+      }
+    }
+    this.lineWidth = mul;
+    if (custom) {
+      this.strokeStyle = custom;
+      const px = 1 / (Math.abs(this.getTransform().a) || 1);
+      if (this.lineWidth < px) this.lineWidth = px;
+    } else if (recolor) this.strokeStyle = '#FFFFFF';
     try {
       return origStroke.apply(this, args);
     } finally {
       this.lineWidth = width;
-      if (recolor) this.strokeStyle = style;
+      if (recolor || custom) this.strokeStyle = style;
     }
   };
 

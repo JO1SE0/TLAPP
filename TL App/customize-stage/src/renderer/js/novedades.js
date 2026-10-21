@@ -11,6 +11,8 @@ window.TL_NEWS = {
   title: { es: 'Qué hay de nuevo', en: "What's new" },
   items: {
     es: [
+      'Nuevo: «Filtro de estilo» para las fichas (Personalización → Fichas): pixel art, dibujo animado y blanco y negro, para todas o solo la tuya. Anda también con gráficos planos.',
+      'Arreglo: con gráficos planos ahora se respetan el grosor y el color de contorno de pelota, fichas y líneas que elegiste; y un color de contorno elegido ya no se pierde al poner el grosor al mínimo.',
       'Nuevo: «Modo PC lenta» (Configuración → Rendimiento → Perfil). Apaga de una vez animaciones, partículas, pelota 3D y destellos, y al desactivarlo vuelve a lo que tenías.',
       'Nuevo: Festejo de gol personalizado (Personalización → En partida). 17 estilos (papelitos, bengalas, neón, 8 bits…), capas combinables, cartel con animaciones y racha (doblete, triplete, manita) y estilos listos de un clic. Viene apagado: el efecto original del club no cambia.',
       'Plantel en vivo: botón «Ir» junto a cada compañero que está en una sala, para entrar a la misma con un clic.',
@@ -53,6 +55,8 @@ window.TL_NEWS = {
       'Cada clave se usa en una sola PC: si cambiás de computadora, pedile a miclo que te la libere.'
     ],
     en: [
+      'New: disc «Style filter» (Customization → Discs): pixel art, cartoon and black & white, for all discs or just yours. Works with flat graphics too.',
+      'Fix: with flat graphics, the outline thickness and color you chose for the ball, discs and lines are now respected; a chosen outline color no longer fades out at minimum thickness.',
       'New: selectable interface (Personalization → Style): Classic (the usual, default), Top bar, Floating dock, Island, Bottom bar, Icons only, Right side and three that change everything: Console (tile Home), Command (Ctrl+K palette) and Radial (fan button). Go back to Classic any time. Also: dense/normal/roomy room-list rows.',
       'Replays redesigned: ★ to pin your best, score and a goals timeline per team, cards with date and analysis summary, grouped by day, with filters (today, week, analysed) and sorting (most goals, longest). The room list shows a skeleton while loading settings have breadcrumbs and there is an optional status bar (Personalization → Style → Interface).',
       'New: Volume mixer (Settings → Client & audio) with menu music, goal and kick sounds in one place.',
