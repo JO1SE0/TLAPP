@@ -3634,7 +3634,7 @@ input[type="color"]::-webkit-color-swatch { border: 0; border-radius: 6px; }
  * El alto está limitado y el que scrollea es el cuerpo: en una grabación con
  * cuatro partidos la lista de goles es larga, y el marcador tiene que quedar
  * puesto donde está. */
-.stats-panel { position: absolute; top: 7%; left: 50%; transform: translateX(-50%); background: rgba(20,20,25,0.96); color: white; border-radius: 16px; width: 640px; max-width: 92%; max-height: 86%; z-index: 1001; font-family: Outfit, sans-serif; box-shadow: 0 20px 50px rgba(0,0,0,0.8); border: 1px solid rgba(255,255,255,0.1); backdrop-filter: blur(10px); display: flex; flex-direction: column; overflow: hidden; animation: tvmStatsIn 0.3s ease; }
+.stats-panel { position: absolute; top: 7%; left: 50%; transform: translateX(-50%); background: rgba(20,20,25,0.96); color: white; border-radius: 16px; width: 640px; max-width: 92%; max-height: 86%; z-index: 1001; font-family: Outfit, sans-serif; box-shadow: 0 20px 50px rgba(0,0,0,0.8); border: 1px solid rgba(255,255,255,0.1); display: flex; flex-direction: column; overflow: hidden; animation: tvmStatsIn 0.3s ease; }
 .stats-panel[hidden] { display: none !important; }
 .stats-panel__header { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; padding: 18px 24px 14px; background: rgba(0,0,0,0.3); border-bottom: 1px solid rgba(255,255,255,0.05); }
 .stats-panel__header h2 { margin: 0; font-size: 21px; font-weight: 700; color: var(--accent); }

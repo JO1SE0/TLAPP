@@ -13,7 +13,7 @@
 const STRINGS = {
   es: {
     'ball.3d': 'Pelota 3D',
-    'ball.3dHelp': 'Sombreado y rotación al moverse. Funciona con la pelota normal o tu imagen. Sólo lo ves vos; no cambia la física.',
+    'ball.3dHelp': 'Sombreado y rotación al moverse. Funciona con la pelota normal o tu imagen. Sólo lo ves vos; no cambia la física. Cuesta algo de FPS (más con una imagen propia); si vas justo, dejalo apagado.',
     'account.settingsInfo': 'Los ajustes y las identidades de HaxBall se guardan solo en esta PC. TL App no inicia sesión ni sincroniza cuentas de Discord.',
     'vip.perkBall': 'Pelota animada con GIF',
     'vip.perkHit': 'Sonido propio al patear',
@@ -782,7 +782,7 @@ const STRINGS = {
 
   en: {
     'ball.3d': '3D ball',
-    'ball.3dHelp': 'Shading and rotation as the ball moves. Works with the default ball or your image. Only you see it; physics stay the same.',
+    'ball.3dHelp': 'Shading and rotation as the ball moves. Works with the default ball or your image. Only you see it; physics stay the same. It costs some FPS (more with your own image); leave it off if you are tight.',
     'account.settingsInfo': 'Settings and HaxBall identities are saved only on this PC. TL App does not sign in to or sync Discord accounts.',
     'vip.perkBall': 'Animated GIF ball',
     'vip.perkHit': 'Custom kick sound',

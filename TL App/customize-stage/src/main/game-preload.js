@@ -609,7 +609,7 @@ function applyClientStyles(doc) {
   const STATS = '.game-view .stats-view, .stats-view';
   const STATS_STYLES = {
     minimal: `${STATS} { background: transparent !important; box-shadow: none !important; border: 0 !important; text-shadow: 0 0 3px #000, 0 1px 2px #000; }`,
-    glass: `${STATS} { background: rgba(10, 14, 24, .35) !important; border: 1px solid rgba(255,255,255,.14) !important; border-radius: 10px !important; backdrop-filter: blur(4px); }`,
+    glass: `${STATS} { background: rgba(10, 14, 24, .5) !important; border: 1px solid rgba(255,255,255,.14) !important; border-radius: 10px !important; }`,
     solid: `${STATS} { background: rgba(8, 12, 22, .88) !important; border: 1px solid rgba(255,255,255,.08) !important; border-radius: 6px !important; }`,
     pill: `${STATS} { background: rgba(8, 12, 22, .7) !important; border-radius: 999px !important; padding-left: 12px !important; padding-right: 12px !important; }`
   };
@@ -10684,6 +10684,7 @@ function buildOverlay() {
     ['fps', 'FPS', cfg.showFps],
     ['ping', 'Ping', cfg.showPing],
     ['latency', 'Entrada', cfg.showLatency],
+    ['netlat', 'Tecla→red', cfg.showLatency],
     ['session', 'Sesión', cfg.showSession],
     ['clock', 'Hora', cfg.showClock]
   ];
@@ -10748,6 +10749,7 @@ function paintOverlay() {
   setValue('fps', state.fps ? String(state.fps) : '—');
   setValue('ping', state.ping == null ? '—' : `${state.ping} ms`);
   setValue('latency', latency.text);
+  setValue('netlat', latency.netText);
   setValue('session', clock((Date.now() - state.startedAt) / 1000));
   setValue('clock', new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' }));
 }
@@ -11508,13 +11510,41 @@ function syncFpsMeter() {
  * red y va aparte. Con 60 Hz el piso es de unos 8 ms de promedio; más que eso es
  * ruido de la PC (V-Sync, ventanas tapando, la compu justa).
  */
-const latency = { pending: 0, samples: [], text: '—' };
+const latency = { pending: 0, samples: [], text: '—', net: 0, netSamples: [], netText: '—' };
 
 function onLatencyKey(e) {
   if (e.repeat || latency.pending) return;
   const el = e.target;
   if (el && el.tagName && /^(INPUT|TEXTAREA)$/.test(el.tagName)) return; // chat y campos de texto
   latency.pending = e.timeStamp;
+  if (!latency.net) latency.net = e.timeStamp;
+}
+
+/**
+ * «Tecla→red»: cuánto pasa desde que apretás una tecla hasta que sale el primer
+ * paquete por el canal de datos del juego (RTCDataChannel). Es lo que decide el
+ * delay de verdad: «Entrada» sólo mide hasta el próximo cuadro. Sólo corre con el
+ * medidor encendido; al apagarlo se devuelve `send` como estaba. Es aproximado: un
+ * paquete de control que salga justo después de la tecla también cuenta.
+ */
+function hookNetLatency(win) {
+  const proto = win.RTCDataChannel && win.RTCDataChannel.prototype;
+  if (!proto || typeof proto.send !== 'function' || proto.send.__tvmNet) return () => {};
+  const orig = proto.send;
+  const wrapped = function (...args) {
+    if (latency.net) {
+      const lat = win.performance.now() - latency.net;
+      latency.net = 0;
+      if (lat >= 0 && lat < 200) {
+        latency.netSamples.push(lat);
+        if (latency.netSamples.length > 40) latency.netSamples.shift();
+      }
+    }
+    return orig.apply(this, args);
+  };
+  wrapped.__tvmNet = true;
+  proto.send = wrapped;
+  return () => { if (proto.send === wrapped) proto.send = orig; };
 }
 
 function runFpsMeter() {
@@ -11526,10 +11556,15 @@ function runFpsMeter() {
   latency.pending = 0;
   latency.samples = [];
   latency.text = '—';
+  latency.net = 0;
+  latency.netSamples = [];
+  latency.netText = '—';
   if (doc) doc.addEventListener('keydown', onLatencyKey, true);
+  const unhookNet = hookNetLatency(win);
   const tick = (now) => {
     if (!fpsMeterOn) { // fuera de la cancha se corta el bucle
       if (doc) doc.removeEventListener('keydown', onLatencyKey, true);
+      unhookNet();
       return;
     }
     frames++;
@@ -11553,6 +11588,11 @@ function runFpsMeter() {
         const avg = s.reduce((a, b) => a + b, 0) / s.length;
         const worst = Math.max(...s);
         latency.text = `${avg.toFixed(0)} ms (máx ${worst.toFixed(0)})`;
+      }
+      const n = latency.netSamples;
+      if (n.length) {
+        const navg = n.reduce((a, b) => a + b, 0) / n.length;
+        latency.netText = `${navg.toFixed(1)} ms (máx ${Math.max(...n).toFixed(0)})`;
       }
     }
     win.requestAnimationFrame(tick);

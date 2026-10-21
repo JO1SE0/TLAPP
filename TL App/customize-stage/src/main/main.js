@@ -225,7 +225,8 @@ function applyBootFlags(perf) {
   if (perf.gpuRasterization || perf.unlockFps) {
     app.commandLine.appendSwitch('enable-gpu-rasterization');
     app.commandLine.appendSwitch('enable-features', 'CanvasOopRasterization');
-    app.commandLine.appendSwitch('num-raster-threads', '6');
+    // Seis en CPUs de ocho núcleos o más; en las de cuatro, dos, para no pelear con el juego.
+    app.commandLine.appendSwitch('num-raster-threads', String(Math.min(6, Math.max(2, os.cpus().length - 2))));
     if (process.platform === 'win32') {
       app.commandLine.appendSwitch('use-angle', 'd3d11');
     }
@@ -233,7 +234,6 @@ function applyBootFlags(perf) {
   if (perf.zeroCopy) app.commandLine.appendSwitch('enable-zero-copy');
   if (perf.forceGpu) {
     app.commandLine.appendSwitch('ignore-gpu-blocklist');
-    app.commandLine.appendSwitch('enable-unsafe-webgpu');
   }
   // En notebooks con dos placas, pide la dedicada en vez de la integrada.
   if (perf.highPerformanceGpu) app.commandLine.appendSwitch('force_high_performance_gpu');
@@ -303,6 +303,22 @@ function applyRuntimeFlags(perf) {
       }
     } catch { /* el webview puede estar navegando */ }
   }
+
+  /*
+   * El proceso de GPU es el que compone y presenta cada cuadro: con la PC
+   * cargada (Discord compartiendo pantalla, OBS, Chrome) y en prioridad normal,
+   * es de los primeros en quedarse sin turno y aparece como tirón. Se lo sube un
+   * escalón, no a «alta»: alcanza y no le saca el aire a nada más.
+   */
+  try {
+    for (const proc of app.getAppMetrics()) {
+      if (proc.type === 'GPU' && proc.pid > 0) {
+        wanted.set(proc.pid, perf.highProcessPriority
+          ? os.constants.priority.PRIORITY_ABOVE_NORMAL
+          : os.constants.priority.PRIORITY_NORMAL);
+      }
+    }
+  } catch { /* sin métricas todavía */ }
 
   for (const [pid, priority] of wanted) {
     try {

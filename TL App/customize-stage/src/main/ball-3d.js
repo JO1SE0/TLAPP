@@ -61,6 +61,12 @@ function textureOf(doc, source, size) {
 // Un solo lienzo de trabajo, reusado: nada se crea por cuadro.
 let work = null;
 let workImage = null;
+// Orientación y dibujo con los que se pintó por última vez el lienzo de trabajo.
+let lastM = null;
+let lastTex = null;
+// Giro mínimo (en la matriz) que justifica recalcular la esfera: ~0,25°, o sea menos de
+// una décima de píxel en el borde de una pelota de tamaño normal. No se nota.
+const REDRAW_EPS = 0.004;
 
 /**
  * La pelota como esfera de verdad. Para cada píxel del círculo se busca qué
@@ -82,9 +88,27 @@ function sphere(ctx, x, y, r, s, tex) {
     work = doc.createElement('canvas');
     work.width = work.height = D;
     workImage = work.getContext('2d').createImageData(D, D);
+    lastM = null;
   }
+  const m = s.m;
+  /*
+   * Con FPS altos la pelota se redibuja cientos de veces por segundo y entre un
+   * cuadro y el siguiente casi no gira. Si la orientación cambió menos que
+   * `REDRAW_EPS`, se vuelve a estampar el mismo lienzo y no se recorren los
+   * píxeles otra vez: es la parte cara.
+   */
+  let same = lastM && lastTex === tex;
+  if (same) {
+    for (let i = 0; i < 9; i++) if (Math.abs(m[i] - lastM[i]) > REDRAW_EPS) { same = false; break; }
+  }
+  if (same) {
+    ctx.drawImage(work, x - r, y - r, r * 2, r * 2);
+    return;
+  }
+  lastM = m.slice();
+  lastTex = tex;
   const out = workImage.data;
-  const m = s.m, T = tex.size, src = tex.data;
+  const T = tex.size, src = tex.data;
   const m0 = m[0], m1 = m[1], m2 = m[2], m3 = m[3], m4 = m[4], m5 = m[5], m6 = m[6], m7 = m[7], m8 = m[8];
   let o = 0;
   for (let py = 0; py < D; py++) {
