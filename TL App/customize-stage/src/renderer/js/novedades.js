@@ -11,6 +11,7 @@ window.TL_NEWS = {
   title: { es: 'Qué hay de nuevo', en: "What's new" },
   items: {
     es: [
+      'Nuevo (opcional): Rendimiento → «Simulación liviana». Con FPS muy altos evita recalcular la física en cada cuadro dibujado. Viene apagada.',
       'Música del menú: ahora arranca sola al abrir la app, con la primera canción de Free Fire (2017). Viene prendida para todos; la podés silenciar o bajar desde el ícono de música de la barra de arriba.',
       'Nuevo: la interfaz se adapta sola al monitor. En pantallas más chicas o más cuadradas (1280×1024, 1366×768…) todo se ve con las mismas proporciones que en 1920×1080, sin cosas apretadas ni carteles encima de la lista. Se puede cambiar en Personalización → Estilo → Tamaño de la interfaz (Automático o un porcentaje fijo). El juego no cambia.',
       'Lista de salas con modos: Todas, Para jugar, Favoritas, Del club y Llenas (un toque aplica los filtros y el orden), y cinco vistas: lista, tarjetas, barras, tablero por ocupación y mapa de salas. Y en el chat de la sala, escribir «/» muestra todos los comandos de HaxBall: flechas para moverte, Tab o click para completar.',

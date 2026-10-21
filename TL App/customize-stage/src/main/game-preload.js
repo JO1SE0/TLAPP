@@ -2941,7 +2941,10 @@ function zoomAction(event) {
 }
 
 function applyCameraZoom(doc = gameDocument()) {
-  if (doc && doc.defaultView) doc.defaultView.__tvmCameraZoom = zoomControl.normalize(state.config.appearance.gameZoom);
+  if (doc && doc.defaultView) {
+    doc.defaultView.__tvmCameraZoom = zoomControl.normalize(state.config.appearance.gameZoom);
+    doc.defaultView.__tvmMemo = !!(state.config.perf && state.config.perf.lightSim);
+  }
 }
 
 const perfProbe = { frames: 0, tickMs: 0, t0: 0 };

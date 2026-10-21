@@ -166,6 +166,8 @@ const DEFAULTS = {
     noOcclusionPause: true,
     /** Preferencia de GPU de alto rendimiento y sin optimizaciones de pantalla completa de Windows para TL App.exe. */
     windowsTweaks: false,
+    /** Opcional: reusa la simulación del cuadro anterior si pasó <4 ms (ver patchLightSim). */
+    lightSim: false,
     // Audio
     lowLatencyAudio: true,
     // Diagnóstico

@@ -1499,6 +1499,38 @@ function patchCameraZoom(source) {
   return { source: out, applied: true, fields: { cameraZoom: true }, reason: 'zoom de cámara nítido' };
 }
 
+/*
+ * ── Simulación liviana (opcional: perf.lightSim) ───────────────────────────
+ *
+ * En partida, cada cuadro DIBUJADO llama a `hg()`, que clona el estado
+ * confirmado y lo simula hacia adelante hasta «ahora»:
+ *
+ *   hg(){return this.Ed()?(0>this.dc&&(this.dc=0),this.Rk(<ahora>,this.Hg)):this.T}
+ *   Rk(a,b){ … let c=this.T.vc(); … for(…){ …; c.A(1) } … return c }
+ *
+ * A 1000 FPS son 1000 clones y ~4000 pasos de física por segundo para dibujar
+ * lo que el monitor ni muestra. Acá, si el estado confirmado y los eventos
+ * pendientes son los mismos y pasó menos de ¼ de paso de física (≈4 ms) desde
+ * la última cuenta, se reusa la copia anterior. Con 144 Hz (7 ms entre cuadros)
+ * nunca se reusa, así que no cambia nada; sólo ahorra con FPS muy altos.
+ *
+ * Clave de la copia: cuadro confirmado (Y), eventos aplicados en él (ec),
+ * cantidad y extremos de las listas de eventos (la local y la de red).
+ * El método se agrega a la clase; si el ancla no encaja, no se toca nada.
+ * Se activa con `window.__tvmMemo` (lo pone el preload según la opción).
+ */
+const LIGHT_SIM_SITE = /\bhg\(\)\{return this\.Ed\(\)\?\(0>this\.dc&&\(this\.dc=0\),this\.Rk\(([^;{}]*?),this\.Hg\)\):this\.T\}/g;
+function patchLightSim(source) {
+  const matches = [...source.matchAll(LIGHT_SIM_SITE)];
+  if (matches.length !== 1) return { source, applied: false, reason: `simulación liviana: encajó ${matches.length} veces, se esperaba 1` };
+  const out = source.replace(LIGHT_SIM_SITE, (_all, expr) =>
+    'tvmRk(a){let m=this.tvmM||(this.tvmM={}),H=this.Hg.list,W=this.we.list,h=H.length,w=W.length;' +
+    'if(0<a&&m.c&&a>=m.a&&.25>a-m.a&&m.Y===this.Y&&m.e===this.ec&&m.h===h&&m.w===w&&m.hf===H[0]&&m.hl===H[h-1]&&m.wf===W[0]&&m.wl===W[w-1])return m.c;' +
+    'let c=this.Rk(a,this.Hg);0<a&&(m.c=c,m.a=a,m.Y=this.Y,m.e=this.ec,m.h=h,m.w=w,m.hf=H[0],m.hl=H[h-1],m.wf=W[0],m.wl=W[w-1]);return c}' +
+    `hg(){return this.Ed()?(0>this.dc&&(this.dc=0),(a=>window.__tvmMemo?this.tvmRk(a):this.Rk(a,this.Hg))(${expr})):this.T}`);
+  return { source: out, applied: true, fields: { lightSim: true }, reason: 'simulación liviana' };
+}
+
 function patch(source, opts) {
   if (typeof source !== 'string' || source.length < 1000) {
     return { source, applied: false, reason: 'fuente vacía o demasiado corta' };
@@ -1512,7 +1544,7 @@ function patch(source, opts) {
   const fields = {};
   let out = source;
 
-  for (const step of [patchCameraZoom, patchSettings, patchStadium, patchTracking, patchRoomName, patchPitchBounds, patchReplaySpeed, patchReplayScan, patchScore, patchSelf, patchAvatar, patchBall, patchMirror, patchSounds, patchRoomLink]) {
+  for (const step of [patchCameraZoom, patchSettings, patchStadium, patchTracking, patchRoomName, patchPitchBounds, patchReplaySpeed, patchReplayScan, patchScore, patchSelf, patchAvatar, patchBall, patchMirror, patchSounds, patchRoomLink, patchLightSim]) {
     const res = step(out);
     out = res.source;
     if (res.fields) Object.assign(fields, res.fields);

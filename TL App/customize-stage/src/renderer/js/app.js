@@ -3592,6 +3592,7 @@ const PERF_GROUPS = {
     // eran 676 MB contra 1033 MB y tres procesos menos. Nadie ganaba nada
     // apagándolo, así que dejó de ser una decisión del jugador.
     { key: 'noOcclusionPause', label: 'No pausar si algo tapa la ventana', description: 'Windows pausa si cree que está tapada.', restart: true },
+    { key: 'lightSim', label: 'Simulación liviana', description: 'Con FPS muy altos, reusa la física del cuadro anterior en vez de recalcularla en cada uno.', hint: 'Cada cuadro dibujado clona y vuelve a simular la sala; a 900+ FPS son miles de pasos por segundo. Esto los baja sin cambiar lo que ves (máx. 4 ms de diferencia). Con tope de 144 Hz o menos no hace nada. Se aplica al recargar la sala.' },
     { key: 'windowsTweaks', label: 'Ajustes de Windows para el juego', description: 'Pide la GPU de alto rendimiento y saca las «optimizaciones de pantalla completa» de Windows para TL App.', hint: 'Escribe dos valores en tu usuario de Windows (no pide administrador) y se aplican al reabrir la app. Al apagarlo se borran. Ayuda en notebooks con dos placas y con los tirones al pasar a pantalla completa.', restart: true },
     { key: 'lowLatencyAudio', label: 'Audio de baja latencia', description: 'Usa la ruta de audio directa de Windows.', restart: true },
     { key: 'disableHardwareAcceleration', label: 'Desactivar aceleración por hardware', description: 'Sólo para diagnosticar: el render pasa a la CPU.', hint: 'Va bastante más lento. Sirve para saber si una falla gráfica viene del driver de video.', restart: true }
@@ -3614,6 +3615,7 @@ const PERF_GROUPS_EN = {
   ],
   perfSystem: [
     { key: 'noOcclusionPause', label: 'Do not pause when covered', description: 'Windows pauses when it thinks it is hidden.', restart: true },
+    { key: 'lightSim', label: 'Light simulation', description: 'At very high FPS, reuses the previous frame\'s physics instead of recomputing it every frame.', hint: 'Every drawn frame clones and re-simulates the room; at 900+ FPS that is thousands of steps per second. This cuts them without changing what you see (4 ms max difference). With a 144 Hz cap or lower it does nothing. Applies when the room reloads.' },
     { key: 'windowsTweaks', label: 'Windows tweaks for the game', description: 'Asks for the high-performance GPU and removes Windows fullscreen optimizations for TL App.', hint: 'Writes two values under your Windows user (no admin needed), applied when you reopen the app. Turning it off deletes them. Helps on dual-GPU laptops and with stutter when going fullscreen.', restart: true },
     { key: 'lowLatencyAudio', label: 'Low latency audio', description: 'Uses the direct Windows audio path.', restart: true },
     { key: 'disableHardwareAcceleration', label: 'Disable hardware acceleration', description: 'Diagnostics only: rendering moves to the CPU.', hint: 'It runs noticeably slower. Use it to tell whether a graphics glitch comes from the video driver.', restart: true }
