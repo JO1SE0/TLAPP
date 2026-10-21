@@ -94,7 +94,7 @@
     var style = o.style === 'random' ? pick(STYLES) : (cleanStyle(o.style) || 'confetti');
     var layers = [];
     var extra = Array.isArray(o.layers) ? o.layers : [];
-    for (var i = 0; i < extra.length && layers.length < 2; i++) {
+    for (var i = 0; i < extra.length && layers.length < 3; i++) {
       var st = extra[i] === 'random' ? pick(STYLES) : cleanStyle(extra[i]);
       if (st && st !== style && layers.indexOf(st) < 0) layers.push(st);
     }

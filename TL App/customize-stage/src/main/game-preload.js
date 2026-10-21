@@ -6483,7 +6483,7 @@ function installTracking(view) {
       }
       customPlayed = goalCelebration(tName);
     } catch (e) {}
-    try { goalImpact(customPlayed && (state.config.visual || {}).goalFxReplace !== false); } catch (e) {}
+    try { goalImpact(customPlayed); } catch (e) {}
     return playGoalSound();
   };
 
@@ -8178,51 +8178,75 @@ function sparkleJoiners(doc, rows) {
 const goalFxTally = { at: 0, by: new Map() };
 
 function goalCelebration(team) {
-  const v = state.config.visual || {};
-  const style = String(v.goalFxStyle || 'off');
-  if (style === 'off') return false;
+  /*
+   * El festejo del club: uno solo, fijo y a lo grande. Reemplaza al destello de
+   * antes y se prende y apaga con el mismo interruptor de siempre («Efecto de
+   * gol»), así que no hay nada que configurar.
+   *
+   * Cuando mete tu equipo (o si mirás desde afuera) va con todo: fuegos
+   * artificiales, papelitos, onda expansiva y estrellas, con el cartel «GOOOL»,
+   * el nombre de quien la metió, el borde encendido y el destello. Cuando mete
+   * el rival es una versión corta y seca, del color del otro equipo: se nota,
+   * pero no festeja por ellos.
+   */
+  const cfg = state.config.pitch || {};
+  if (!cfg.goalFlash) return false;
   if (state.config.appearance && state.config.appearance.animations === false) return false;
-  const fresh = Date.now() - goalNames.at < 2500;
-  const scorer = fresh ? goalNames.scorer : null;
-  if (v.goalFxWhen !== 'all') {
-    const me = String(myNick() || '').trim().toLowerCase();
-    if (!scorer || goalNames.own || !me || String(scorer).trim().toLowerCase() !== me) return false;
-  }
   const doc = gameDocument();
   if (!doc || !doc.body) return false;
-  // Cuántos goles lleva ESTE autor en la partida (para DOBLETE, TRIPLETE…). Pasados
-  // diez minutos sin goles se vuelve a empezar: una sala puede no cerrar nunca.
+
+  let mine = true;
+  try {
+    const iAmRed = playerRows(doc, 'red').some(isSelfRow);
+    const iAmBlue = playerRows(doc, 'blue').some(isSelfRow);
+    if (iAmRed || iAmBlue) mine = (team === 'Red') === iAmRed;
+  } catch (e) { mine = true; }
+
+  const fresh = Date.now() - goalNames.at < 2500;
+  const scorer = fresh ? goalNames.scorer : null;
   const who = String(scorer || '').trim().toLowerCase();
   const now = Date.now();
   if (now - goalFxTally.at > 10 * 60 * 1000) goalFxTally.by.clear();
   goalFxTally.at = now;
   const count = who && !goalNames.own ? (goalFxTally.by.get(who) || 0) + 1 : 1;
   if (who && !goalNames.own) goalFxTally.by.set(who, count);
-  return goalFx.play(doc, {
-    style,
-    layers: [v.goalFxLayer1, v.goalFxLayer2].filter((x) => x && x !== 'off'),
-    count,
-    streak: v.goalFxStreak !== false,
-    textPos: v.goalFxTextPos,
-    textScale: v.goalFxTextScale,
-    textAnim: v.goalFxTextAnim,
-    textStyle: v.goalFxTextStyle,
-    textColor: lookfx.safeColor(v.goalFxTextColor),
-    vignette: !!v.goalFxVignette,
-    flash: !!v.goalFxFlash,
+
+  const common = {
     team,
-    colorMode: v.goalFxColorMode,
-    color: lookfx.safeColor(v.goalFxColor),
-    color2: lookfx.safeColor(v.goalFxColor2),
-    text: v.goalFxText,
-    showText: v.goalFxShowText !== false,
-    showName: v.goalFxShowName !== false,
+    count,
     name: scorer && !goalNames.own ? scorer : '',
-    emoji: v.goalFxEmoji,
-    intensity: v.goalFxIntensity,
-    duration: v.goalFxDuration,
-    font: FONT_FAMILIES[v.goalFxFont] || FONT_FAMILIES.impact
-  });
+    showName: true,
+    font: FONT_FAMILIES.impact
+  };
+  if (!mine) {
+    return goalFx.play(doc, Object.assign(common, {
+      style: 'rings',
+      layers: ['lightning'],
+      text: 'GOL',
+      textScale: 0.7,
+      textAnim: 'slide',
+      textStyle: 'solid',
+      intensity: 0.7,
+      duration: 1.8,
+      vignette: false,
+      flash: false,
+      streak: false
+    }));
+  }
+  return goalFx.play(doc, Object.assign(common, {
+    style: 'fireworks',
+    layers: ['papelitos', 'shockwave', 'stars'],
+    text: 'GOOOL|GOOOOL|¡GOLAZO!',
+    textPos: 'center',
+    textScale: 1.25,
+    textAnim: 'pop',
+    textStyle: 'gradient',
+    intensity: 1.4,
+    duration: 3.4,
+    vignette: true,
+    flash: true,
+    streak: true
+  }));
 }
 
 function goalImpact(skipFlash) {
@@ -9797,9 +9821,20 @@ function installCanvasHooks(doc) {
         if (visual.lineColor && lookfx.isLightLine(this.strokeStyle)) color = visual.lineColor;
         if (visual.lineGlow && lookfx.isLightLine(this.strokeStyle)) glow = color || this.strokeStyle;
       }
-      if (overlay) lookfx.discOverlay(this, visual.discStyle, pend.x, pend.y, pend.r, origStroke);
-      if (pend.on && pend.kind === 'disc' && visual.discFilter && (visual.discFilterAll || pend.mine)) {
-        lookfx.discOverlay(this, visual.discFilter, pend.x, pend.y, pend.r, origStroke);
+      // `ownDraw` arriba: el overlay rearma el círculo con un `arc`, y sin la guarda ese
+      // `arc` volvía a entrar al gancho de fichas, agrandaba la ficha OTRA vez y el
+      // `stroke` deshacía una sola: la escala se filtraba a todo lo que se dibuja
+      // después (los puntos del mapa se corrían según dónde estuvieras vos).
+      if (overlay || (pend.on && pend.kind === 'disc' && visual.discFilter && (visual.discFilterAll || pend.mine))) {
+        ownDraw++;
+        try {
+          if (overlay) lookfx.discOverlay(this, visual.discStyle, pend.x, pend.y, pend.r, origStroke);
+          if (pend.on && pend.kind === 'disc' && visual.discFilter && (visual.discFilterAll || pend.mine)) {
+            lookfx.discOverlay(this, visual.discFilter, pend.x, pend.y, pend.r, origStroke);
+          }
+        } finally {
+          ownDraw--;
+        }
       }
       if (ballFx) {
         ownDraw++;
@@ -9868,7 +9903,12 @@ function installCanvasHooks(doc) {
 
     // El filtro de fichas es del cliente: se ve igual con gráficos planos.
     if (pend.on && ownDraw === 0 && pend.kind === 'disc' && visual.discFilter && (visual.discFilterAll || pend.mine)) {
-      lookfx.discOverlay(this, visual.discFilter, pend.x, pend.y, pend.r, origStroke);
+      ownDraw++;
+      try {
+        lookfx.discOverlay(this, visual.discFilter, pend.x, pend.y, pend.r, origStroke);
+      } finally {
+        ownDraw--;
+      }
     }
 
     const style = this.strokeStyle;

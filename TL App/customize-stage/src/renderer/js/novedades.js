@@ -11,12 +11,13 @@ window.TL_NEWS = {
   title: { es: 'Qué hay de nuevo', en: "What's new" },
   items: {
     es: [
+      'Arreglo: con el filtro de fichas (pixel, dibujo animado) los puntos del mapa —palos, esquinas, marcas— se corrían según dónde estuvieras vos. Ya quedan fijos.',
       'Nuevo: Clima en la cancha (Personalización → Cancha): lluvia con salpicaduras, tormenta, nieve, niebla y polvo con viento. Sólo ambientación, por debajo de las fichas, y apagado no cuesta nada.',
       'Nuevo: Marcador en el piso. El resultado aparece tenue en cada mitad mientras la pelota espera en el medio y se va con una animación apenas se saca. Blanco o con el color de cada equipo.',
       'Nuevo: «Filtro de estilo» para las fichas (Personalización → Fichas): pixel art, dibujo animado y blanco y negro, para todas o solo la tuya. Anda también con gráficos planos.',
       'Arreglo: con gráficos planos ahora se respetan el grosor y el color de contorno de pelota, fichas y líneas que elegiste; y un color de contorno elegido ya no se pierde al poner el grosor al mínimo.',
       'Nuevo: «Modo PC lenta» (Configuración → Rendimiento → Perfil). Apaga de una vez animaciones, partículas, pelota 3D y destellos, y al desactivarlo vuelve a lo que tenías.',
-      'Nuevo: Festejo de gol personalizado (Personalización → En partida). 17 estilos (papelitos, bengalas, neón, 8 bits…), capas combinables, cartel con animaciones y racha (doblete, triplete, manita) y estilos listos de un clic. Viene apagado: el efecto original del club no cambia.',
+      'Nuevo festejo de gol (se prende con «Efecto de gol»): cuando mete tu equipo, fuegos artificiales, papelitos, onda expansiva y estrellas con el cartel «GOOOL» y el nombre de quien la hizo; cuando mete el rival, una versión corta y seca. Sacamos la sección de festejo personalizado.',
       'Plantel en vivo: botón «Ir» junto a cada compañero que está en una sala, para entrar a la misma con un clic.',
       'Chat en «Ancho completo»: ahora el chat y el cuadro de FPS comparten el mismo fondo y la misma opacidad. Los ajustes propios de fondo y opacidad quedan para el modo «Compacto».',
       'Arreglo: el color y la fuente de tu nombre en la lista de la sala ahora los ven los demás con la app (y vos ves los de ellos). Antes cada uno veía solo el suyo.',
@@ -57,6 +58,7 @@ window.TL_NEWS = {
       'Cada clave se usa en una sola PC: si cambiás de computadora, pedile a miclo que te la libere.'
     ],
     en: [
+      'Fix: with the disc style filter (pixel, cartoon) the map dots — posts, corners, marks — drifted depending on where you were. They now stay put.',
       'New: Pitch weather (Customization → Pitch): rain with splashes, storm, snow, fog and wind-blown dust. Ambience only, below the discs, and free when off.',
       'New: Score on the pitch. The result shows faintly on each half while the ball waits at the centre and fades out with an animation as soon as play starts. White or each team colour.',
       'New: disc «Style filter» (Customization → Discs): pixel art, cartoon and black & white, for all discs or just yours. Works with flat graphics too.',
