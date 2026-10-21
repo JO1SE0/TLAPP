@@ -9517,7 +9517,7 @@ const visual = {
   pitchLine: 1, discLine: 1, ballLine: 1, ballSize: 1, discSize: 1, lines: false, sizes: false,
   texture: 'none', crest: false, crestOpacity: 0.18, crestSize: 0.45,
   lineColor: '', postColor: '', discOutline: '', ballOutline: '',
-  discStyle: 'default', discFilter: '', discFilterAll: true, weather: '', weatherAmount: 0.6, score: '', scoreOpacity: 0.16, ballStyle: 'default', ringStyle: 'default', ringColor: '', light: '', shadows: false, ballColor: '', lineGlow: false,
+  discStyle: 'default', discFilter: '', discFilterAll: true, ownRing: false, ownRingColor: '', ownRingAlpha: 0.3, ownRingRadius: 25, ownRingSoft: 0, weather: '', weatherAmount: 0.6, score: '', scoreOpacity: 0.16, ballStyle: 'default', ringStyle: 'default', ringColor: '', light: '', shadows: false, ballColor: '', lineGlow: false,
   selfTrail: false, selfTrailColor: '',
   nameScale: 1, nameColor: '', nameOutline: false, nameFont: 'default',
   /** Hay algo que hacerle a las fichas o a la pelota en el `stroke()`. */
@@ -9557,6 +9557,11 @@ function syncCanvasHotFlags() {
   visual.discFilter = ['pixel', 'mono', 'toon'].includes(cfg.discFilter) ? cfg.discFilter : '';
   visual.discFilterAll = cfg.discFilterScope !== 'mine';
   visual.light = ['vignette', 'spot', 'corners'].includes(cfg.pitchLight) ? cfg.pitchLight : '';
+  visual.ownRingColor = lookfx.safeColor(cfg.ownRingColor);
+  visual.ownRingAlpha = clampNum(cfg.ownRingAlpha, 0.02, 1, 0.3);
+  visual.ownRingRadius = clampNum(cfg.ownRingRadius, 16, 80, 25);
+  visual.ownRingSoft = clampNum(cfg.ownRingSoft, 0, 1, 0);
+  visual.ownRing = !!visual.ownRingColor || Math.abs(visual.ownRingAlpha - 0.3) > 0.005 || visual.ownRingRadius !== 25 || visual.ownRingSoft > 0.01;
   visual.weather = ['rain', 'storm', 'snow', 'fog', 'dust'].includes(cfg.pitchWeather) ? cfg.pitchWeather : '';
   visual.weatherAmount = clampNum(cfg.pitchWeatherAmount, 0.2, 1, 0.6);
   visual.score = ['white', 'team'].includes(cfg.pitchScore) ? cfg.pitchScore : '';
@@ -9973,6 +9978,21 @@ function installCanvasHooks(doc) {
    */
   const origArc = proto.arc;
   proto.arc = function (x, y, r, a0, a1, ccw) {
+    /*
+     * El anillo gris de tu ficha: HaxBall lo arma con un arco de radio 25, blanco
+     * y al 30 %, justo antes de los discos. Se lo reemplaza por el propio y se
+     * deja el trazo vacío, así el `stroke` que viene después no dibuja nada.
+     */
+    if (visual.ownRing && ownDraw === 0 && r === 25 && a1 > 6.28 && this.strokeStyle === '#ffffff' && Math.abs(this.globalAlpha - 0.3) < 0.01) {
+      ownDraw++;
+      try {
+        lookfx.drawOwnRing(this, x, y, visual.ownRingRadius, visual.ownRingColor, visual.ownRingAlpha, visual.ownRingSoft);
+      } finally {
+        ownDraw--;
+      }
+      this.beginPath();
+      return undefined;
+    }
     if ((visual.sizes || visual.lines || visual.discFx) && ownDraw === 0 && playerPatterns.has(this.fillStyle)) {
       const k = visual.discSize;
       // La sombra va antes de agrandar: se agranda junto con la ficha.

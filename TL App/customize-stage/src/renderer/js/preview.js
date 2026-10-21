@@ -282,6 +282,10 @@
       }
       ctx.globalAlpha = 1;
     }
+    // El anillo gris que HaxBall dibuja alrededor de tu ficha, con lo que hayas elegido.
+    if (L.drawOwnRing) {
+      L.drawOwnRing(ctx, me.x, me.y, Number(V.ownRingRadius) || 25, V.ownRingColor, V.ownRingAlpha == null ? 0.3 : V.ownRingAlpha, V.ownRingSoft || 0);
+    }
     const wantRing = P.selfRing || (V.ringStyle && V.ringStyle !== 'default') || !!V.ringColor;
     if (wantRing) {
       const col = L.safeColor(V.ringColor) || accent;

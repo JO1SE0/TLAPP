@@ -1277,6 +1277,42 @@ function safeColor(value) {
 }
 
 
+
+/* ── El anillo de tu ficha (el gris que dibuja HaxBall) ─────────────────
+ * HaxBall pinta un aro blanco al 30 % de radio 25 alrededor de TU disco.
+ * Acá se redibuja con color, opacidad, distancia y difuminado propios. Con
+ * difuminado el aro es una banda con degradé hacia los dos lados, así que
+ * nunca queda una línea dura que tape el fondo. */
+function drawOwnRing(ctx, x, y, r, color, alpha, soft) {
+  const hex = safeColor(color) || '#ffffff';
+  const R = parseInt(hex.slice(1, 3), 16);
+  const G = parseInt(hex.slice(3, 5), 16);
+  const B = parseInt(hex.slice(5, 7), 16);
+  const a = Math.min(1, Math.max(0.02, Number(alpha) || 0.3));
+  const s = Math.min(1, Math.max(0, Number(soft) || 0));
+  ctx.save();
+  try {
+    ctx.globalAlpha = 1;
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, TAU);
+    if (s < 0.02) {
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = `rgba(${R},${G},${B},${a})`;
+    } else {
+      const half = 1.5 + s * 12;
+      const g = ctx.createRadialGradient(x, y, Math.max(0, r - half), x, y, r + half);
+      g.addColorStop(0, `rgba(${R},${G},${B},0)`);
+      g.addColorStop(0.5, `rgba(${R},${G},${B},${a})`);
+      g.addColorStop(1, `rgba(${R},${G},${B},0)`);
+      ctx.lineWidth = half * 2;
+      ctx.strokeStyle = g;
+    }
+    ctx.stroke();
+  } finally {
+    ctx.restore();
+  }
+}
+
 /* ── Clima de la cancha ─────────────────────────────────────────────────
  * Partículas en coordenadas de cancha, dibujadas por debajo de las fichas.
  * Reglas de costo: buffers fijos (cero asignaciones por cuadro), un trazo por
@@ -1584,6 +1620,7 @@ module.exports = {
   resetTrail,
   isLightLine,
   paintWeather,
+  drawOwnRing,
   paintMatchMark,
   resetMatchMark,
   safeColor

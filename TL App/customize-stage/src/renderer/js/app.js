@@ -8877,6 +8877,10 @@ const LOOK_SECTIONS = {
   lookPitch: [
     { key: 'texture', type: 'select', label: 'look.texture', options: [['none', 'look.opt.none'], ['wood', 'look.tex.wood'], ['ice', 'look.tex.ice'], ['sand', 'look.tex.sand'], ['concrete', 'look.tex.concrete'], ['night', 'look.tex.night'], ['clay', 'look.tex.clay'], ['checker', 'look.tex.checker'], ['carbon', 'look.tex.carbon'], ['marble', 'look.tex.marble'], ['hex', 'look.tex.hex'], ['stars', 'look.tex.stars'], ['brick', 'look.tex.brick'], ['snow', 'look.tex.snow'], ['neon', 'look.tex.neon'], ['lava', 'look.tex.lava'], ['waves', 'look.tex.waves']] },
     { key: 'pitchLight', type: 'select', label: 'look.pitchLight', desc: 'look.pitchLightHelp', options: [['none', 'look.opt.none'], ['vignette', 'look.light.vignette'], ['spot', 'look.light.spot'], ['corners', 'look.light.corners']] },
+    { key: 'ownRingColor', type: 'color', label: 'look.ownRingColor', desc: 'look.ownRingHelp' },
+    { key: 'ownRingAlpha', type: 'range', label: 'look.ownRingAlpha', min: 0.05, max: 1, step: 0.01 },
+    { key: 'ownRingRadius', type: 'range', label: 'look.ownRingRadius', min: 18, max: 70, step: 1 },
+    { key: 'ownRingSoft', type: 'range', label: 'look.ownRingSoft', min: 0, max: 1, step: 0.05 },
     { key: 'pitchWeather', type: 'select', label: 'look.weather', desc: 'look.weatherHelp', options: [['none', 'look.opt.none'], ['rain', 'look.wx.rain'], ['storm', 'look.wx.storm'], ['snow', 'look.wx.snow'], ['fog', 'look.wx.fog'], ['dust', 'look.wx.dust']] },
     { key: 'pitchWeatherAmount', type: 'range', label: 'look.weatherAmount', min: 0.2, max: 1, step: 0.05, showIf: (v) => v.pitchWeather && v.pitchWeather !== 'none' },
     { key: 'pitchScore', type: 'select', label: 'look.pitchScore', desc: 'look.pitchScoreHelp', options: [['none', 'look.opt.none'], ['white', 'look.ps.white'], ['team', 'look.ps.team']] },
@@ -8926,7 +8930,7 @@ const LOOK_SECTIONS = {
 };
 
 const LOOK_DEFAULTS = {
-  texture: 'none', pitchLight: 'none', pitchWeather: 'none', pitchWeatherAmount: 0.6, pitchScore: 'none', pitchScoreOpacity: 0.16, softShadows: false, crest: false, crestOpacity: 0.18, crestSize: 0.45, lineColor: '', postColor: '',
+  texture: 'none', pitchLight: 'none', ownRingColor: '', ownRingAlpha: 0.3, ownRingRadius: 25, ownRingSoft: 0, pitchWeather: 'none', pitchWeatherAmount: 0.6, pitchScore: 'none', pitchScoreOpacity: 0.16, softShadows: false, crest: false, crestOpacity: 0.18, crestSize: 0.45, lineColor: '', postColor: '',
   discStyle: 'default', discFilter: '', discFilterScope: 'all', ballStyle: 'default', ballColor: '', lineGlow: false, discOutline: '', ballOutline: '', ringStyle: 'default', ringColor: '',
   selfTrail: false, selfTrailColor: '', nameScale: 1, nameColor: '', nameOutline: false, nameFont: 'default',
   chatScale: 1, chatBg: -1, chatFont: 'default', chatOpacity: 1, statsOpacity: 1, statsStyle: 'default', menuBg: 'none'

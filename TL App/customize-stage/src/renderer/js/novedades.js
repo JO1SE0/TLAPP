@@ -11,6 +11,8 @@ window.TL_NEWS = {
   title: { es: 'Qué hay de nuevo', en: "What's new" },
   items: {
     es: [
+      'Nuevo: el anillo gris que HaxBall dibuja alrededor de tu ficha ahora se personaliza (Personalización → Fichas y aro): color, opacidad, distancia a la ficha y difuminado, para que quede tenue y no tape el fondo.',
+      'Para los que abren la app por primera vez: «Marcar tu disco» y «Modo daltónico» vienen apagados.',
       'Arreglo: con el filtro de fichas (pixel, dibujo animado) los puntos del mapa —palos, esquinas, marcas— se corrían según dónde estuvieras vos. Ya quedan fijos.',
       'Nuevo: Clima en la cancha (Personalización → Cancha): lluvia con salpicaduras, tormenta, nieve, niebla y polvo con viento. Sólo ambientación, por debajo de las fichas, y apagado no cuesta nada.',
       'Nuevo: Marcador en el piso. El resultado aparece tenue en cada mitad mientras la pelota espera en el medio y se va con una animación apenas se saca. Blanco o con el color de cada equipo.',
@@ -58,6 +60,8 @@ window.TL_NEWS = {
       'Cada clave se usa en una sola PC: si cambiás de computadora, pedile a miclo que te la libere.'
     ],
     en: [
+      'New: the grey ring HaxBall draws around your disc is now customizable (Customization → Discs): colour, opacity, distance and softness, so it stays faint and does not cover the pitch.',
+      'For first-time users: «Mark your disc» and «Colourblind mode» start off.',
       'Fix: with the disc style filter (pixel, cartoon) the map dots — posts, corners, marks — drifted depending on where you were. They now stay put.',
       'New: Pitch weather (Customization → Pitch): rain with splashes, storm, snow, fog and wind-blown dust. Ambience only, below the discs, and free when off.',
       'New: Score on the pitch. The result shows faintly on each half while the ball waits at the centre and fades out with an animation as soon as play starts. White or each team colour.',

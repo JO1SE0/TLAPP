@@ -415,6 +415,11 @@ const DEFAULTS = {
     lineGlow: false,
     /** Luz de la cancha: `none` · `vignette` · `spot` · `corners`. */
     pitchLight: 'none',
+    /** El anillo gris que HaxBall dibuja alrededor de tu ficha: color (vacío = blanco), opacidad, distancia y difuminado. */
+    ownRingColor: '',
+    ownRingAlpha: 0.3,
+    ownRingRadius: 25,
+    ownRingSoft: 0,
     /** Clima sobre la cancha: `none` · `rain` · `storm` · `snow` · `fog` · `dust`. */
     pitchWeather: 'none',
     /** Cuánto clima (0.2–1). */
@@ -500,7 +505,7 @@ const DEFAULTS = {
      */
     mirror: 'off',
     /** Aro en tu propio disco. Encontrarte en un 4v4 es la fricción número uno. */
-    selfRing: true,
+    selfRing: false,
     /**
      * Modo daltónico: un aro por equipo que se distingue por FORMA (lleno o
      * punteado) y no por color, así que sirve igual con los colores que le
