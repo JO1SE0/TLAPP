@@ -762,8 +762,17 @@ function patchBall(source) {
   });
 
   out = out.replace(BALL_LOOP_SITE, (full, f) =>
-    // Sólo la llamada: el resto del bucle queda intacto.
-    full.replace(/(this\.\w+\(\s*\w+\s*,\s*)null(\s*\))/, `$1null,${f}-1$2`)
+    /*
+     * Sólo la llamada: el resto del bucle queda intacto. Se la envuelve con un
+     * antes y un después (`__tvmBallPre`/`__tvmBallPost`) que el cliente usa para
+     * mover la transformación SÓLO mientras se dibuja el disco 0 (la pelota):
+     * hay que hacerlo antes del `arc`, porque un trazado ya armado no se
+     * transforma después.
+     */
+    full.replace(/this\.(\w+)\(\s*(\w+)\s*,\s*null\s*\)/, (call, meth, v) =>
+      `(window.__tvmBallPre&&window.__tvmBallPre(this.${campos.ctx},${f}-1),` +
+      `this.${meth}(${v},null,${f}-1),` +
+      `window.__tvmBallPost&&window.__tvmBallPost(this.${campos.ctx},${f}-1))`)
   );
 
   return {

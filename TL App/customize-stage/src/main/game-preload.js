@@ -6541,7 +6541,36 @@ function installTracking(view) {
    * los adornos.
    */
   let brushBroken = false;
+  /*
+   * Distorsión de la pelota (opcional, viene apagada). El cliente dibuja la pelota
+   * con la escala corrida alrededor de TU ficha. Es sólo cómo se ve: la pelota
+   * de verdad sigue donde está y los toques dependen de ella.
+   */
+  const myDisc = { x: 0, y: 0, ok: false };
+  let ballWarpOn = false;
+  view.__tvmBallPre = (ctx, idx) => {
+    if (idx !== 0 || visual.ballWarp === 1 || !myDisc.ok) return;
+    ballWarpOn = true;
+    ctx.save();
+    ctx.translate(myDisc.x, myDisc.y);
+    ctx.scale(visual.ballWarp, visual.ballWarp);
+    ctx.translate(-myDisc.x, -myDisc.y);
+  };
+  view.__tvmBallPost = (ctx, idx) => {
+    if (idx !== 0 || !ballWarpOn) return;
+    ballWarpOn = false;
+    ctx.restore();
+  };
   view.__tvmPaint = (ctx, renderer, zoom) => {
+    if (visual.ballWarp !== 1) {
+      // Dónde está tu ficha en ESTE cuadro (la pelota se escala alrededor de ella).
+      const ff = tracker.fields;
+      const yo = renderer && renderer.__tvmMe;
+      const disc = yo && ff && yo[ff.disc];
+      const at = disc && disc[ff.pos];
+      myDisc.ok = !!at;
+      if (at) { myDisc.x = at.x; myDisc.y = at.y; }
+    }
     if (brushBroken) return;
     ownDraw++;
     try {
@@ -9517,7 +9546,7 @@ const visual = {
   pitchLine: 1, discLine: 1, ballLine: 1, ballSize: 1, discSize: 1, lines: false, sizes: false,
   texture: 'none', crest: false, crestOpacity: 0.18, crestSize: 0.45,
   lineColor: '', postColor: '', discOutline: '', ballOutline: '',
-  discStyle: 'default', discFilter: '', discFilterAll: true, ownRing: false, ownRingColor: '', ownRingAlpha: 0.3, ownRingRadius: 25, ownRingSoft: 0, weather: '', weatherAmount: 0.6, score: '', scoreOpacity: 0.16, ballStyle: 'default', ringStyle: 'default', ringColor: '', light: '', shadows: false, ballColor: '', lineGlow: false,
+  discStyle: 'default', discFilter: '', discFilterAll: true, ownRing: false, ownRingColor: '', ownRingAlpha: 0.3, ownRingRadius: 25, ownRingSoft: 0, ballWarp: 1, weather: '', weatherAmount: 0.6, score: '', scoreOpacity: 0.16, ballStyle: 'default', ringStyle: 'default', ringColor: '', light: '', shadows: false, ballColor: '', lineGlow: false,
   selfTrail: false, selfTrailColor: '',
   nameScale: 1, nameColor: '', nameOutline: false, nameFont: 'default',
   /** Hay algo que hacerle a las fichas o a la pelota en el `stroke()`. */
@@ -9557,6 +9586,7 @@ function syncCanvasHotFlags() {
   visual.discFilter = ['pixel', 'mono', 'toon'].includes(cfg.discFilter) ? cfg.discFilter : '';
   visual.discFilterAll = cfg.discFilterScope !== 'mine';
   visual.light = ['vignette', 'spot', 'corners'].includes(cfg.pitchLight) ? cfg.pitchLight : '';
+  visual.ballWarp = clampNum(cfg.ballWarp, 0.7, 1.3, 1);
   visual.ownRingColor = lookfx.safeColor(cfg.ownRingColor);
   visual.ownRingAlpha = clampNum(cfg.ownRingAlpha, 0.02, 1, 0.3);
   visual.ownRingRadius = clampNum(cfg.ownRingRadius, 16, 80, 25);

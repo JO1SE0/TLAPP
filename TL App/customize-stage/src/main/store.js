@@ -416,6 +416,8 @@ const DEFAULTS = {
     /** Luz de la cancha: `none` · `vignette` · `spot` · `corners`. */
     pitchLight: 'none',
     /** El anillo gris que HaxBall dibuja alrededor de tu ficha: color (vacío = blanco), opacidad, distancia y difuminado. */
+    /** Distorsión de la pelota (sólo visual): escala alrededor de tu ficha. 1 = apagado. */
+    ballWarp: 1,
     ownRingColor: '',
     ownRingAlpha: 0.3,
     ownRingRadius: 25,
