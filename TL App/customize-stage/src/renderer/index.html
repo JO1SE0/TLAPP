@@ -1962,8 +1962,9 @@
   <script src="js/i18n.js"></script>
   <script src="js/look-shim.js"></script>
   <script src="../main/look.js"></script>
-  <script src="../main/goal-fx.js"></script>
   <script src="js/preview.js"></script>
+  <!-- goal-fx va DESPUÉS de preview.js: también se exporta como módulo y pisaba lo de look.js, dejando la vista previa vacía. -->
+  <script src="../main/goal-fx.js"></script>
   <script src="js/welcome.js"></script>
   <script src="js/sparks.js"></script>
   <script src="js/music.js"></script>
