@@ -21,6 +21,7 @@ const lookfx = require('./look');
 const zoomControl = require('./game-zoom');
 const themes = require('./themes');
 const roomUi = require('./room-ui');
+const goalFx = require('./goal-fx');
 let goalSfx = null;
 try { goalSfx = require('../renderer/js/goal-sfx.js'); } catch { /* sin sonidos incluidos */ }
 const gif = require('./gif');
@@ -6352,6 +6353,7 @@ function mlogBuild(score) {
 }
 
 function resetTracker() {
+  try { goalFxTally.by.clear(); } catch (e) { /* todavía no se declaró: arranque */ }
   tracker.clock = 0;
   tracker.lastAt = 0;
   tracker.touches.length = 0;
@@ -6471,7 +6473,17 @@ function installTracking(view) {
     // El destello ya sabe de qué color va, sin esperar al marcador del DOM.
     if (scored) noteGoalTeam(scored);
     goalTextArmedUntil = Date.now() + 400;
-    try { goalImpact(); } catch (e) {}
+    // Festejo propio (opcional). Si se dibujó, y el jugador lo pidió, reemplaza al destello del club.
+    let customPlayed = false;
+    try {
+      let tName = scored;
+      if (!tName) {
+        const ff = view.__tvmF;
+        tName = ff && ff.name && team ? canonicalTeam(String(team[ff.name] || '')) : '';
+      }
+      customPlayed = goalCelebration(tName);
+    } catch (e) {}
+    try { goalImpact(customPlayed && (state.config.visual || {}).goalFxReplace !== false); } catch (e) {}
     return playGoalSound();
   };
 
@@ -8130,7 +8142,64 @@ function sparkleJoiners(doc, rows) {
   for (const nick of [...sparkleSeen]) if (!current.has(nick)) sparkleSeen.delete(nick);
 }
 
-function goalImpact() {
+/**
+ * Festejo de gol propio (goal-fx.js). Devuelve true si lo dibujó.
+ *
+ * Con «sólo mis goles» hace falta el autor: se resuelve en el mismo paso de
+ * física del gol (ver `realGoal`), así que `goalNames` ya está al día. Sin la
+ * sala real enganchada no hay autor y ese modo no se dispara.
+ */
+const goalFxTally = { at: 0, by: new Map() };
+
+function goalCelebration(team) {
+  const v = state.config.visual || {};
+  const style = String(v.goalFxStyle || 'off');
+  if (style === 'off') return false;
+  if (state.config.appearance && state.config.appearance.animations === false) return false;
+  const fresh = Date.now() - goalNames.at < 2500;
+  const scorer = fresh ? goalNames.scorer : null;
+  if (v.goalFxWhen !== 'all') {
+    const me = String(myNick() || '').trim().toLowerCase();
+    if (!scorer || goalNames.own || !me || String(scorer).trim().toLowerCase() !== me) return false;
+  }
+  const doc = gameDocument();
+  if (!doc || !doc.body) return false;
+  // Cuántos goles lleva ESTE autor en la partida (para DOBLETE, TRIPLETE…). Pasados
+  // diez minutos sin goles se vuelve a empezar: una sala puede no cerrar nunca.
+  const who = String(scorer || '').trim().toLowerCase();
+  const now = Date.now();
+  if (now - goalFxTally.at > 10 * 60 * 1000) goalFxTally.by.clear();
+  goalFxTally.at = now;
+  const count = who && !goalNames.own ? (goalFxTally.by.get(who) || 0) + 1 : 1;
+  if (who && !goalNames.own) goalFxTally.by.set(who, count);
+  return goalFx.play(doc, {
+    style,
+    layers: [v.goalFxLayer1, v.goalFxLayer2].filter((x) => x && x !== 'off'),
+    count,
+    streak: v.goalFxStreak !== false,
+    textPos: v.goalFxTextPos,
+    textScale: v.goalFxTextScale,
+    textAnim: v.goalFxTextAnim,
+    textStyle: v.goalFxTextStyle,
+    textColor: lookfx.safeColor(v.goalFxTextColor),
+    vignette: !!v.goalFxVignette,
+    flash: !!v.goalFxFlash,
+    team,
+    colorMode: v.goalFxColorMode,
+    color: lookfx.safeColor(v.goalFxColor),
+    color2: lookfx.safeColor(v.goalFxColor2),
+    text: v.goalFxText,
+    showText: v.goalFxShowText !== false,
+    showName: v.goalFxShowName !== false,
+    name: scorer && !goalNames.own ? scorer : '',
+    emoji: v.goalFxEmoji,
+    intensity: v.goalFxIntensity,
+    duration: v.goalFxDuration,
+    font: FONT_FAMILIES[v.goalFxFont] || FONT_FAMILIES.impact
+  });
+}
+
+function goalImpact(skipFlash) {
   const cfg = state.config.pitch;
   if (!cfg) return;
   // El interruptor global de animaciones manda: si el jugador las apagó, es
@@ -8157,7 +8226,7 @@ function goalImpact() {
     }, 460);
   }
 
-  if (cfg.goalFlash) {
+  if (cfg.goalFlash && !skipFlash) {
     if (!flashEl || !flashEl.isConnected) {
       flashEl = doc.createElement('div');
       flashEl.id = 'tvm-goal-flash';

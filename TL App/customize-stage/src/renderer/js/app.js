@@ -74,7 +74,7 @@ const PANEL_TABS = {
     { id: 'fichas', label: 'tab.discs', hint: 'tab.discsHint',
       secs: ['jugador', 'pelota', 'fichaslook', 'nombres'] },
     { id: 'partida', label: 'tab.ingame', hint: 'tab.ingameHint',
-      secs: ['chatlook', 'statslook', 'partida', 'teclashud', 'overlay', 'sonidos', 'lista'] }
+      secs: ['goalfx', 'chatlook', 'statslook', 'partida', 'teclashud', 'overlay', 'sonidos', 'lista'] }
   ],
   ajustes: [
     { id: 'rapido', group: 'tabg.perf', label: 'tab.quick', hint: 'tab.quickHint', secs: ['perfil', 'respuesta'] },
@@ -8848,7 +8848,11 @@ const LOOK_DEFAULTS = {
   texture: 'none', pitchLight: 'none', softShadows: false, crest: false, crestOpacity: 0.18, crestSize: 0.45, lineColor: '', postColor: '',
   discStyle: 'default', ballStyle: 'default', ballColor: '', lineGlow: false, discOutline: '', ballOutline: '', ringStyle: 'default', ringColor: '',
   selfTrail: false, selfTrailColor: '', nameScale: 1, nameColor: '', nameOutline: false, nameFont: 'default',
-  chatScale: 1, chatBg: -1, chatFont: 'default', chatOpacity: 1, statsOpacity: 1, statsStyle: 'default', menuBg: 'none'
+  chatScale: 1, chatBg: -1, chatFont: 'default', chatOpacity: 1, statsOpacity: 1, statsStyle: 'default', menuBg: 'none',
+  goalFxStyle: 'off', goalFxWhen: 'mine', goalFxReplace: true, goalFxColorMode: 'team', goalFxColor: '', goalFxColor2: '', goalFxShowText: true,
+  goalFxText: 'GOL', goalFxShowName: true, goalFxFont: 'impact', goalFxEmoji: '⚽🔥', goalFxIntensity: 1, goalFxDuration: 2.4,
+  goalFxLayer1: 'off', goalFxLayer2: 'off', goalFxTextPos: 'top', goalFxTextScale: 1, goalFxTextAnim: 'pop', goalFxTextStyle: 'gradient',
+  goalFxTextColor: '', goalFxVignette: false, goalFxFlash: false, goalFxStreak: true
 };
 
 function lookValue(key) {
@@ -9032,6 +9036,215 @@ function lookRow(item) {
   return settingRow({ label: t(item.label), description: item.desc ? t(item.desc) : '', control: nodes });
 }
 
+/* ── Festejo de gol personalizado ─────────────────────────────────────────
+ * El motor es goal-fx.js (el mismo que usa el juego). Acá sólo están los
+ * controles. Todo se guarda en `visual.goalFx*` y viene APAGADO: el efecto
+ * original del club no se toca. */
+const GOALFX_STYLES = [
+  ['confetti', 'Confeti', 'Confetti'], ['papelitos', 'Papelitos de cancha', 'Tickertape'], ['fireworks', 'Fuegos artificiales', 'Fireworks'],
+  ['bengalas', 'Bengalas de tribuna', 'Stadium flares'], ['shockwave', 'Onda expansiva', 'Shockwave'], ['rings', 'Anillos de neón', 'Neon rings'],
+  ['lightning', 'Rayos', 'Lightning'], ['flames', 'Llamas', 'Flames'], ['coins', 'Lluvia de monedas', 'Coin rain'],
+  ['emojis', 'Emojis', 'Emojis'], ['beams', 'Reflectores', 'Spotlights'], ['stars', 'Estrellas', 'Stars'],
+  ['meteors', 'Lluvia de meteoros', 'Meteor shower'], ['aurora', 'Aurora', 'Aurora'], ['bubbles', 'Burbujas', 'Bubbles'],
+  ['pixels', 'Retro 8 bits', 'Retro 8-bit'], ['glitch', 'Glitch', 'Glitch']
+];
+
+const GOALFX_PRESETS = [
+  { id: 'arg', es: 'Papelitos celestes', en: 'Sky-blue tickertape', dot: 'linear-gradient(135deg,#74acdf,#ffffff)',
+    v: { goalFxStyle: 'papelitos', goalFxLayer1: 'confetti', goalFxLayer2: 'off', goalFxColorMode: 'custom', goalFxColor: '#74acdf', goalFxColor2: '#ffffff', goalFxText: 'GOOOL | GOLAZO | {nombre}', goalFxTextAnim: 'zoom', goalFxTextStyle: 'gradient', goalFxTextPos: 'top', goalFxVignette: false, goalFxFlash: false, goalFxFont: 'impact' } },
+  { id: 'flares', es: 'Bengalas de hinchada', en: 'Ultras flares', dot: 'linear-gradient(135deg,#ff3b30,#ffb02e)',
+    v: { goalFxStyle: 'bengalas', goalFxLayer1: 'papelitos', goalFxLayer2: 'off', goalFxColorMode: 'custom', goalFxColor: '#ff3b30', goalFxColor2: '#ffb02e', goalFxText: 'GOL', goalFxTextAnim: 'drop', goalFxTextStyle: 'gradient', goalFxTextPos: 'top', goalFxVignette: true, goalFxFlash: false, goalFxFont: 'impact' } },
+  { id: 'neon', es: 'Neón', en: 'Neon', dot: 'linear-gradient(135deg,#00f0ff,#ff2bd6)',
+    v: { goalFxStyle: 'rings', goalFxLayer1: 'stars', goalFxLayer2: 'off', goalFxColorMode: 'custom', goalFxColor: '#00f0ff', goalFxColor2: '#ff2bd6', goalFxText: 'GOL', goalFxTextAnim: 'wave', goalFxTextStyle: 'neon', goalFxTextPos: 'center', goalFxVignette: true, goalFxFlash: false, goalFxFont: 'outfit' } },
+  { id: 'retro', es: 'Retro 8 bits', en: 'Retro 8-bit', dot: 'linear-gradient(135deg,#39ff14,#ffe600)',
+    v: { goalFxStyle: 'pixels', goalFxLayer1: 'off', goalFxLayer2: 'off', goalFxColorMode: 'custom', goalFxColor: '#39ff14', goalFxColor2: '#ffe600', goalFxText: 'GOAL!', goalFxTextAnim: 'type', goalFxTextStyle: 'solid', goalFxTextPos: 'center', goalFxVignette: false, goalFxFlash: false, goalFxFont: 'mono' } },
+  { id: 'storm', es: 'Tormenta', en: 'Storm', dot: 'linear-gradient(135deg,#9ad0ff,#ffffff)',
+    v: { goalFxStyle: 'lightning', goalFxLayer1: 'shockwave', goalFxLayer2: 'off', goalFxColorMode: 'custom', goalFxColor: '#9ad0ff', goalFxColor2: '#ffffff', goalFxText: 'GOLAZO', goalFxTextAnim: 'glitch', goalFxTextStyle: 'gradient', goalFxTextPos: 'top', goalFxVignette: true, goalFxFlash: true, goalFxFont: 'impact' } },
+  { id: 'gold', es: 'Lluvia de oro', en: 'Golden rain', dot: 'linear-gradient(135deg,#ffd54a,#ff9f1c)',
+    v: { goalFxStyle: 'coins', goalFxLayer1: 'stars', goalFxLayer2: 'off', goalFxColorMode: 'custom', goalFxColor: '#ffd54a', goalFxColor2: '#ff9f1c', goalFxText: 'GOLAZO', goalFxTextAnim: 'pop', goalFxTextStyle: 'gradient', goalFxTextPos: 'top', goalFxVignette: false, goalFxFlash: false, goalFxFont: 'impact' } },
+  { id: 'aurora', es: 'Aurora', en: 'Aurora', dot: 'linear-gradient(135deg,#7cf7c9,#8a7dff)',
+    v: { goalFxStyle: 'aurora', goalFxLayer1: 'bubbles', goalFxLayer2: 'off', goalFxColorMode: 'custom', goalFxColor: '#7cf7c9', goalFxColor2: '#8a7dff', goalFxText: 'GOL', goalFxTextAnim: 'slide', goalFxTextStyle: 'outline', goalFxTextPos: 'center', goalFxVignette: false, goalFxFlash: false, goalFxFont: 'outfit' } },
+  { id: 'glitch', es: 'Glitch', en: 'Glitch', dot: 'linear-gradient(135deg,#ff2e63,#08d9d6)',
+    v: { goalFxStyle: 'glitch', goalFxLayer1: 'meteors', goalFxLayer2: 'off', goalFxColorMode: 'custom', goalFxColor: '#ff2e63', goalFxColor2: '#08d9d6', goalFxText: 'GOL', goalFxTextAnim: 'glitch', goalFxTextStyle: 'gradient', goalFxTextPos: 'top', goalFxVignette: false, goalFxFlash: true, goalFxFont: 'mono' } },
+  { id: 'surprise', es: 'Sorpresa', en: 'Surprise', dot: 'conic-gradient(#ff6b57,#ffd54a,#5bd,#a7f,#ff6b57)',
+    v: { goalFxStyle: 'random', goalFxLayer1: 'random', goalFxLayer2: 'off', goalFxColorMode: 'team', goalFxText: 'GOL | GOLAZO | QUÉ GOL', goalFxTextAnim: 'pop', goalFxTextStyle: 'gradient', goalFxTextPos: 'top', goalFxVignette: false, goalFxFlash: false, goalFxFont: 'impact' } }
+];
+
+let goalFxTest = 0;
+function goalFxOptions(count) {
+  const v = state.config.visual || {};
+  const d = LOOK_DEFAULTS;
+  const g = (k) => (v[k] === undefined ? d[k] : v[k]);
+  const safe = (c) => (/^#[0-9a-f]{6}$/i.test(c || '') ? c : '');
+  return {
+    style: g('goalFxStyle') === 'off' ? 'confetti' : g('goalFxStyle'),
+    layers: [g('goalFxLayer1'), g('goalFxLayer2')].filter((x) => x && x !== 'off'),
+    count,
+    streak: g('goalFxStreak') !== false,
+    team: 'Red',
+    colorMode: g('goalFxColorMode'),
+    color: safe(g('goalFxColor')),
+    color2: safe(g('goalFxColor2')),
+    text: g('goalFxText'),
+    showText: g('goalFxShowText') !== false,
+    showName: g('goalFxShowName') !== false,
+    name: (state.config.general && state.config.general.nickname) || 'Jugador',
+    emoji: g('goalFxEmoji'),
+    intensity: g('goalFxIntensity'),
+    duration: g('goalFxDuration'),
+    font: FONT_FAMILY_CSS[g('goalFxFont')] || FONT_FAMILY_CSS.impact,
+    textPos: g('goalFxTextPos'),
+    textScale: g('goalFxTextScale'),
+    textAnim: g('goalFxTextAnim'),
+    textStyle: g('goalFxTextStyle'),
+    textColor: safe(g('goalFxTextColor')),
+    vignette: !!g('goalFxVignette'),
+    flash: !!g('goalFxFlash')
+  };
+}
+const FONT_FAMILY_CSS = {
+  outfit: 'Outfit, system-ui, sans-serif',
+  mono: 'ui-monospace, Consolas, monospace',
+  serif: 'Georgia, "Times New Roman", serif',
+  round: '"Comic Sans MS", "Segoe UI", sans-serif',
+  impact: 'Impact, "Arial Black", sans-serif'
+};
+
+function renderGoalFx() {
+  const host = $('#goalFxRows');
+  if (!host || !window.TLGoalFx) return;
+  const en = isEn();
+  const L = (es, enText) => (en ? enText : es);
+  const v = state.config.visual || {};
+  const val = (k) => (v[k] === undefined ? LOOK_DEFAULTS[k] : v[k]);
+  const on = val('goalFxStyle') !== 'off';
+  const rows = [];
+
+  // Presets
+  const chips = document.createElement('div');
+  chips.className = 'lookchips';
+  for (const pr of GOALFX_PRESETS) {
+    const chip = document.createElement('button');
+    chip.type = 'button';
+    chip.className = 'lookchip';
+    const dot = document.createElement('i');
+    dot.className = 'lookchip__dot';
+    dot.style.background = pr.dot;
+    const nm = document.createElement('span');
+    nm.textContent = L(pr.es, pr.en);
+    chip.append(dot, nm);
+    chip.addEventListener('click', () => lookPatch({ visual: { ...pr.v } }).then(() => playGoalFxTest()));
+    chips.append(chip);
+  }
+  rows.push(settingRow({ label: L('Estilos listos', 'Ready-made styles'), description: L('Un clic y queda armado (después lo podés retocar). Al elegir uno se prueba solo.', 'One click sets it up (tweak it afterwards). Picking one plays a preview.'), control: chips, block: true }));
+
+  const styleOpts = (withOff) => {
+    const list = [];
+    if (withOff) list.push(['off', L('Apagado', 'Off')]);
+    for (const [id, es, enName] of GOALFX_STYLES) list.push([id, L(es, enName)]);
+    list.push(['random', L('Sorpresa (uno distinto cada gol)', 'Surprise (different each goal)')]);
+    return list;
+  };
+  const select = (key, label, opts, desc) => {
+    const el = document.createElement('select');
+    for (const [id, name] of opts) { const o = document.createElement('option'); o.value = id; o.textContent = name; el.append(o); }
+    el.value = String(val(key));
+    el.addEventListener('change', () => lookPatch({ visual: { [key]: el.value } }));
+    return settingRow({ label, description: desc || '', control: el });
+  };
+  const sw = (key, label, desc) => {
+    const b = document.createElement('button');
+    b.className = 'switch' + (val(key) ? ' is-on' : '');
+    b.type = 'button';
+    b.setAttribute('role', 'switch');
+    b.setAttribute('aria-checked', String(!!val(key)));
+    b.addEventListener('click', () => lookPatch({ visual: { [key]: !val(key) } }));
+    return settingRow({ label, description: desc || '', control: b });
+  };
+  const range = (key, label, min, max, step, fmt) => {
+    const input = document.createElement('input');
+    input.type = 'range'; input.min = min; input.max = max; input.step = step; input.value = val(key);
+    const out = document.createElement('b');
+    out.className = 'row__val';
+    out.textContent = fmt(Number(val(key)));
+    syncRangeFill(input);
+    input.addEventListener('input', () => { syncRangeFill(input); out.textContent = fmt(Number(input.value)); });
+    input.addEventListener('change', () => lookPatch({ visual: { [key]: Number(input.value) } }));
+    return settingRow({ label, control: [input, out] });
+  };
+  const text = (key, label, desc, max) => {
+    const input = document.createElement('input');
+    input.type = 'text'; input.maxLength = max; input.value = String(val(key) || ''); input.spellcheck = false;
+    input.addEventListener('change', () => lookPatch({ visual: { [key]: input.value } }));
+    return settingRow({ label, description: desc || '', control: input });
+  };
+  const color = (key, label) => {
+    const input = document.createElement('input');
+    input.type = 'color'; input.value = val(key) || '#ffffff';
+    input.classList.toggle('is-unset', !val(key));
+    input.addEventListener('change', () => lookPatch({ visual: { [key]: input.value } }));
+    const clear = document.createElement('button');
+    clear.className = 'btn btn--ghost btn--sm'; clear.type = 'button';
+    clear.textContent = L('Automático', 'Auto'); clear.disabled = !val(key);
+    clear.addEventListener('click', () => lookPatch({ visual: { [key]: '' } }));
+    return settingRow({ label, control: [input, clear] });
+  };
+
+  // Estilo principal + probar
+  const styleRow = select('goalFxStyle', L('Festejo propio', 'Custom celebration'), styleOpts(true),
+    L('Viene apagado: con «Apagado» se ve solamente el efecto original del club.', 'Off by default: with “Off” you only see the club\'s original effect.'));
+  const test = document.createElement('button');
+  test.type = 'button'; test.className = 'btn btn--sm';
+  test.textContent = L('Probar', 'Preview');
+  test.addEventListener('click', () => playGoalFxTest(true));
+  styleRow.querySelector('.row__ctl').append(test);
+  rows.push(styleRow);
+
+  if (on) {
+    rows.push(select('goalFxWhen', L('Cuándo', 'When'), [['mine', L('Sólo mis goles', 'Only my goals')], ['all', L('Todos los goles', 'Every goal')]]));
+    rows.push(sw('goalFxReplace', L('Reemplazar el efecto original', 'Replace the original effect'), L('Apagado: se ven los dos juntos.', 'Off: both play together.')));
+    rows.push(select('goalFxLayer1', L('Capa extra 1', 'Extra layer 1'), styleOpts(true).map(([id, n]) => [id, id === 'off' ? L('Ninguna', 'None') : n]), L('Se dibuja a la vez que el estilo principal: combiná dos o tres.', 'Plays at the same time as the main style: combine two or three.')));
+    rows.push(select('goalFxLayer2', L('Capa extra 2', 'Extra layer 2'), styleOpts(true).map(([id, n]) => [id, id === 'off' ? L('Ninguna', 'None') : n])));
+
+    rows.push(select('goalFxColorMode', L('Colores', 'Colours'), [['team', L('Los del equipo que mete el gol', 'Scoring team colours')], ['custom', L('Elegir los míos', 'Pick my own')]]));
+    if (val('goalFxColorMode') === 'custom') {
+      rows.push(color('goalFxColor', L('Color principal', 'Main colour')));
+      rows.push(color('goalFxColor2', L('Color secundario', 'Second colour')));
+    }
+    const usesEmoji = [val('goalFxStyle'), val('goalFxLayer1'), val('goalFxLayer2')].includes('emojis');
+    if (usesEmoji) rows.push(text('goalFxEmoji', L('Emojis', 'Emojis'), L('Los que quieras, hasta 8: ⚽🔥🏆', 'Up to 8: ⚽🔥🏆'), 24));
+
+    rows.push(range('goalFxIntensity', L('Intensidad', 'Intensity'), 0.3, 2, 0.1, (n) => `${Math.round(n * 100)}%`));
+    rows.push(range('goalFxDuration', L('Duración', 'Duration'), 1, 5, 0.1, (n) => `${n.toFixed(1)} s`));
+    rows.push(sw('goalFxVignette', L('Borde de pantalla encendido', 'Glowing screen edge'), L('Un resplandor del color del festejo en los bordes.', 'A glow in the celebration colour around the edges.')));
+    rows.push(sw('goalFxFlash', L('Destello al inicio', 'Opening flash')));
+
+    // Cartel
+    rows.push(sw('goalFxShowText', L('Mostrar cartel', 'Show banner')));
+    if (val('goalFxShowText') !== false) {
+      rows.push(text('goalFxText', L('Texto del cartel', 'Banner text'),
+        L('Varias frases separadas con | y se elige una al azar. {nombre} pone el nombre del que metió el gol.', 'Several phrases separated by | pick one at random. {nombre} inserts the scorer\'s name.'), 60));
+      rows.push(select('goalFxFont', L('Fuente', 'Font'), [['impact', 'Impact'], ['outfit', 'Outfit'], ['mono', 'Mono'], ['serif', 'Serif'], ['round', 'Round']]));
+      rows.push(select('goalFxTextStyle', L('Estilo del texto', 'Text style'), [['gradient', L('Degradado', 'Gradient')], ['solid', L('Color liso', 'Solid')], ['neon', L('Neón', 'Neon')], ['outline', L('Sólo contorno', 'Outline only')]]));
+      rows.push(color('goalFxTextColor', L('Color del texto', 'Text colour')));
+      rows.push(select('goalFxTextAnim', L('Animación', 'Animation'), [['pop', L('Rebote', 'Pop')], ['slide', L('Desliza', 'Slide')], ['drop', L('Cae', 'Drop')], ['zoom', L('Zoom', 'Zoom')], ['wave', L('Ola', 'Wave')], ['glitch', 'Glitch'], ['type', L('Máquina de escribir', 'Typewriter')]]));
+      rows.push(select('goalFxTextPos', L('Posición', 'Position'), [['top', L('Arriba', 'Top')], ['center', L('Centro', 'Centre')], ['bottom', L('Abajo', 'Bottom')]]));
+      rows.push(range('goalFxTextScale', L('Tamaño', 'Size'), 0.5, 1.6, 0.05, (n) => `${Math.round(n * 100)}%`));
+      rows.push(sw('goalFxStreak', L('Doblete, triplete, póker, manita', 'Brace, hat-trick, 4, 5'), L('Del segundo gol de la partida el cartel cambia solo.', 'From the second goal in a match the banner changes by itself.')));
+    }
+    rows.push(sw('goalFxShowName', L('Mostrar quién hizo el gol', 'Show who scored')));
+  }
+  host.replaceChildren(...rows);
+}
+
+function playGoalFxTest(cycle) {
+  if (!window.TLGoalFx) return;
+  if (cycle) goalFxTest = goalFxTest % 5 + 1;
+  else goalFxTest = 1;
+  // Probar sin estilo elegido muestra uno de ejemplo, para que se vea qué es esto.
+  window.TLGoalFx.play(document, goalFxOptions(goalFxTest));
+}
+
 /* Con el fondo del chat en «ancho completo» chat y FPS comparten barra: estos ajustes sólo valen en «compacto». */
 const COMPACT_ONLY = new Set(['chatBg', 'chatOpacity', 'statsStyle', 'statsOpacity']);
 
@@ -9055,6 +9268,7 @@ function renderLookSections() {
       host.append(note);
     }
   }
+  try { renderGoalFx(); } catch (e) { /* adorno */ }
   const app = $('#app');
   if (app) app.dataset.menubg = lookValue('menuBg') || 'none';
 }

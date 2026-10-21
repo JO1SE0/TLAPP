@@ -437,7 +437,36 @@ const DEFAULTS = {
     statsStyle: 'default',
     /** Sonido del palo cuando la pelota le pega. */
     /** Fondo de los menús: `none` · `club` · `aurora` · `grid`. */
-    menuBg: 'none'
+    menuBg: 'none',
+    /**
+     * Festejo de gol propio (ver goal-fx.js). Apagado por defecto: el efecto
+     * original del club no se toca. `goalFxWhen`: `mine` (sólo tus goles) o `all`.
+     */
+    goalFxStyle: 'off',
+    goalFxWhen: 'mine',
+    goalFxReplace: true,
+    goalFxColorMode: 'team',
+    goalFxColor: '',
+    goalFxColor2: '',
+    goalFxShowText: true,
+    goalFxText: 'GOL',
+    goalFxShowName: true,
+    goalFxFont: 'impact',
+    goalFxEmoji: '⚽🔥',
+    goalFxIntensity: 1,
+    goalFxDuration: 2.4,
+    /** Capas extra (se dibujan a la vez que el estilo principal) y detalles del cartel. */
+    goalFxLayer1: 'off',
+    goalFxLayer2: 'off',
+    goalFxTextPos: 'top',
+    goalFxTextScale: 1,
+    goalFxTextAnim: 'pop',
+    goalFxTextStyle: 'gradient',
+    goalFxTextColor: '',
+    goalFxVignette: false,
+    goalFxFlash: false,
+    /** Del segundo gol de la partida: DOBLETE, TRIPLETE, PÓKER, MANITA. */
+    goalFxStreak: true
   },
   /**
    * Looks guardados con nombre: un conjunto de ajustes visuales que se aplica
