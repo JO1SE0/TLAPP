@@ -3738,6 +3738,80 @@ function renderFpsCap() {
   }));
 }
 
+/*
+ * ── Modo «PC lenta» ─────────────────────────────────────────────────────
+ * Un interruptor que apaga de una vez todo lo VISUAL que cuesta (animaciones,
+ * partículas, pelota 3D, destellos, fondo animado, gráficos planos) y guarda lo
+ * que había para poder volver. Al apagarlo se devuelve sólo lo que sigue con el
+ * valor que puso el modo: si en el medio tocaste algo a mano, se respeta.
+ * No toca la jugabilidad, el sonido ni la resolución del juego.
+ */
+const LOW_END = {
+  appearance: { animations: false, sparks: false, musicGlow: false, crestBreath: false, roomCurtain: false, listStagger: false, toggleBounce: false, accentDrift: false, joinSparkle: false, goalEdge: false, pageTransition: 'off' },
+  visual: { menuBg: 'none' },
+  pitch: { ball3d: false, goalFlash: false, goalShake: false },
+  perf: { flatGraphics: true, gpuRasterization: true, zeroCopy: true, highProcessPriority: true, disableBackgroundThrottling: true }
+};
+
+async function setLowEnd(on) {
+  const cfg = state.config;
+  const perf = cfg.perf || {};
+  if (on) {
+    const backup = {};
+    const patch = {};
+    for (const [group, values] of Object.entries(LOW_END)) {
+      backup[group] = {};
+      patch[group] = { ...values };
+      for (const key of Object.keys(values)) backup[group][key] = (cfg[group] || {})[key];
+    }
+    patch.perf = { ...patch.perf, lowEnd: true, lowEndBackup: backup };
+    await patchConfig(patch);
+    if (backup.perf && Object.keys(LOW_END.perf).some((k) => backup.perf[k] !== LOW_END.perf[k])) needsRestart();
+    toast(isEn() ? 'Low-end PC mode on' : 'Modo PC lenta activado', 'ok');
+  } else {
+    const backup = perf.lowEndBackup || {};
+    const patch = {};
+    for (const [group, values] of Object.entries(LOW_END)) {
+      patch[group] = {};
+      for (const key of Object.keys(values)) {
+        const was = (backup[group] || {})[key];
+        // Sólo se devuelve lo que sigue como lo dejó el modo.
+        if (was !== undefined && (cfg[group] || {})[key] === values[key]) patch[group][key] = was;
+      }
+    }
+    patch.perf = { ...patch.perf, lowEnd: false, lowEndBackup: null };
+    await patchConfig(patch);
+    if (Object.keys(LOW_END.perf).some((k) => k in patch.perf)) needsRestart();
+    toast(isEn() ? 'Back to your previous settings' : 'Volviste a tus ajustes anteriores', 'ok');
+  }
+  renderPerf();
+  try { renderLookSections(); } catch (e) { /* adorno */ }
+}
+
+function renderLowEnd() {
+  const host = $('#lowEndRow');
+  if (!host) return;
+  const en = isEn();
+  const on = !!(state.config.perf && state.config.perf.lowEnd);
+  const sw = document.createElement('button');
+  sw.className = 'switch' + (on ? ' is-on' : '');
+  sw.type = 'button';
+  sw.setAttribute('role', 'switch');
+  sw.setAttribute('aria-checked', String(on));
+  sw.addEventListener('click', () => { sw.disabled = true; setLowEnd(!on); });
+  const row = settingRow({
+    label: en ? 'Low-end PC mode' : 'Modo PC lenta',
+    description: en
+      ? 'Turns off what costs FPS in one go: animations, particles, 3D ball, goal flashes, animated menu background and flat graphics.'
+      : 'Apaga de una vez lo que cuesta FPS: animaciones, partículas, pelota 3D, destellos de gol, fondo animado del menú y gráficos planos.',
+    hint: en
+      ? 'It remembers what you had and restores it when you turn it off (anything you changed by hand in the meantime is kept). Does not touch gameplay, sound or game resolution; for more FPS also lower “Resolution scale” in Graphics. Some changes need a restart.'
+      : 'Recuerda lo que tenías y lo devuelve al apagarlo (lo que cambies a mano mientras tanto se respeta). No toca la jugabilidad, el sonido ni la resolución del juego; para ganar más FPS bajá también la «Escala de resolución» en Gráficos. Algunos cambios piden reiniciar.',
+    control: sw
+  });
+  host.replaceChildren(row);
+}
+
 function renderPerf() {
   renderGameSettings($('#gameVideo'), 'video');
   renderGameSettings($('#gameNet'), 'net');
@@ -3764,6 +3838,7 @@ function renderPerf() {
     );
   }
   renderPerfPresets();
+  renderLowEnd();
 }
 
 /*

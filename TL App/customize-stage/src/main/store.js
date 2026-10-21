@@ -168,6 +168,9 @@ const DEFAULTS = {
     windowsTweaks: false,
     /** Opcional: reusa la simulación del cuadro anterior si pasó <4 ms (ver patchLightSim). */
     lightSim: false,
+    /** «Modo PC lenta»: apaga de una vez lo visual que cuesta. `lowEndBackup` guarda lo que había para volver. */
+    lowEnd: false,
+    lowEndBackup: null,
     // Audio
     lowLatencyAudio: true,
     // Diagnóstico
