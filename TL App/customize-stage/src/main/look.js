@@ -63,13 +63,15 @@ function rng(seed) {
 }
 
 const tiles = new Map();
+// Los acabados naturales usan un tile más grande: se nota menos que se repite.
+const BIG_TILES = new Set(['wood', 'ice', 'sand', 'concrete', 'turf', 'clay', 'marble', 'snow', 'carbon']);
 
 /** El tile de la textura: gris medio con variaciones, listo para `overlay`. */
 function tileFor(doc, name) {
   if (name === 'none') return null;
   let tile = tiles.get(name);
   if (tile) return tile;
-  const size = 128;
+  const size = BIG_TILES.has(name) ? 256 : 128;
   tile = doc.createElement('canvas');
   tile.width = size;
   tile.height = size;
@@ -81,86 +83,194 @@ function tileFor(doc, name) {
   c.fillRect(0, 0, size, size);
 
   if (name === 'wood') {
-    // Tablas horizontales: cada una con su tono, una costura y vetas finas.
-    const plank = 16;
-    for (let y = 0; y < size; y += plank) {
-      const shade = (rand() - 0.5) * 0.22;
+    // Tablas con veta larga, nudos, juntas de testa y bisel arriba y abajo.
+    const plank = 32;
+    const wrap = (fn) => { for (const dx of [-size, 0, size]) fn(dx); };
+    for (let y = 0, row = 0; y < size; y += plank, row++) {
+      const shade = (rand() - 0.5) * 0.26;
       c.fillStyle = shade > 0 ? `rgba(255,255,255,${shade})` : `rgba(0,0,0,${-shade})`;
       c.fillRect(0, y, size, plank);
-      c.fillStyle = 'rgba(0,0,0,0.38)';
-      c.fillRect(0, y, size, 1);
-      c.fillStyle = 'rgba(0,0,0,0.12)';
-      for (let i = 0; i < 7; i++) {
-        c.fillRect(rand() * size, y + 2 + rand() * (plank - 4), 14 + rand() * 40, 1);
+      // Veta: líneas largas que ondulan con períodos enteros, para que empalme.
+      for (let i = 0; i < 16; i++) {
+        const yy = y + 2 + rand() * (plank - 4);
+        const k = 1 + Math.floor(rand() * 2);
+        const ph = rand() * TAU;
+        const amp = 0.4 + rand() * 1.1;
+        c.strokeStyle = rand() > 0.35 ? `rgba(0,0,0,${0.05 + rand() * 0.1})` : `rgba(255,255,255,${0.04 + rand() * 0.07})`;
+        c.lineWidth = 0.6 + rand() * 0.9;
+        c.beginPath();
+        for (let x = 0; x <= size; x += 6) c.lineTo(x, yy + Math.sin((x / size) * TAU * k + ph) * amp);
+        c.stroke();
       }
-      // Junta entre tablas, corrida de una a otra.
-      c.fillStyle = 'rgba(0,0,0,0.3)';
-      c.fillRect(Math.floor(rand() * size), y, 1, plank);
+      // Nudo ocasional.
+      if (rand() > 0.55) {
+        const kx = rand() * size;
+        const ky = y + plank / 2 + (rand() - 0.5) * 6;
+        wrap((dx) => {
+          for (let r = 7; r > 1; r -= 1.5) {
+            c.strokeStyle = `rgba(0,0,0,${0.06 + (7 - r) * 0.03})`;
+            c.lineWidth = 0.8;
+            c.beginPath();
+            c.ellipse(kx + dx, ky, r * 1.8, r * 0.8, 0, 0, TAU);
+            c.stroke();
+          }
+        });
+      }
+      // Bisel: luz arriba, sombra abajo.
+      c.fillStyle = 'rgba(255,255,255,0.14)';
+      c.fillRect(0, y, size, 1);
+      c.fillStyle = 'rgba(0,0,0,0.46)';
+      c.fillRect(0, y + plank - 1, size, 1);
+      // Juntas de testa, corridas entre tablas.
+      const jx = Math.floor(((row * 0.37 + rand() * 0.3) % 1) * size);
+      c.fillStyle = 'rgba(0,0,0,0.38)';
+      c.fillRect(jx, y, 1, plank);
+      c.fillStyle = 'rgba(255,255,255,0.1)';
+      c.fillRect(jx + 1, y, 1, plank);
     }
-  } else if (name === 'ice') {
-    // Rayones finos y claros, como patines viejos.
-    c.lineWidth = 1;
-    for (let i = 0; i < 26; i++) {
-      c.strokeStyle = `rgba(255,255,255,${0.1 + rand() * 0.2})`;
-      c.beginPath();
-      const x = rand() * size;
-      const y = rand() * size;
-      c.moveTo(x, y);
-      c.lineTo(x + (rand() - 0.3) * 60, y + (rand() - 0.5) * 18);
-      c.stroke();
-    }
-    for (let i = 0; i < 160; i++) {
-      c.fillStyle = `rgba(255,255,255,${rand() * 0.12})`;
-      c.fillRect(rand() * size, rand() * size, 2, 1);
-    }
-  } else if (name === 'sand') {
-    // Ondas de duna: bandas suaves y grano fino.
-    for (let y = 0; y < size; y += 8) {
-      c.strokeStyle = (y / 8) % 2 ? 'rgba(255,255,255,0.14)' : 'rgba(0,0,0,0.12)';
-      c.lineWidth = 2;
-      c.beginPath();
-      const ph = rand() * 6;
-      for (let x = 0; x <= size; x += 8) c.lineTo(x, y + Math.sin((x / size) * TAU * 2 + ph) * 2.5);
-      c.stroke();
-    }
-    for (let i = 0; i < 1400; i++) {
-      c.fillStyle = rand() > 0.5 ? `rgba(255,255,255,${rand() * 0.2})` : `rgba(0,0,0,${rand() * 0.18})`;
+    for (let i = 0; i < 700; i++) {
+      c.fillStyle = rand() > 0.5 ? `rgba(255,255,255,${rand() * 0.06})` : `rgba(0,0,0,${rand() * 0.07})`;
       c.fillRect(Math.floor(rand() * size), Math.floor(rand() * size), 1, 1);
     }
-  } else if (name === 'concrete') {
-    // Losas con juntas, manchas y motitas.
-    for (let gy = 0; gy < 2; gy++) {
-      for (let gx = 0; gx < 2; gx++) {
-        const sh = (rand() - 0.5) * 0.16;
-        c.fillStyle = sh > 0 ? `rgba(255,255,255,${sh})` : `rgba(0,0,0,${-sh})`;
-        c.fillRect(gx * 64, gy * 64, 64, 64);
+  } else if (name === 'ice') {
+    // Hielo pulido: velos de escarcha, grietas ramificadas y rayones de patín.
+    for (let i = 0; i < 26; i++) {
+      const bx = rand() * size, by = rand() * size, br = 26 + rand() * 40;
+      for (let dx = -size; dx <= size; dx += size) {
+        for (let dy = -size; dy <= size; dy += size) {
+          const g = c.createRadialGradient(bx + dx, by + dy, 0, bx + dx, by + dy, br);
+          g.addColorStop(0, rand() > 0.4 ? 'rgba(255,255,255,0.1)' : 'rgba(90,140,190,0.09)');
+          g.addColorStop(1, 'rgba(128,128,128,0)');
+          c.fillStyle = g; c.fillRect(0, 0, size, size);
+        }
       }
     }
-    c.fillStyle = 'rgba(0,0,0,0.4)';
-    c.fillRect(0, 0, size, 1); c.fillRect(0, 64, size, 1);
-    c.fillRect(0, 0, 1, size); c.fillRect(64, 0, 1, size);
-    for (let i = 0; i < 900; i++) {
-      c.fillStyle = rand() > 0.5 ? `rgba(255,255,255,${rand() * 0.14})` : `rgba(0,0,0,${rand() * 0.18})`;
-      c.fillRect(Math.floor(rand() * size), Math.floor(rand() * size), 1 + (rand() > 0.9 ? 1 : 0), 1);
+    const crack = (x, y, ang, len, depth) => {
+      const pts = [[x, y]];
+      let cx = x, cy = y, a = ang;
+      for (let l = 0; l < len; l += 7) {
+        a += (rand() - 0.5) * 0.7;
+        cx += Math.cos(a) * 7; cy += Math.sin(a) * 7;
+        pts.push([cx, cy]);
+        if (depth < 2 && rand() > 0.88) crack(cx, cy, a + (rand() > 0.5 ? 0.9 : -0.9), len * 0.5, depth + 1);
+      }
+      for (const [col, w, off] of [['rgba(0,0,0,0.16)', 1.6, 0.8], ['rgba(255,255,255,0.5)', 0.8, 0]]) {
+        c.strokeStyle = col; c.lineWidth = w;
+        c.beginPath();
+        pts.forEach(([px, py], i) => (i ? c.lineTo(px + off, py + off) : c.moveTo(px + off, py + off)));
+        c.stroke();
+      }
+    };
+    for (let i = 0; i < 3; i++) crack(rand() * size, rand() * size, rand() * TAU, 70 + rand() * 60, 0);
+    c.lineWidth = 1;
+    for (let i = 0; i < 46; i++) {
+      c.strokeStyle = `rgba(255,255,255,${0.1 + rand() * 0.22})`;
+      c.beginPath();
+      const x = rand() * size, y = rand() * size;
+      c.moveTo(x, y);
+      c.quadraticCurveTo(x + 30 + rand() * 40, y + (rand() - 0.5) * 20, x + 60 + rand() * 60, y + (rand() - 0.5) * 24);
+      c.stroke();
+    }
+    for (let i = 0; i < 320; i++) {
+      c.fillStyle = `rgba(255,255,255,${rand() * 0.14})`;
+      c.fillRect(Math.floor(rand() * size), Math.floor(rand() * size), 2, 1);
+    }
+  } else if (name === 'sand') {
+    // Dunas: ondulaciones largas con cresta clara y sombra, y grano fino.
+    for (let y = 0; y < size; y += 14) {
+      const k = 1 + Math.floor(rand() * 3);
+      const ph = rand() * TAU;
+      const amp = 2 + rand() * 3;
+      for (const [col, dy, w] of [['rgba(0,0,0,0.13)', 2.2, 3], ['rgba(255,255,255,0.2)', 0, 1.6]]) {
+        c.strokeStyle = col; c.lineWidth = w;
+        c.beginPath();
+        for (let x = 0; x <= size; x += 6) c.lineTo(x, y + dy + Math.sin((x / size) * TAU * k + ph) * amp);
+        c.stroke();
+      }
+    }
+    for (let i = 0; i < 5200; i++) {
+      c.fillStyle = rand() > 0.5 ? `rgba(255,255,255,${rand() * 0.22})` : `rgba(0,0,0,${rand() * 0.2})`;
+      c.fillRect(Math.floor(rand() * size), Math.floor(rand() * size), 1, 1);
+    }
+    for (let i = 0; i < 26; i++) {
+      const px = rand() * size, py = rand() * size, pr = 0.8 + rand() * 1.3;
+      c.fillStyle = 'rgba(0,0,0,0.2)'; c.beginPath(); c.arc(px + 0.7, py + 0.7, pr, 0, TAU); c.fill();
+      c.fillStyle = 'rgba(255,255,255,0.2)'; c.beginPath(); c.arc(px, py, pr, 0, TAU); c.fill();
+    }
+  } else if (name === 'concrete') {
+    // Losas de hormigón: junta biselada, manchas, poros y fisuras finas.
+    for (let gy = 0; gy < 2; gy++) {
+      for (let gx = 0; gx < 2; gx++) {
+        const sh = (rand() - 0.5) * 0.18;
+        c.fillStyle = sh > 0 ? `rgba(255,255,255,${sh})` : `rgba(0,0,0,${-sh})`;
+        c.fillRect(gx * 128, gy * 128, 128, 128);
+      }
+    }
+    for (let i = 0; i < 16; i++) {
+      const bx = rand() * size, by = rand() * size, br = 18 + rand() * 38;
+      const col = rand() > 0.5 ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.09)';
+      for (let dx = -size; dx <= size; dx += size) {
+        for (let dy = -size; dy <= size; dy += size) {
+          const g = c.createRadialGradient(bx + dx, by + dy, 0, bx + dx, by + dy, br);
+          g.addColorStop(0, col); g.addColorStop(1, 'rgba(128,128,128,0)');
+          c.fillStyle = g; c.fillRect(0, 0, size, size);
+        }
+      }
+    }
+    for (let i = 0; i < 1800; i++) {
+      c.fillStyle = rand() > 0.5 ? `rgba(255,255,255,${rand() * 0.13})` : `rgba(0,0,0,${rand() * 0.17})`;
+      c.fillRect(Math.floor(rand() * size), Math.floor(rand() * size), 1 + (rand() > 0.92 ? 1 : 0), 1);
+    }
+    for (let i = 0; i < 70; i++) {
+      const px = Math.floor(rand() * size), py = Math.floor(rand() * size);
+      c.fillStyle = 'rgba(0,0,0,0.28)'; c.fillRect(px, py, 2, 2);
+      c.fillStyle = 'rgba(255,255,255,0.14)'; c.fillRect(px + 1, py + 2, 2, 1);
+    }
+    c.strokeStyle = 'rgba(0,0,0,0.2)'; c.lineWidth = 0.8;
+    for (let i = 0; i < 2; i++) {
+      let x = rand() * 128, y = rand() * 128;
+      c.beginPath(); c.moveTo(x, y);
+      for (let k = 0; k < 7; k++) { x += (rand() - 0.5) * 12; y += 4 + rand() * 7; c.lineTo(x, y); }
+      c.stroke();
+    }
+    for (const j of [0, 128]) {
+      c.fillStyle = 'rgba(0,0,0,0.5)';
+      c.fillRect(0, j, size, 2); c.fillRect(j, 0, 2, size);
+      c.fillStyle = 'rgba(255,255,255,0.16)';
+      c.fillRect(0, j + 2, size, 1); c.fillRect(j + 2, 0, 1, size);
     }
   } else if (name === 'turf') {
-    // Pasto: hojitas verticales claras y oscuras.
-    for (let i = 0; i < 900; i++) {
-      c.strokeStyle = rand() > 0.5 ? `rgba(255,255,255,${0.06 + rand() * 0.14})` : `rgba(0,0,0,${0.08 + rand() * 0.16})`;
+    // Pasto: franjas de corte con brillo alterno y hojitas inclinadas.
+    for (let y = 0; y < size; y += 32) {
+      c.fillStyle = (y / 32) % 2 ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.08)';
+      c.fillRect(0, y, size, 32);
+    }
+    for (let i = 0; i < 3600; i++) {
+      c.strokeStyle = rand() > 0.5 ? `rgba(255,255,255,${0.05 + rand() * 0.13})` : `rgba(0,0,0,${0.07 + rand() * 0.15})`;
       c.lineWidth = 1;
-      const x = rand() * size, y = rand() * size;
-      c.beginPath(); c.moveTo(x, y); c.lineTo(x + (rand() - 0.5) * 2, y - 2 - rand() * 4); c.stroke();
+      const x = rand() * size, y = rand() * size, l = 2 + rand() * 4;
+      const lean = (rand() - 0.5) * 2.4;
+      c.beginPath(); c.moveTo(x, y); c.lineTo(x + lean, y - l); c.stroke();
     }
   } else if (name === 'clay') {
-    // Polvo de ladrillo: grano grueso y piedritas.
-    for (let i = 0; i < 1500; i++) {
-      c.fillStyle = rand() > 0.5 ? `rgba(255,220,200,${rand() * 0.2})` : `rgba(60,10,0,${rand() * 0.22})`;
-      const q = rand() > 0.85 ? 2 : 1;
+    // Tierra batida: grano grueso, pasadas de rastrillo y piedritas con sombra.
+    for (let i = 0; i < 6; i++) {
+      const y = rand() * size, k = 1 + Math.floor(rand() * 2), ph = rand() * TAU;
+      c.strokeStyle = rand() > 0.5 ? 'rgba(255,225,205,0.1)' : 'rgba(60,10,0,0.1)';
+      c.lineWidth = 3 + rand() * 4;
+      c.beginPath();
+      for (let x = 0; x <= size; x += 8) c.lineTo(x, y + Math.sin((x / size) * TAU * k + ph) * 4);
+      c.stroke();
+    }
+    for (let i = 0; i < 5200; i++) {
+      c.fillStyle = rand() > 0.5 ? `rgba(255,220,200,${rand() * 0.22})` : `rgba(60,10,0,${rand() * 0.24})`;
+      const q = rand() > 0.88 ? 2 : 1;
       c.fillRect(Math.floor(rand() * size), Math.floor(rand() * size), q, q);
     }
-    for (let i = 0; i < 12; i++) {
-      c.fillStyle = 'rgba(255,255,255,0.12)';
-      c.beginPath(); c.arc(rand() * size, rand() * size, 1 + rand() * 1.5, 0, TAU); c.fill();
+    for (let i = 0; i < 28; i++) {
+      const px = rand() * size, py = rand() * size, pr = 1 + rand() * 1.6;
+      c.fillStyle = 'rgba(40,5,0,0.3)'; c.beginPath(); c.arc(px + 0.9, py + 0.9, pr, 0, TAU); c.fill();
+      c.fillStyle = 'rgba(255,235,220,0.18)'; c.beginPath(); c.arc(px, py, pr, 0, TAU); c.fill();
     }
   } else if (name === 'checker') {
     // Damero.
@@ -172,44 +282,62 @@ function tileFor(doc, name) {
       }
     }
   } else if (name === 'carbon') {
-    // Fibra de carbono: trama en diagonal.
+    // Fibra de carbono en sarga 2×2: cada hebra con su reflejo.
     const q = 8;
     for (let y = 0; y < size; y += q) {
       for (let x = 0; x < size; x += q) {
-        const alt = ((x + y) / q) % 2;
-        const g = c.createLinearGradient(x, y, x + q, y + q);
-        g.addColorStop(0, alt ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.28)');
-        g.addColorStop(1, alt ? 'rgba(0,0,0,0.22)' : 'rgba(255,255,255,0.16)');
+        const horiz = (((x + y * 2) / q) % 4 + 4) % 4 < 2;
+        const g = horiz ? c.createLinearGradient(x, y, x, y + q) : c.createLinearGradient(x, y, x + q, y);
+        g.addColorStop(0, horiz ? 'rgba(255,255,255,0.26)' : 'rgba(255,255,255,0.1)');
+        g.addColorStop(0.5, horiz ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.12)');
+        g.addColorStop(1, horiz ? 'rgba(0,0,0,0.32)' : 'rgba(0,0,0,0.26)');
         c.fillStyle = g;
         c.fillRect(x, y, q, q);
+        c.fillStyle = 'rgba(0,0,0,0.3)';
+        if (horiz) c.fillRect(x, y + q - 1, q, 1); else c.fillRect(x + q - 1, y, 1, q);
       }
     }
+    for (let i = 0; i < 400; i++) {
+      c.fillStyle = `rgba(255,255,255,${rand() * 0.05})`;
+      c.fillRect(Math.floor(rand() * size), Math.floor(rand() * size), 1, 1);
+    }
   } else if (name === 'marble') {
-    // Mármol: manchas suaves y vetas finas.
-    for (let i = 0; i < 8; i++) {
-      const bx = rand() * size, by = rand() * size, br = 26 + rand() * 24;
-      const col = rand() > 0.5 ? 'rgba(255,255,255,0.14)' : 'rgba(0,0,0,0.1)';
-      // Se dibuja también corrido un tile hacia cada lado: así empalma sin costura.
+    // Mármol pulido: nubes suaves, venas que ramifican y un lustre.
+    for (let i = 0; i < 14; i++) {
+      const bx = rand() * size, by = rand() * size, br = 36 + rand() * 44;
+      const col = rand() > 0.5 ? 'rgba(255,255,255,0.13)' : 'rgba(0,0,0,0.09)';
       for (let dx = -size; dx <= size; dx += size) {
         for (let dy = -size; dy <= size; dy += size) {
           const g = c.createRadialGradient(bx + dx, by + dy, 1, bx + dx, by + dy, br);
-          g.addColorStop(0, col);
-          g.addColorStop(1, 'rgba(128,128,128,0)');
-          c.fillStyle = g;
-          c.fillRect(0, 0, size, size);
+          g.addColorStop(0, col); g.addColorStop(1, 'rgba(128,128,128,0)');
+          c.fillStyle = g; c.fillRect(0, 0, size, size);
         }
       }
     }
-    for (let i = 0; i < 6; i++) {
-      c.strokeStyle = `rgba(0,0,0,${0.12 + rand() * 0.2})`;
-      c.lineWidth = 0.6 + rand() * 0.8;
+    // Las venas son sumas de senos con períodos enteros: empalman de borde a borde.
+    const vein = (y0, amp, w, a, k1, k2) => {
+      const p1 = rand() * TAU, p2 = rand() * TAU;
+      c.lineWidth = w;
       c.beginPath();
-      const y0 = rand() * size;
-      let x = 0, y = y0;
-      c.moveTo(x, y);
-      while (x < size - 14) { x += 10 + rand() * 14; y += (rand() - 0.5) * 22; c.lineTo(Math.min(x, size), y); }
-      c.lineTo(size, y0); // termina a la altura donde empezó: empalma con el tile de al lado
+      for (let x = 0; x <= size; x += 3) {
+        const y = y0 + Math.sin((x / size) * TAU * k1 + p1) * amp + Math.sin((x / size) * TAU * k2 + p2) * amp * 0.45;
+        c.lineTo(x, y);
+      }
       c.stroke();
+    };
+    for (let i = 0; i < 5; i++) {
+      const y0 = rand() * size;
+      const amp = 5 + rand() * 9;
+      c.strokeStyle = 'rgba(255,255,255,0.06)'; vein(y0, amp, 5, 0, 1 + (i % 2), 3);
+      c.strokeStyle = `rgba(40,45,60,${0.14 + rand() * 0.18})`; vein(y0 + 0.5, amp, 0.8 + rand() * 0.8, 0, 1 + (i % 2), 3);
+    }
+    for (let i = 0; i < 3; i++) {
+      c.strokeStyle = 'rgba(40,45,60,0.1)';
+      vein(rand() * size, 6 + rand() * 8, 0.5, 0, 2, 5);
+    }
+    for (let i = 0; i < 500; i++) {
+      c.fillStyle = rand() > 0.5 ? `rgba(255,255,255,${rand() * 0.08})` : `rgba(0,0,0,${rand() * 0.06})`;
+      c.fillRect(Math.floor(rand() * size), Math.floor(rand() * size), 1, 1);
     }
   } else if (name === 'hex') {
     // Panal de abejas.
@@ -259,21 +387,37 @@ function tileFor(doc, name) {
       c.fillRect(Math.floor(rand() * size), Math.floor(rand() * size), 1, 1);
     }
   } else if (name === 'snow') {
-    // Nieve: manchas suaves y destellos.
-    for (let i = 0; i < 40; i++) {
-      const bx = rand() * size, by = rand() * size, br = 8 + rand() * 14;
+    // Nieve: capas suaves, ondulaciones de viento y destellos en cruz.
+    for (let i = 0; i < 70; i++) {
+      const bx = rand() * size, by = rand() * size, br = 10 + rand() * 24;
       for (let dx = -size; dx <= size; dx += size) {
         for (let dy = -size; dy <= size; dy += size) {
           const g = c.createRadialGradient(bx + dx, by + dy, 0, bx + dx, by + dy, br);
-          g.addColorStop(0, rand() > 0.5 ? 'rgba(255,255,255,0.12)' : 'rgba(80,110,150,0.08)');
+          g.addColorStop(0, rand() > 0.5 ? 'rgba(255,255,255,0.13)' : 'rgba(80,110,160,0.09)');
           g.addColorStop(1, 'rgba(128,128,128,0)');
           c.fillStyle = g; c.fillRect(0, 0, size, size);
         }
       }
     }
-    for (let i = 0; i < 90; i++) {
+    for (let i = 0; i < 7; i++) {
+      const y = rand() * size, k = 1 + Math.floor(rand() * 2), ph = rand() * TAU;
+      for (const [col, dy, w] of [['rgba(70,100,150,0.09)', 2, 3], ['rgba(255,255,255,0.22)', 0, 1.5]]) {
+        c.strokeStyle = col; c.lineWidth = w;
+        c.beginPath();
+        for (let x = 0; x <= size; x += 8) c.lineTo(x, y + dy + Math.sin((x / size) * TAU * k + ph) * 5);
+        c.stroke();
+      }
+    }
+    for (let i = 0; i < 260; i++) {
       c.fillStyle = `rgba(255,255,255,${0.2 + rand() * 0.4})`;
       c.fillRect(Math.floor(rand() * size), Math.floor(rand() * size), 1, 1);
+    }
+    for (let i = 0; i < 16; i++) {
+      const sx = Math.floor(rand() * (size - 6)) + 3, sy = Math.floor(rand() * (size - 6)) + 3;
+      c.fillStyle = 'rgba(255,255,255,0.8)';
+      c.fillRect(sx, sy, 1, 1);
+      c.fillStyle = 'rgba(255,255,255,0.35)';
+      c.fillRect(sx - 2, sy, 5, 1); c.fillRect(sx, sy - 2, 1, 5);
     }
   } else if (name === 'neon') {
     // Cuadrícula de neón: líneas finas y claras con un halo suave, sobre fondo
@@ -524,105 +668,6 @@ function discOverlay(ctx, style, x, y, r, strokeFn) {
       ctx.arc(x - r * 0.42, y - r * 0.44, r * 0.14, 0, TAU);
       ctx.fill();
       rebuild = true;
-    } else if (style === 'mono') {
-      // Blanco y negro: se mezcla un gris en modo «saturación», que le quita el
-      // color a lo que ya está dibujado en la ficha y deja la luz intacta.
-      ctx.globalCompositeOperation = 'saturation';
-      ctx.fillStyle = '#808080';
-      ctx.fillRect(x - r, y - r, r * 2, r * 2);
-    } else if (style === 'pixel') {
-      // Mosaico: una grilla oscura sobre la ficha, con celdas de ~1/5 del radio.
-      rebuild = true;
-      const cell = Math.max(1.5, r / 4);
-      ctx.strokeStyle = 'rgba(0,0,0,0.3)';
-      ctx.lineWidth = Math.max(0.4, cell * 0.16);
-      ctx.beginPath();
-      for (let g = -r; g <= r + 0.01; g += cell) {
-        ctx.moveTo(x + g, y - r); ctx.lineTo(x + g, y + r);
-        ctx.moveTo(x - r, y + g); ctx.lineTo(x + r, y + g);
-      }
-      doStroke();
-      // Un reflejo escalonado arriba a la izquierda, como en un sprite.
-      ctx.fillStyle = 'rgba(255,255,255,0.35)';
-      ctx.fillRect(x - cell * 2.6, y - cell * 2.6, cell * 1.6, cell);
-      ctx.fillRect(x - cell * 2.6, y - cell * 1.6, cell, cell);
-    } else if (style === 'sepia') {
-      // Foto vieja: el tono se pasa a un marrón cálido y se conserva la luz.
-      ctx.globalCompositeOperation = 'color';
-      ctx.fillStyle = 'rgba(150,104,52,0.9)';
-      ctx.fillRect(x - r, y - r, r * 2, r * 2);
-    } else if (style === 'negative') {
-      // Negativo: los colores se invierten.
-      ctx.globalCompositeOperation = 'difference';
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(x - r, y - r, r * 2, r * 2);
-    } else if (style === 'vivid') {
-      // Colores a tope: se mezcla un rojo puro en modo «saturación».
-      ctx.globalCompositeOperation = 'saturation';
-      ctx.fillStyle = '#ff0000';
-      ctx.fillRect(x - r, y - r, r * 2, r * 2);
-    } else if (style === 'rim') {
-      // Borde luminoso: un degradé que prende hacia el filo.
-      ctx.globalCompositeOperation = 'screen';
-      const g = ctx.createRadialGradient(x, y, r * 0.45, x, y, r);
-      g.addColorStop(0, 'rgba(255,255,255,0)');
-      g.addColorStop(1, 'rgba(255,255,255,0.75)');
-      ctx.fillStyle = g;
-      ctx.fillRect(x - r, y - r, r * 2, r * 2);
-    } else if (style === 'sketch') {
-      // Boceto a lápiz: rayado diagonal fino adentro de la ficha.
-      rebuild = true;
-      ctx.strokeStyle = 'rgba(0,0,0,0.38)';
-      ctx.lineWidth = Math.max(0.5, r * 0.06);
-      ctx.beginPath();
-      const step = Math.max(2, r * 0.42);
-      for (let d = -r * 2; d <= r * 2; d += step) {
-        ctx.moveTo(x + d - r, y + r);
-        ctx.lineTo(x + d + r, y - r);
-      }
-      doStroke();
-    } else if (style === 'halftone') {
-      // Retícula de cómic: puntos que crecen hacia el borde.
-      rebuild = true;
-      ctx.fillStyle = 'rgba(0,0,0,0.38)';
-      const cell = Math.max(2, r * 0.34);
-      ctx.beginPath();
-      for (let gy = -r; gy <= r; gy += cell) {
-        for (let gx = -r; gx <= r; gx += cell) {
-          const d = Math.hypot(gx, gy) / r;
-          if (d > 1) continue;
-          const rad = cell * (0.1 + 0.32 * d);
-          ctx.moveTo(x + gx + rad, y + gy);
-          ctx.arc(x + gx, y + gy, rad, 0, TAU);
-        }
-      }
-      ctx.fill();
-    } else if (style === 'scanlines') {
-      // Pantalla vieja: líneas horizontales finas y un leve tinte frío.
-      ctx.fillStyle = 'rgba(80,200,255,0.12)';
-      ctx.fillRect(x - r, y - r, r * 2, r * 2);
-      ctx.strokeStyle = 'rgba(0,0,0,0.34)';
-      ctx.lineWidth = Math.max(0.5, r * 0.07);
-      rebuild = true;
-      ctx.beginPath();
-      const stp = Math.max(1.8, r * 0.3);
-      for (let gy = -r; gy <= r; gy += stp) {
-        ctx.moveTo(x - r, y + gy);
-        ctx.lineTo(x + r, y + gy);
-      }
-      doStroke();
-    } else if (style === 'toon') {
-      // Dibujo animado: contorno grueso adentro de la ficha y un brillo plano.
-      rebuild = true;
-      ctx.strokeStyle = 'rgba(0,0,0,0.9)';
-      ctx.lineWidth = Math.max(1, r * 0.3);
-      ctx.beginPath();
-      ctx.arc(x, y, r, 0, TAU);
-      doStroke();
-      ctx.fillStyle = 'rgba(255,255,255,0.9)';
-      ctx.beginPath();
-      ctx.ellipse(x - r * 0.36, y - r * 0.4, r * 0.16, r * 0.1, -0.7, 0, TAU);
-      ctx.fill();
     } else if (style === 'dots') {
       // Lunares claros.
       ctx.fillStyle = 'rgba(255,255,255,0.4)';
@@ -1708,12 +1753,26 @@ function paintWeather(ctx, kind, amount, now) {
  * del saque. Sólo repite el marcador que ya está en pantalla.
  * ------------------------------------------------------------------ */
 
-const mm = { p: 0, dir: 0, rest: 0, last: 0, red: -1, blue: -1, bumpR: 0, bumpB: 0, pendR: false, pendB: false };
+const mm = {
+  p: 0, dir: 0, rest: 0, last: 0, red: -1, blue: -1,
+  shR: -1, shB: -1, prevR: -1, prevB: -1, bumpR: 0, bumpB: 0, pendR: false, pendB: false
+};
 
 function resetMatchMark() {
   mm.p = 0; mm.dir = 0; mm.rest = 0; mm.last = 0; mm.red = -1; mm.blue = -1;
+  mm.shR = mm.shB = mm.prevR = mm.prevB = -1;
+  mm.bumpR = mm.bumpB = 0;
   mm.pendR = mm.pendB = false;
 }
+
+const clamp01 = (v) => (v < 0 ? 0 : v > 1 ? 1 : v);
+const easeOutCubic = (v) => 1 - Math.pow(1 - v, 3);
+const easeInCubic = (v) => v * v * v;
+const easeOutBack = (v) => {
+  const c1 = 1.9;
+  const c3 = c1 + 1;
+  return 1 + c3 * Math.pow(v - 1, 3) + c1 * Math.pow(v - 1, 2);
+};
 
 function paintMatchMark(ctx, o) {
   const now = o.now;
@@ -1726,53 +1785,117 @@ function paintMatchMark(ctx, o) {
   if (mm.blue >= 0 && o.blue !== mm.blue) mm.pendB = true;
   mm.red = o.red;
   mm.blue = o.blue;
+  if (mm.shR < 0) mm.shR = o.red;
+  if (mm.shB < 0) mm.shB = o.blue;
 
   const near = o.hasBall && Math.hypot(o.ballX, o.ballY) < 3;
   if (near) { if (!mm.rest) mm.rest = now; } else mm.rest = 0;
   if (near && now - mm.rest > 220) mm.dir = 1;
   else if (!near) mm.dir = -1;
 
-  mm.p += (mm.dir > 0 ? dt / 0.5 : -dt / 0.4) * (mm.dir ? 1 : 0);
+  // Entra en 0.75 s y sale en 0.5 s.
+  mm.p += (mm.dir > 0 ? dt / 0.75 : -dt / 0.5) * (mm.dir ? 1 : 0);
   if (mm.p > 1) mm.p = 1;
   if (mm.p <= 0) { mm.p = 0; return; }
 
-  if (mm.dir > 0 && mm.p > 0.05) {
-    if (mm.pendR) { mm.bumpR = now; mm.pendR = false; }
-    if (mm.pendB) { mm.bumpB = now; mm.pendB = false; }
+  // El marcador nuevo arranca el contador cuando el cartel ya casi llegó.
+  if (mm.dir > 0 && mm.p > 0.55) {
+    if (mm.pendR) { mm.prevR = mm.shR; mm.shR = o.red; mm.bumpR = now; mm.pendR = false; }
+    if (mm.pendB) { mm.prevB = mm.shB; mm.shB = o.blue; mm.bumpB = now; mm.pendB = false; }
+  }
+  if (mm.dir < 0) {
+    // Si se fue sin llegar a mostrar el cambio, se lo deja listo para la próxima.
+    if (mm.pendR) { mm.shR = o.red; mm.pendR = false; }
+    if (mm.pendB) { mm.shB = o.blue; mm.pendB = false; }
   }
 
-  const ease = mm.p * mm.p * (3 - 2 * mm.p);
   const size = Math.min(o.halfH * 0.62, o.halfW * 0.3);
   if (!(size > 4)) return;
+  const base = Math.min(1, Math.max(0, o.opacity));
 
   ctx.save();
   try {
-    ctx.globalAlpha = Math.min(1, Math.max(0, o.opacity)) * ease;
     ctx.font = `800 ${size.toFixed(1)}px "Bahnschrift","Segoe UI","Arial Narrow",system-ui,sans-serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
+    const mir = o.mirrored ? -1 : 1;
     for (let side = -1; side <= 1; side += 2) {
       const red = side < 0;
-      const bump = red ? mm.bumpR : mm.bumpB;
-      const sinceBump = bump ? (now - bump) / 1000 : 9;
-      const pop = 1 + 0.2 * Math.exp(-sinceBump * 5) * (sinceBump < 1.2 ? 1 : 0);
+      // Escalonado: entra primero el de la izquierda; al irse, se va primero el de la derecha.
+      const lag = 0.22;
+      let q;
+      if (mm.dir >= 0) q = clamp01((mm.p - (red ? 0 : lag)) / (1 - lag));
+      else q = clamp01((mm.p - (red ? lag : 0)) / (1 - lag));
+      if (q <= 0) continue;
+
       let sc;
       let ox = 0;
       let oy = 0;
-      if (mm.dir < 0) {
-        // Se va: se abre hacia su arco y se agranda mientras se disuelve.
-        sc = 1 + (1 - ease) * 0.16;
-        ox = side * (1 - ease) * o.halfW * 0.12;
+      let a;
+      if (mm.dir >= 0) {
+        // Llega: sube desde el piso con un pequeño rebote y se abre hacia su arco.
+        const e = easeOutBack(q);
+        sc = 0.7 + 0.3 * e;
+        oy = (1 - e) * size * 0.35;
+        ox = side * (1 - easeOutCubic(q)) * o.halfW * 0.06;
+        a = easeOutCubic(q);
       } else {
-        // Llega: sube desde abajo con un leve crecimiento.
-        sc = 0.9 + 0.1 * ease;
-        oy = (1 - ease) * size * 0.14;
+        // Se va: crece, se separa hacia su arco y se disuelve acelerando.
+        const e = easeInCubic(1 - q);
+        sc = 1 + e * 0.28;
+        ox = side * e * o.halfW * 0.16;
+        oy = -e * size * 0.1;
+        a = q;
       }
+      const bump = red ? mm.bumpR : mm.bumpB;
+      const since = bump ? (now - bump) / 1000 : 9;
+      const roll = clamp01(since / 0.55);
+      const value = red ? mm.shR : mm.shB;
+      const prev = red ? mm.prevR : mm.prevB;
+      // Un destello leve cuando cambia el número.
+      const flash = since < 0.9 ? Math.exp(-since * 4.5) : 0;
+      const pop = 1 + 0.12 * flash;
+      const fill = o.tint === 'team' ? (red ? '#ff6b5e' : '#5fa6ff') : '#ffffff';
+
       ctx.save();
       ctx.translate(side * o.halfW * 0.5 + ox, oy);
-      ctx.scale((o.mirrored ? -1 : 1) * sc * pop, sc * pop);
-      ctx.fillStyle = o.tint === 'team' ? (red ? '#ff6b5e' : '#5fa6ff') : '#ffffff';
-      ctx.fillText(String(red ? o.red : o.blue), 0, size * 0.03);
+      ctx.scale(mir * sc * pop, sc * pop);
+
+      // Halo suave detrás del número (sólo mientras llega el gol).
+      if (flash > 0.02) {
+        ctx.globalAlpha = base * a * flash * 0.5;
+        ctx.fillStyle = fill;
+        ctx.beginPath();
+        ctx.arc(0, 0, size * (0.55 + 0.35 * (1 - flash)), 0, TAU);
+        ctx.fill();
+      }
+
+      // El número: contador de cuenta (el viejo sube y sale, el nuevo entra).
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(-size * 1.2, -size * 0.62, size * 2.4, size * 1.24);
+      ctx.clip();
+      ctx.fillStyle = fill;
+      if (roll < 1 && prev >= 0 && prev !== value) {
+        const er = easeOutCubic(roll);
+        ctx.globalAlpha = base * a * (1 - er);
+        ctx.fillText(String(prev), 0, size * 0.03 - er * size * 0.8);
+        const en = easeOutBack(roll);
+        ctx.globalAlpha = base * a * clamp01(roll * 2.2);
+        ctx.fillText(String(value), 0, size * 0.03 + (1 - en) * size * 0.8);
+      } else {
+        ctx.globalAlpha = base * a;
+        ctx.fillText(String(value), 0, size * 0.03);
+      }
+      ctx.restore();
+
+      // Filete bajo el número: crece desde el centro con la llegada.
+      const lw = size * 0.62 * easeOutCubic(q);
+      if (lw > 1) {
+        ctx.globalAlpha = base * a * 0.9;
+        ctx.fillStyle = fill;
+        ctx.fillRect(-lw / 2, size * 0.58, lw, Math.max(1.5, size * 0.035));
+      }
       ctx.restore();
     }
   } finally {

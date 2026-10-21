@@ -21,7 +21,7 @@ const lookfx = require('./look');
 const zoomControl = require('./game-zoom');
 const themes = require('./themes');
 const roomUi = require('./room-ui');
-const goalFx = require('./goal-fx');
+const clubGoal = require('./club-goal');
 let goalSfx = null;
 try { goalSfx = require('../renderer/js/goal-sfx.js'); } catch { /* sin sonidos incluidos */ }
 const gif = require('./gif');
@@ -7851,56 +7851,7 @@ function noteGoalNames(goal) {
   goalNames.own = !!goal.own;
   goalNames.at = Date.now();
   paintGoalNames();
-  try { clubGoalFx(); } catch (e) { /* adorno */ }
-}
-
-let clubFxAt = 0;
-
-/** Festejo extra si el que convirtió es del plantel (verificado por clave). */
-function clubGoalFx() {
-  const cfg = state.config.pitch;
-  if (!cfg || cfg.goalClub === false) return;
-  if (!state.config.appearance.animations) return;
-  if (goalNames.own || !goalNames.scorer) return;
-  if (Date.now() - clubFxAt < 3000) return;
-  const nick = String(goalNames.scorer).trim();
-  const peer = peers.get(nick);
-  const me = myNick();
-  const isClub = (peer && peer.name) || (selfClub && me && nick === me);
-  if (!isClub) return;
-  const doc = gameDocument();
-  if (!doc || !doc.body) return;
-  clubFxAt = Date.now();
-  if (!doc.getElementById('tvm-club-fx-style')) {
-    const st = doc.createElement('style');
-    st.id = 'tvm-club-fx-style';
-    st.textContent = `
-      #tvm-club-fx { position: fixed; inset: 0; z-index: 2147483000; pointer-events: none; overflow: hidden; }
-      #tvm-club-fx i { position: absolute; top: -4vmin; width: 1.2vmin; height: 2.2vmin; border-radius: 2px; animation: tvmClubFall var(--d) linear var(--w) both; }
-      @keyframes tvmClubFall { to { transform: translateY(112vh) rotate(var(--r)); opacity: .85; } }
-      #tvm-club-fx b { position: absolute; left: 50%; bottom: 14%; transform: translateX(-50%); font: 800 3.4vmin/1 system-ui, sans-serif; letter-spacing: .12em; color: #d0b878; text-shadow: 0 0 2vmin rgba(208,184,120,.7), 0 .3vmin 0 #203860; white-space: nowrap; animation: tvmClubTxt 2.6s ease-out both; }
-      @keyframes tvmClubTxt { 0% { opacity: 0; transform: translateX(-50%) scale(.6); } 15% { opacity: 1; transform: translateX(-50%) scale(1.08); } 80% { opacity: 1; } 100% { opacity: 0; } }`;
-    doc.head.append(st);
-  }
-  const old = doc.getElementById('tvm-club-fx');
-  if (old) old.remove();
-  const box = doc.createElement('div');
-  box.id = 'tvm-club-fx';
-  const cols = ['#d0b878', '#f1e6c4', '#203860', '#e9d49a'];
-  for (let i = 0; i < 46; i++) {
-    const c = doc.createElement('i');
-    c.style.left = `${Math.random() * 100}%`;
-    c.style.background = cols[i % cols.length];
-    c.style.setProperty('--d', `${(1.6 + Math.random() * 1.4).toFixed(2)}s`);
-    c.style.setProperty('--w', `${(Math.random() * 0.5).toFixed(2)}s`);
-    c.style.setProperty('--r', `${Math.round(240 + Math.random() * 480)}deg`);
-    box.append(c);
-  }
-  const t = doc.createElement('b');
-  t.textContent = 'TODA LA LECCE';
-  box.append(t);
-  doc.body.append(box);
-  setTimeout(() => box.remove(), 3400);
+  try { upgradeGoalFx(); } catch (e) { /* adorno */ }
 }
 
 /** Escribe los nombres en el cartel si está armado y el gol es reciente. */
@@ -8169,84 +8120,71 @@ function sparkleJoiners(doc, rows) {
 }
 
 /**
- * Festejo de gol propio (goal-fx.js). Devuelve true si lo dibujó.
+ * Festejo de gol (club-goal.js), con los colores del club.
  *
- * Con «sólo mis goles» hace falta el autor: se resuelve en el mismo paso de
- * física del gol (ver `realGoal`), así que `goalNames` ya está al día. Sin la
- * sala real enganchada no hay autor y ese modo no se dispara.
+ * Si convirtió alguien del plantel que usa la app (verificado por clave, o yo
+ * mismo con el club activo) va la versión completa; con cualquier otro, una
+ * corta. Devuelve true si lo dibujó.
+ *
+ * El autor puede llegar unos cientos de ms después del gol (por el marcador del
+ * DOM): `upgradeGoalFx` cambia la versión corta por la completa si resulta que
+ * era del club.
  */
 const goalFxTally = { at: 0, by: new Map() };
+const goalFxLast = { at: 0, club: false };
+
+function isClubScorer(nick) {
+  const n = String(nick || '').trim();
+  if (!n) return false;
+  const peer = peers.get(n);
+  const me = myNick();
+  return !!((peer && peer.name) || (selfClub && me && n === me));
+}
+
+function playGoalFx(doc, club) {
+  const cfg = state.config.pitch || {};
+  const scorer = Date.now() - goalNames.at < 2500 ? goalNames.scorer : null;
+  const who = String(scorer || '').trim().toLowerCase();
+  const now = Date.now();
+  if (now - goalFxTally.at > 10 * 60 * 1000) goalFxTally.by.clear();
+  let count = 1;
+  if (club && who && !goalNames.own) {
+    count = (goalFxTally.by.get(who) || 0) + 1;
+    goalFxTally.by.set(who, count);
+    goalFxTally.at = now;
+  }
+  goalFxLast.at = now;
+  goalFxLast.club = club;
+  return clubGoal.play(doc, {
+    mode: club ? 'club' : 'lite',
+    name: scorer || '',
+    assist: goalNames.assist || '',
+    own: !!goalNames.own,
+    count,
+    crest: club ? assetUrl('crest') : ''
+  });
+}
 
 function goalCelebration(team) {
-  /*
-   * El festejo del club: uno solo, fijo y a lo grande. Reemplaza al destello de
-   * antes y se prende y apaga con el mismo interruptor de siempre («Efecto de
-   * gol»), así que no hay nada que configurar.
-   *
-   * Cuando mete tu equipo (o si mirás desde afuera) va con todo: fuegos
-   * artificiales, papelitos, onda expansiva y estrellas, con el cartel «GOOOL»,
-   * el nombre de quien la metió, el borde encendido y el destello. Cuando mete
-   * el rival es una versión corta y seca, del color del otro equipo: se nota,
-   * pero no festeja por ellos.
-   */
   const cfg = state.config.pitch || {};
   if (!cfg.goalFlash) return false;
   if (state.config.appearance && state.config.appearance.animations === false) return false;
   const doc = gameDocument();
   if (!doc || !doc.body) return false;
-
-  let mine = true;
-  try {
-    const iAmRed = playerRows(doc, 'red').some(isSelfRow);
-    const iAmBlue = playerRows(doc, 'blue').some(isSelfRow);
-    if (iAmRed || iAmBlue) mine = (team === 'Red') === iAmRed;
-  } catch (e) { mine = true; }
-
   const fresh = Date.now() - goalNames.at < 2500;
-  const scorer = fresh ? goalNames.scorer : null;
-  const who = String(scorer || '').trim().toLowerCase();
-  const now = Date.now();
-  if (now - goalFxTally.at > 10 * 60 * 1000) goalFxTally.by.clear();
-  goalFxTally.at = now;
-  const count = who && !goalNames.own ? (goalFxTally.by.get(who) || 0) + 1 : 1;
-  if (who && !goalNames.own) goalFxTally.by.set(who, count);
+  const club = cfg.goalClub !== false && fresh && !goalNames.own && isClubScorer(goalNames.scorer);
+  return playGoalFx(doc, club);
+}
 
-  const common = {
-    team,
-    count,
-    name: scorer && !goalNames.own ? scorer : '',
-    showName: true,
-    font: FONT_FAMILIES.impact
-  };
-  if (!mine) {
-    return goalFx.play(doc, Object.assign(common, {
-      style: 'rings',
-      layers: ['lightning'],
-      text: 'GOL',
-      textScale: 0.7,
-      textAnim: 'slide',
-      textStyle: 'solid',
-      intensity: 0.7,
-      duration: 1.8,
-      vignette: false,
-      flash: false,
-      streak: false
-    }));
-  }
-  return goalFx.play(doc, Object.assign(common, {
-    style: 'fireworks',
-    layers: ['papelitos', 'shockwave', 'stars'],
-    text: 'GOOOL|GOOOOL|¡GOLAZO!',
-    textPos: 'center',
-    textScale: 1.25,
-    textAnim: 'pop',
-    textStyle: 'gradient',
-    intensity: 1.4,
-    duration: 3.4,
-    vignette: true,
-    flash: true,
-    streak: true
-  }));
+/** Llegó el autor tarde: si era del club, se pasa de la versión corta a la completa. */
+function upgradeGoalFx() {
+  const cfg = state.config.pitch || {};
+  if (!cfg.goalFlash || cfg.goalClub === false) return;
+  if (state.config.appearance && state.config.appearance.animations === false) return;
+  if (goalFxLast.club || !goalFxLast.at || Date.now() - goalFxLast.at > 1800) return;
+  if (goalNames.own || !isClubScorer(goalNames.scorer)) return;
+  const doc = gameDocument();
+  if (doc && doc.body) playGoalFx(doc, true);
 }
 
 function goalImpact(skipFlash) {
@@ -9517,7 +9455,7 @@ const visual = {
   pitchLine: 1, discLine: 1, ballLine: 1, ballSize: 1, discSize: 1, lines: false, sizes: false,
   texture: 'none', crest: false, crestOpacity: 0.18, crestSize: 0.45,
   lineColor: '', postColor: '', discOutline: '', ballOutline: '',
-  discStyle: 'default', discFilter: '', discFilterAll: true, ownRing: false, ownRingColor: '', ownRingAlpha: 0.3, ownRingRadius: 25, ownRingSoft: 0, weather: '', weatherAmount: 0.6, score: '', scoreOpacity: 0.16, ballStyle: 'default', ringStyle: 'default', ringColor: '', light: '', shadows: false, ballColor: '', lineGlow: false,
+  discStyle: 'default', ownRing: false, ownRingColor: '', ownRingAlpha: 0.3, ownRingRadius: 25, ownRingSoft: 0, weather: '', weatherAmount: 0.6, score: '', scoreOpacity: 0.16, ballStyle: 'default', ringStyle: 'default', ringColor: '', light: '', shadows: false, ballColor: '', lineGlow: false,
   selfTrail: false, selfTrailColor: '',
   nameScale: 1, nameColor: '', nameOutline: false, nameFont: 'default',
   /** Hay algo que hacerle a las fichas o a la pelota en el `stroke()`. */
@@ -9554,8 +9492,6 @@ function syncCanvasHotFlags() {
   visual.discOutline = lookfx.safeColor(cfg.discOutline);
   visual.ballOutline = lookfx.safeColor(cfg.ballOutline);
   visual.discStyle = ['sphere', 'glass', 'neon', 'metal', 'bubble', 'target', 'stripes', 'gem', 'cartoon', 'dots'].includes(cfg.discStyle) ? cfg.discStyle : 'default';
-  visual.discFilter = ['pixel', 'mono', 'toon', 'sepia', 'negative', 'vivid', 'rim', 'sketch', 'halftone', 'scanlines'].includes(cfg.discFilter) ? cfg.discFilter : '';
-  visual.discFilterAll = cfg.discFilterScope !== 'mine';
   visual.light = ['vignette', 'spot', 'corners'].includes(cfg.pitchLight) ? cfg.pitchLight : '';
   visual.ownRingColor = lookfx.safeColor(cfg.ownRingColor);
   visual.ownRingAlpha = clampNum(cfg.ownRingAlpha, 0.02, 1, 0.3);
@@ -9578,7 +9514,7 @@ function syncCanvasHotFlags() {
   visual.nameColor = lookfx.safeColor(cfg.nameColor);
   visual.nameOutline = !!cfg.nameOutline;
   visual.nameFont = FONT_FAMILIES[cfg.nameFont] ? cfg.nameFont : 'default';
-  visual.discFx = visual.shadows || visual.discStyle !== 'default' || !!visual.discFilter || visual.ballStyle !== 'default' || !!visual.ballColor || !!visual.discOutline || !!visual.ballOutline;
+  visual.discFx = visual.shadows || visual.discStyle !== 'default' || visual.ballStyle !== 'default' || !!visual.ballColor || !!visual.discOutline || !!visual.ballOutline;
   visual.names = visual.nameScale !== 1 || !!visual.nameColor || visual.nameOutline || visual.nameFont !== 'default';
 }
 
@@ -9828,15 +9764,11 @@ function installCanvasHooks(doc) {
       }
       // `ownDraw` arriba: el overlay rearma el círculo con un `arc`, y sin la guarda ese
       // `arc` volvía a entrar al gancho de fichas, agrandaba la ficha OTRA vez y el
-      // `stroke` deshacía una sola: la escala se filtraba a todo lo que se dibuja
-      // después (los puntos del mapa se corrían según dónde estuvieras vos).
-      if (overlay || (pend.on && pend.kind === 'disc' && visual.discFilter && (visual.discFilterAll || pend.mine))) {
+      // `stroke` deshacía una sola: la escala se filtraba a todo lo que se dibuja después.
+      if (overlay) {
         ownDraw++;
         try {
-          if (overlay) lookfx.discOverlay(this, visual.discStyle, pend.x, pend.y, pend.r, origStroke);
-          if (pend.on && pend.kind === 'disc' && visual.discFilter && (visual.discFilterAll || pend.mine)) {
-            lookfx.discOverlay(this, visual.discFilter, pend.x, pend.y, pend.r, origStroke);
-          }
+          lookfx.discOverlay(this, visual.discStyle, pend.x, pend.y, pend.r, origStroke);
         } finally {
           ownDraw--;
         }
@@ -9903,16 +9835,6 @@ function installCanvasHooks(doc) {
         } finally {
           ownDraw--;
         }
-      }
-    }
-
-    // El filtro de fichas es del cliente: se ve igual con gráficos planos.
-    if (pend.on && ownDraw === 0 && pend.kind === 'disc' && visual.discFilter && (visual.discFilterAll || pend.mine)) {
-      ownDraw++;
-      try {
-        lookfx.discOverlay(this, visual.discFilter, pend.x, pend.y, pend.r, origStroke);
-      } finally {
-        ownDraw--;
       }
     }
 
