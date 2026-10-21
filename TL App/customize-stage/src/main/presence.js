@@ -27,6 +27,7 @@ const ALLOWED_HOST = /(^|\.)(firebaseio\.com|firebasedatabase\.app)$/i;
 let why = '';
 const seen = new Map(); // `${fp}|${pid}` → { t, at }
 let lastFp = null;
+let noLooks = false;
 let me = null; // { key, id } para no derivar de nuevo en cada latido
 
 /** La dirección sólo vale si es https y de Firebase: viene de un archivo público. */
@@ -61,6 +62,23 @@ function idOf(key) {
 const signedText = (fp, nick, t) => `${fp}|${nick}|${t}`;
 
 /**
+ * Aspecto de la fila (degradado y fuente) que viaja en el casillero.
+ *
+ * Sólo ids de listas cerradas: lo dibuja la pantalla de OTRA persona. Van con
+ * una segunda firma (`cs`) y no dentro de `s`, para que las versiones viejas,
+ * que sólo conocen `s`, sigan verificando el casillero igual.
+ * Las listas son las mismas que `PEER_GRADIENTS` y `PEER_FONTS` del preload.
+ */
+const GRADIENTS = new Set(['violeta', 'oceano', 'esmeralda', 'fuego', 'rubi', 'rosa', 'oro', 'medianoche']);
+const FONTS = new Set(['outfit', 'mono', 'serif', 'round', 'impact']);
+const looksText = (fp, nick, t, g, f) => `${fp}|${nick}|${t}|${g}|${f}`;
+function cleanLooks(c) {
+  const g = c && GRADIENTS.has(c.g) ? c.g : '';
+  const f = c && FONTS.has(c.f) ? c.f : '';
+  return { g, f };
+}
+
+/**
  * Un latido. `ctx` = { url, key, roster, fp, nick, selfName }.
  *  - url: dirección de la base (access.json)
  *  - key: la clave guardada de ESTA persona
@@ -90,7 +108,19 @@ async function beat(ctx) {
 
   const t = Date.now();
   const nick = String(ctx.nick).slice(0, 40);
-  await call(`${base}/rooms/${ctx.fp}/${id.pid}.json`, 'PUT', { n: nick, t, s: id.sign(signedText(ctx.fp, nick, t)) });
+  const mine = cleanLooks({ g: ctx.cosmetics && ctx.cosmetics.gradient, f: ctx.cosmetics && ctx.cosmetics.font });
+  const slot = { n: nick, t, s: id.sign(signedText(ctx.fp, nick, t)) };
+  const withLooks = !noLooks && (mine.g || mine.f);
+  if (withLooks) { slot.c = mine; slot.cs = id.sign(looksText(ctx.fp, nick, t, mine.g, mine.f)); }
+  try {
+    await call(`${base}/rooms/${ctx.fp}/${id.pid}.json`, 'PUT', slot);
+  } catch (err) {
+    // Si las reglas de la base no dejan campos extra, se vuelve al casillero de
+    // siempre (sin aspecto) y no se insiste: la insignia es lo importante.
+    if (!withLooks) throw err;
+    noLooks = true;
+    await call(`${base}/rooms/${ctx.fp}/${id.pid}.json`, 'PUT', { n: nick, t, s: slot.s });
+  }
   const room = (await call(`${base}/rooms/${ctx.fp}.json`, 'GET')) || {};
 
   const byPid = new Map();
@@ -115,7 +145,14 @@ async function beat(ctx) {
     const prev = seen.get(k);
     if (!prev || prev.t !== entry.t) seen.set(k, { t: entry.t, at: now });
     if (now - seen.get(k).at > ALIVE_MS) continue;
-    peers.push({ nick: entry.n, name: member.name, vip: false, cosmetics: { gradient: 'oro' } });
+    let look = { gradient: 'oro' };
+    if (entry.c && typeof entry.c === 'object' && typeof entry.cs === 'string') {
+      const c = cleanLooks(entry.c);
+      if (identity.verify(member.pub, looksText(ctx.fp, entry.n, entry.t, c.g, c.f), entry.cs)) {
+        look = { gradient: c.g || 'oro', font: c.f || null };
+      }
+    }
+    peers.push({ nick: entry.n, name: member.name, vip: false, cosmetics: look });
   }
   // Se olvidan los que ya no aparecen.
   for (const k of seen.keys()) if (k.startsWith(`${ctx.fp}|`) && !(k.slice(ctx.fp.length + 1) in room)) seen.delete(k);

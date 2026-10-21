@@ -3071,7 +3071,8 @@ async function beatPresence() {
       roster: access.getRoster(),
       fp: panel.roomFingerprint(roomInfo.room),
       nick: roomInfo.nick,
-      selfName: access.get().name || ''
+      selfName: access.get().name || '',
+      cosmetics: myCosmetics()
     });
   } catch (err) {
     res = null;

@@ -4783,7 +4783,10 @@ function selfPeer() {
   if (!nick) return null;
   const looks = (state.config.vip && state.config.vip.cosmetics) || null;
   // Si el plantel te verificó, tu fila lleva el aura dorada (salvo que un VIP elija otra).
-  const cosmetics = isVipNow() && looks ? looks : selfClub ? { gradient: 'oro' } : null;
+  // Sin degradado elegido, el aura del plantel es la dorada (igual que en la fila de los demás).
+  const cosmetics = (isVipNow() || selfClub) && looks
+    ? { ...looks, gradient: looks.gradient || (selfClub ? 'oro' : '') }
+    : selfClub ? { gradient: 'oro' } : null;
   return { nick, vip: isVipNow(), cosmetics, name: selfClub ? selfClub.name : '' };
 }
 
