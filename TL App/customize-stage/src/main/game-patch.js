@@ -770,7 +770,7 @@ function patchBall(source) {
      * transforma después.
      */
     full.replace(/this\.(\w+)\(\s*(\w+)\s*,\s*null\s*\)/, (call, meth, v) =>
-      `(window.__tvmBallPre&&window.__tvmBallPre(this.${campos.ctx},${f}-1),` +
+      `(window.__tvmBallPre&&window.__tvmBallPre(this.${campos.ctx},${f}-1,${v}),` +
       `this.${meth}(${v},null,${f}-1),` +
       `window.__tvmBallPost&&window.__tvmBallPost(this.${campos.ctx},${f}-1))`)
   );

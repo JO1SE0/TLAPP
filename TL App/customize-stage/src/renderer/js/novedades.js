@@ -11,7 +11,7 @@ window.TL_NEWS = {
   title: { es: 'Qué hay de nuevo', en: "What's new" },
   items: {
     es: [
-      'Nuevo (opcional, viene apagado): «Distorsión de la pelota» (Personalización → Fichas y aro). Dibuja la pelota más cerca/lejos de tu ficha y de otro tamaño con un deslizador. Es solo visual: la pelota real no cambia de lugar.',
+      'Nuevo (opcional, viene apagado): «Distorsión de la pelota» (Personalización → Fichas y aro). Dibuja la pelota más cerca/lejos de tu ficha y de otro tamaño con un deslizador. Es solo visual: la pelota real no cambia de lugar. Cuando una ficha toca la pelota se dibuja en su lugar real, así los toques se ven fieles (se puede cambiar).',
       'Nuevo: el anillo gris que HaxBall dibuja alrededor de tu ficha ahora se personaliza (Personalización → Fichas y aro): color, opacidad, distancia a la ficha y difuminado, para que quede tenue y no tape el fondo.',
       'Para los que abren la app por primera vez: «Marcar tu disco» y «Modo daltónico» vienen apagados.',
       'Arreglo: con el filtro de fichas (pixel, dibujo animado) los puntos del mapa —palos, esquinas, marcas— se corrían según dónde estuvieras vos. Ya quedan fijos.',
@@ -61,7 +61,7 @@ window.TL_NEWS = {
       'Cada clave se usa en una sola PC: si cambiás de computadora, pedile a miclo que te la libere.'
     ],
     en: [
-      'New (optional, off by default): «Ball distortion» (Customization → Discs). Draws the ball closer/farther from your disc and at another size with a slider. Visual only: the real ball does not move.',
+      'New (optional, off by default): «Ball distortion» (Customization → Discs). Draws the ball closer/farther from your disc and at another size with a slider. Visual only: the real ball does not move. When a disc touches the ball it is drawn at its real spot, so contacts look true (configurable).',
       'New: the grey ring HaxBall draws around your disc is now customizable (Customization → Discs): colour, opacity, distance and softness, so it stays faint and does not cover the pitch.',
       'For first-time users: «Mark your disc» and «Colourblind mode» start off.',
       'Fix: with the disc style filter (pixel, cartoon) the map dots — posts, corners, marks — drifted depending on where you were. They now stay put.',

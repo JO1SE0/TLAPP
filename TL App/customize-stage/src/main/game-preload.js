@@ -6547,13 +6547,40 @@ function installTracking(view) {
    * de verdad sigue donde está y los toques dependen de ella.
    */
   const myDisc = { x: 0, y: 0, ok: false };
+  let lastMe = null;
   let ballWarpOn = false;
-  view.__tvmBallPre = (ctx, idx) => {
-    if (idx !== 0 || visual.ballWarp === 1 || !myDisc.ok) return;
+  view.__tvmBallPre = (ctx, idx, ball) => {
+    if (idx !== 0 || visual.ballWarp === 1 || !myDisc.ok || !ball || !ball.a) return;
+    let k = visual.ballWarp;
+    if (visual.ballWarpTrue !== 'none') {
+      /*
+       * Contacto fiel: cuando la pelota está tocando una ficha (la tuya, o
+       * cualquiera) se dibuja en su lugar de verdad, y la distorsión vuelve
+       * suave a medida que se separan. Sin esto, tocarla se veía con un hueco
+       * en el medio, o al revés, atravesada.
+       */
+      const ff = tracker.fields;
+      const players = tracker.room && ff && tracker.room[ff.players];
+      let gap = Infinity;
+      if (players) {
+        for (let i = 0; i < players.length; i++) {
+          const p = players[i];
+          const d = p && p[ff.disc];
+          const at = d && d[ff.pos];
+          if (!at) continue;
+          if (visual.ballWarpTrue === 'me' && p !== lastMe) continue;
+          const rr = (ff.radius && d[ff.radius]) || DEFAULT_PLAYER_RADIUS;
+          const g = Math.hypot(at.x - ball.a.x, at.y - ball.a.y) - rr - (ball.V || 10);
+          if (g < gap) gap = g;
+        }
+      }
+      const w = Math.min(1, Math.max(0, gap / 45));
+      k = 1 + (visual.ballWarp - 1) * (w * w * (3 - 2 * w));
+    }
     ballWarpOn = true;
     ctx.save();
     ctx.translate(myDisc.x, myDisc.y);
-    ctx.scale(visual.ballWarp, visual.ballWarp);
+    ctx.scale(k, k);
     ctx.translate(-myDisc.x, -myDisc.y);
   };
   view.__tvmBallPost = (ctx, idx) => {
@@ -6568,6 +6595,7 @@ function installTracking(view) {
       const yo = renderer && renderer.__tvmMe;
       const disc = yo && ff && yo[ff.disc];
       const at = disc && disc[ff.pos];
+      lastMe = yo || null;
       myDisc.ok = !!at;
       if (at) { myDisc.x = at.x; myDisc.y = at.y; }
     }
@@ -9546,7 +9574,7 @@ const visual = {
   pitchLine: 1, discLine: 1, ballLine: 1, ballSize: 1, discSize: 1, lines: false, sizes: false,
   texture: 'none', crest: false, crestOpacity: 0.18, crestSize: 0.45,
   lineColor: '', postColor: '', discOutline: '', ballOutline: '',
-  discStyle: 'default', discFilter: '', discFilterAll: true, ownRing: false, ownRingColor: '', ownRingAlpha: 0.3, ownRingRadius: 25, ownRingSoft: 0, ballWarp: 1, weather: '', weatherAmount: 0.6, score: '', scoreOpacity: 0.16, ballStyle: 'default', ringStyle: 'default', ringColor: '', light: '', shadows: false, ballColor: '', lineGlow: false,
+  discStyle: 'default', discFilter: '', discFilterAll: true, ownRing: false, ownRingColor: '', ownRingAlpha: 0.3, ownRingRadius: 25, ownRingSoft: 0, ballWarp: 1, ballWarpTrue: 'all', weather: '', weatherAmount: 0.6, score: '', scoreOpacity: 0.16, ballStyle: 'default', ringStyle: 'default', ringColor: '', light: '', shadows: false, ballColor: '', lineGlow: false,
   selfTrail: false, selfTrailColor: '',
   nameScale: 1, nameColor: '', nameOutline: false, nameFont: 'default',
   /** Hay algo que hacerle a las fichas o a la pelota en el `stroke()`. */
@@ -9587,6 +9615,7 @@ function syncCanvasHotFlags() {
   visual.discFilterAll = cfg.discFilterScope !== 'mine';
   visual.light = ['vignette', 'spot', 'corners'].includes(cfg.pitchLight) ? cfg.pitchLight : '';
   visual.ballWarp = clampNum(cfg.ballWarp, 0.7, 1.3, 1);
+  visual.ballWarpTrue = ['all', 'me', 'none'].includes(cfg.ballWarpTrue) ? cfg.ballWarpTrue : 'all';
   visual.ownRingColor = lookfx.safeColor(cfg.ownRingColor);
   visual.ownRingAlpha = clampNum(cfg.ownRingAlpha, 0.02, 1, 0.3);
   visual.ownRingRadius = clampNum(cfg.ownRingRadius, 16, 80, 25);
