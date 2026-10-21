@@ -9032,16 +9032,27 @@ function lookRow(item) {
   return settingRow({ label: t(item.label), description: item.desc ? t(item.desc) : '', control: nodes });
 }
 
+/* Con el fondo del chat en «ancho completo» chat y FPS comparten barra: estos ajustes sólo valen en «compacto». */
+const COMPACT_ONLY = new Set(['chatBg', 'chatOpacity', 'statsStyle', 'statsOpacity']);
+
 function renderLookSections() {
   lookGalleryQueue = [];
   const values = state.config.visual || {};
+  const fullBar = !!(state.config.game && state.config.game.chatBgMode === 'full');
   for (const [hostId, items] of Object.entries(LOOK_SECTIONS)) {
     const host = $(`#${hostId}`);
     if (!host) continue;
     host.replaceChildren();
     for (const item of items) {
       if (item.showIf && !item.showIf({ ...LOOK_DEFAULTS, ...values })) continue;
+      if (fullBar && COMPACT_ONLY.has(item.key)) continue;
       host.append(lookRow(item));
+    }
+    if (fullBar && (hostId === 'lookChat' || hostId === 'lookStats')) {
+      const note = document.createElement('p');
+      note.className = 'note';
+      note.textContent = t('look.fullBarNote');
+      host.append(note);
     }
   }
   const app = $('#app');

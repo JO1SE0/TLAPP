@@ -592,7 +592,7 @@ function applyClientStyles(doc) {
       : '',
     // Fondo propio. Con poco fondo el texto queda sobre la cancha: se refuerza la sombra.
     chatBg >= 0 && chatBg <= 0.95
-      ? `html .chatbox-view .chatbox-view-contents.chatbox-view-contents { background: rgba(8, 12, 22, ${chatBg.toFixed(2)}) !important; }\n    ${CHAT} { background: transparent !important; }${chatBg < 0.4 ? `\n    ${CHAT} p { text-shadow: 0 0 3px #000, 0 1px 2px #000, 0 0 6px rgba(0,0,0,.9) !important; }` : ''}`
+      ? `html .game-view:not(.chat-bg-full) .chatbox-view .chatbox-view-contents.chatbox-view-contents { background: rgba(8, 12, 22, ${chatBg.toFixed(2)}) !important; }\n    ${CHAT} { background: transparent !important; }${chatBg < 0.4 ? `\n    ${CHAT} p { text-shadow: 0 0 3px #000, 0 1px 2px #000, 0 0 6px rgba(0,0,0,.9) !important; }` : ''}`
       : '',
     chatFamily ? `${CHAT} p, .chatbox-view .chatbox-view-contents > .input input { font-family: ${chatFamily} !important; }` : ''
   ].join('\n    ');
@@ -605,7 +605,7 @@ function applyClientStyles(doc) {
   const chatOpacity = clampNum(vis.chatOpacity, 0.15, 1, 1);
   const statsOpacity = clampNum(vis.statsOpacity, 0.1, 1, 1);
   const statsStyle = String(vis.statsStyle || 'default');
-  const STATS = '.game-view .stats-view, .stats-view';
+  const STATS = '.game-view:not(.chat-bg-full) .stats-view';
   const STATS_STYLES = {
     minimal: `${STATS} { background: transparent !important; box-shadow: none !important; border: 0 !important; text-shadow: 0 0 3px #000, 0 1px 2px #000; }`,
     glass: `${STATS} { background: rgba(10, 14, 24, .5) !important; border: 1px solid rgba(255,255,255,.14) !important; border-radius: 10px !important; }`,
@@ -614,14 +614,36 @@ function applyClientStyles(doc) {
   };
   const hudCss = [
     chatOpacity < 1
-      ? `html .chatbox-view { opacity: ${chatOpacity.toFixed(2)}; transition: opacity .15s; }\n    html .chatbox-view:focus-within { opacity: 1; }`
+      ? `html .game-view:not(.chat-bg-full) .chatbox-view { opacity: ${chatOpacity.toFixed(2)}; transition: opacity .15s; }\n    html .game-view:not(.chat-bg-full) .chatbox-view:focus-within { opacity: 1; }`
       : '',
     STATS_STYLES[statsStyle] || '',
     statsOpacity < 1 ? `${STATS} { opacity: ${statsOpacity.toFixed(2)}; }` : ''
   ].filter(Boolean).join('\n    ');
 
+  /*
+   * «Ancho completo»: el chat y el cuadro de FPS/ping son UNA barra con UN
+   * fondo y UNA opacidad (la del chat de HaxBall, `--chat-opacity`). Antes cada
+   * uno se pintaba por su lado y quedaban de colores distintos. Los ajustes
+   * propios de fondo y opacidad aplican sólo en «compacto»; acá se ignoran.
+   */
+  const bar = (() => {
+    const hex = String(p.bg || '').replace('#', '');
+    const full = hex.length === 3 ? hex.replace(/./g, (c) => c + c) : hex;
+    const n = /^[0-9a-f]{6}$/i.test(full) ? parseInt(full, 16) : 0x0c0c0f;
+    return `${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}`;
+  })();
+  const fullBarCss = `
+    html .game-view.chat-bg-full .bottom-section { background: rgba(${bar}, var(--chat-opacity, .8)) !important; }
+    html .game-view.chat-bg-full .chatbox-view-contents,
+    html .game-view.chat-bg-full .stats-view {
+      background: transparent !important;
+      border: 0 !important;
+      box-shadow: none !important;
+    }`;
+
   style.textContent = `
     ${hudCss}
+    ${fullBarCss}
     .tvm-link {
       color: ${p.blue} !important;
       text-decoration: underline;
