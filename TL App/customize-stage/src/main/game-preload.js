@@ -6552,30 +6552,42 @@ function installTracking(view) {
   view.__tvmBallPre = (ctx, idx, ball) => {
     if (idx !== 0 || visual.ballWarp === 1 || !myDisc.ok || !ball || !ball.a) return;
     let k = visual.ballWarp;
-    if (visual.ballWarpTrue !== 'none') {
+    const when = visual.ballWarpWhen;
+    if (when !== 'always') {
       /*
-       * Contacto fiel: cuando la pelota está tocando una ficha (la tuya, o
-       * cualquiera) se dibuja en su lugar de verdad, y la distorsión vuelve
-       * suave a medida que se separan. Sin esto, tocarla se veía con un hueco
-       * en el medio, o al revés, atravesada.
+       * Cuándo se aplica la distorsión, según la distancia ENTRE BORDES de la
+       * pelota y la ficha:
+       *   · free / freeMe: sólo con la pelota en el aire. Si una ficha la toca
+       *     (cualquiera, o sólo la tuya) se dibuja en su lugar real y la
+       *     distorsión vuelve suave al separarse.
+       *   · near: al revés. Sólo se distorsiona cuando la pelota está cerca de
+       *     TU ficha, y de las demás no se entera.
        */
       const ff = tracker.fields;
       const players = tracker.room && ff && tracker.room[ff.players];
-      let gap = Infinity;
+      let gapAny = Infinity;
+      let gapMe = Infinity;
       if (players) {
         for (let i = 0; i < players.length; i++) {
           const p = players[i];
           const d = p && p[ff.disc];
           const at = d && d[ff.pos];
           if (!at) continue;
-          if (visual.ballWarpTrue === 'me' && p !== lastMe) continue;
           const rr = (ff.radius && d[ff.radius]) || DEFAULT_PLAYER_RADIUS;
           const g = Math.hypot(at.x - ball.a.x, at.y - ball.a.y) - rr - (ball.V || 10);
-          if (g < gap) gap = g;
+          if (g < gapAny) gapAny = g;
+          if (p === lastMe && g < gapMe) gapMe = g;
         }
       }
-      const w = Math.min(1, Math.max(0, gap / 45));
-      k = 1 + (visual.ballWarp - 1) * (w * w * (3 - 2 * w));
+      let w;
+      if (when === 'near') {
+        const t = Math.min(1, Math.max(0, gapMe / visual.ballWarpRange));
+        w = 1 - t * t * (3 - 2 * t);
+      } else {
+        const t = Math.min(1, Math.max(0, (when === 'freeMe' ? gapMe : gapAny) / 45));
+        w = t * t * (3 - 2 * t);
+      }
+      k = 1 + (visual.ballWarp - 1) * w;
     }
     ballWarpOn = true;
     ctx.save();
@@ -9574,7 +9586,7 @@ const visual = {
   pitchLine: 1, discLine: 1, ballLine: 1, ballSize: 1, discSize: 1, lines: false, sizes: false,
   texture: 'none', crest: false, crestOpacity: 0.18, crestSize: 0.45,
   lineColor: '', postColor: '', discOutline: '', ballOutline: '',
-  discStyle: 'default', discFilter: '', discFilterAll: true, ownRing: false, ownRingColor: '', ownRingAlpha: 0.3, ownRingRadius: 25, ownRingSoft: 0, ballWarp: 1, ballWarpTrue: 'all', weather: '', weatherAmount: 0.6, score: '', scoreOpacity: 0.16, ballStyle: 'default', ringStyle: 'default', ringColor: '', light: '', shadows: false, ballColor: '', lineGlow: false,
+  discStyle: 'default', discFilter: '', discFilterAll: true, ownRing: false, ownRingColor: '', ownRingAlpha: 0.3, ownRingRadius: 25, ownRingSoft: 0, ballWarp: 1, ballWarpWhen: 'free', ballWarpRange: 90, weather: '', weatherAmount: 0.6, score: '', scoreOpacity: 0.16, ballStyle: 'default', ringStyle: 'default', ringColor: '', light: '', shadows: false, ballColor: '', lineGlow: false,
   selfTrail: false, selfTrailColor: '',
   nameScale: 1, nameColor: '', nameOutline: false, nameFont: 'default',
   /** Hay algo que hacerle a las fichas o a la pelota en el `stroke()`. */
@@ -9615,7 +9627,8 @@ function syncCanvasHotFlags() {
   visual.discFilterAll = cfg.discFilterScope !== 'mine';
   visual.light = ['vignette', 'spot', 'corners'].includes(cfg.pitchLight) ? cfg.pitchLight : '';
   visual.ballWarp = clampNum(cfg.ballWarp, 0.7, 1.3, 1);
-  visual.ballWarpTrue = ['all', 'me', 'none'].includes(cfg.ballWarpTrue) ? cfg.ballWarpTrue : 'all';
+  visual.ballWarpWhen = ['always', 'free', 'freeMe', 'near'].includes(cfg.ballWarpWhen) ? cfg.ballWarpWhen : 'free';
+  visual.ballWarpRange = clampNum(cfg.ballWarpRange, 30, 250, 90);
   visual.ownRingColor = lookfx.safeColor(cfg.ownRingColor);
   visual.ownRingAlpha = clampNum(cfg.ownRingAlpha, 0.02, 1, 0.3);
   visual.ownRingRadius = clampNum(cfg.ownRingRadius, 16, 80, 25);
