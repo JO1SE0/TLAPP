@@ -8879,12 +8879,14 @@ const LOOK_SECTIONS = {
     { key: 'pitchLight', type: 'select', label: 'look.pitchLight', desc: 'look.pitchLightHelp', options: [['none', 'look.opt.none'], ['vignette', 'look.light.vignette'], ['spot', 'look.light.spot'], ['corners', 'look.light.corners']] },
     { key: 'ownRingColor', type: 'color', label: 'look.ownRingColor', desc: 'look.ownRingHelp' },
     { key: 'ownRingAlpha', type: 'range', label: 'look.ownRingAlpha', min: 0.05, max: 1, step: 0.01 },
-    { key: 'ownRingRadius', type: 'range', label: 'look.ownRingRadius', min: 18, max: 70, step: 1 },
+    { key: 'ownRingRadius', type: 'range', label: 'look.ownRingRadius', min: 18, max: 70, step: 1, raw: true },
+    { type: 'reset', key: '_ringReset', label: 'look.resetRing', keys: ['ownRingColor', 'ownRingAlpha', 'ownRingRadius', 'ownRingSoft'] },
     { key: 'ownRingSoft', type: 'range', label: 'look.ownRingSoft', min: 0, max: 1, step: 0.05 },
     { key: 'pitchWeather', type: 'select', label: 'look.weather', desc: 'look.weatherHelp', options: [['none', 'look.opt.none'], ['rain', 'look.wx.rain'], ['storm', 'look.wx.storm'], ['snow', 'look.wx.snow'], ['fog', 'look.wx.fog'], ['dust', 'look.wx.dust']] },
     { key: 'pitchWeatherAmount', type: 'range', label: 'look.weatherAmount', min: 0.2, max: 1, step: 0.05, showIf: (v) => v.pitchWeather && v.pitchWeather !== 'none' },
     { key: 'pitchScore', type: 'select', label: 'look.pitchScore', desc: 'look.pitchScoreHelp', options: [['none', 'look.opt.none'], ['white', 'look.ps.white'], ['team', 'look.ps.team']] },
     { key: 'pitchScoreOpacity', type: 'range', label: 'look.pitchScoreOpacity', min: 0.06, max: 0.4, step: 0.01, showIf: (v) => v.pitchScore && v.pitchScore !== 'none' },
+    { type: 'reset', key: '_wxReset', label: 'look.resetWeather', keys: ['pitchWeather', 'pitchWeatherAmount', 'pitchScore', 'pitchScoreOpacity'] },
     { key: 'crest', type: 'switch', label: 'look.crest', desc: 'look.crestHelp' },
     { key: 'crestOpacity', type: 'range', label: 'look.crestOpacity', min: 0.05, max: 0.6, step: 0.01, showIf: (v) => v.crest },
     { key: 'crestSize', type: 'range', label: 'look.crestSize', min: 0.2, max: 1, step: 0.01, showIf: (v) => v.crest },
@@ -8896,6 +8898,7 @@ const LOOK_SECTIONS = {
     { key: 'discStyle', type: 'select', label: 'look.discStyle', options: [['default', 'look.opt.none'], ['sphere', 'look.ds.sphere'], ['glass', 'look.ds.glass'], ['neon', 'look.ds.neon'], ['metal', 'look.ds.metal'], ['bubble', 'look.ds.bubble'], ['target', 'look.ds.target'], ['stripes', 'look.ds.stripes'], ['gem', 'look.ds.gem'], ['cartoon', 'look.ds.cartoon'], ['dots', 'look.ds.dots']] },
     { key: 'discFilter', type: 'select', label: 'look.discFilter', desc: 'look.discFilterHelp', options: [['', 'look.opt.none'], ['pixel', 'look.df.pixel'], ['toon', 'look.df.toon'], ['mono', 'look.df.mono']] },
     { key: 'discFilterScope', type: 'select', label: 'look.discFilterScope', options: [['all', 'look.dfs.all'], ['mine', 'look.dfs.mine']] },
+    { type: 'reset', key: '_filterReset', label: 'look.resetFilter', keys: ['discFilter', 'discFilterScope'] },
     { key: 'softShadows', type: 'switch', label: 'look.softShadows', desc: 'look.softShadowsHelp' },
     { key: 'discOutline', type: 'color', label: 'look.discOutline' },
     { key: 'ballStyle', type: 'select', label: 'look.ballStyle', options: [['default', 'look.opt.none'], ['soccer', 'look.bs.soccer'], ['neon', 'look.bs.neon'], ['gold', 'look.bs.gold'], ['beach', 'look.bs.beach'], ['eight', 'look.bs.eight'], ['star', 'look.bs.star'], ['panels', 'look.bs.panels'], ['triangles', 'look.bs.triangles'], ['vintage', 'look.bs.vintage'], ['tennis', 'look.bs.tennis'], ['basket', 'look.bs.basket'], ['volley', 'look.bs.volley'], ['baseball', 'look.bs.baseball'], ['golf', 'look.bs.golf'], ['bowling', 'look.bs.bowling'], ['earth', 'look.bs.earth'], ['moon', 'look.bs.moon'], ['disco', 'look.bs.disco'], ['orb', 'look.bs.orb'], ['pumpkin', 'look.bs.pumpkin'], ['melon', 'look.bs.melon'], ['eye', 'look.bs.eye']] },
@@ -9046,6 +9049,20 @@ function lookGalleryRow(item, value) {
 }
 
 function lookRow(item) {
+  if (item.type === 'reset') {
+    const unset = item.keys.every((k) => lookValue(k) === LOOK_DEFAULTS[k]);
+    const btn = document.createElement('button');
+    btn.className = 'btn btn--ghost btn--sm';
+    btn.type = 'button';
+    btn.textContent = t('look.backToNormal');
+    btn.disabled = unset;
+    btn.addEventListener('click', () => {
+      const patch = {};
+      for (const k of item.keys) patch[k] = LOOK_DEFAULTS[k];
+      lookPatch({ visual: patch }).then(() => toast(t('look.backToNormalDone'), 'ok'));
+    });
+    return settingRow({ label: t(item.label), description: item.desc ? t(item.desc) : '', control: btn });
+  }
   const value = lookValue(item.key);
   let control;
   if (item.type === 'switch') {
@@ -9097,11 +9114,12 @@ function lookRow(item) {
   input.value = unset ? item.min : value;
   const out = document.createElement('b');
   out.className = 'row__val';
-  out.textContent = unset ? t('look.original') : `${Math.round(Number(value) * 100)}%`;
+  const fmt = (n) => (item.raw ? String(Math.round(Number(n))) : `${Math.round(Number(n) * 100)}%`);
+  out.textContent = unset ? t('look.original') : fmt(value);
   syncRangeFill(input);
   input.addEventListener('input', () => {
     syncRangeFill(input);
-    out.textContent = `${Math.round(Number(input.value) * 100)}%`;
+    out.textContent = fmt(input.value);
   });
   input.addEventListener('change', () => lookPatch({ visual: { [item.key]: Number(input.value) } }));
   const nodes = [input, out];
