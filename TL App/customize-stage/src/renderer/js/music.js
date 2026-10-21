@@ -6,7 +6,6 @@
  * - Si te quedás, siguen en orden (la 5, la 6, la 7...) y se funden una con otra.
  * - Al entrar a una sala se silencia (hay que oír el juego).
  * - Arranca cuando termina la bienvenida.
- * - La canción que empieza con «00» es la de arranque: es la primera que suena al abrir la app.
  *
  * Dos reproductores se turnan para poder fundir el final de un tema con el
  * principio del siguiente. Cada cambio de tema avisa con el evento `tl:track`.
@@ -25,7 +24,7 @@
   const gain = () => Math.min(1, Math.max(0, M.volume));
   const wantPlaying = () => M.enabled && M.allowed && !M.inGame && M.tracks.length > 0;
   const current = () => M.pool[M.cur];
-  /** La de bienvenida lleva «00» al principio del nombre: suena una sola vez, al abrir la app. */
+  /** Una canción del club que empieza con «00» es la de arranque (hoy no hay ninguna): suena una sola vez, al abrir la app. */
   const isIntro = (t) => !!t && !t.user && /^\s*0+\s*[-.)]/.test(t.name || '');
 
   function titleOf(name) {

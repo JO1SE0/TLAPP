@@ -533,7 +533,7 @@ function discOverlay(ctx, style, x, y, r, strokeFn) {
     } else if (style === 'pixel') {
       // Mosaico: una grilla oscura sobre la ficha, con celdas de ~1/5 del radio.
       rebuild = true;
-      const cell = Math.max(1.5, r / 5);
+      const cell = Math.max(1.5, r / 4);
       ctx.strokeStyle = 'rgba(0,0,0,0.3)';
       ctx.lineWidth = Math.max(0.4, cell * 0.16);
       ctx.beginPath();
@@ -546,6 +546,71 @@ function discOverlay(ctx, style, x, y, r, strokeFn) {
       ctx.fillStyle = 'rgba(255,255,255,0.35)';
       ctx.fillRect(x - cell * 2.6, y - cell * 2.6, cell * 1.6, cell);
       ctx.fillRect(x - cell * 2.6, y - cell * 1.6, cell, cell);
+    } else if (style === 'sepia') {
+      // Foto vieja: el tono se pasa a un marrón cálido y se conserva la luz.
+      ctx.globalCompositeOperation = 'color';
+      ctx.fillStyle = 'rgba(150,104,52,0.9)';
+      ctx.fillRect(x - r, y - r, r * 2, r * 2);
+    } else if (style === 'negative') {
+      // Negativo: los colores se invierten.
+      ctx.globalCompositeOperation = 'difference';
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(x - r, y - r, r * 2, r * 2);
+    } else if (style === 'vivid') {
+      // Colores a tope: se mezcla un rojo puro en modo «saturación».
+      ctx.globalCompositeOperation = 'saturation';
+      ctx.fillStyle = '#ff0000';
+      ctx.fillRect(x - r, y - r, r * 2, r * 2);
+    } else if (style === 'rim') {
+      // Borde luminoso: un degradé que prende hacia el filo.
+      ctx.globalCompositeOperation = 'screen';
+      const g = ctx.createRadialGradient(x, y, r * 0.45, x, y, r);
+      g.addColorStop(0, 'rgba(255,255,255,0)');
+      g.addColorStop(1, 'rgba(255,255,255,0.75)');
+      ctx.fillStyle = g;
+      ctx.fillRect(x - r, y - r, r * 2, r * 2);
+    } else if (style === 'sketch') {
+      // Boceto a lápiz: rayado diagonal fino adentro de la ficha.
+      rebuild = true;
+      ctx.strokeStyle = 'rgba(0,0,0,0.38)';
+      ctx.lineWidth = Math.max(0.5, r * 0.06);
+      ctx.beginPath();
+      const step = Math.max(2, r * 0.42);
+      for (let d = -r * 2; d <= r * 2; d += step) {
+        ctx.moveTo(x + d - r, y + r);
+        ctx.lineTo(x + d + r, y - r);
+      }
+      doStroke();
+    } else if (style === 'halftone') {
+      // Retícula de cómic: puntos que crecen hacia el borde.
+      rebuild = true;
+      ctx.fillStyle = 'rgba(0,0,0,0.38)';
+      const cell = Math.max(2, r * 0.34);
+      ctx.beginPath();
+      for (let gy = -r; gy <= r; gy += cell) {
+        for (let gx = -r; gx <= r; gx += cell) {
+          const d = Math.hypot(gx, gy) / r;
+          if (d > 1) continue;
+          const rad = cell * (0.1 + 0.32 * d);
+          ctx.moveTo(x + gx + rad, y + gy);
+          ctx.arc(x + gx, y + gy, rad, 0, TAU);
+        }
+      }
+      ctx.fill();
+    } else if (style === 'scanlines') {
+      // Pantalla vieja: líneas horizontales finas y un leve tinte frío.
+      ctx.fillStyle = 'rgba(80,200,255,0.12)';
+      ctx.fillRect(x - r, y - r, r * 2, r * 2);
+      ctx.strokeStyle = 'rgba(0,0,0,0.34)';
+      ctx.lineWidth = Math.max(0.5, r * 0.07);
+      rebuild = true;
+      ctx.beginPath();
+      const stp = Math.max(1.8, r * 0.3);
+      for (let gy = -r; gy <= r; gy += stp) {
+        ctx.moveTo(x - r, y + gy);
+        ctx.lineTo(x + r, y + gy);
+      }
+      doStroke();
     } else if (style === 'toon') {
       // Dibujo animado: contorno grueso adentro de la ficha y un brillo plano.
       rebuild = true;
@@ -1330,8 +1395,26 @@ const wx = {
   last: 0,
   flashAt: 0,
   nextFlash: 0,
-  sprite: null
+  sprite: null,
+  fog: null
 };
+
+/** Textura de niebla que cierra en los bordes (se desliza sin costuras). */
+function wxFogTexture() {
+  if (wx.fog) return wx.fog;
+  const c = document.createElement('canvas');
+  c.width = 512;
+  c.height = 256;
+  const g = c.getContext('2d');
+  // Manchas con posiciones fijas (no al azar): la niebla se ve igual en cada arranque.
+  const blobs = [[40, 90, 150], [150, 170, 120], [250, 60, 170], [340, 150, 140], [430, 80, 130], [90, 210, 110], [300, 220, 120], [470, 190, 100], [200, 120, 100]];
+  const sprite = wxSprite();
+  for (const [bx, by, br] of blobs) {
+    for (const dx of [-512, 0, 512]) g.drawImage(sprite, bx + dx - br, by - br, br * 2, br * 2);
+  }
+  wx.fog = c;
+  return c;
+}
 
 /** Mancha blanca y suave que se reutiliza para la niebla. */
 function wxSprite() {
@@ -1508,20 +1591,111 @@ function paintWeather(ctx, kind, amount, now) {
       }
       ctx.fillStyle = 'rgba(232,200,140,0.42)';
       ctx.fill();
-    } else if (kind === 'fog') {
+    } else if (kind === 'leaves') {
+      // Hojas de otoño: elipses giradas en cuatro colores, una pasada por color.
+      const total = Math.round(WX_MAX * (0.14 + 0.2 * k));
       ctx.setTransform(1, 0, 0, 1, 0, 0);
-      ctx.fillStyle = `rgba(214,224,234,${(0.04 + 0.08 * k).toFixed(3)})`;
+      ctx.fillStyle = 'rgba(120,70,20,0.05)';
       ctx.fillRect(0, 0, W, H);
-      const sprite = wxSprite();
-      const big = Math.max(W, H);
-      for (let i = 0; i < 5; i++) {
-        const z = wx.z[i];
-        const size = big * (0.55 + z * 0.45);
-        const sx = ((i * 0.31 + t * (0.006 + z * 0.01)) % 1.5) * W * 1.2 - size * 0.4;
-        const sy = (0.1 + ((i * 0.23) % 0.8) + Math.sin(t * 0.07 + i * 1.7) * 0.06) * H - size / 2;
-        ctx.globalAlpha = (0.1 + 0.2 * k) * (0.75 + 0.25 * Math.sin(t * 0.2 + i));
-        ctx.drawImage(sprite, sx, sy, size, size);
+      ctx.setTransform(m);
+      const cols = ['rgba(214,120,38,0.85)', 'rgba(190,60,36,0.85)', 'rgba(222,176,52,0.85)', 'rgba(120,132,40,0.85)'];
+      for (let c = 0; c < 4; c++) {
+        ctx.beginPath();
+        for (let i = c; i < total; i += 4) {
+          const z = wx.z[i];
+          wx.x[i] = wrapX(wx.x[i] + (26 + z * 38 + Math.sin(t * 0.9 + wx.a[i] * 6.283) * 34) * px * dt);
+          wx.y[i] = wrapY(wx.y[i] + (34 + z * 44) * px * dt);
+          const rx = (3 + z * 3.2) * px;
+          const rot = t * (0.7 + z) + wx.a[i] * 6.283;
+          ctx.moveTo(wx.x[i] + rx * Math.cos(rot), wx.y[i] + rx * Math.sin(rot));
+          ctx.ellipse(wx.x[i], wx.y[i], rx, rx * 0.5, rot, 0, TAU);
+        }
+        ctx.fillStyle = cols[c];
+        ctx.fill();
       }
+    } else if (kind === 'embers') {
+      // Brasas que suben y titilan. Mezcla aditiva: brillan sobre el piso.
+      const total = Math.round(WX_MAX * (0.2 + 0.3 * k));
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.fillStyle = 'rgba(255,110,30,0.045)';
+      ctx.fillRect(0, 0, W, H);
+      ctx.setTransform(m);
+      ctx.globalCompositeOperation = 'lighter';
+      for (let pass = 0; pass < 2; pass++) {
+        ctx.beginPath();
+        for (let i = 0; i < total; i++) {
+          const z = wx.z[i];
+          if ((z > 0.5) !== (pass === 1)) continue;
+          wx.x[i] = wrapX(wx.x[i] + Math.sin(t * 1.3 + wx.a[i] * 6.283) * 18 * px * dt);
+          wx.y[i] = wrapY(wx.y[i] - (42 + z * 90) * px * dt);
+          const r = (pass ? 1.8 + z : 0.9 + z) * px;
+          ctx.moveTo(wx.x[i] + r, wx.y[i]);
+          ctx.arc(wx.x[i], wx.y[i], r, 0, TAU);
+        }
+        ctx.fillStyle = pass ? 'rgba(255,170,70,0.5)' : 'rgba(255,120,40,0.4)';
+        ctx.fill();
+      }
+    } else if (kind === 'fireflies') {
+      // Luciérnagas: manchas suaves que pulsan, sobre un toque de noche.
+      const total = Math.round(14 + 34 * k);
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.fillStyle = 'rgba(6,12,34,0.13)';
+      ctx.fillRect(0, 0, W, H);
+      ctx.setTransform(m);
+      // Dos círculos por luciérnaga (halo tenue y centro): sin imágenes, que cuestan más.
+      for (let i = 0; i < total; i++) {
+        const z = wx.z[i];
+        wx.x[i] = wrapX(wx.x[i] + Math.cos(t * (0.3 + z * 0.4) + wx.a[i] * 6.283) * 16 * px * dt);
+        wx.y[i] = wrapY(wx.y[i] + Math.sin(t * (0.4 + z * 0.3) + wx.a[i] * 9) * 14 * px * dt);
+        const pulse = 0.5 + 0.5 * Math.sin(t * (1.2 + z * 1.4) + wx.a[i] * 20);
+        const r = (2 + z * 1.6) * px;
+        ctx.globalAlpha = (0.1 + 0.25 * pulse) ;
+        ctx.fillStyle = 'rgb(200,255,110)';
+        ctx.beginPath();
+        ctx.arc(wx.x[i], wx.y[i], r * 3.2, 0, TAU);
+        ctx.fill();
+        ctx.globalAlpha = 0.35 + 0.65 * pulse;
+        ctx.fillStyle = 'rgb(255,252,190)';
+        ctx.beginPath();
+        ctx.arc(wx.x[i], wx.y[i], r, 0, TAU);
+        ctx.fill();
+      }
+    } else if (kind === 'blizzard') {
+      // Ventisca: nieve rápida y de costado.
+      const total = Math.round(WX_MAX * (0.4 + 0.6 * k));
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.fillStyle = 'rgba(225,238,255,0.09)';
+      ctx.fillRect(0, 0, W, H);
+      ctx.setTransform(m);
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      for (let i = 0; i < total; i++) {
+        const z = wx.z[i];
+        const sx = 520 + z * 380;
+        const sy = 120 + z * 90;
+        wx.x[i] = wrapX(wx.x[i] + sx * px * dt);
+        wx.y[i] = wrapY(wx.y[i] + sy * px * dt);
+        const len = (8 + z * 14) * px;
+        const nr = Math.hypot(sx, sy);
+        ctx.moveTo(wx.x[i], wx.y[i]);
+        ctx.lineTo(wx.x[i] - (sx / nr) * len, wx.y[i] - (sy / nr) * len);
+      }
+      ctx.lineWidth = 1.5 * px;
+      ctx.strokeStyle = 'rgba(255,255,255,0.7)';
+      ctx.stroke();
+    } else if (kind === 'fog') {
+      // La niebla es una textura que se arma UNA vez (manchas que cierran en los
+      // bordes) y se desliza: dos capas a distinta velocidad, cuatro `drawImage`.
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.fillStyle = `rgba(214,224,234,${(0.03 + 0.06 * k).toFixed(3)})`;
+      ctx.fillRect(0, 0, W, H);
+      // Una sola capa: dos `drawImage` que juntos cubren la pantalla una vez.
+      const tex = wxFogTexture();
+      const u = (((t * 0.009) % 1) + 1) % 1;
+      const x0 = -u * W;
+      ctx.globalAlpha = 0.22 + 0.4 * k;
+      ctx.drawImage(tex, x0, 0, W, H);
+      ctx.drawImage(tex, x0 + W, 0, W, H);
     }
   } finally {
     ctx.restore();

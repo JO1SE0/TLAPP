@@ -11,6 +11,7 @@ window.TL_NEWS = {
   title: { es: 'Qué hay de nuevo', en: "What's new" },
   items: {
     es: [
+      'Nuevo: más filtros de estilo para las fichas (sepia, negativo, colores a tope, borde luminoso, boceto a lápiz, retícula de cómic, pantalla vieja) y más clima para la cancha (hojas de otoño, brasas, luciérnagas, ventisca). Todo se dibuja con formas baratas y apagado no corre nada.',
       'Nuevo: botón «Volver a lo normal» para el anillo de tu ficha, el clima y marcador del piso, y el filtro de estilo de las fichas. Además, la distancia del anillo ya no se muestra como porcentaje.',
       'Nuevo: el anillo gris que HaxBall dibuja alrededor de tu ficha ahora se personaliza (Personalización → Fichas y aro): color, opacidad, distancia a la ficha y difuminado, para que quede tenue y no tape el fondo.',
       'Para los que abren la app por primera vez: «Marcar tu disco» y «Modo daltónico» vienen apagados.',
@@ -25,7 +26,7 @@ window.TL_NEWS = {
       'Chat en «Ancho completo»: ahora el chat y el cuadro de FPS comparten el mismo fondo y la misma opacidad. Los ajustes propios de fondo y opacidad quedan para el modo «Compacto».',
       'Arreglo: el color y la fuente de tu nombre en la lista de la sala ahora los ven los demás con la app (y vos ves los de ellos). Antes cada uno veía solo el suyo.',
       'Nuevo (opcional): Rendimiento → «Simulación liviana». Con FPS muy altos evita recalcular la física en cada cuadro dibujado. Viene apagada.',
-      'Música del menú: ahora arranca sola al abrir la app, con la primera canción de Free Fire (2017). Viene prendida para todos; la podés silenciar o bajar desde el ícono de música de la barra de arriba.',
+      'Música del menú: ahora son siete canciones nuevas del club (ya no suena la de Free Fire). Arranca sola al abrir la app, una al azar, y siguen en orden. Con esta versión viene prendida para todos; la apagás desde Ajustes o desde el ícono de música de la barra de arriba.',
       'Nuevo: la interfaz se adapta sola al monitor. En pantallas más chicas o más cuadradas (1280×1024, 1366×768…) todo se ve con las mismas proporciones que en 1920×1080, sin cosas apretadas ni carteles encima de la lista. Se puede cambiar en Personalización → Estilo → Tamaño de la interfaz (Automático o un porcentaje fijo). El juego no cambia.',
       'Lista de salas con modos: Todas, Para jugar, Favoritas, Del club y Llenas (un toque aplica los filtros y el orden), y cinco vistas: lista, tarjetas, barras, tablero por ocupación y mapa de salas. Y en el chat de la sala, escribir «/» muestra todos los comandos de HaxBall: flechas para moverte, Tab o click para completar.',
       'Pelota 3D de verdad: con un estilo, un color o una imagen propia, la pelota ahora rueda como una esfera (el dibujo se corre, se achata hacia el borde, pasa por atrás y vuelve) en vez de girar en el lugar. Y el acabado de la cancha (textura y luz) pasó a opciones en píldoras, sin miniaturas: ya se ve en la vista previa de arriba. En las replays, la barra de controles ahora es una franja abajo con la línea de tiempo, saltos de ±5 s, y la cancha (el chat de la replay queda oculto) queda arriba sin que nada la tape.',
@@ -61,6 +62,8 @@ window.TL_NEWS = {
       'Cada clave se usa en una sola PC: si cambiás de computadora, pedile a miclo que te la libere.'
     ],
     en: [
+      'New: more disc style filters (sepia, negative, max colour, glowing rim, pencil sketch, comic halftone, old screen) and more pitch weather (autumn leaves, embers, fireflies, blizzard). All drawn with cheap shapes: nothing runs when they are off.',
+      'Menu music: seven new club songs (the Free Fire one is gone). It starts on its own when the app opens, a random one, then plays in order. With this version it comes on for everyone; turn it off in Settings or from the music icon in the top bar.',
       'New: «Back to normal» button for your disc ring, the weather and pitch score, and the disc style filter. The ring distance no longer shows as a percentage.',
       'New: the grey ring HaxBall draws around your disc is now customizable (Customization → Discs): colour, opacity, distance and softness, so it stays faint and does not cover the pitch.',
       'For first-time users: «Mark your disc» and «Colourblind mode» start off.',

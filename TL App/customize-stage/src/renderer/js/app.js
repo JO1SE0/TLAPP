@@ -4099,6 +4099,7 @@ const LOOK_SWITCHES = {
     { key: 'welcome', label: 'Bienvenida del club', description: 'Una intro corta con el escudo al abrir la app.' },
     { key: 'welcomeSound', label: 'Sonido de la bienvenida', description: 'Se puede apagar sin quitar la animación.' },
     { key: 'sparks', label: 'Partículas doradas', description: 'Motitas de luz flotando en el menú. Se apagan solas en la partida.' },
+    { key: 'music', label: 'Música del menú', description: 'Suena en el menú de salas y se silencia al entrar a jugar. El volumen está arriba, en la barra.' },
     { key: 'musicClub', label: 'Canciones del club en el menú', description: 'Apagalo si querés que suenen sólo las tuyas. El volumen y el apagado están arriba, en la barra.' }
   ],
   en: [
@@ -4108,6 +4109,7 @@ const LOOK_SWITCHES = {
     { key: 'welcome', label: 'Club welcome', description: 'A short intro with the crest when the app opens.' },
     { key: 'welcomeSound', label: 'Welcome sound', description: 'Turn it off without removing the animation.' },
     { key: 'sparks', label: 'Golden particles', description: 'Specks of light floating in the menu. They stop on their own during a match.' },
+    { key: 'music', label: 'Menu music', description: 'Plays in the room menu and is silenced when you join a game. Volume is up in the top bar.' },
     { key: 'musicClub', label: 'Club songs in the menu', description: 'Turn it off to hear only your own. Volume and mute are up in the top bar.' }
   ]
 };
@@ -8882,7 +8884,7 @@ const LOOK_SECTIONS = {
     { key: 'ownRingRadius', type: 'range', label: 'look.ownRingRadius', min: 18, max: 70, step: 1, raw: true },
     { type: 'reset', key: '_ringReset', label: 'look.resetRing', keys: ['ownRingColor', 'ownRingAlpha', 'ownRingRadius', 'ownRingSoft'] },
     { key: 'ownRingSoft', type: 'range', label: 'look.ownRingSoft', min: 0, max: 1, step: 0.05 },
-    { key: 'pitchWeather', type: 'select', label: 'look.weather', desc: 'look.weatherHelp', options: [['none', 'look.opt.none'], ['rain', 'look.wx.rain'], ['storm', 'look.wx.storm'], ['snow', 'look.wx.snow'], ['fog', 'look.wx.fog'], ['dust', 'look.wx.dust']] },
+    { key: 'pitchWeather', type: 'select', label: 'look.weather', desc: 'look.weatherHelp', options: [['none', 'look.opt.none'], ['rain', 'look.wx.rain'], ['storm', 'look.wx.storm'], ['snow', 'look.wx.snow'], ['fog', 'look.wx.fog'], ['dust', 'look.wx.dust'], ['leaves', 'look.wx.leaves'], ['embers', 'look.wx.embers'], ['fireflies', 'look.wx.fireflies'], ['blizzard', 'look.wx.blizzard']] },
     { key: 'pitchWeatherAmount', type: 'range', label: 'look.weatherAmount', min: 0.2, max: 1, step: 0.05, showIf: (v) => v.pitchWeather && v.pitchWeather !== 'none' },
     { key: 'pitchScore', type: 'select', label: 'look.pitchScore', desc: 'look.pitchScoreHelp', options: [['none', 'look.opt.none'], ['white', 'look.ps.white'], ['team', 'look.ps.team']] },
     { key: 'pitchScoreOpacity', type: 'range', label: 'look.pitchScoreOpacity', min: 0.06, max: 0.4, step: 0.01, showIf: (v) => v.pitchScore && v.pitchScore !== 'none' },
@@ -8896,7 +8898,7 @@ const LOOK_SECTIONS = {
   ],
   lookDiscs: [
     { key: 'discStyle', type: 'select', label: 'look.discStyle', options: [['default', 'look.opt.none'], ['sphere', 'look.ds.sphere'], ['glass', 'look.ds.glass'], ['neon', 'look.ds.neon'], ['metal', 'look.ds.metal'], ['bubble', 'look.ds.bubble'], ['target', 'look.ds.target'], ['stripes', 'look.ds.stripes'], ['gem', 'look.ds.gem'], ['cartoon', 'look.ds.cartoon'], ['dots', 'look.ds.dots']] },
-    { key: 'discFilter', type: 'select', label: 'look.discFilter', desc: 'look.discFilterHelp', options: [['', 'look.opt.none'], ['pixel', 'look.df.pixel'], ['toon', 'look.df.toon'], ['mono', 'look.df.mono']] },
+    { key: 'discFilter', type: 'select', label: 'look.discFilter', desc: 'look.discFilterHelp', options: [['', 'look.opt.none'], ['pixel', 'look.df.pixel'], ['toon', 'look.df.toon'], ['mono', 'look.df.mono'], ['sepia', 'look.df.sepia'], ['negative', 'look.df.negative'], ['vivid', 'look.df.vivid'], ['rim', 'look.df.rim'], ['sketch', 'look.df.sketch'], ['halftone', 'look.df.halftone'], ['scanlines', 'look.df.scanlines']] },
     { key: 'discFilterScope', type: 'select', label: 'look.discFilterScope', options: [['all', 'look.dfs.all'], ['mine', 'look.dfs.mine']] },
     { type: 'reset', key: '_filterReset', label: 'look.resetFilter', keys: ['discFilter', 'discFilterScope'] },
     { key: 'softShadows', type: 'switch', label: 'look.softShadows', desc: 'look.softShadowsHelp' },

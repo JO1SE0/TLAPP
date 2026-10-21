@@ -2276,10 +2276,8 @@ async function listMusic(dir) {
 }
 
 handle('tracks:list', async () => {
-  // De las canciones del club sólo suena la de arranque («00 …»: la primera de Free Fire).
-  // Las demás quedan en la carpeta pero no se ofrecen; para reactivarlas, sacar este filtro.
+  // Todas las canciones del club (assets/music).
   const club = (await listMusic(path.join(ROOT, 'assets', 'music')))
-    .filter((name) => /^\s*0+\s*[-.)]/.test(name))
     .map((name) => ({ name, user: false, url: `../../assets/music/${encodeURIComponent(name)}` }));
   const dir = userMusicDir();
   const { pathToFileURL } = require('url');

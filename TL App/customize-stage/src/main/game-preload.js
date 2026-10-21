@@ -9554,7 +9554,7 @@ function syncCanvasHotFlags() {
   visual.discOutline = lookfx.safeColor(cfg.discOutline);
   visual.ballOutline = lookfx.safeColor(cfg.ballOutline);
   visual.discStyle = ['sphere', 'glass', 'neon', 'metal', 'bubble', 'target', 'stripes', 'gem', 'cartoon', 'dots'].includes(cfg.discStyle) ? cfg.discStyle : 'default';
-  visual.discFilter = ['pixel', 'mono', 'toon'].includes(cfg.discFilter) ? cfg.discFilter : '';
+  visual.discFilter = ['pixel', 'mono', 'toon', 'sepia', 'negative', 'vivid', 'rim', 'sketch', 'halftone', 'scanlines'].includes(cfg.discFilter) ? cfg.discFilter : '';
   visual.discFilterAll = cfg.discFilterScope !== 'mine';
   visual.light = ['vignette', 'spot', 'corners'].includes(cfg.pitchLight) ? cfg.pitchLight : '';
   visual.ownRingColor = lookfx.safeColor(cfg.ownRingColor);
@@ -9562,7 +9562,7 @@ function syncCanvasHotFlags() {
   visual.ownRingRadius = clampNum(cfg.ownRingRadius, 16, 80, 25);
   visual.ownRingSoft = clampNum(cfg.ownRingSoft, 0, 1, 0);
   visual.ownRing = !!visual.ownRingColor || Math.abs(visual.ownRingAlpha - 0.3) > 0.005 || visual.ownRingRadius !== 25 || visual.ownRingSoft > 0.01;
-  visual.weather = ['rain', 'storm', 'snow', 'fog', 'dust'].includes(cfg.pitchWeather) ? cfg.pitchWeather : '';
+  visual.weather = ['rain', 'storm', 'snow', 'fog', 'dust', 'leaves', 'embers', 'fireflies', 'blizzard'].includes(cfg.pitchWeather) ? cfg.pitchWeather : '';
   visual.weatherAmount = clampNum(cfg.pitchWeatherAmount, 0.2, 1, 0.6);
   visual.score = ['white', 'team'].includes(cfg.pitchScore) ? cfg.pitchScore : '';
   visual.scoreOpacity = clampNum(cfg.pitchScoreOpacity, 0.06, 0.4, 0.16);
@@ -9879,7 +9879,7 @@ function installCanvasHooks(doc) {
         this.strokeStyle = color;
         // Con un contorno de color elegido, nunca por debajo de 1 píxel de pantalla:
         // más fino se desvanece y el color parece no andar.
-        const px = 1 / (Math.abs(this.getTransform().a) || 1);
+        const px = 1 / (freeCam.zoom || 1);
         if (this.lineWidth < px) this.lineWidth = px;
       }
       try {
@@ -9940,7 +9940,7 @@ function installCanvasHooks(doc) {
     this.lineWidth = mul;
     if (custom) {
       this.strokeStyle = custom;
-      const px = 1 / (Math.abs(this.getTransform().a) || 1);
+      const px = 1 / (freeCam.zoom || 1);
       if (this.lineWidth < px) this.lineWidth = px;
     } else if (recolor) this.strokeStyle = '#FFFFFF';
     try {

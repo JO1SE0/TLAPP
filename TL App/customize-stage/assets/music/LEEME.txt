@@ -1,4 +1,3 @@
 Poné acá las canciones del menú (mp3, ogg, m4a, wav o flac).
-Hoy sólo suena la que empieza con "00" (la primera canción de Free Fire), y se repite.
-Las otras están guardadas en esta carpeta pero apagadas: no se ofrecen en el menú.
-Cada jugador puede sumar las suyas desde Personalización, y apagar o bajar la música desde la barra de arriba.
+Suenan todas: al abrir la app arranca una al azar y siguen en orden, fundiéndose una con otra.
+Cada jugador puede sumar las suyas desde Personalización, y apagar o bajar la música desde la barra de arriba o desde Ajustes.
