@@ -415,6 +415,14 @@ const DEFAULTS = {
     lineGlow: false,
     /** Luz de la cancha: `none` · `vignette` · `spot` · `corners`. */
     pitchLight: 'none',
+    /** Clima sobre la cancha: `none` · `rain` · `storm` · `snow` · `fog` · `dust`. */
+    pitchWeather: 'none',
+    /** Cuánto clima (0.2–1). */
+    pitchWeatherAmount: 0.6,
+    /** Marcador de piso en cada mitad: `none` · `white` · `team`. */
+    pitchScore: 'none',
+    /** Opacidad del marcador de piso. */
+    pitchScoreOpacity: 0.16,
     /** Sombra suave bajo las fichas y la pelota. */
     softShadows: false,
     /** Aspecto de las fichas: `default` · `sphere` · `glass` · `neon` · `metal` · `bubble` · `target` · `stripes` · `gem` · `cartoon` · `dots`. */

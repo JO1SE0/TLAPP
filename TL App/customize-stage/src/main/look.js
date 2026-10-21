@@ -1276,6 +1276,300 @@ function safeColor(value) {
   return typeof value === 'string' && /^#[0-9a-f]{6}$/i.test(value) ? value : '';
 }
 
+
+/* ── Clima de la cancha ─────────────────────────────────────────────────
+ * Partículas en coordenadas de cancha, dibujadas por debajo de las fichas.
+ * Reglas de costo: buffers fijos (cero asignaciones por cuadro), un trazo por
+ * capa, sin sombras ni filtros, y el tiempo sale del reloj (no del cuadro), así
+ * que a 60 o a 240 FPS cae igual de rápido. Es sólo ambientación.
+ * ------------------------------------------------------------------ */
+
+const WX_MAX = 320;
+const wx = {
+  x: new Float32Array(WX_MAX),
+  y: new Float32Array(WX_MAX),
+  z: new Float32Array(WX_MAX),
+  a: new Float32Array(WX_MAX),
+  kind: '',
+  last: 0,
+  flashAt: 0,
+  nextFlash: 0,
+  sprite: null
+};
+
+/** Mancha blanca y suave que se reutiliza para la niebla. */
+function wxSprite() {
+  if (wx.sprite) return wx.sprite;
+  const c = document.createElement('canvas');
+  c.width = c.height = 128;
+  const g = c.getContext('2d');
+  const grad = g.createRadialGradient(64, 64, 0, 64, 64, 64);
+  grad.addColorStop(0, 'rgba(255,255,255,0.9)');
+  grad.addColorStop(0.5, 'rgba(255,255,255,0.35)');
+  grad.addColorStop(1, 'rgba(255,255,255,0)');
+  g.fillStyle = grad;
+  g.fillRect(0, 0, 128, 128);
+  wx.sprite = c;
+  return c;
+}
+
+function paintWeather(ctx, kind, amount, now) {
+  const cv = ctx.canvas;
+  if (!cv) return;
+  const m = ctx.getTransform();
+  const scale = Math.hypot(m.a, m.b);
+  const det = m.a * m.d - m.b * m.c;
+  if (!scale || !det) return;
+  const W = cv.width;
+  const H = cv.height;
+
+  // El rectángulo de mundo que se ve (cajón que contiene a las cuatro esquinas).
+  let vx = Infinity;
+  let vy = Infinity;
+  let mx = -Infinity;
+  let my = -Infinity;
+  for (let i = 0; i < 4; i++) {
+    const sx = i & 1 ? W : 0;
+    const sy = i & 2 ? H : 0;
+    const wxp = (m.d * (sx - m.e) - m.c * (sy - m.f)) / det;
+    const wyp = (m.a * (sy - m.f) - m.b * (sx - m.e)) / det;
+    if (wxp < vx) vx = wxp;
+    if (wxp > mx) mx = wxp;
+    if (wyp < vy) vy = wyp;
+    if (wyp > my) my = wyp;
+  }
+  const vw = mx - vx;
+  const vh = my - vy;
+  if (!(vw > 0) || !(vh > 0)) return;
+
+  // Mundo por píxel de pantalla CSS: todo lo que se mide en píxeles pasa por acá.
+  const px = (typeof devicePixelRatio === 'number' ? devicePixelRatio : 1) / scale;
+
+  let dt = wx.last ? (now - wx.last) / 1000 : 0.016;
+  wx.last = now;
+  if (dt > 0.05) dt = 0.05;
+  if (dt < 0) dt = 0;
+
+  if (wx.kind !== kind) {
+    wx.kind = kind;
+    for (let i = 0; i < WX_MAX; i++) {
+      wx.x[i] = vx + Math.random() * vw;
+      wx.y[i] = vy + Math.random() * vh;
+      wx.z[i] = Math.random();
+      wx.a[i] = Math.random();
+    }
+    wx.nextFlash = now + 4000 + Math.random() * 6000;
+  }
+
+  const k = Math.min(1, Math.max(0.2, amount || 0.6));
+  const t = now / 1000;
+  const wrapX = (x) => vx + (((x - vx) % vw) + vw) % vw;
+  const wrapY = (y) => vy + (((y - vy) % vh) + vh) % vh;
+
+  ctx.save();
+  try {
+    if (kind === 'rain' || kind === 'storm') {
+      const storm = kind === 'storm';
+      // El suelo se pone un poco más oscuro y azulado, como mojado.
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.fillStyle = storm ? 'rgba(14,26,52,0.16)' : 'rgba(18,34,62,0.09)';
+      ctx.fillRect(0, 0, W, H);
+      ctx.setTransform(m);
+
+      const total = Math.round(WX_MAX * (0.35 + 0.65 * k));
+      const drops = Math.round(total * 0.62);
+      const wind = storm ? 0.5 : 0.2;
+      const nrm = Math.hypot(wind, 1);
+      const dx = wind / nrm;
+      const dy = 1 / nrm;
+      ctx.lineCap = 'round';
+      for (let pass = 0; pass < 2; pass++) {
+        // Las lejanas (z chico) finas y tenues; las cercanas más gruesas.
+        ctx.beginPath();
+        for (let i = 0; i < drops; i++) {
+          const z = wx.z[i];
+          if ((z > 0.5) !== (pass === 1)) continue;
+          const speed = (storm ? 1250 : 900) + z * 550;
+          const len = (storm ? 20 : 13) + z * 14;
+          wx.x[i] = wrapX(wx.x[i] + dx * speed * px * dt);
+          wx.y[i] = wrapY(wx.y[i] + dy * speed * px * dt);
+          ctx.moveTo(wx.x[i], wx.y[i]);
+          ctx.lineTo(wx.x[i] - dx * len * px, wx.y[i] - dy * len * px);
+        }
+        ctx.lineWidth = (pass ? 1.4 : 0.9) * px;
+        ctx.strokeStyle = pass ? 'rgba(200,222,255,0.42)' : 'rgba(190,212,245,0.24)';
+        ctx.stroke();
+      }
+      // Salpicaduras: anillos que se abren y se apagan en el piso.
+      const rip0 = drops;
+      for (let band = 0; band < 3; band++) {
+        ctx.beginPath();
+        for (let i = rip0; i < total; i++) {
+          wx.a[i] += dt * (1.5 + wx.z[i] * 0.9);
+          if (wx.a[i] >= 1) {
+            wx.a[i] = 0;
+            wx.x[i] = vx + Math.random() * vw;
+            wx.y[i] = vy + Math.random() * vh;
+          }
+          if (Math.min(2, (wx.a[i] * 3) | 0) !== band) continue;
+          const r = (1.5 + wx.a[i] * 11) * px;
+          ctx.moveTo(wx.x[i] + r, wx.y[i]);
+          ctx.arc(wx.x[i], wx.y[i], r, 0, TAU);
+        }
+        ctx.lineWidth = 1 * px;
+        ctx.strokeStyle = `rgba(215,232,255,${[0.4, 0.24, 0.1][band]})`;
+        ctx.stroke();
+      }
+      if (storm) {
+        if (now > wx.nextFlash) {
+          wx.flashAt = now;
+          wx.nextFlash = now + 7000 + Math.random() * 9000;
+        }
+        const age = (now - wx.flashAt) / 360;
+        if (wx.flashAt && age >= 0 && age < 1) {
+          // Un destello corto con un segundo golpe tenue, nunca fuerte.
+          const a = (age < 0.15 ? age / 0.15 : Math.max(0, 1 - age) / 0.85) * 0.1 * (1 + 0.5 * Math.sin(age * 22));
+          ctx.setTransform(1, 0, 0, 1, 0, 0);
+          ctx.fillStyle = `rgba(225,235,255,${Math.max(0, a).toFixed(3)})`;
+          ctx.fillRect(0, 0, W, H);
+        }
+      }
+    } else if (kind === 'snow') {
+      const total = Math.round(WX_MAX * (0.3 + 0.7 * k));
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.fillStyle = 'rgba(235,245,255,0.05)';
+      ctx.fillRect(0, 0, W, H);
+      ctx.setTransform(m);
+      for (let pass = 0; pass < 2; pass++) {
+        ctx.beginPath();
+        for (let i = 0; i < total; i++) {
+          const z = wx.z[i];
+          if ((z > 0.55) !== (pass === 1)) continue;
+          const fall = 38 + z * 70;
+          wx.x[i] = wrapX(wx.x[i] + Math.sin(t * (0.5 + z * 0.9) + wx.a[i] * 6.283) * 22 * px * dt + 8 * px * dt);
+          wx.y[i] = wrapY(wx.y[i] + fall * px * dt);
+          const r = (pass ? 2.3 + z * 1.2 : 1.1 + z * 0.9) * px;
+          ctx.moveTo(wx.x[i] + r, wx.y[i]);
+          ctx.arc(wx.x[i], wx.y[i], r, 0, TAU);
+        }
+        ctx.fillStyle = pass ? 'rgba(255,255,255,0.85)' : 'rgba(255,255,255,0.5)';
+        ctx.fill();
+      }
+    } else if (kind === 'dust') {
+      const total = Math.round(WX_MAX * (0.3 + 0.7 * k));
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.fillStyle = `rgba(196,146,78,${(0.04 + 0.07 * k).toFixed(3)})`;
+      ctx.fillRect(0, 0, W, H);
+      ctx.setTransform(m);
+      ctx.beginPath();
+      for (let i = 0; i < total; i++) {
+        const z = wx.z[i];
+        const speed = 140 + z * 260;
+        wx.x[i] = wrapX(wx.x[i] + speed * px * dt);
+        wx.y[i] = wrapY(wx.y[i] + Math.sin(t * 0.9 + wx.a[i] * 6.283) * 12 * px * dt + 14 * px * dt);
+        const l = (4 + z * 9) * px;
+        ctx.rect(wx.x[i], wx.y[i], l, 1.1 * px);
+      }
+      ctx.fillStyle = 'rgba(232,200,140,0.42)';
+      ctx.fill();
+    } else if (kind === 'fog') {
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.fillStyle = `rgba(214,224,234,${(0.04 + 0.08 * k).toFixed(3)})`;
+      ctx.fillRect(0, 0, W, H);
+      const sprite = wxSprite();
+      const big = Math.max(W, H);
+      for (let i = 0; i < 5; i++) {
+        const z = wx.z[i];
+        const size = big * (0.55 + z * 0.45);
+        const sx = ((i * 0.31 + t * (0.006 + z * 0.01)) % 1.5) * W * 1.2 - size * 0.4;
+        const sy = (0.1 + ((i * 0.23) % 0.8) + Math.sin(t * 0.07 + i * 1.7) * 0.06) * H - size / 2;
+        ctx.globalAlpha = (0.1 + 0.2 * k) * (0.75 + 0.25 * Math.sin(t * 0.2 + i));
+        ctx.drawImage(sprite, sx, sy, size, size);
+      }
+    }
+  } finally {
+    ctx.restore();
+  }
+}
+
+/* ── Marcas de partido ──────────────────────────────────────────────────
+ * El resultado, grande y muy tenue, pintado en el piso de cada mitad. Se ve
+ * mientras la pelota espera en el medio y se va con una animación apenas sale
+ * del saque. Sólo repite el marcador que ya está en pantalla.
+ * ------------------------------------------------------------------ */
+
+const mm = { p: 0, dir: 0, rest: 0, last: 0, red: -1, blue: -1, bumpR: 0, bumpB: 0, pendR: false, pendB: false };
+
+function resetMatchMark() {
+  mm.p = 0; mm.dir = 0; mm.rest = 0; mm.last = 0; mm.red = -1; mm.blue = -1;
+  mm.pendR = mm.pendB = false;
+}
+
+function paintMatchMark(ctx, o) {
+  const now = o.now;
+  let dt = mm.last ? (now - mm.last) / 1000 : 0.016;
+  mm.last = now;
+  if (dt > 0.1) dt = 0.1;
+  if (dt < 0) dt = 0;
+
+  if (mm.red >= 0 && o.red !== mm.red) mm.pendR = true;
+  if (mm.blue >= 0 && o.blue !== mm.blue) mm.pendB = true;
+  mm.red = o.red;
+  mm.blue = o.blue;
+
+  const near = o.hasBall && Math.hypot(o.ballX, o.ballY) < 3;
+  if (near) { if (!mm.rest) mm.rest = now; } else mm.rest = 0;
+  if (near && now - mm.rest > 220) mm.dir = 1;
+  else if (!near) mm.dir = -1;
+
+  mm.p += (mm.dir > 0 ? dt / 0.5 : -dt / 0.4) * (mm.dir ? 1 : 0);
+  if (mm.p > 1) mm.p = 1;
+  if (mm.p <= 0) { mm.p = 0; return; }
+
+  if (mm.dir > 0 && mm.p > 0.05) {
+    if (mm.pendR) { mm.bumpR = now; mm.pendR = false; }
+    if (mm.pendB) { mm.bumpB = now; mm.pendB = false; }
+  }
+
+  const ease = mm.p * mm.p * (3 - 2 * mm.p);
+  const size = Math.min(o.halfH * 0.62, o.halfW * 0.3);
+  if (!(size > 4)) return;
+
+  ctx.save();
+  try {
+    ctx.globalAlpha = Math.min(1, Math.max(0, o.opacity)) * ease;
+    ctx.font = `800 ${size.toFixed(1)}px "Bahnschrift","Segoe UI","Arial Narrow",system-ui,sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    for (let side = -1; side <= 1; side += 2) {
+      const red = side < 0;
+      const bump = red ? mm.bumpR : mm.bumpB;
+      const sinceBump = bump ? (now - bump) / 1000 : 9;
+      const pop = 1 + 0.2 * Math.exp(-sinceBump * 5) * (sinceBump < 1.2 ? 1 : 0);
+      let sc;
+      let ox = 0;
+      let oy = 0;
+      if (mm.dir < 0) {
+        // Se va: se abre hacia su arco y se agranda mientras se disuelve.
+        sc = 1 + (1 - ease) * 0.16;
+        ox = side * (1 - ease) * o.halfW * 0.12;
+      } else {
+        // Llega: sube desde abajo con un leve crecimiento.
+        sc = 0.9 + 0.1 * ease;
+        oy = (1 - ease) * size * 0.14;
+      }
+      ctx.save();
+      ctx.translate(side * o.halfW * 0.5 + ox, oy);
+      ctx.scale((o.mirrored ? -1 : 1) * sc * pop, sc * pop);
+      ctx.fillStyle = o.tint === 'team' ? (red ? '#ff6b5e' : '#5fa6ff') : '#ffffff';
+      ctx.fillText(String(red ? o.red : o.blue), 0, size * 0.03);
+      ctx.restore();
+    }
+  } finally {
+    ctx.restore();
+  }
+}
+
 module.exports = {
   TEXTURES,
   textureSpec,
@@ -1289,5 +1583,8 @@ module.exports = {
   drawTrail,
   resetTrail,
   isLightLine,
+  paintWeather,
+  paintMatchMark,
+  resetMatchMark,
   safeColor
 };

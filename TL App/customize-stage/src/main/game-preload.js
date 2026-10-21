@@ -6560,7 +6560,7 @@ function installTracking(view) {
    */
   let skinBroken = false;
   view.__tvmSkin = (ctx, w, h, stadium) => {
-    if (stadium !== currentStadium) { currentStadium = stadium; try { lookfx.resetTrail(); } catch (e) {} }
+    if (stadium !== currentStadium) { currentStadium = stadium; try { lookfx.resetTrail(); lookfx.resetMatchMark(); } catch (e) {} }
     if (skinBroken) return;
     ownDraw++;
     try {
@@ -6964,6 +6964,9 @@ const TRAIL_MAX = 512;
  * por muestra serían decenas de asignaciones por segundo dentro del dibujo, que
  * es exactamente lo que este archivo evita en todos lados.
  */
+/** Última posición vista de la pelota (la deja el tick; la lee el marcador de piso). */
+const liveBall = { x: 0, y: 0, t: 0 };
+
 const trail = {
   x: new Float32Array(TRAIL_MAX),
   y: new Float32Array(TRAIL_MAX),
@@ -7040,7 +7043,30 @@ function paintPitch(ctx, renderer, zoom) {
   const wantTouch = replay && cfg.replayLastTouch;
   const wantHeat = replay && cfg.replayHeatmap;
   const wantSelfTrail = visual.selfTrail && !replay;
-  if (!wantTrail && !wantTeams && !wantSelf && !wantTouch && !wantHeat && !wantSelfTrail) return;
+  const wantWeather = !!visual.weather;
+  const wantScore = !!visual.score;
+  if (!wantTrail && !wantTeams && !wantSelf && !wantTouch && !wantHeat && !wantSelfTrail && !wantWeather && !wantScore) return;
+
+  if (wantWeather) lookfx.paintWeather(ctx, visual.weather, visual.weatherAmount, performance.now());
+  if (wantScore) {
+    const bounds = pitchBounds(currentStadium);
+    const now = performance.now();
+    if (bounds) {
+      lookfx.paintMatchMark(ctx, {
+        now,
+        hasBall: now - liveBall.t < 600,
+        ballX: liveBall.x,
+        ballY: liveBall.y,
+        red: lastScore.red,
+        blue: lastScore.blue,
+        halfW: bounds.halfW,
+        halfH: bounds.halfH,
+        tint: visual.score,
+        opacity: visual.scoreOpacity,
+        mirrored: mirrorOn
+      });
+    }
+  }
 
   const f = tracker.fields;
   if (!f) return;
@@ -8399,6 +8425,9 @@ function onGameTick(view, room) {
    */
   const pelota = ballPos(f, match);
   if (pelota) {
+    liveBall.x = pelota.x;
+    liveBall.y = pelota.y;
+    liveBall.t = performance.now();
     /* La estela se muestrea sólo donde se puede dibujar, que es en una
        grabación: en un partido en vivo el buffer no lo mira nadie. */
     if (onReplay()) recordTrail(pelota.x, pelota.y, tracker.clock);
@@ -9464,7 +9493,7 @@ const visual = {
   pitchLine: 1, discLine: 1, ballLine: 1, ballSize: 1, discSize: 1, lines: false, sizes: false,
   texture: 'none', crest: false, crestOpacity: 0.18, crestSize: 0.45,
   lineColor: '', postColor: '', discOutline: '', ballOutline: '',
-  discStyle: 'default', discFilter: '', discFilterAll: true, ballStyle: 'default', ringStyle: 'default', ringColor: '', light: '', shadows: false, ballColor: '', lineGlow: false,
+  discStyle: 'default', discFilter: '', discFilterAll: true, weather: '', weatherAmount: 0.6, score: '', scoreOpacity: 0.16, ballStyle: 'default', ringStyle: 'default', ringColor: '', light: '', shadows: false, ballColor: '', lineGlow: false,
   selfTrail: false, selfTrailColor: '',
   nameScale: 1, nameColor: '', nameOutline: false, nameFont: 'default',
   /** Hay algo que hacerle a las fichas o a la pelota en el `stroke()`. */
@@ -9504,6 +9533,10 @@ function syncCanvasHotFlags() {
   visual.discFilter = ['pixel', 'mono', 'toon'].includes(cfg.discFilter) ? cfg.discFilter : '';
   visual.discFilterAll = cfg.discFilterScope !== 'mine';
   visual.light = ['vignette', 'spot', 'corners'].includes(cfg.pitchLight) ? cfg.pitchLight : '';
+  visual.weather = ['rain', 'storm', 'snow', 'fog', 'dust'].includes(cfg.pitchWeather) ? cfg.pitchWeather : '';
+  visual.weatherAmount = clampNum(cfg.pitchWeatherAmount, 0.2, 1, 0.6);
+  visual.score = ['white', 'team'].includes(cfg.pitchScore) ? cfg.pitchScore : '';
+  visual.scoreOpacity = clampNum(cfg.pitchScoreOpacity, 0.06, 0.4, 0.16);
   visual.shadows = !!cfg.softShadows;
   visual.ballColor = lookfx.safeColor(cfg.ballColor);
   visual.lineGlow = !!cfg.lineGlow;

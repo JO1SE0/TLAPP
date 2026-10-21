@@ -11,6 +11,8 @@ window.TL_NEWS = {
   title: { es: 'Qué hay de nuevo', en: "What's new" },
   items: {
     es: [
+      'Nuevo: Clima en la cancha (Personalización → Cancha): lluvia con salpicaduras, tormenta, nieve, niebla y polvo con viento. Sólo ambientación, por debajo de las fichas, y apagado no cuesta nada.',
+      'Nuevo: Marcador en el piso. El resultado aparece tenue en cada mitad mientras la pelota espera en el medio y se va con una animación apenas se saca. Blanco o con el color de cada equipo.',
       'Nuevo: «Filtro de estilo» para las fichas (Personalización → Fichas): pixel art, dibujo animado y blanco y negro, para todas o solo la tuya. Anda también con gráficos planos.',
       'Arreglo: con gráficos planos ahora se respetan el grosor y el color de contorno de pelota, fichas y líneas que elegiste; y un color de contorno elegido ya no se pierde al poner el grosor al mínimo.',
       'Nuevo: «Modo PC lenta» (Configuración → Rendimiento → Perfil). Apaga de una vez animaciones, partículas, pelota 3D y destellos, y al desactivarlo vuelve a lo que tenías.',
@@ -55,6 +57,8 @@ window.TL_NEWS = {
       'Cada clave se usa en una sola PC: si cambiás de computadora, pedile a miclo que te la libere.'
     ],
     en: [
+      'New: Pitch weather (Customization → Pitch): rain with splashes, storm, snow, fog and wind-blown dust. Ambience only, below the discs, and free when off.',
+      'New: Score on the pitch. The result shows faintly on each half while the ball waits at the centre and fades out with an animation as soon as play starts. White or each team colour.',
       'New: disc «Style filter» (Customization → Discs): pixel art, cartoon and black & white, for all discs or just yours. Works with flat graphics too.',
       'Fix: with flat graphics, the outline thickness and color you chose for the ball, discs and lines are now respected; a chosen outline color no longer fades out at minimum thickness.',
       'New: selectable interface (Personalization → Style): Classic (the usual, default), Top bar, Floating dock, Island, Bottom bar, Icons only, Right side and three that change everything: Console (tile Home), Command (Ctrl+K palette) and Radial (fan button). Go back to Classic any time. Also: dense/normal/roomy room-list rows.',
