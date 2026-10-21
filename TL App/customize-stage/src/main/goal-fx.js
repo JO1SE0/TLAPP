@@ -104,6 +104,7 @@
       layers: layers,
       c1: c1,
       c2: c2,
+      custom: custom,
       text: o.showText === false ? '' : text,
       name: name,
       intensity: clamp(o.intensity, 0.3, 2, 1),
@@ -123,16 +124,52 @@
   /* ── Efectos ──────────────────────────────────────────────────────────
    * Cada uno devuelve { update(dt, t), draw(ctx, W, H, t) }. `t` va de 0 a 1. */
 
+  /** Mancha suave (centro claro que se apaga) para llamas, humo y destellos. Se arma una vez. */
+  var blobSprite = null;
+  function blob(ctx) {
+    if (blobSprite !== null) return blobSprite;
+    try {
+      var c = ctx.canvas.ownerDocument.createElement('canvas');
+      c.width = c.height = 64;
+      var g = c.getContext('2d');
+      var r = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+      r.addColorStop(0, 'rgba(255,255,255,1)');
+      r.addColorStop(0.35, 'rgba(255,255,255,.55)');
+      r.addColorStop(1, 'rgba(255,255,255,0)');
+      g.fillStyle = r; g.fillRect(0, 0, 64, 64);
+      blobSprite = c;
+    } catch (e) { blobSprite = false; }
+    return blobSprite;
+  }
+  /** La misma mancha teñida. Se guarda por color para no repetir el trabajo. */
+  var tinted = {};
+  function tint(ctx, color) {
+    var base = blob(ctx);
+    if (!base) return null;
+    if (tinted[color]) return tinted[color];
+    try {
+      var c = ctx.canvas.ownerDocument.createElement('canvas');
+      c.width = c.height = 64;
+      var g = c.getContext('2d');
+      g.drawImage(base, 0, 0);
+      g.globalCompositeOperation = 'source-in';
+      g.fillStyle = color; g.fillRect(0, 0, 64, 64);
+      tinted[color] = c;
+      return c;
+    } catch (e) { return null; }
+  }
+
   function makeConfetti(W, H, o) {
-    var n = Math.min(MAX_PARTICLES, Math.round(170 * o.intensity));
+    var K = Math.max(0.8, Math.min(1.8, H / 700));
+    var n = Math.min(MAX_PARTICLES, Math.round(260 * o.intensity));
     var colors = [o.c1, o.c2, lighten(o.c1, 0.55), lighten(o.c2, 0.55), '#ffffff', '#ffd54a'];
     var ps = [];
     for (var i = 0; i < n; i++) {
       var cannon = i % 3; // 0 = cañón izquierdo, 1 = derecho, 2 = lluvia desde arriba
-      var p = { c: pick(colors), w: rnd(6, 12), h: rnd(4, 8), rot: rnd(0, 6.28), vr: rnd(-9, 9), flip: rnd(0, 6.28), vf: rnd(4, 11), delay: rnd(0, 0.35) };
-      if (cannon === 0) { p.x = -10; p.y = H * 0.95; p.vx = rnd(260, 720) * (W / 1200); p.vy = -rnd(700, 1250) * (H / 800); }
-      else if (cannon === 1) { p.x = W + 10; p.y = H * 0.95; p.vx = -rnd(260, 720) * (W / 1200); p.vy = -rnd(700, 1250) * (H / 800); }
-      else { p.x = rnd(0, W); p.y = -20; p.vx = rnd(-60, 60); p.vy = rnd(60, 220); p.delay = rnd(0.1, 0.9); }
+      var p = { c: pick(colors), w: rnd(8, 15) * K, h: rnd(5, 10) * K, rot: rnd(0, 6.28), vr: rnd(-9, 9), flip: rnd(0, 6.28), vf: rnd(4, 11), delay: rnd(0, 0.3) };
+      if (cannon === 0) { p.x = -10; p.y = H * 0.98; p.vx = rnd(300, 900) * (W / 1200); p.vy = -rnd(800, 1500) * (H / 800); }
+      else if (cannon === 1) { p.x = W + 10; p.y = H * 0.98; p.vx = -rnd(300, 900) * (W / 1200); p.vy = -rnd(800, 1500) * (H / 800); }
+      else { p.x = rnd(0, W); p.y = -20; p.vx = rnd(-60, 60); p.vy = rnd(80, 260); p.delay = rnd(0.05, 0.6); }
       ps.push(p);
     }
     return {
@@ -140,7 +177,7 @@
         for (var i = 0; i < ps.length; i++) {
           var p = ps[i];
           if (t < p.delay * 0.4) continue;
-          p.vy += 900 * dt; p.vx *= 1 - 1.3 * dt; p.vy *= 1 - 0.6 * dt;
+          p.vy += 900 * dt; p.vx *= 1 - 1.1 * dt; p.vy *= 1 - 0.55 * dt;
           p.x += p.vx * dt; p.y += p.vy * dt; p.rot += p.vr * dt; p.flip += p.vf * dt;
         }
       },
@@ -164,14 +201,15 @@
   }
 
   function makeFireworks(W, H, o) {
-    var shells = Math.max(3, Math.round(5 * o.intensity));
-    var per = Math.min(90, Math.round(64 * o.intensity));
-    var palette = [o.c1, o.c2, lighten(o.c1, 0.5), '#ffffff'];
+    var K = Math.max(0.8, Math.min(1.8, H / 700));
+    var shells = Math.max(4, Math.round(6 * o.intensity));
+    var per = Math.min(110, Math.round(84 * o.intensity));
+    var palette = [o.c1, o.c2, lighten(o.c1, 0.5), lighten(o.c2, 0.5), '#ffffff'];
     var list = [];
     for (var s = 0; s < shells; s++) {
       list.push({
-        x: rnd(W * 0.15, W * 0.85), y: H, tx: 0, ty: rnd(H * 0.16, H * 0.46), at: 0.02 + s * (0.34 / shells) + rnd(0, 0.04),
-        vy: -rnd(H * 1.35, H * 1.7), state: 0, col: pick(palette), sparks: [], age: 0
+        x: rnd(W * 0.14, W * 0.86), y: H, ty: rnd(H * 0.14, H * 0.5), at: 0.0 + s * (0.36 / shells) + rnd(0, 0.03),
+        vy: -rnd(H * 1.8, H * 2.3), state: 0, col: pick(palette), col2: pick(palette), sparks: [], age: 0, size: rnd(0.8, 1.25)
       });
     }
     return {
@@ -180,45 +218,66 @@
           var f = list[i];
           if (f.state === 0 && t >= f.at) f.state = 1;
           if (f.state === 1) {
-            f.vy *= 1 - 0.55 * dt; f.y += f.vy * dt;
-            if (f.y <= f.ty || f.vy > -80) {
+            f.vy *= 1 - 0.5 * dt; f.y += f.vy * dt;
+            if (f.y <= f.ty || f.vy > -120) {
               f.state = 2;
+              var ring = Math.random() < 0.35; // algunas explotan en anillo
               for (var k = 0; k < per; k++) {
-                var a = (k / per) * 6.283 + rnd(-0.08, 0.08), v = rnd(160, 460) * (H / 800);
-                f.sparks.push({ x: f.x, y: f.y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, life: rnd(1, 1.8), age: 0, c: Math.random() < 0.3 ? '#ffffff' : f.col });
+                var a = (k / per) * 6.283 + rnd(-0.05, 0.05);
+                var v = (ring ? rnd(330, 360) : rnd(120, 560)) * (H / 800) * f.size;
+                f.sparks.push({ x: f.x, y: f.y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, life: rnd(1.1, 1.9), age: 0, c: k % 2 ? f.col : f.col2, tw: Math.random() < 0.25 });
               }
             }
           } else if (f.state === 2) {
             f.age += dt;
             for (var j = 0; j < f.sparks.length; j++) {
               var sp = f.sparks[j];
-              sp.age += dt; sp.vx *= 1 - 1.4 * dt; sp.vy = sp.vy * (1 - 1.4 * dt) + 170 * dt;
+              sp.age += dt; sp.vx *= 1 - 1.25 * dt; sp.vy = sp.vy * (1 - 1.25 * dt) + 210 * dt;
               sp.x += sp.vx * dt; sp.y += sp.vy * dt;
             }
           }
         }
       },
       draw: function (ctx) {
+        var glow = function (c) { return tint(ctx, c); };
         ctx.globalCompositeOperation = 'lighter';
         for (var i = 0; i < list.length; i++) {
           var f = list[i];
           if (f.state === 1) {
-            ctx.fillStyle = '#fff6d8';
-            ctx.fillRect(f.x - 1.5, f.y, 3, 14);
+            // El cohete: una estela que se apaga hacia atrás.
+            var g = ctx.createLinearGradient(f.x, f.y, f.x, f.y + 70 * K);
+            g.addColorStop(0, 'rgba(255,244,214,.95)');
+            g.addColorStop(1, 'rgba(255,200,120,0)');
+            ctx.fillStyle = g;
+            ctx.fillRect(f.x - 2 * K, f.y, 4 * K, 70 * K);
           } else if (f.state === 2) {
-            if (f.age < 0.3) {
-              var fl = 1 - f.age / 0.3;
-              ctx.fillStyle = rgba(f.col, 0.5 * fl);
-              ctx.beginPath(); ctx.arc(f.x, f.y, 24 + 90 * (1 - fl), 0, 6.283); ctx.fill();
+            if (f.age < 0.35) {
+              var fl = 1 - f.age / 0.35;
+              var R = (40 + 150 * (1 - fl)) * K;
+              var rg = ctx.createRadialGradient(f.x, f.y, 0, f.x, f.y, R);
+              rg.addColorStop(0, rgba('#ffffff', 0.85 * fl));
+              rg.addColorStop(0.4, rgba(f.col, 0.4 * fl));
+              rg.addColorStop(1, rgba(f.col, 0));
+              ctx.fillStyle = rg;
+              ctx.fillRect(f.x - R, f.y - R, R * 2, R * 2);
             }
             for (var j = 0; j < f.sparks.length; j++) {
               var sp = f.sparks[j], l = 1 - sp.age / sp.life;
               if (l <= 0) continue;
-              ctx.fillStyle = rgba(sp.c, l * 0.95);
-              ctx.fillRect(sp.x - 2.2, sp.y - 2.2, 4.4, 4.4);
-              ctx.fillStyle = rgba(sp.c, l * 0.45);
-              ctx.fillRect(sp.x - sp.vx * 0.035 - 1.5, sp.y - sp.vy * 0.035 - 1.5, 3, 3);
-              ctx.fillRect(sp.x - sp.vx * 0.07 - 1, sp.y - sp.vy * 0.07 - 1, 2, 2);
+              var tw = sp.tw ? (0.5 + 0.5 * Math.sin(sp.age * 40 + j)) : 1;
+              var sz = (5 + 3 * l) * K;
+              // Brillo suave alrededor de cada chispa (una de por medio, para cuidar el costo).
+              if (glow && (j & 1) === 0) {
+                var gs = glow(sp.c);
+                if (gs) { ctx.globalAlpha = 0.55 * l * tw; ctx.drawImage(gs, sp.x - sz * 2.2, sp.y - sz * 2.2, sz * 4.4, sz * 4.4); ctx.globalAlpha = 1; }
+              }
+              ctx.fillStyle = rgba(sp.c, Math.min(1, l * 1.1) * tw);
+              ctx.fillRect(sp.x - sz / 2, sp.y - sz / 2, sz, sz);
+              // Cola de tres cuadritos que se achican.
+              ctx.fillStyle = rgba(sp.c, l * 0.5 * tw);
+              ctx.fillRect(sp.x - sp.vx * 0.03 - sz * 0.35, sp.y - sp.vy * 0.03 - sz * 0.35, sz * 0.7, sz * 0.7);
+              ctx.fillStyle = rgba(sp.c, l * 0.25 * tw);
+              ctx.fillRect(sp.x - sp.vx * 0.06 - sz * 0.25, sp.y - sp.vy * 0.06 - sz * 0.25, sz * 0.5, sz * 0.5);
             }
           }
         }
@@ -322,43 +381,63 @@
   }
 
   function makeFlames(W, H, o) {
-    var n = Math.min(MAX_PARTICLES, Math.round(210 * o.intensity));
+    var K = Math.max(0.8, Math.min(1.8, H / 700));
+    var n = Math.min(MAX_PARTICLES, Math.round(150 * o.intensity));
     var ps = [];
-    for (var i = 0; i < n; i++) ps.push({ x: rnd(0, W), y: H + rnd(0, 40), vx: rnd(-30, 30), vy: -rnd(120, 520) * (H / 800), r: rnd(3, 11), life: rnd(0.8, 1.6), age: -rnd(0, 0.9), hot: Math.random() < 0.4 });
+    for (var i = 0; i < n; i++) {
+      ps.push({ x: rnd(-10, W + 10), y: H + rnd(0, 30), vx: rnd(-26, 26), vy: -rnd(160, 560) * (H / 800), r: rnd(22, 58) * K, life: rnd(0.9, 1.7), age: -rnd(0, 1.0), ph: rnd(0, 6.28), hot: Math.random() < 0.4 });
+    }
+    var coreCol = lighten(o.c2, 0.45), outCol = o.c1;
     return {
       update: function (dt) {
         for (var i = 0; i < ps.length; i++) {
           var p = ps[i];
           p.age += dt;
           if (p.age < 0) continue;
-          p.x += (p.vx + Math.sin(p.age * 7 + i) * 38) * dt; p.y += p.vy * dt; p.vy *= 1 - 0.35 * dt;
+          p.x += (p.vx + Math.sin(p.age * 6 + p.ph) * 44) * dt; p.y += p.vy * dt; p.vy *= 1 - 0.4 * dt;
         }
       },
       draw: function (ctx, W2, H2, t) {
         var pulse = (t < 0.8 ? 1 : Math.max(0, 1 - (t - 0.8) / 0.2));
-        var g = ctx.createLinearGradient(0, H2, 0, H2 * 0.55);
-        g.addColorStop(0, rgba(o.c1, 0.55 * pulse));
+        // Brasa de fondo: la base de la pantalla se calienta.
+        var g = ctx.createLinearGradient(0, H2, 0, H2 * 0.45);
+        g.addColorStop(0, rgba(o.c1, 0.6 * pulse));
         g.addColorStop(1, rgba(o.c1, 0));
         ctx.fillStyle = g;
-        ctx.fillRect(0, H2 * 0.55, W2, H2 * 0.45);
+        ctx.fillRect(0, H2 * 0.45, W2, H2 * 0.55);
+        var sOut = tint(ctx, outCol), sCore = tint(ctx, coreCol), sWhite = blob(ctx);
         ctx.globalCompositeOperation = 'lighter';
         for (var i = 0; i < ps.length; i++) {
           var p = ps[i];
           if (p.age < 0 || p.age > p.life) continue;
-          var l = 1 - p.age / p.life, r = p.r * (0.4 + l);
-          ctx.fillStyle = p.hot ? rgba(o.c2, 0.75 * l * pulse) : rgba(o.c1, 0.7 * l * pulse);
-          ctx.beginPath(); ctx.arc(p.x, p.y, r, 0, 6.283); ctx.fill();
-          if (p.hot) { ctx.fillStyle = 'rgba(255,255,255,' + (0.6 * l * pulse).toFixed(3) + ')'; ctx.beginPath(); ctx.arc(p.x, p.y, r * 0.4, 0, 6.283); ctx.fill(); }
+          var l = 1 - p.age / p.life, r = p.r * (0.45 + 0.8 * l);
+          if (sOut) {
+            // Lengua de fuego: más alta que ancha, y se estira hacia arriba.
+            ctx.globalAlpha = 0.85 * l * pulse;
+            ctx.drawImage(sOut, p.x - r, p.y - r * 1.9, r * 2, r * 3.2);
+            if (p.hot && sCore) {
+              ctx.globalAlpha = 0.9 * l * pulse;
+              ctx.drawImage(sCore, p.x - r * 0.62, p.y - r * 1.0, r * 1.24, r * 1.9);
+              if (sWhite) { ctx.globalAlpha = 0.55 * l * pulse; ctx.drawImage(sWhite, p.x - r * 0.3, p.y - r * 0.45, r * 0.6, r * 0.9); }
+            }
+          } else {
+            ctx.fillStyle = rgba(outCol, 0.7 * l * pulse);
+            ctx.beginPath(); ctx.arc(p.x, p.y, r * 0.6, 0, 6.283); ctx.fill();
+          }
         }
+        ctx.globalAlpha = 1;
         ctx.globalCompositeOperation = 'source-over';
       }
     };
   }
 
   function makeCoins(W, H, o) {
-    var n = Math.min(260, Math.round(110 * o.intensity));
+    var K = Math.max(0.8, Math.min(1.8, H / 700));
+    var n = Math.min(260, Math.round(120 * o.intensity));
+    // Con colores del equipo las monedas son de oro igual: una moneda roja no es una moneda.
+    var face = o.custom ? o.c1 : '#ffcf3a', rim = o.custom ? o.c2 : '#b87a08', shine = lighten(face, 0.6);
     var ps = [];
-    for (var i = 0; i < n; i++) ps.push({ x: rnd(0, W), y: -rnd(20, H * 0.9), vy: rnd(260, 560) * (H / 800), vx: rnd(-40, 40), r: rnd(13, 24), flip: rnd(0, 6.28), vf: rnd(5, 12), spark: Math.random() < 0.2 });
+    for (var i = 0; i < n; i++) ps.push({ x: rnd(0, W), y: -rnd(20, H * 0.9), vy: rnd(300, 620) * (H / 800), vx: rnd(-40, 40), r: rnd(15, 27) * K, flip: rnd(0, 6.28), vf: rnd(5, 12), spark: Math.random() < 0.3 });
     return {
       update: function (dt) {
         for (var i = 0; i < ps.length; i++) { var p = ps[i]; p.y += p.vy * dt; p.x += p.vx * dt; p.flip += p.vf * dt; }
@@ -369,13 +448,21 @@
         for (var i = 0; i < ps.length; i++) {
           var p = ps[i];
           if (p.y < -30 || p.y > H2 + 30) continue;
-          var w = Math.abs(Math.cos(p.flip)) * p.r;
-          ctx.fillStyle = o.c1;
-          ctx.beginPath(); ctx.ellipse(p.x, p.y, Math.max(1.5, w), p.r, 0, 0, 6.283); ctx.fill();
-          ctx.strokeStyle = lighten(o.c2, 0.35); ctx.lineWidth = 2;
-          ctx.beginPath(); ctx.ellipse(p.x, p.y, Math.max(1, w * 0.62), p.r * 0.62, 0, 0, 6.283); ctx.stroke();
-          if (p.spark && Math.cos(p.flip) > 0.9) {
-            ctx.fillStyle = '#fff'; ctx.fillRect(p.x - 1, p.y - p.r - 3, 2, 7); ctx.fillRect(p.x - 3.5, p.y - p.r, 7, 2);
+          var c = Math.cos(p.flip), w = Math.abs(c) * p.r;
+          // Borde (grosor de la moneda), cara y círculo interior grabado.
+          ctx.fillStyle = rim;
+          ctx.beginPath(); ctx.ellipse(p.x, p.y, Math.max(2, w + p.r * 0.1), p.r, 0, 0, 6.283); ctx.fill();
+          ctx.fillStyle = c > 0 ? face : lighten(face, -0.0);
+          ctx.beginPath(); ctx.ellipse(p.x, p.y, Math.max(1.5, w), p.r * 0.94, 0, 0, 6.283); ctx.fill();
+          if (w > p.r * 0.35) {
+            ctx.strokeStyle = rim; ctx.lineWidth = Math.max(1, p.r * 0.09);
+            ctx.beginPath(); ctx.ellipse(p.x, p.y, w * 0.68, p.r * 0.62, 0, 0, 6.283); ctx.stroke();
+            ctx.fillStyle = rgba(shine, 0.7);
+            ctx.beginPath(); ctx.ellipse(p.x - w * 0.3, p.y - p.r * 0.3, w * 0.18, p.r * 0.22, 0, 0, 6.283); ctx.fill();
+          }
+          if (p.spark && c > 0.92) {
+            ctx.fillStyle = '#fff';
+            ctx.fillRect(p.x - 1, p.y - p.r - 5, 2.4, 10); ctx.fillRect(p.x - 5, p.y - p.r - 1, 10, 2.4);
           }
         }
         ctx.globalAlpha = 1;
@@ -448,13 +535,14 @@
   }
 
   function makePapelitos(W, H, o) {
+    var K = Math.max(0.8, Math.min(1.8, H / 700));
     // «Papelitos» de cancha: tiras finas que caen de arriba y se mecen.
     var n = Math.min(MAX_PARTICLES, Math.round(300 * o.intensity));
     var colors = [o.c1, o.c2, '#ffffff', lighten(o.c1, 0.5), lighten(o.c2, 0.5)];
     var ps = [];
     for (var i = 0; i < n; i++) {
-      ps.push({ x: rnd(-20, W + 20), y: -rnd(10, H * 0.3), vy: rnd(180, 380) * (H / 800), sw: rnd(10, 50), sf: rnd(2, 6), ph: rnd(0, 6.28),
-        w: rnd(4, 7), h: rnd(14, 34), rot: rnd(0, 6.28), vr: rnd(-4, 4), c: pick(colors), age: 0, delay: rnd(0, 0.2) });
+      ps.push({ x: rnd(-20, W + 20), y: -rnd(10, H * 0.3), vy: rnd(230, 470) * (H / 800), sw: rnd(10, 50), sf: rnd(2, 6), ph: rnd(0, 6.28),
+        w: rnd(4, 7) * K, h: rnd(14, 34) * K, rot: rnd(0, 6.28), vr: rnd(-4, 4), c: pick(colors), age: 0, delay: rnd(0, 0.2) });
     }
     return {
       update: function (dt, t) {
@@ -528,10 +616,10 @@
         for (i = 0; i < list.length; i++) {
           fl = list[i];
           var flick = 0.78 + 0.22 * Math.sin(t * 60 + fl.seed) * Math.sin(t * 23 + fl.seed * 2);
-          var R = Math.max(W2, H2) * 0.42 * flick;
+          var R = Math.max(W2, H2) * 0.3 * flick;
           var g = ctx.createRadialGradient(fl.x, fl.y, 0, fl.x, fl.y, R);
           g.addColorStop(0, rgba(lighten(o.c1, 0.4), 0.85 * env));
-          g.addColorStop(0.18, rgba(o.c1, 0.42 * env));
+          g.addColorStop(0.2, rgba(o.c1, 0.5 * env));
           g.addColorStop(1, rgba(o.c1, 0));
           ctx.fillStyle = g;
           ctx.fillRect(fl.x - R, fl.y - R, R * 2, R * 2);
@@ -540,7 +628,7 @@
             if (a.age < 0 || a.age > a.life) continue;
             var sl = 1 - a.age / a.life;
             ctx.fillStyle = rgba(k % 3 ? o.c2 : '#ffffff', sl * env);
-            ctx.fillRect(a.x - 1.6, a.y - 1.6, 3.2, 3.2);
+            ctx.fillRect(a.x - 2.2, a.y - 2.2, 4.4, 4.4);
           }
         }
         ctx.globalCompositeOperation = 'source-over';
@@ -554,7 +642,7 @@
     var ps = [];
     for (var i = 0; i < n; i++) {
       var a = rnd(0, 6.283), v = rnd(120, 900) * (H / 800);
-      ps.push({ x: W / 2, y: H * 0.45, vx: Math.cos(a) * v, vy: Math.sin(a) * v, s: rnd(8, 26), rot: rnd(0, 6.28), vr: rnd(-3, 3), c: pick(colors), tw: rnd(0, 6.28), delay: rnd(0, 0.2), five: Math.random() < 0.4 });
+      ps.push({ x: W / 2, y: H * 0.45, vx: Math.cos(a) * v, vy: Math.sin(a) * v, s: rnd(10, 32) * Math.max(0.8, Math.min(1.8, H / 700)), rot: rnd(0, 6.28), vr: rnd(-3, 3), c: pick(colors), tw: rnd(0, 6.28), delay: rnd(0, 0.2), five: Math.random() < 0.4 });
     }
     return {
       update: function (dt, t) {
