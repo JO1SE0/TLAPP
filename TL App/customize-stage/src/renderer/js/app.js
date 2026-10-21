@@ -9983,6 +9983,30 @@ boot()
  * (el pulso de presencia cada 30 s): acá sólo se pintan, y sólo cuando llega
  * una lista nueva. Nada corre por cuadro ni por temporizador propio.
  */
+/*
+ * «Ir»: entra a la sala donde está un compañero. El link de la sala NO viaja por
+ * la base del club (es de lectura abierta y una sala privada se filtraría): se
+ * busca por nombre en la lista pública de salas, igual que el resaltado de
+ * «hay gente del club» en cada fila.
+ */
+async function goToClubRoom(member) {
+  const en = isEn();
+  const key = String(member.room || '').trim().slice(0, 40).toLowerCase();
+  const find = () => (state.rooms.list || []).filter((r) => String(r.name || '').trim().slice(0, 40).toLowerCase() === key);
+  let hits = find();
+  if (!hits.length && !state.rooms.loading) {
+    try { await loadRooms(); } catch (e) { /* sin red */ }
+    hits = find();
+  }
+  if (!hits.length) {
+    toast(en ? `“${member.room}” isn't in the public room list (it may be a private room).` : `«${member.room}» no está en la lista pública (puede ser una sala privada).`, 'warn');
+    return;
+  }
+  // Si hay varias con el mismo nombre, la que tiene más gente y lugar.
+  hits.sort((a, b) => (Number(a.players >= a.maxPlayers) - Number(b.players >= b.maxPlayers)) || (b.players - a.players));
+  joinRoom(hits[0].token);
+}
+
 function paintClubNow(list) {
   try { updateClubRooms(list); } catch (e) { /* adorno */ }
   const host = $('#clubNowList');
@@ -10017,6 +10041,15 @@ function paintClubNow(list) {
     if (m.room) where.classList.add('is-room');
     txt.append(name, where);
     card.append(av, txt);
+    if (m.room && !m.self) {
+      const go = document.createElement('button');
+      go.type = 'button';
+      go.className = 'btn btn--sm cn__go';
+      go.textContent = en ? 'Join' : 'Ir';
+      go.title = en ? `Go to ${m.name}'s room` : `Ir a la sala de ${m.name}`;
+      go.addEventListener('click', () => goToClubRoom(m));
+      card.append(go);
+    }
     nodes.push(card);
   }
   if (!online.length) {

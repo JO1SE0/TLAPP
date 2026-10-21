@@ -11,6 +11,7 @@ window.TL_NEWS = {
   title: { es: 'Qué hay de nuevo', en: "What's new" },
   items: {
     es: [
+      'Plantel en vivo: botón «Ir» junto a cada compañero que está en una sala, para entrar a la misma con un clic.',
       'Chat en «Ancho completo»: ahora el chat y el cuadro de FPS comparten el mismo fondo y la misma opacidad. Los ajustes propios de fondo y opacidad quedan para el modo «Compacto».',
       'Arreglo: el color y la fuente de tu nombre en la lista de la sala ahora los ven los demás con la app (y vos ves los de ellos). Antes cada uno veía solo el suyo.',
       'Nuevo (opcional): Rendimiento → «Simulación liviana». Con FPS muy altos evita recalcular la física en cada cuadro dibujado. Viene apagada.',
