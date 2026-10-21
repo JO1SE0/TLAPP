@@ -6541,76 +6541,7 @@ function installTracking(view) {
    * los adornos.
    */
   let brushBroken = false;
-  /*
-   * Distorsión de la pelota (opcional, viene apagada). El cliente dibuja la pelota
-   * con la escala corrida alrededor de TU ficha. Es sólo cómo se ve: la pelota
-   * de verdad sigue donde está y los toques dependen de ella.
-   */
-  const myDisc = { x: 0, y: 0, ok: false };
-  let lastMe = null;
-  let ballWarpOn = false;
-  view.__tvmBallPre = (ctx, idx, ball) => {
-    if (idx !== 0 || visual.ballWarp === 1 || !myDisc.ok || !ball || !ball.a) return;
-    let k = visual.ballWarp;
-    const when = visual.ballWarpWhen;
-    if (when !== 'always') {
-      /*
-       * Cuándo se aplica la distorsión, según la distancia ENTRE BORDES de la
-       * pelota y la ficha:
-       *   · free / freeMe: sólo con la pelota en el aire. Si una ficha la toca
-       *     (cualquiera, o sólo la tuya) se dibuja en su lugar real y la
-       *     distorsión vuelve suave al separarse.
-       *   · near: al revés. Sólo se distorsiona cuando la pelota está cerca de
-       *     TU ficha, y de las demás no se entera.
-       */
-      const ff = tracker.fields;
-      const players = tracker.room && ff && tracker.room[ff.players];
-      let gapAny = Infinity;
-      let gapMe = Infinity;
-      if (players) {
-        for (let i = 0; i < players.length; i++) {
-          const p = players[i];
-          const d = p && p[ff.disc];
-          const at = d && d[ff.pos];
-          if (!at) continue;
-          const rr = (ff.radius && d[ff.radius]) || DEFAULT_PLAYER_RADIUS;
-          const g = Math.hypot(at.x - ball.a.x, at.y - ball.a.y) - rr - (ball.V || 10);
-          if (g < gapAny) gapAny = g;
-          if (p === lastMe && g < gapMe) gapMe = g;
-        }
-      }
-      let w;
-      if (when === 'near') {
-        const t = Math.min(1, Math.max(0, gapMe / visual.ballWarpRange));
-        w = 1 - t * t * (3 - 2 * t);
-      } else {
-        const t = Math.min(1, Math.max(0, (when === 'freeMe' ? gapMe : gapAny) / 45));
-        w = t * t * (3 - 2 * t);
-      }
-      k = 1 + (visual.ballWarp - 1) * w;
-    }
-    ballWarpOn = true;
-    ctx.save();
-    ctx.translate(myDisc.x, myDisc.y);
-    ctx.scale(k, k);
-    ctx.translate(-myDisc.x, -myDisc.y);
-  };
-  view.__tvmBallPost = (ctx, idx) => {
-    if (idx !== 0 || !ballWarpOn) return;
-    ballWarpOn = false;
-    ctx.restore();
-  };
   view.__tvmPaint = (ctx, renderer, zoom) => {
-    if (visual.ballWarp !== 1) {
-      // Dónde está tu ficha en ESTE cuadro (la pelota se escala alrededor de ella).
-      const ff = tracker.fields;
-      const yo = renderer && renderer.__tvmMe;
-      const disc = yo && ff && yo[ff.disc];
-      const at = disc && disc[ff.pos];
-      lastMe = yo || null;
-      myDisc.ok = !!at;
-      if (at) { myDisc.x = at.x; myDisc.y = at.y; }
-    }
     if (brushBroken) return;
     ownDraw++;
     try {
@@ -9586,7 +9517,7 @@ const visual = {
   pitchLine: 1, discLine: 1, ballLine: 1, ballSize: 1, discSize: 1, lines: false, sizes: false,
   texture: 'none', crest: false, crestOpacity: 0.18, crestSize: 0.45,
   lineColor: '', postColor: '', discOutline: '', ballOutline: '',
-  discStyle: 'default', discFilter: '', discFilterAll: true, ownRing: false, ownRingColor: '', ownRingAlpha: 0.3, ownRingRadius: 25, ownRingSoft: 0, ballWarp: 1, ballWarpWhen: 'free', ballWarpRange: 90, weather: '', weatherAmount: 0.6, score: '', scoreOpacity: 0.16, ballStyle: 'default', ringStyle: 'default', ringColor: '', light: '', shadows: false, ballColor: '', lineGlow: false,
+  discStyle: 'default', discFilter: '', discFilterAll: true, ownRing: false, ownRingColor: '', ownRingAlpha: 0.3, ownRingRadius: 25, ownRingSoft: 0, weather: '', weatherAmount: 0.6, score: '', scoreOpacity: 0.16, ballStyle: 'default', ringStyle: 'default', ringColor: '', light: '', shadows: false, ballColor: '', lineGlow: false,
   selfTrail: false, selfTrailColor: '',
   nameScale: 1, nameColor: '', nameOutline: false, nameFont: 'default',
   /** Hay algo que hacerle a las fichas o a la pelota en el `stroke()`. */
@@ -9626,9 +9557,6 @@ function syncCanvasHotFlags() {
   visual.discFilter = ['pixel', 'mono', 'toon'].includes(cfg.discFilter) ? cfg.discFilter : '';
   visual.discFilterAll = cfg.discFilterScope !== 'mine';
   visual.light = ['vignette', 'spot', 'corners'].includes(cfg.pitchLight) ? cfg.pitchLight : '';
-  visual.ballWarp = clampNum(cfg.ballWarp, 0.7, 1.3, 1);
-  visual.ballWarpWhen = ['always', 'free', 'freeMe', 'near'].includes(cfg.ballWarpWhen) ? cfg.ballWarpWhen : 'free';
-  visual.ballWarpRange = clampNum(cfg.ballWarpRange, 30, 250, 90);
   visual.ownRingColor = lookfx.safeColor(cfg.ownRingColor);
   visual.ownRingAlpha = clampNum(cfg.ownRingAlpha, 0.02, 1, 0.3);
   visual.ownRingRadius = clampNum(cfg.ownRingRadius, 16, 80, 25);
@@ -10066,6 +9994,15 @@ function installCanvasHooks(doc) {
       return undefined;
     }
     if ((visual.sizes || visual.lines || visual.discFx) && ownDraw === 0 && playerPatterns.has(this.fillStyle)) {
+      // Red de seguridad: si el disco anterior quedó agrandado y su `stroke` nunca
+      // llegó, se deshace acá. Sin esto la escala se acumulaba y corría todo lo que
+      // se dibujaba después (puntos del mapa, pelota, fichas de otros).
+      if (pend.on && pend.k !== 1) {
+        this.translate(pend.x, pend.y);
+        this.scale(1 / pend.k, 1 / pend.k);
+        this.translate(-pend.x, -pend.y);
+        pend.on = false;
+      }
       const k = visual.discSize;
       // La sombra va antes de agrandar: se agranda junto con la ficha.
       if (visual.shadows) softShadow(this, x, y, r, false);
