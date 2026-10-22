@@ -4884,8 +4884,8 @@ function showNowPlaying(ms) {
   void el.offsetWidth;
   el.classList.add('np--swap');
   requestAnimationFrame(() => el.classList.add('is-in'));
+  // Se queda mientras suene la música: sólo se esconde al silenciarla (o al entrar a una sala).
   clearTimeout(npTimer);
-  if (!card) npTimer = setTimeout(hideNowPlaying, ms || 6000);
   clearInterval(npProgress);
   paintNowTick();
   npProgress = setInterval(paintNowTick, 500);
@@ -4901,8 +4901,7 @@ function hideNowPlaying() {
 window.addEventListener('resize', () => {
   const el = $('#nowPlaying');
   if (!el || el.hidden) return;
-  if (layoutNowPlaying()) clearTimeout(npTimer);
-  else { clearTimeout(npTimer); npTimer = setTimeout(hideNowPlaying, 4000); }
+  layoutNowPlaying();
 });
 window.addEventListener('tl:track', (e) => {
   // Para el resplandor del fondo: sólo importa si suena o no.
@@ -4918,11 +4917,11 @@ window.addEventListener('tl:track', (e) => {
     showNowPlaying(6000);
   } else if (!d.playing) hideNowPlaying();
 });
-$('#nowPlaying').addEventListener('mouseenter', () => clearTimeout(npTimer));
-$('#nowPlaying').addEventListener('mouseleave', () => { if (!$('#nowPlaying').classList.contains('np--card')) npTimer = setTimeout(hideNowPlaying, 2500); });
 // Al pasar por la música se muestra el tema; al pasar por los estilos de sonido se esconde, porque ahí se abre su selector.
-$('#audMusic').addEventListener('mouseenter', () => showNowPlaying(4500));
+$('#audMusic').addEventListener('mouseenter', () => { if (npPlaying && $('#nowPlaying').hidden) showNowPlaying(); });
 $('.audio__sfx').addEventListener('mouseenter', hideNowPlaying);
+// Al salir del selector de sonidos la tarjeta vuelve sola (si la música sigue sonando).
+$('.audio__sfx').addEventListener('mouseleave', () => { if (npPlaying && state.stage !== 'game') showNowPlaying(); });
 $('#npPlay').addEventListener('click', () => window.TLMusic && window.TLMusic.toggle());
 window.addEventListener('tl:musicstate', (e) => {
   const paused = !!(e.detail && e.detail.paused);
