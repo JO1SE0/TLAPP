@@ -144,40 +144,14 @@
 
       <!-- Audio del menú: música (on/off + volumen) y sonidos de botones. Se esconde dentro de la sala. -->
       <div class="audio" id="audio">
-        <div class="audio__music">
-          <button class="iconbtn audio__btn" id="audMusic" type="button" data-i18n-title="audio.music" title="Música del menú" aria-label="Música del menú">
-            <svg data-icon viewBox="0 0 24 24"><path d="M4 9.6v4.8h3.4L12 18.4V5.6L7.4 9.6H4z"/><path class="audio__on" d="M15.4 9.2a4 4 0 0 1 0 5.6M17.9 6.7a7.5 7.5 0 0 1 0 10.6"/><path class="audio__off" d="M15.5 9.5l5 5M20.5 9.5l-5 5"/></svg>
-          </button>
-          <span class="eq eq--mini" id="audEq" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
-          <!-- Panel de música: tema, avance, controles y volumen. Se abre al pasar por el ícono, también dentro de una sala. -->
-          <div class="audio__panel" id="audPanel">
-            <div class="audio__panel-in">
-              <div class="aud__head">
-                <span class="aud__label" data-i18n="audio.now">Ahora suena</span>
-                <span class="aud__count" id="audCount"></span>
-              </div>
-              <b class="aud__title" id="audTitle">—</b>
-              <em class="aud__artist" id="audArtist" hidden></em>
-              <div class="aud__seek" id="audSeek">
-                <span class="aud__bar"><i id="audBar"></i></span>
-                <span class="aud__times"><span id="audCur">0:00</span><span id="audDur">0:00</span></span>
-              </div>
-              <div class="aud__ctl">
-                <button class="iconbtn audio__btn" id="audPrev" type="button" data-i18n-title="audio.prev" title="Tema anterior" aria-label="Tema anterior"><svg data-icon viewBox="0 0 24 24"><path d="M7 5.5v13M18 6l-8 6 8 6z"/></svg></button>
-                <button class="np__play aud__play" id="audPlay" type="button" title="Pausar" aria-label="Pausar">
-                  <svg viewBox="0 0 24 24" class="np__ico-pause"><path d="M8.5 6v12M15.5 6v12"/></svg>
-                  <svg viewBox="0 0 24 24" class="np__ico-play"><path d="M8 5.5v13l10.5-6.5z"/></svg>
-                </button>
-                <button class="iconbtn audio__btn" id="audNext" type="button" data-i18n-title="audio.next" title="Tema siguiente" aria-label="Tema siguiente"><svg data-icon viewBox="0 0 24 24"><path d="M17 5.5v13M6 6l8 6-8 6z"/></svg></button>
-              </div>
-              <div class="aud__vol">
-                <svg viewBox="0 0 24 24" class="aud__vico"><path d="M4 9.6v4.8h3.4L12 18.4V5.6L7.4 9.6H4z"/></svg>
-                <input type="range" class="audio__vol" id="audVol" min="0" max="1" step="0.01" aria-label="Volumen de la música" />
-                <span class="aud__pct" id="audPct">35%</span>
-              </div>
-            </div>
-          </div>
-        </div>
+        <button class="iconbtn audio__btn" id="audMusic" type="button" data-i18n-title="audio.music" title="Música del menú" aria-label="Música del menú">
+          <svg data-icon viewBox="0 0 24 24"><path d="M4 9.6v4.8h3.4L12 18.4V5.6L7.4 9.6H4z"/><path class="audio__on" d="M15.4 9.2a4 4 0 0 1 0 5.6M17.9 6.7a7.5 7.5 0 0 1 0 10.6"/><path class="audio__off" d="M15.5 9.5l5 5M20.5 9.5l-5 5"/></svg>
+        </button>
+        <span class="eq eq--mini" id="audEq" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+        <button class="iconbtn audio__btn audio__skip" id="audPrev" type="button" data-i18n-title="audio.prev" title="Tema anterior" aria-label="Tema anterior"><svg data-icon viewBox="0 0 24 24"><path d="M7 5.5v13M18 6l-8 6 8 6z"/></svg></button>
+        <button class="iconbtn audio__btn audio__skip" id="audNext" type="button" data-i18n-title="audio.next" title="Tema siguiente" aria-label="Tema siguiente"><svg data-icon viewBox="0 0 24 24"><path d="M17 5.5v13M6 6l8 6-8 6z"/></svg></button>
+        <span class="audio__now" id="audNow" hidden></span>
+        <input type="range" class="audio__vol" id="audVol" min="0" max="1" step="0.01" aria-label="Volumen de la música" />
         <div class="audio__sfx">
           <button class="iconbtn audio__btn" id="audSfx" type="button" data-i18n-title="audio.sfx" title="Sonidos de los botones" aria-label="Sonidos de los botones">
           <svg data-icon viewBox="0 0 24 24"><path d="M12 4.5l1.7 4.8 4.8 1.7-4.8 1.7L12 17.5l-1.7-4.8L5.5 11l4.8-1.7z"/><path class="audio__off" d="M5 19.5L19.5 5"/></svg>
