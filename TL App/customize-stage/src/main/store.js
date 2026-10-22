@@ -117,6 +117,9 @@ const DEFAULTS = {
     /** Estilo de esos sonidos: soft | modern | arcade. */
     uiSoundStyle: 'modern',
     musicVolume: 0.35,
+    /** Temas con corazón (suenan más seguido) y temas ocultos (no suenan): nombres de archivo. */
+    musicLikes: [],
+    musicHidden: [],
     /** Saca el chat de la pantalla durante la partida y en la sala. */
     hideChat: false,
     /** El cartel de gol estilo TV, con autor y asistencia. */

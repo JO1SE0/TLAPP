@@ -18,6 +18,7 @@
     all: [], tracks: [], index: 0, pool: [], cur: 0,
     enabled: true, volume: 0.35, club: true,
     allowed: false, inGame: false, started: false, userPaused: false,
+    likes: new Set(), hidden: new Set(), hist: [], queued: -1,
     introDone: false, errors: 0, xfade: 3000, crossing: false, loading: null, timers: new WeakMap()
   };
 
@@ -96,15 +97,52 @@
     announce();
   }
 
-  /** Avanza (o retrocede) en la lista. */
+  /**
+   * El que sigue: al azar, pero los que marcaste con corazón salen tres veces más seguido, no repite
+   * ninguno de los últimos que sonaron y la de bienvenida no vuelve. Se elige de antemano para poder
+   * mostrar «Sigue:» en la tarjeta.
+   */
+  function pickNext() {
+    const n = M.tracks.length;
+    if (n < 2) return n ? 0 : -1;
+    const recent = new Set(M.hist.slice(-Math.min(4, Math.floor(n / 2))));
+    const cur = M.index % n;
+    const cand = [];
+    let total = 0;
+    for (let i = 0; i < n; i++) {
+      const t = M.tracks[i];
+      if (i === cur || recent.has(t.name) || (M.introDone && isIntro(t))) continue;
+      const w = M.likes.has(t.name) ? 3 : 1;
+      cand.push([i, w]);
+      total += w;
+    }
+    if (!cand.length) return (cur + 1) % n;
+    let r = Math.random() * total;
+    for (const [i, w] of cand) { r -= w; if (r <= 0) return i; }
+    return cand[cand.length - 1][0];
+  }
+  const queued = () => {
+    if (!(M.queued >= 0 && M.queued < M.tracks.length) || M.queued === M.index % M.tracks.length) M.queued = pickNext();
+    return M.queued;
+  };
+
+  /** Avanza (o retrocede). Atrás vuelve a los que ya sonaron, en orden. */
   function step(dir, smooth) {
     if (!M.tracks.length) return;
     // Saltear con la música en pausa la retoma.
     if (M.userPaused) { M.userPaused = false; state(); }
     const n = M.tracks.length;
-    M.index = ((M.index + dir) % n + n) % n;
-    // Ya sonó la de bienvenida: no vuelve (salvo que no haya otra).
-    for (let i = 0; M.introDone && isIntro(M.tracks[M.index]) && i < n; i++) M.index = ((M.index + (dir || 1)) % n + n) % n;
+    const here = M.tracks[M.index % n];
+    if (dir > 0) {
+      if (here) { M.hist.push(here.name); if (M.hist.length > 40) M.hist.shift(); }
+      M.index = queued();
+      M.queued = -1;
+    } else {
+      let i = -1;
+      while (M.hist.length && i < 0) i = M.tracks.findIndex((t) => t.name === M.hist.pop());
+      M.index = i >= 0 ? i : ((M.index - 1) % n + n) % n;
+      M.queued = -1;
+    }
     if (wantPlaying()) playIndex(smooth ? M.xfade : 0);
   }
 
@@ -136,7 +174,8 @@
   }
 
   function applyFilter() {
-    const keep = M.all.filter((t) => t.user || M.club);
+    const keep = M.all.filter((t) => (t.user || M.club) && !M.hidden.has(t.name));
+    M.queued = -1;
     // Se conserva la pista que suena si sigue en la lista.
     const now = M.tracks[M.index % (M.tracks.length || 1)];
     M.tracks = keep;
@@ -204,6 +243,20 @@
     },
     /** Cuánto va de la canción que suena (0 a 1), para la barrita del cartel. */
     progress() { const a = current(); return a && isFinite(a.duration) && a.duration ? Math.min(1, a.currentTime / a.duration) : 0; },
+    /** Los temas con corazón (suenan más seguido) y los ocultos (no suenan). Son nombres de archivo. */
+    setLists(likes, hidden) {
+      M.likes = new Set(Array.isArray(likes) ? likes : []);
+      const next = new Set(Array.isArray(hidden) ? hidden : []);
+      const changed = next.size !== M.hidden.size || [...next].some((x) => !M.hidden.has(x));
+      M.hidden = next;
+      M.queued = -1;
+      if (changed && M.all.length) {
+        const now = M.tracks[M.index % (M.tracks.length || 1)];
+        applyFilter();
+        // Si el que suena quedó oculto, se pasa al siguiente.
+        if (now && next.has(now.name) && M.allowed && wantPlaying()) { M.index = Math.floor(Math.random() * Math.max(1, M.tracks.length)); playIndex(0); }
+      }
+    },
     /** Pausa / reanuda sin tocar el interruptor de ajustes. */
     toggle() {
       if (!M.allowed || !M.enabled) return;
@@ -229,7 +282,7 @@
     time() { const a = current(); return a && isFinite(a.duration) ? { cur: a.currentTime, dur: a.duration } : { cur: 0, dur: 0 }; },
     /** Lugar en la lista y el tema que viene. */
     get position() { return { i: M.tracks.length ? (M.index % M.tracks.length) + 1 : 0, n: M.tracks.length }; },
-    get upNext() { const n = M.tracks.length; const t = n > 1 ? M.tracks[(M.index + 1) % n] : null; return t ? { title: t.title, artist: t.artist } : null; },
+    get upNext() { const n = M.tracks.length; const t = n > 1 ? M.tracks[queued()] : null; return t ? { title: t.title, artist: t.artist } : null; },
     next() { step(1, false); },
     prev() { step(-1, false); },
     skip() { step(1, false); },

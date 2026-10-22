@@ -11,6 +11,7 @@ window.TL_NEWS = {
   title: { es: 'Qué hay de nuevo', en: "What's new" },
   items: {
     es: [
+      'Música: corazón en la tarjeta para que un tema suene más seguido, y «no volver a poner» para ocultarlo (se vuelve a sumar desde Ajustes → Música). Ya no repite el mismo tema enseguida. Además, en la barra de arriba aparece un chip «N del club jugando» cuando hay gente del club en una sala.',
       'Barra superior rediseñada: vidrio con línea de acento, pestañas con indicador, buscador de salas con halo, controles de música en una cápsula (tema, anterior / siguiente y volumen) y deslizamiento suave al ocultarla y mostrarla.',
       'Nuevo ajuste «Abrir en pantalla completa» (Configuración → Rendimiento): la app arranca ya en pantalla completa, pensado para las PCs que se traban al apretar F11 con una partida abierta.',
       'Festejo de gol del club más vistoso (destello, rayos de luz, barras doradas, marco y más cintas) y un cartel más prolijo para los goles de los demás. El resultado en el piso de la cancha ahora detecta los arcos (sin arcos no se muestra), se adapta al tamaño de la cancha —también en las de x7— y tiene un anillo que se dibuja y se abre cuando cambia el marcador.',
@@ -68,6 +69,7 @@ window.TL_NEWS = {
       'Cada clave se usa en una sola PC: si cambiás de computadora, pedile a miclo que te la libere.'
     ],
     en: [
+      'Music: a heart on the card to make a song play more often, and a hide button to never play it again (bring it back in Settings → Music). It no longer repeats a song right away. Also, a "N from the club playing" chip shows in the top bar when club members are in a room.',
       'Top bar redesigned: glass with an accent line, tabs with an indicator, room search with a glow, music controls in a capsule (track, previous / next and volume) and a smooth slide when hiding and showing it.',
       'New “Open in fullscreen” setting (Settings → Performance): the app starts already in fullscreen, meant for PCs that freeze when pressing F11 during a match.',
       'Club goal celebration is flashier (flash, light rays, gold bars, frame, more ribbons) and other players’ goals get a tidier banner. The on-pitch score now detects goals (no goals, no sign), scales to the pitch size —x7 maps included— and has a ring that draws itself and opens when the score changes.',

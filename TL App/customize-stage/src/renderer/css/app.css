@@ -6029,3 +6029,27 @@ html[data-roomview="board"] .rtable, html[data-roomview="map"] .rtable { overflo
 .topbar-reveal:hover { transform: translateY(2px); box-shadow: 0 10px 24px rgb(var(--accent-rgb) / 30%); }
 @keyframes tbRevealIn { from { transform: translateY(-100%); opacity: 0; } to { transform: none; opacity: 1; } }
 :root[data-animations="off"] .app.tb-leaving .topbar, :root[data-animations="off"] .app.tb-entering .topbar, :root[data-animations="off"] .topbar-reveal { animation: none; transition: none; }
+
+/* Tarjeta de música: corazón y «no volver a poner» */
+.np__btns { gap: 8px; }
+.np__btns .np__fav, .np__btns .np__ban { width: 30px; height: 30px; opacity: .7; }
+.np__btns .np__fav svg { fill: none; transition: fill .2s ease, transform .25s cubic-bezier(.2, 1.4, .4, 1); }
+.np__fav.is-on { opacity: 1; color: #ff6b81; }
+.np__fav.is-on svg { fill: currentColor; transform: scale(1.15); }
+.np__ban:hover { color: #ff8a8a; opacity: 1; }
+
+/* Chip de estado de la barra: club en sala */
+.topchip {
+  display: inline-flex; align-items: center; gap: 7px; height: 30px; padding: 0 11px;
+  border-radius: 999px; border: 1px solid rgb(var(--accent-rgb) / 45%);
+  background: rgb(var(--accent-rgb) / 14%); color: var(--text);
+  font-size: 12px; font-weight: 700; white-space: nowrap; -webkit-app-region: no-drag;
+  animation: topchipIn .35s cubic-bezier(.2, 1.2, .4, 1);
+}
+.topchip[hidden] { display: none; }
+.topchip:hover { background: rgb(var(--accent-rgb) / 28%); }
+.topchip__dot { width: 7px; height: 7px; border-radius: 50%; background: #3ddc84; box-shadow: 0 0 0 0 rgb(61 220 132 / 60%); animation: topchipPulse 2s ease-out infinite; }
+@keyframes topchipIn { from { opacity: 0; transform: translateY(-6px) scale(.92); } }
+@keyframes topchipPulse { 70% { box-shadow: 0 0 0 7px rgb(61 220 132 / 0%); } 100% { box-shadow: 0 0 0 0 rgb(61 220 132 / 0%); } }
+@media (prefers-reduced-motion: reduce) { .topchip, .topchip__dot { animation: none; } }
+@media (max-width: 1100px) { .topchip span { display: none; } .topchip { padding: 0 9px; } }

@@ -142,6 +142,11 @@
         <b class="toplast__name" id="topLastRoomName" hidden></b>
       </button>
 
+      <!-- Chip de estado: aparece sólo si hay gente del club jugando en una sala -->
+      <button class="topchip" id="topClubChip" type="button" hidden>
+        <i class="topchip__dot"></i><span id="topClubChipText"></span>
+      </button>
+
       <!-- Audio del menú: música (on/off + volumen) y sonidos de botones. Se esconde dentro de la sala. -->
       <div class="audio" id="audio">
         <button class="iconbtn audio__btn" id="audMusic" type="button" data-i18n-title="audio.music" title="Música del menú" aria-label="Música del menú">
@@ -217,12 +222,14 @@
         <span class="np__times"><span id="npCur">0:00</span><span id="npDur">0:00</span></span>
       </div>
       <span class="np__btns">
+        <button class="iconbtn np__fav" id="npLike" type="button" title="Me gusta: suena más seguido" aria-label="Me gusta" aria-pressed="false"><svg data-icon viewBox="0 0 24 24"><path d="M12 20.2s-7.4-4.5-7.4-10a4.3 4.3 0 0 1 7.4-3 4.3 4.3 0 0 1 7.4 3c0 5.5-7.4 10-7.4 10z"/></svg></button>
         <button class="iconbtn" id="npPrev" type="button" data-i18n-title="audio.prev" title="Anterior" aria-label="Anterior"><svg data-icon viewBox="0 0 24 24"><path d="M7 5.5v13M18 6l-8 6 8 6z"/></svg></button>
         <button class="np__play" id="npPlay" type="button" title="Pausar" aria-label="Pausar">
           <svg viewBox="0 0 24 24" class="np__ico-pause"><path d="M8.5 6v12M15.5 6v12"/></svg>
           <svg viewBox="0 0 24 24" class="np__ico-play"><path d="M8 5.5v13l10.5-6.5z"/></svg>
         </button>
         <button class="iconbtn" id="npNext" type="button" data-i18n-title="audio.next" title="Siguiente" aria-label="Siguiente"><svg data-icon viewBox="0 0 24 24"><path d="M17 5.5v13M6 6l8 6-8 6z"/></svg></button>
+        <button class="iconbtn np__ban" id="npHide" type="button" title="No volver a poner este tema" aria-label="Ocultar tema"><svg data-icon viewBox="0 0 24 24"><circle cx="12" cy="12" r="7.6"/><path d="M6.7 6.7l10.6 10.6"/></svg></button>
       </span>
       <div class="np__next" id="npUp" hidden></div>
     </div>

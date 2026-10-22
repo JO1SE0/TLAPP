@@ -853,7 +853,8 @@ function applyConfig(config) {
   paintMeChip();
   paintPreview();
   // Partículas del menú: dependen de su interruptor y de que las animaciones estén prendidas.
-  if (window.TLMusic) window.TLMusic.configure(config.appearance.music !== false, config.appearance.musicVolume, config.appearance.musicClub !== false);
+  if (window.TLMusic) { window.TLMusic.configure(config.appearance.music !== false, config.appearance.musicVolume, config.appearance.musicClub !== false); window.TLMusic.setLists(config.appearance.musicLikes, config.appearance.musicHidden); }
+  try { paintNowLike(); } catch (e) { /* la tarjeta todavía no se armó */ }
   if (window.TLSfx) window.TLSfx.configure(config.appearance.uiSounds !== false, config.appearance.uiSoundStyle);
   if (typeof paintAudio === 'function' && document.getElementById('audMusic')) paintAudio();
   if (window.TLSparks) {
@@ -2797,9 +2798,30 @@ function updateClubRooms(list) {
   clubRoomSig = sig;
   clubRoomMap.clear();
   for (const [k, v] of next) clubRoomMap.set(k, v);
+  paintClubChip();
   // Sólo se redibuja si la lista de salas está a la vista.
   if (state.view === 'play' && state.stage === 'browser' && state.rooms.list.length) renderRooms();
 }
+
+/** Chip de la barra: cuántos del club están jugando ahora (sólo si hay). */
+function paintClubChip() {
+  const chip = $('#topClubChip');
+  if (!chip) return;
+  let n = 0;
+  const rooms = clubRoomMap.size;
+  for (const v of clubRoomMap.values()) n += v.length;
+  chip.hidden = n === 0;
+  if (!n) return;
+  const en = isEn();
+  $('#topClubChipText').textContent = en ? `${n} from the club playing` : `${n} del club jugando`;
+  chip.title = en ? `${rooms} room(s) with club players. Click to see the list.` : `${rooms} sala(s) con gente del club. Tocá para ver la lista.`;
+}
+$('#topClubChip').addEventListener('click', () => {
+  setView('play');
+  if (state.stage !== 'browser') return;
+  const first = $('.rrow.is-club');
+  if (first) first.scrollIntoView({ block: 'center', behavior: 'smooth' });
+});
 
 function roomRow(room) {
   const full = room.players >= room.maxPlayers;
@@ -4797,6 +4819,23 @@ async function renderMusicOwn() {
     description: en ? 'Add mp3 files from your PC; they play along with the club songs.' : 'Sumá mp3 de tu PC: suenan junto con las del club.',
     control: add
   }));
+  // Temas ocultos: se pueden volver a sumar.
+  const hiddenNames = (state.config.appearance.musicHidden || []).slice();
+  for (const name of hiddenNames) {
+    const back = document.createElement('button');
+    back.type = 'button';
+    back.className = 'btn btn--ghost btn--sm';
+    back.textContent = en ? 'Bring back' : 'Volver a sumar';
+    back.addEventListener('click', async () => {
+      await patchConfig({ appearance: { musicHidden: (state.config.appearance.musicHidden || []).filter((n) => n !== name) } });
+      renderMusicOwn();
+    });
+    const meta = window.TLMusic && window.TLMusic.tracks.find((t) => t.name === name);
+    box.append(settingRow({
+      label: (en ? 'Hidden: ' : 'Oculto: ') + (meta ? (meta.artist ? `${meta.artist} · ${meta.title}` : meta.title) : name.replace(/\.[a-z0-9]+$/i, '')),
+      control: back
+    }));
+  }
   for (const t of mine) {
     const rm = document.createElement('button');
     rm.type = 'button';
@@ -4851,6 +4890,14 @@ function paintNowTick() {
   $('#npCur').textContent = fmtT(t.cur);
   $('#npDur').textContent = `-${fmtT(t.dur - t.cur)}`;
 }
+function paintNowLike() {
+  const likes = (state.config && state.config.appearance && state.config.appearance.musicLikes) || [];
+  const on = !!npInfo.name && likes.includes(npInfo.name);
+  const b = $('#npLike');
+  if (!b) return;
+  b.classList.toggle('is-on', on);
+  b.setAttribute('aria-pressed', String(on));
+}
 function paintNowText() {
   $('#npTitle').textContent = npInfo.title;
   // Títulos largos: se deslizan.
@@ -4861,6 +4908,7 @@ function paintNowText() {
     if (over > 4) { mq.style.setProperty('--np-shift', `-${over + 12}px`); mq.style.setProperty('--np-dur', `${Math.max(6, over / 18 + 4)}s`); mq.classList.add('is-marq'); }
   });
   paintNowExtra();
+  paintNowLike();
   const ar = $('#npArtist');
   ar.textContent = npInfo.artist || '';
   ar.hidden = !npInfo.artist;
@@ -4922,6 +4970,23 @@ $('#audMusic').addEventListener('mouseenter', () => { if (npPlaying && $('#nowPl
 $('.audio__sfx').addEventListener('mouseenter', hideNowPlaying);
 // Al salir del selector de sonidos la tarjeta vuelve sola (si la música sigue sonando).
 $('.audio__sfx').addEventListener('mouseleave', () => { if (npPlaying && state.stage !== 'game') showNowPlaying(); });
+$('#npLike').addEventListener('click', async () => {
+  if (!npInfo.name) return;
+  const ap = state.config.appearance;
+  const likes = new Set(ap.musicLikes || []);
+  if (likes.has(npInfo.name)) likes.delete(npInfo.name); else likes.add(npInfo.name);
+  await patchConfig({ appearance: { musicLikes: [...likes] } });
+  paintNowLike();
+});
+$('#npHide').addEventListener('click', async () => {
+  if (!npInfo.name) return;
+  const ap = state.config.appearance;
+  const hidden = new Set(ap.musicHidden || []);
+  hidden.add(npInfo.name);
+  const likes = (ap.musicLikes || []).filter((n) => n !== npInfo.name);
+  toast(isEn() ? 'Song hidden. You can bring it back in Settings → Music.' : 'Tema oculto. Lo volvés a sumar en Ajustes → Música.', 'ok');
+  await patchConfig({ appearance: { musicHidden: [...hidden], musicLikes: likes } });
+});
 $('#npPlay').addEventListener('click', () => window.TLMusic && window.TLMusic.toggle());
 window.addEventListener('tl:musicstate', (e) => {
   const paused = !!(e.detail && e.detail.paused);
