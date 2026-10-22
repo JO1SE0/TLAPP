@@ -99,12 +99,10 @@ async function beat(ctx) {
     lastFp = null;
     call(`${base}/rooms/${old}/${id.pid}.json`, 'DELETE').catch(() => {});
   }
-  // Los ajenos al club ni dejan casillero en la sala ni ven a los del club.
-  const meEntry = (ctx.roster || []).find((u) => u && u.pub && /^[0-9a-f]{64}$/i.test(u.pub) && identity.pidOf(u.pub) === id.pid);
-  if (meEntry && meEntry.ext) return null;
-  // Los socios no dejan casillero: no llevan insignia ni para los demás ni para el admin.
-  // Sí miran la sala, así ven la insignia de los del club como cualquiera.
-  const iAmSocio = !!(meEntry && meEntry.soc);
+    const meEntry = (ctx.roster || []).find((u) => u && u.pub && /^[0-9a-f]{64}$/i.test(u.pub) && identity.pidOf(u.pub) === id.pid);
+  // Los socios no dejan casillero: nadie los ve con la insignia. Sí miran la sala, así ven las insignias
+  // y el recuadro dorado de los del club, y ellos mismos se ven con su recuadro (sin el logo).
+  const iAmSocio = !!(meEntry && (meEntry.soc || meEntry.ext));
   if (!ctx.fp || !ctx.nick) { why = `sin sala o sin nick (sala=${ctx.fp ? 'sí' : 'no'}, nick=${ctx.nick ? 'sí' : 'no'})`; return null; }
   why = '';
   lastFp = ctx.fp;
@@ -166,7 +164,8 @@ async function beat(ctx) {
 
   // Uno mismo, para que la fila propia también lleve el aura del plantel.
   const selfEntry = byPid.get(id.pid);
-  if (!(selfEntry && (selfEntry.trial || selfEntry.soc))) peers.push({ nick, self: true, name: ctx.selfName || '', vip: false, cosmetics: { gradient: 'oro' } });
+  if (iAmSocio) peers.push({ nick, self: true, name: '', noLogo: true, vip: false, cosmetics: { gradient: 'oro' } });
+  else if (!(selfEntry && selfEntry.trial)) peers.push({ nick, self: true, name: ctx.selfName || '', vip: false, cosmetics: { gradient: 'oro' } });
   return { everyMs: EVERY_MS, peers };
 }
 

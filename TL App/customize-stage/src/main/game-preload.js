@@ -4786,7 +4786,7 @@ function setPeers(list) {
   selfClub = null;
   for (const peer of list || []) {
     const nick = String((peer && peer.nick) || '').trim();
-    if (peer && peer.self) { selfClub = { name: String(peer.name || '') }; continue; }
+    if (peer && peer.self) { selfClub = { name: String(peer.name || ''), noLogo: !!peer.noLogo }; continue; }
     if (nick) peers.set(nick, peer);
   }
   const doc = gameDocument();
@@ -4810,7 +4810,7 @@ function selfPeer() {
   const cosmetics = (isVipNow() || selfClub) && looks
     ? { ...looks, gradient: looks.gradient || (selfClub ? 'oro' : '') }
     : selfClub ? { gradient: 'oro' } : null;
-  return { nick, vip: isVipNow(), cosmetics, name: selfClub ? selfClub.name : '' };
+  return { nick, vip: isVipNow(), cosmetics, name: selfClub ? selfClub.name : '', noLogo: !!(selfClub && selfClub.noLogo) };
 }
 
 /**
@@ -4859,6 +4859,9 @@ function paintPeers(doc) {
     }
 
     marks.vip.hidden = !peer.vip;
+    // Un socio se ve con su recuadro, pero sin el logo de TL.
+    marks.logo.hidden = !!peer.noLogo;
+    marks.logo.style.display = peer.noLogo ? 'none' : '';
     const tip = peer.name ? `Toda la Lecce · ${peer.name}` : 'Está jugando con TL App';
     marks.logo.title = tip;
     marks.logo.dataset.tvmTip = tip;
@@ -8138,7 +8141,7 @@ function isClubScorer(nick) {
   if (!n) return false;
   const peer = peers.get(n);
   const me = myNick();
-  return !!((peer && peer.name) || (selfClub && me && n === me));
+  return !!((peer && peer.name) || (selfClub && selfClub.name && me && n === me));
 }
 
 function playGoalFx(doc, club) {

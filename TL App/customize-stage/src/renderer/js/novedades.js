@@ -11,7 +11,7 @@ window.TL_NEWS = {
   title: { es: 'Qué hay de nuevo', en: "What's new" },
   items: {
     es: [
-      'El panel del capitán ahora es el panel del admin, con un estado nuevo: «Socio». Un socio queda aparte del equipo: no lleva la insignia ni el recuadro dorado, no suma stats, nadie lo ve conectado ni él ve a los del equipo ni el panel Club; sólo el admin lo ve. Reemplaza a «Ajeno».',
+      'El panel del capitán ahora es el panel del admin, con un estado nuevo: «Socio». Un socio queda aparte del equipo: nadie lo ve con la insignia ni el recuadro dorado (él sí ve los de los demás, y se ve a sí mismo con su recuadro, sin el logo), no suma stats, nadie lo ve conectado ni él ve a los conectados ni el panel Club; sólo el admin lo ve. Reemplaza a «Ajeno».',
       'Música del menú renovada: 26 temas nuevos (sin la de Free Fire) y vuelve la tarjeta «Ahora suena» con tapa, tema y artista, animada y con anterior / siguiente. Al entrar a una sala la música sigue más baja, la tarjeta se va y el tema, anterior / siguiente y el volumen quedan en la barra de arriba.',
       'Carteles de resultado en el piso con animación nueva: entran escalonados con rebote, el número cambia como contador y se abren hacia su arco al salir. Y mejores acabados de cancha: madera, hielo, arena, hormigón, arcilla, mármol, nieve y carbono con más detalle.',
       'Sacamos el «Filtro de estilo» y «Filtro aplicado a» de las fichas.',
@@ -65,7 +65,7 @@ window.TL_NEWS = {
       'Cada clave se usa en una sola PC: si cambiás de computadora, pedile a miclo que te la libere.'
     ],
     en: [
-      'The captain panel is now the admin panel, with a new status: “Partner”. A partner is kept apart from the team: no badge or gold frame, no stats, nobody sees them online and they cannot see the team or the Club panel; only the admin sees them. Replaces “Outside”.',
+      'The captain panel is now the admin panel, with a new status: “Partner”. A partner is kept apart from the team: nobody sees their badge or gold frame (they do see everyone else’s, and their own frame without the logo), no stats, nobody sees them online and they cannot see who is online or the Club panel; only the admin sees them. Replaces “Outside”.',
       'Menu music refreshed: 26 tracks (Free Fire one removed) and the “Now playing” card is back with cover, title and artist, animated, with previous / next. Inside a room the music keeps playing quieter, the card goes away and the track, previous / next and volume live in the top bar.',
       'Goal celebration rebuilt in club colours (navy, gold, cream): full version when a squad member using the app scores, a short tidy banner for any other goal. On-pitch score signs have a new animation (staggered bounce-in, rolling counter) and the pitch finishes (wood, ice, sand, concrete, clay, marble, snow, carbon) have more detail. Disc style filters were removed.',
       'New: more pitch weather (autumn leaves, embers, fireflies, blizzard). All drawn with cheap shapes: nothing runs when it is off.',

@@ -234,7 +234,7 @@
       host.addEventListener('click', async () => { if (await act({ type: 'setHost', name: m.name, value: !m.host })) flash(m.host ? `${m.name} ya no hostea.` : `${m.name} ahora puede hostear.`); });
       const soc = el('button', 'cap__btn cap__btn--ghost cap__btn--sm', (m.soc || m.ext) ? 'Socio: sí' : 'Socio: no');
       soc.type = 'button'; soc.disabled = m.self || busy;
-      soc.title = 'Socio: queda aparte del equipo. No lleva la insignia de la TL App ni el recuadro dorado, no suma stats, nadie lo ve conectado ni él ve a los del equipo, ni el panel Club. Sólo lo ves vos.';
+      soc.title = 'Socio: queda aparte del equipo. Nadie lo ve con la insignia ni el recuadro dorado (él sí ve los de los demás y se ve a sí mismo con su recuadro, sin el logo). No suma stats, no se ve conectado y no ve conectados ni el panel Club. Sólo lo ves vos.';
       soc.addEventListener('click', async () => { if (await act({ type: 'setSocio', name: m.name, value: !(m.soc || m.ext) })) flash((m.soc || m.ext) ? `${m.name} ya no es socio.` : `${m.name} quedó catalogado como socio.`); });
       acts.append(soc, host, rep, free, nk, del);
       row.append(name, state, ver, acts);
