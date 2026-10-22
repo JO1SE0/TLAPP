@@ -346,9 +346,9 @@ const GATE_TEXT = {
 };
 
 /* ── Actualización obligatoria ────────────────────────────────
- * Si el capitán la tiene activa (panel → Acceso y versión) y hay una versión publicada más
+ * Si el admin la tiene activa (panel → Acceso y versión) y hay una versión publicada más
  * nueva que la que tenés, la app muestra este cartel y no deja usarla hasta actualizar.
- * Sólo se pide al abrir la app: si ya estás en una sala, no te interrumpe. El capitán queda afuera. */
+ * Sólo se pide al abrir la app: si ya estás en una sala, no te interrumpe. El admin queda afuera. */
 const FORCE_MSGS = {
   es: [
     'Tu TL App quedó en el siglo pasado. Actualizá y volvé a la cancha.',
@@ -452,7 +452,7 @@ function showGate(reason, extra) {
   setTimeout(() => { const i = gate.querySelector('.gate__input'); if (i) i.focus(); }, 50);
 }
 
-/* Aviso del capitán (access.json → announcement): se muestra una vez por aviso. */
+/* Aviso del admin (access.json → announcement): se muestra una vez por aviso. */
 function noticeSeen() { try { return localStorage.getItem('tl_notice_seen') || ''; } catch (e) { return ''; } }
 function showNoticeIfReady() {
   const n = state.access && state.access.notice;
@@ -471,7 +471,7 @@ function showNoticeIfReady() {
   img.className = 'gate__crest';
   const h = document.createElement('h2');
   h.className = 'gate__title';
-  h.textContent = n.title || (en ? "Captain's notice" : 'Aviso del capitán');
+  h.textContent = n.title || (en ? "Admin's notice" : 'Aviso del admin');
   const p = document.createElement('p');
   p.className = 'notice__text';
   p.textContent = n.text;
@@ -488,7 +488,7 @@ function showNoticeIfReady() {
   document.body.append(box);
   setTimeout(() => btn.focus(), 50);
 }
-/* Aviso urgente del capitán: aparece enseguida, también dentro de una sala. */
+/* Aviso urgente del admin: aparece enseguida, también dentro de una sala. */
 function urgentSeen() { try { return localStorage.getItem('tl_urgent_seen') || ''; } catch (e) { return ''; } }
 function showUrgentIfAny() {
   const u = state.access && state.access.urgent;
@@ -553,7 +553,7 @@ function showBack(info) {
 }
 if (window.tvm.presence && window.tvm.presence.onBack) window.tvm.presence.onBack(showBack);
 
-/* «Qué hay de nuevo»: una vez por cada `id` de novedades.js, después del aviso del capitán. */
+/* «Qué hay de nuevo»: una vez por cada `id` de novedades.js, después del aviso del admin. */
 function newsSeen() { try { return localStorage.getItem('tl_news_seen') || ''; } catch (e) { return ''; } }
 function showNewsIfReady() {
   const n = window.TL_NEWS;
@@ -2787,7 +2787,7 @@ let clubRoomSig = '';
 function updateClubRooms(list) {
   const next = new Map();
   for (const m of (Array.isArray(list) ? list : [])) {
-    if (!m || !m.online || !m.room || m.self || m.trial || m.ext) continue;
+    if (!m || !m.online || !m.room || m.self || m.trial || m.ext || m.soc) continue;
     const key = String(m.room).trim().slice(0, 40).toLowerCase();
     if (!next.has(key)) next.set(key, []);
     next.get(key).push(m.name);
@@ -3168,7 +3168,7 @@ $('#actJoin').addEventListener('click', () => {
   if (state.selected) joinRoom(state.selected);
 });
 $('#actAutoJoin').addEventListener('click', toggleAutoJoin);
-/* Punto rojo en «Capitán»: cada minuto se mira si hay algo sin ver (sólo para el capitán). */
+/* Punto rojo en «Admin»: cada minuto se mira si hay algo sin ver (sólo para el admin). */
 async function refreshCaptainDot() {
   const btn = $('#captainBtn');
   if (!btn || btn.hidden || !window.TLCaptain) return;
@@ -10183,7 +10183,7 @@ function paintClubNow(list) {
     const txt = document.createElement('div');
     txt.className = 'cn__txt';
     const name = document.createElement('b');
-    name.textContent = m.name + (m.self ? (en ? ' (you)' : ' (vos)') : '') + (m.ext ? (en ? ' · outside' : ' · ajeno') : '');
+    name.textContent = m.name + (m.self ? (en ? ' (you)' : ' (vos)') : '') + (m.ext ? (en ? ' · outside' : ' · ajeno') : '') + (m.soc ? (en ? ' · partner' : ' · socio') : '');
     const where = document.createElement('span');
     where.textContent = m.room ? (en ? `in “${m.room}”` : `en «${m.room}»`) : (en ? 'in the menu' : 'en el menú');
     if (m.room) where.classList.add('is-room');
@@ -10214,7 +10214,7 @@ function paintClubNow(list) {
     wrap.append(label);
     for (const m of off) {
       const chip = document.createElement('em');
-      chip.textContent = m.name + (m.ext ? (en ? ' · outside' : ' · ajeno') : '');
+      chip.textContent = m.name + (m.ext ? (en ? ' · outside' : ' · ajeno') : '') + (m.soc ? (en ? ' · partner' : ' · socio') : '');
       chip.title = m.lastSeen ? (en ? 'last seen ' : 'visto ') + new Date(m.lastSeen).toLocaleDateString(en ? 'en' : 'es', { day: 'numeric', month: 'short' }) : (en ? 'never seen' : 'sin conexión');
       wrap.append(chip);
     }
@@ -10277,7 +10277,7 @@ function paintClubRank() {
 
   const unit = { goals: en ? 'goals' : 'goles', assists: en ? 'assists' : 'asist.', matches: en ? 'matches' : 'partidos', gpm: en ? 'goals/match' : 'gol/partido' }[clubRankKey];
   const mk = (tag, cls, txt) => { const e = document.createElement(tag); if (cls) e.className = cls; if (txt !== undefined) e.textContent = txt; return e; };
-  const label = (m) => m.name + (m.ext ? (en ? ' · outside' : ' · ajeno') : '');
+  const label = (m) => m.name + (m.ext ? (en ? ' · outside' : ' · ajeno') : '') + (m.soc ? (en ? ' · partner' : ' · socio') : '');
 
   // Podio: los tres primeros, el primero más alto.
   const top = rows.filter((m) => value(m) > 0).slice(0, 3);
@@ -10523,7 +10523,7 @@ function paintReports() {
   const en = isEn();
   $('#reportsHelp').textContent = en
     ? 'Load a replay from your computer and its match report is built from it: who played, substitutions, goals and assists, own goals and the moment each team conceded its first goal. Nothing is saved. Only the captain and whoever he delegates can see this section.'
-    : 'Cargá una replay desde tu PC y se arma el informe a partir de ella: quiénes jugaron, los cambios, goles y asistencias, goles en contra y el momento en que a cada equipo le hicieron el primer gol. No se guarda nada. Esta sección sólo la ven el capitán y quien él habilite.';
+    : 'Cargá una replay desde tu PC y se arma el informe a partir de ella: quiénes jugaron, los cambios, goles y asistencias, goles en contra y el momento en que a cada equipo le hicieron el primer gol. No se guarda nada. Esta sección sólo la ven el admin y quien él habilite.';
   const btn = $('#reportsLoad');
   if (btn) { btn.disabled = reportBusy; btn.textContent = en ? 'Load replay…' : 'Cargar replay…'; }
 }
@@ -11040,7 +11040,7 @@ function paintHub() {
   }
   navDests().forEach((d, i) => tiles.push({ title: en ? d.en : d.es, sub: hubSub(d.view, en), icon: navIcon(d.view), key: String(i + 1), run: () => goView(d.view) }));
   const cap = $('#captainBtn');
-  if (cap && !cap.hidden) tiles.push({ title: en ? 'Captain' : 'Capitán', sub: en ? 'Club admin' : 'Administración del club', icon: cap.querySelector('svg') && cap.querySelector('svg').cloneNode(true), run: () => cap.click() });
+  if (cap && !cap.hidden) tiles.push({ title: en ? 'Admin' : 'Admin', sub: en ? 'Club admin' : 'Administración del club', icon: cap.querySelector('svg') && cap.querySelector('svg').cloneNode(true), run: () => cap.click() });
   grid.replaceChildren(...tiles.map((tile, i) => {
     const b = document.createElement('button');
     b.type = 'button';

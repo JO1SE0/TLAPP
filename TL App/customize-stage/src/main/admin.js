@@ -1,9 +1,9 @@
 'use strict';
 
 /**
- * Acciones del capitán: cada una arma la lista oficial nueva (acceso, avisos,
- * versión mínima), la firma con la clave del capitán y la deja en Firebase.
- * Las apps de los demás sólo la aceptan si la firma es de un capitán de access.json.
+ * Acciones del admin: cada una arma la lista oficial nueva (acceso, avisos,
+ * versión mínima), la firma con la clave del admin y la deja en Firebase.
+ * Las apps de los demás sólo la aceptan si la firma es de un admin de access.json.
  */
 
 const identity = require('./identity');
@@ -34,6 +34,7 @@ function describe(action, extra) {
     case 'setReports': return { text: action.value === true ? `Le dio acceso a los informes a ${n}` : `Le sacó el acceso a los informes a ${n}`, who: n };
     case 'setHost': return { text: action.value === true ? `Le dio permiso para hostear internos a ${n}` : `Le sacó el permiso para hostear internos a ${n}`, who: n };
     case 'setExternal': return { text: action.value === true ? `Marcó a ${n} como ajeno al club` : `Marcó a ${n} como parte del club`, who: n };
+    case 'setSocio': return { text: action.value === true ? `Catalogó a ${n} como socio` : `Sacó a ${n} de socios`, who: n };
     case 'addTrial': return { text: `Creó una clave de prueba para ${extra ? extra.name : n} (${fmtMin(Math.round(Number(action.minutes)) || 0)})`, who: extra ? extra.name : n };
     case 'setTrial': return { text: Math.round(Number(action.minutes)) === 0 ? `Pasó a ${n} de prueba a acceso común` : `Cambió la prueba de ${n} a ${fmtMin(Math.round(Number(action.minutes)) || 0)}`, who: n };
     case 'removeUser': return { text: `Quitó a ${n}`, who: n };
@@ -64,7 +65,7 @@ const undoInfo = () => (undoSnap && Date.now() - undoSnap.at < UNDO_MS ? { label
 function applyAction(cur, action, myPub) {
   const doc = {
     enabled: cur.enabled === true,
-    users: cur.users.map((u) => ({ name: u.name, hash: u.hash, pub: u.pub, epoch: Number(u.epoch) || 0, banned: Array.isArray(u.banned) ? u.banned.slice(-5) : [], ...(Number(u.trial) > 0 ? { trial: Number(u.trial) } : {}), ...(u.rep === true ? { rep: true } : {}), ...(u.host === true ? { host: true } : {}), ...(u.ext === true ? { ext: true } : {}) })),
+    users: cur.users.map((u) => ({ name: u.name, hash: u.hash, pub: u.pub, epoch: Number(u.epoch) || 0, banned: Array.isArray(u.banned) ? u.banned.slice(-5) : [], ...(Number(u.trial) > 0 ? { trial: Number(u.trial) } : {}), ...(u.rep === true ? { rep: true } : {}), ...(u.host === true ? { host: true } : {}), ...(u.ext === true ? { ext: true } : {}), ...(u.soc === true ? { soc: true } : {}) })),
     removed: (cur.removed || []).slice(),
     notices: cur.notices.slice(),
     minVersion: cur.minVersion || '',
@@ -99,8 +100,15 @@ function applyAction(cur, action, myPub) {
     case 'setExternal': {
       const target = doc.users.find((u) => String(u.name).toLowerCase() === String(action.name || '').toLowerCase());
       if (!target) throw new Error('No encontré a esa persona.');
-      if (target.pub === myPub) throw new Error('Vos sos el capitán, no podés marcarte como ajeno.');
+      if (target.pub === myPub) throw new Error('Vos sos el admin, no podés marcarte como ajeno.');
       if (action.value === true) { target.ext = true; delete target.rep; delete target.host; } else delete target.ext;
+      break;
+    }
+    case 'setSocio': {
+      const target = doc.users.find((u) => String(u.name).toLowerCase() === String(action.name || '').toLowerCase());
+      if (!target) throw new Error('No encontré a esa persona.');
+      if (target.pub === myPub) throw new Error('Vos sos el admin, no podés marcarte como socio.');
+      if (action.value === true) target.soc = true; else delete target.soc;
       break;
     }
     case 'setReports': {
@@ -132,20 +140,20 @@ function applyAction(cur, action, myPub) {
       if (!target) throw new Error('No encontré a esa persona.');
       if (target.pub === myPub) throw new Error('No podés sacarte a vos mismo.');
       doc.users = doc.users.filter((u) => u !== target);
-      doc.removed = [...doc.removed.filter((u) => u.name !== target.name), { name: target.name, hash: target.hash, pub: target.pub, epoch: target.epoch, banned: target.banned || [], trial: target.trial || 0, rep: target.rep === true, host: target.host === true, ext: target.ext === true, at: Date.now() }].slice(-100);
+      doc.removed = [...doc.removed.filter((u) => u.name !== target.name), { name: target.name, hash: target.hash, pub: target.pub, epoch: target.epoch, banned: target.banned || [], trial: target.trial || 0, rep: target.rep === true, host: target.host === true, ext: target.ext === true, soc: target.soc === true, at: Date.now() }].slice(-100);
       break;
     }
     case 'restoreUser': {
       const back = doc.removed.find((u) => String(u.name).toLowerCase() === String(action.name || '').toLowerCase());
       if (!back) throw new Error('No encontré a esa persona entre los quitados.');
       doc.removed = doc.removed.filter((u) => u !== back);
-      doc.users.push({ name: back.name, hash: back.hash, pub: back.pub, epoch: (Number(back.epoch) || 0) + 1, banned: back.banned || [], ...(Number(back.trial) > 0 ? { trial: Number(back.trial) } : {}), ...(back.rep === true ? { rep: true } : {}), ...(back.host === true ? { host: true } : {}), ...(back.ext === true ? { ext: true } : {}) });
+      doc.users.push({ name: back.name, hash: back.hash, pub: back.pub, epoch: (Number(back.epoch) || 0) + 1, banned: back.banned || [], ...(Number(back.trial) > 0 ? { trial: Number(back.trial) } : {}), ...(back.rep === true ? { rep: true } : {}), ...(back.host === true ? { host: true } : {}), ...(back.ext === true ? { ext: true } : {}), ...(back.soc === true ? { soc: true } : {}) });
       break;
     }
     case 'changeKey': {
       const target = doc.users.find((u) => String(u.name).toLowerCase() === String(action.name || '').toLowerCase());
       if (!target) throw new Error('No encontré a esa persona.');
-      if (target.pub === myPub) throw new Error('Tu clave de capitán no se cambia desde acá.');
+      if (target.pub === myPub) throw new Error('Tu clave de admin no se cambia desde acá.');
       const key = newKey();
       target.hash = identity.hashKey(key);
       target.pub = identity.fromKey(key).pub;
@@ -200,7 +208,7 @@ function applyAction(cur, action, myPub) {
 }
 
 async function run(action) {
-  if (!access.isCaptain()) throw new Error('Sólo el capitán puede hacer esto.');
+  if (!access.isCaptain()) throw new Error('Sólo el admin puede hacer esto.');
   const url = presence.cleanUrl(access.presenceUrl());
   const key = access.getKey();
   if (!url || !key) throw new Error('No hay conexión con la base de datos del club.');
@@ -271,7 +279,7 @@ async function readAttempts() {
 }
 
 async function clearAttempts() {
-  if (!access.isCaptain()) throw new Error('Sólo el capitán puede hacer esto.');
+  if (!access.isCaptain()) throw new Error('Sólo el admin puede hacer esto.');
   const url = presence.cleanUrl(access.presenceUrl());
   if (!url) return;
   const list = await readAttempts();

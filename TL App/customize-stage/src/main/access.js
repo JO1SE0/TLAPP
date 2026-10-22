@@ -35,7 +35,7 @@ const DAY = 24 * 3600 * 1000;
 let dir = null;
 let saved = { key: '', enabled: null, name: '', validatedAt: 0, admin: null, device: '', trialKey: '', trialStart: 0, trialMins: 0 };
 let status = { state: 'ok', name: '', reason: '', notice: null };
-/** Último anuncio del capitán que se pudo leer (se conserva si después no hay conexión). */
+/** Último anuncio del admin que se pudo leer (se conserva si después no hay conexión). */
 let notice = null;
 /** Plantel con llave pública y dirección de la base de presencia (de access.json). */
 let roster = [];
@@ -44,7 +44,7 @@ let presence = '';
 let appVersion = '0.0.0';
 /** Última lista de GitHub que se pudo leer, para reevaluar sin volver a bajarla. */
 let lastList = null;
-/** Lo que manda: la lista oficial firmada por el capitán si la hay, y si no access.json. */
+/** Lo que manda: la lista oficial firmada por el admin si la hay, y si no access.json. */
 let eff = { enabled: false, users: [], notices: [], minVersion: '', minMessage: '', captains: [], legacyNotice: null, seq: 0, source: 'github', removed: [], forceUpdate: false, history: [] };
 const ADMIN_POLL_MS = 60 * 1000;
 const NOTICE_TICK_MS = 30 * 1000;
@@ -90,8 +90,8 @@ function cleanNotice(raw) {
   return { id, title: String(raw.title || '').trim().slice(0, 80), text };
 }
 
-/* ── Lista oficial del capitán (Firebase) ───────────────────────────────
- * El capitán firma con su clave un documento con la lista de acceso, los avisos y la
+/* ── Lista oficial del admin (Firebase) ───────────────────────────────
+ * El admin firma con su clave un documento con la lista de acceso, los avisos y la
  * versión mínima, y lo deja en `admin/state`. Acá sólo se acepta si la firma
  * es de alguno de los `captains` de access.json y su `seq` no retrocede.
  * Si Firebase no responde o no hay nada, se usa lo último verificado y, en su
@@ -121,7 +121,7 @@ async function fetchAdminRaw(url) {
   } finally { clearTimeout(t); }
 }
 
-/** Arma `eff` con lo de GitHub y, encima, lo último verificado del capitán. */
+/** Arma `eff` con lo de GitHub y, encima, lo último verificado del admin. */
 function rebuild(list) {
   const base = list || {};
   const captains = (Array.isArray(base.captains) ? base.captains : []).filter((p) => HEX64.test(String(p))).map((p) => String(p).toLowerCase());
@@ -146,11 +146,11 @@ function rebuild(list) {
       legacyNotice: cleanNotice(base.announcement), seq: 0, source: 'github', removed: [], forceUpdate: false, history: []
     };
   }
-  roster = eff.users.filter((u) => u && HEX64.test(String(u.pub || ''))).map((u) => ({ name: String(u.name || '').slice(0, 40), pub: String(u.pub).toLowerCase(), trial: Number(u.trial) > 0, rep: u.rep === true, host: u.host === true, ext: u.ext === true }));
+  roster = eff.users.filter((u) => u && HEX64.test(String(u.pub || ''))).map((u) => ({ name: String(u.name || '').slice(0, 40), pub: String(u.pub).toLowerCase(), trial: Number(u.trial) > 0, rep: u.rep === true, host: u.host === true, ext: u.ext === true, soc: u.soc === true }));
   presence = typeof base.presence === 'string' ? base.presence : '';
 }
 
-/** Baja lo del capitán. Devuelve true si cambió algo respecto de lo guardado. */
+/** Baja lo del admin. Devuelve true si cambió algo respecto de lo guardado. */
 async function refreshAdmin() {
   const url = presenceMod.cleanUrl(presence);
   if (!url || !eff.captains.length) return false;
@@ -204,7 +204,7 @@ function isCaptainKey(key) {
   try { return !!key && eff.captains.includes(identity.fromKey(key).pub); } catch { return false; }
 }
 
-/** ¿Esta clave es de alguien ajeno al club? (el capitán nunca) */
+/** ¿Esta clave es de alguien ajeno al club? (el admin nunca) */
 function isExternalKey(key) {
   try {
     if (!key) return false;
@@ -215,7 +215,18 @@ function isExternalKey(key) {
   } catch { return false; }
 }
 
-/** ¿Esta clave puede ver los informes? El capitán siempre; los demás si él se lo dio. */
+/** ¿Esta clave es de un socio? (el admin nunca) */
+function isSocioKey(key) {
+  try {
+    if (!key) return false;
+    const pub = identity.fromKey(key).pub;
+    if (eff.captains.includes(pub)) return false;
+    const me = eff.users.find((u) => u && String(u.pub || '').toLowerCase() === pub);
+    return !!(me && me.soc === true);
+  } catch { return false; }
+}
+
+/** ¿Esta clave puede ver los informes? El admin siempre; los demás si él se lo dio. */
 function reportsAllowed(key) {
   try {
     if (!key) return false;
@@ -226,7 +237,7 @@ function reportsAllowed(key) {
   } catch { return false; }
 }
 
-/** ¿Esta clave puede hostear internos? El capitán siempre; los demás si él se lo dio. */
+/** ¿Esta clave puede hostear internos? El admin siempre; los demás si él se lo dio. */
 function hostAllowed(key) {
   try {
     if (!key) return false;
@@ -237,7 +248,7 @@ function hostAllowed(key) {
   } catch { return false; }
 }
 
-/** Las llaves públicas cuyos resultados de interno valen: el capitán y los habilitados. */
+/** Las llaves públicas cuyos resultados de interno valen: el admin y los habilitados. */
 function hostPubs() {
   const out = new Set((eff.captains || []).map((p) => String(p).toLowerCase()));
   for (const u of eff.users) if (u && u.host === true && u.ext !== true && HEX64.test(String(u.pub || ''))) out.add(String(u.pub).toLowerCase());
@@ -257,10 +268,11 @@ function set(next) {
   next.reports = next.state === 'ok' && reportsAllowed(saved.key);
   next.host = next.state === 'ok' && hostAllowed(saved.key);
   next.external = next.state === 'ok' && isExternalKey(saved.key);
+  next.socio = next.state === 'ok' && isSocioKey(saved.key);
   next.trialEnd = next.state === 'ok' && saved.trialMins && saved.trialStart ? saved.trialStart + saved.trialMins * MIN : 0;
   const changed = next.state !== status.state || next.reason !== status.reason || next.name !== status.name ||
-    JSON.stringify([next.notice, next.urgent, next.minVersion, next.captain, next.minMessage, next.forceUpdate, next.trialEnd, next.reports, next.external, next.host]) !==
-    JSON.stringify([status.notice, status.urgent, status.minVersion, status.captain, status.minMessage, status.forceUpdate, status.trialEnd, status.reports, status.external, status.host]);
+    JSON.stringify([next.notice, next.urgent, next.minVersion, next.captain, next.minMessage, next.forceUpdate, next.trialEnd, next.reports, next.external, next.host, next.socio]) !==
+    JSON.stringify([status.notice, status.urgent, status.minVersion, status.captain, status.minMessage, status.forceUpdate, status.trialEnd, status.reports, status.external, status.host, status.socio]);
   status = next;
   if (changed) onChange(status);
 }
@@ -268,8 +280,8 @@ function set(next) {
 /* ── Una clave, una PC ────────────────────────────────────────
  * La primera PC que usa una clave deja en Firebase `devices/<pid>` (firmado con esa clave).
  * Si después otra PC con la misma clave ve que ya hay una registrada, se bloquea y deja
- * una alerta para el capitán, que puede liberarla (`epoch` + 1) o cambiar la clave.
- * El capitán no se ata a una PC (así nunca se queda afuera de su propio panel).
+ * una alerta para el admin, que puede liberarla (`epoch` + 1) o cambiar la clave.
+ * El admin no se ata a una PC (así nunca se queda afuera de su propio panel).
  * Es una barrera del lado del cliente, como la lista: frena el uso compartido
  * normal, no a quien edite la app. Sin conexión con Firebase, deja pasar. */
 let lastDev = null;
@@ -321,7 +333,7 @@ async function ownAlert(url, id, epoch) {
     identity.verify(id.pub, `alert|${a.d}|${a.e}|${a.t}`, a.s));
 }
 
-/** Una clave equivocada: se anota (por PC, sin la clave) para que el capitán vea quién anda probando. */
+/** Una clave equivocada: se anota (por PC, sin la clave) para que el admin vea quién anda probando. */
 function reportAttempt() {
   const url = presenceMod.cleanUrl(presence);
   if (!url) return;
@@ -331,7 +343,7 @@ function reportAttempt() {
 }
 
 /* ── Claves de prueba ─────────────────────────────────────────
- * Una clave con `trial` (minutos) en la lista del capitán sirve ese tiempo, contado desde la
+ * Una clave con `trial` (minutos) en la lista del admin sirve ese tiempo, contado desde la
  * primera vez que se usó (la hora del registro de su PC en Firebase, o la local si no hay red).
  * Al vencer, la app se bloquea con «trial-ended». Es una barrera del lado del cliente, igual
  * que el resto: alguien que cambie la hora de su PC o edite la app la puede saltear.
@@ -354,7 +366,7 @@ function trialExpired() {
   return !!(saved.trialMins && saved.trialStart && Date.now() >= saved.trialStart + saved.trialMins * MIN);
 }
 
-/** «ok», salvo que la app sea más vieja que la versión mínima que pidió el capitán (él no se bloquea). */
+/** «ok», salvo que la app sea más vieja que la versión mínima que pidió el admin (él no se bloquea). */
 function allow(name, candidate) {
   if (eff.minVersion && cmpVersion(appVersion, eff.minVersion) < 0 && !isCaptainKey(candidate || saved.key)) {
     return set({ state: 'locked', name: '', reason: 'outdated', minMessage: eff.minMessage || '' });
@@ -383,7 +395,7 @@ async function evaluate(key, opts) {
     if (me) {
       const dev = await deviceCheck(me, candidate);
       if (dev !== 'ok') {
-        // Se guarda la clave (sin darla por validada): cuando el capitán resuelva, entra sola.
+        // Se guarda la clave (sin darla por validada): cuando el admin resuelva, entra sola.
         saved = { ...saved, key: normalize(candidate), name: String(me.name || ''), validatedAt: 0 };
         persist();
         lastDev = null;
@@ -427,10 +439,10 @@ function init(userDataDir, cb, version) {
   const first = run();
   timer = setInterval(run, RECHECK_MS);
   if (timer.unref) timer.unref();
-  // Lo del capitán se mira cada minuto (avisos urgentes, bajas, versión mínima)…
+  // Lo del admin se mira cada minuto (avisos urgentes, bajas, versión mínima)…
   const poll = async () => {
     if (lastList && await refreshAdmin()) { await evaluate(null, { skipGithub: true }); return; }
-    // Bloqueada por la PC o por una clave compartida: se reintenta sola, para entrar apenas el capitán resuelva.
+    // Bloqueada por la PC o por una clave compartida: se reintenta sola, para entrar apenas el admin resuelva.
     if (lastList && status.state === 'locked' && (status.reason === 'shared' || status.reason === 'other-pc')) { await evaluate(null, { skipGithub: true }); return; }
     // Si otra PC usó mi clave, esta también se frena (sin esperar a la próxima revisión de la hora).
     if (lastList && status.state === 'ok' && saved.key && saved.enabled && !isCaptainKey(saved.key)) {
@@ -463,7 +475,7 @@ const getKey = () => (status.state === 'ok' && saved.key && saved.enabled ? save
 const getRoster = () => roster;
 const presenceUrl = () => presence;
 
-/** Copia de lo que rige hoy (para el panel del capitán). */
+/** Copia de lo que rige hoy (para el panel del admin). */
 const getEffective = () => JSON.parse(JSON.stringify({
   enabled: eff.enabled, users: eff.users, notices: eff.notices, minVersion: eff.minVersion, minMessage: eff.minMessage,
   seq: eff.seq, source: eff.source, captains: eff.captains, removed: eff.removed, forceUpdate: eff.forceUpdate, history: eff.history
@@ -472,7 +484,8 @@ const isCaptain = () => !!status.captain;
 const canReports = () => !!status.reports;
 const canHost = () => !!status.host;
 const isExternal = () => !!status.external;
-/** El capitán acaba de publicar: se adopta al instante, sin esperar el próximo minuto. */
+const isSocio = () => !!status.socio;
+/** El admin acaba de publicar: se adopta al instante, sin esperar el próximo minuto. */
 async function adoptAdmin(raw) {
   if (!lastList) return;
   saved.admin = { p: raw.p, s: raw.s };
@@ -481,4 +494,4 @@ async function adoptAdmin(raw) {
   await evaluate(null, { skipGithub: true });
 }
 
-module.exports = { getEffective, isCaptain, canReports, canHost, hostPubs, isExternal, adoptAdmin, getKey, getRoster, presenceUrl, init, get, isLocked, submit, recheck, hashKey, normalize, ACCESS_URL };
+module.exports = { getEffective, isCaptain, canReports, canHost, hostPubs, isExternal, isSocio, adoptAdmin, getKey, getRoster, presenceUrl, init, get, isLocked, submit, recheck, hashKey, normalize, ACCESS_URL };

@@ -1,5 +1,5 @@
 /*
- * Panel del capitán: plantel (quién usó la app, con qué versión), avisos
+ * Panel del admin: plantel (quién usó la app, con qué versión), avisos
  * programados y urgentes, alta y baja de gente, pausa de la lista y versión mínima.
  * Todo se firma en el proceso principal (main/admin.js); acá sólo se pide y se muestra.
  */
@@ -236,7 +236,11 @@
       ext.type = 'button'; ext.disabled = m.self || busy;
       ext.title = 'Ajeno al club: no ve quién está conectado ni las estadísticas, y nadie del club lo ve a él. Sólo lo ves vos.';
       ext.addEventListener('click', async () => { if (await act({ type: 'setExternal', name: m.name, value: !m.ext })) flash(m.ext ? `${m.name} vuelve a ser del club.` : `${m.name} quedó como ajeno al club.`); });
-      acts.append(ext, host, rep, free, nk, del);
+      const soc = el('button', 'cap__btn cap__btn--ghost cap__btn--sm', m.soc ? 'Socio: sí' : 'Socio: no');
+      soc.type = 'button'; soc.disabled = m.self || busy;
+      soc.title = 'Socio: no lleva la insignia de la TL App (ni para vos ni para nadie), no suma en el ranking del club y no aparece como conectado para los demás. Sólo lo ves vos.';
+      soc.addEventListener('click', async () => { if (await act({ type: 'setSocio', name: m.name, value: !m.soc })) flash(m.soc ? `${m.name} ya no es socio.` : `${m.name} quedó catalogado como socio.`); });
+      acts.append(soc, ext, host, rep, free, nk, del);
       row.append(name, state, ver, acts);
       table.append(row);
     }
@@ -386,7 +390,7 @@
       ['Versión', m.version ? `v${m.version}${latest && cmp(m.version, latest) < 0 ? ' (desactualizada)' : ''}` : '—']
     ];
     if (personData && !personData.error) {
-      rows.push(['PC registrada desde', personData.deviceSince ? new Date(personData.deviceSince).toLocaleString('es-AR') : (m.self ? 'No aplica (capitán)' : 'Todavía ninguna')]);
+      rows.push(['PC registrada desde', personData.deviceSince ? new Date(personData.deviceSince).toLocaleString('es-AR') : (m.self ? 'No aplica (admin)' : 'Todavía ninguna')]);
       rows.push(['Veces que le liberaste la PC / cambiaste la clave', String(personData.releases)]);
       rows.push(['PCs vetadas', String(personData.banned)]);
     } else if (personData && personData.error) rows.push(['Datos de su PC', personData.error]);
@@ -540,7 +544,7 @@
     box.dataset.theme = theme;
     const card = el('div', 'cap__card');
     const head = el('div', 'cap__head');
-    head.append(el('h2', null, 'Panel del capitán'));
+    head.append(el('h2', null, 'Panel del admin'));
     const tools = el('div', 'cap__tools');
     const undo = el('button', 'cap__btn cap__btn--ghost cap__btn--sm cap__undo', '↩ Deshacer'); undo.type = 'button'; undo.hidden = true;
     undo.addEventListener('click', async () => {

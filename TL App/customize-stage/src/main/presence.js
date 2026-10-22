@@ -102,6 +102,9 @@ async function beat(ctx) {
   // Los ajenos al club ni dejan casillero en la sala ni ven a los del club.
   const meEntry = (ctx.roster || []).find((u) => u && u.pub && /^[0-9a-f]{64}$/i.test(u.pub) && identity.pidOf(u.pub) === id.pid);
   if (meEntry && meEntry.ext) return null;
+  // Los socios no dejan casillero: no llevan insignia ni para los demás ni para el admin.
+  // Sí miran la sala, así ven la insignia de los del club como cualquiera.
+  const iAmSocio = !!(meEntry && meEntry.soc);
   if (!ctx.fp || !ctx.nick) { why = `sin sala o sin nick (sala=${ctx.fp ? 'sí' : 'no'}, nick=${ctx.nick ? 'sí' : 'no'})`; return null; }
   why = '';
   lastFp = ctx.fp;
@@ -109,17 +112,21 @@ async function beat(ctx) {
   const t = Date.now();
   const nick = String(ctx.nick).slice(0, 40);
   const mine = cleanLooks({ g: ctx.cosmetics && ctx.cosmetics.gradient, f: ctx.cosmetics && ctx.cosmetics.font });
-  const slot = { n: nick, t, s: id.sign(signedText(ctx.fp, nick, t)) };
-  const withLooks = !noLooks && (mine.g || mine.f);
-  if (withLooks) { slot.c = mine; slot.cs = id.sign(looksText(ctx.fp, nick, t, mine.g, mine.f)); }
-  try {
-    await call(`${base}/rooms/${ctx.fp}/${id.pid}.json`, 'PUT', slot);
-  } catch (err) {
-    // Si las reglas de la base no dejan campos extra, se vuelve al casillero de
-    // siempre (sin aspecto) y no se insiste: la insignia es lo importante.
-    if (!withLooks) throw err;
-    noLooks = true;
-    await call(`${base}/rooms/${ctx.fp}/${id.pid}.json`, 'PUT', { n: nick, t, s: slot.s });
+  if (iAmSocio) {
+    call(`${base}/rooms/${ctx.fp}/${id.pid}.json`, 'DELETE').catch(() => {});
+  } else {
+    const slot = { n: nick, t, s: id.sign(signedText(ctx.fp, nick, t)) };
+    const withLooks = !noLooks && (mine.g || mine.f);
+    if (withLooks) { slot.c = mine; slot.cs = id.sign(looksText(ctx.fp, nick, t, mine.g, mine.f)); }
+    try {
+      await call(`${base}/rooms/${ctx.fp}/${id.pid}.json`, 'PUT', slot);
+    } catch (err) {
+      // Si las reglas de la base no dejan campos extra, se vuelve al casillero de
+      // siempre (sin aspecto) y no se insiste: la insignia es lo importante.
+      if (!withLooks) throw err;
+      noLooks = true;
+      await call(`${base}/rooms/${ctx.fp}/${id.pid}.json`, 'PUT', { n: nick, t, s: slot.s });
+    }
   }
   const room = (await call(`${base}/rooms/${ctx.fp}.json`, 'GET')) || {};
 
@@ -138,7 +145,7 @@ async function beat(ctx) {
     }
     const member = byPid.get(pid);
     // Las claves de prueba no son del plantel: no llevan insignia ni aura.
-    if (!member || member.trial || member.ext) continue;
+    if (!member || member.trial || member.ext || member.soc) continue;
     if (typeof entry.n !== 'string' || typeof entry.t !== 'number' || typeof entry.s !== 'string') continue;
     if (!identity.verify(member.pub, signedText(ctx.fp, entry.n, entry.t), entry.s)) continue;
     const k = `${ctx.fp}|${pid}`;
@@ -159,7 +166,7 @@ async function beat(ctx) {
 
   // Uno mismo, para que la fila propia también lleve el aura del plantel.
   const selfEntry = byPid.get(id.pid);
-  if (!(selfEntry && selfEntry.trial)) peers.push({ nick, self: true, name: ctx.selfName || '', vip: false, cosmetics: { gradient: 'oro' } });
+  if (!(selfEntry && (selfEntry.trial || selfEntry.soc))) peers.push({ nick, self: true, name: ctx.selfName || '', vip: false, cosmetics: { gradient: 'oro' } });
   return { everyMs: EVERY_MS, peers };
 }
 
@@ -232,18 +239,18 @@ async function online(ctx) {
       ok = identity.verify(u.pub, onlineText(r, v, x, e.t), e.s);
       if (ok) {
         const alive = self || (!x && Math.abs(now - e.t) <= ONLINE_ALIVE_MS);
-        out.push({ name: u.name, room: alive ? r : '', lastRoom: r, version: self ? clean(ctx.version, 20) : v, lastSeen: self ? Date.now() : e.t, online: alive, self, trial: !!u.trial, rep: !!u.rep, host: !!u.host, ext: !!u.ext });
+        out.push({ name: u.name, room: alive ? r : '', lastRoom: r, version: self ? clean(ctx.version, 20) : v, lastSeen: self ? Date.now() : e.t, online: alive, self, trial: !!u.trial, rep: !!u.rep, host: !!u.host, ext: !!u.ext, soc: !!u.soc });
         continue;
       }
     }
-    out.push({ name: u.name, room: '', lastRoom: '', version: self ? clean(ctx.version, 20) : '', lastSeen: self ? Date.now() : 0, online: self, self, trial: !!u.trial, rep: !!u.rep, host: !!u.host, ext: !!u.ext });
+    out.push({ name: u.name, room: '', lastRoom: '', version: self ? clean(ctx.version, 20) : '', lastSeen: self ? Date.now() : 0, online: self, self, trial: !!u.trial, rep: !!u.rep, host: !!u.host, ext: !!u.ext, soc: !!u.soc });
   }
-  // Los ajenos al club los ve sólo el capitán; y ellos no ven a nadie más que a sí mismos.
+  // Los ajenos al club los ve sólo el admin; y ellos no ven a nadie más que a sí mismos.
   const mineEntry = (ctx.roster || []).find((u) => u && /^[0-9a-f]{64}$/i.test(u.pub || '') && identity.pidOf(u.pub) === id.pid);
   const iAmExternal = !!(mineEntry && mineEntry.ext);
   for (let i = out.length - 1; i >= 0; i--) {
     const m = out[i];
-    if (iAmExternal ? !m.self : (m.ext && !ctx.captain)) out.splice(i, 1);
+    if (iAmExternal ? !m.self : ((m.ext || m.soc) && !m.self && !ctx.captain)) out.splice(i, 1);
   }
   out.sort((a, b) => (b.self - a.self) || (b.online - a.online) || a.name.localeCompare(b.name, 'es'));
   out.prevSelf = prevSelf;
@@ -300,7 +307,8 @@ async function readStats(ctx) {
   const out = [];
   for (const u of ctx.roster || []) {
     if (!u || u.trial || !/^[0-9a-f]{64}$/i.test(u.pub || '')) continue;
-    if (u.ext && !ctx.captain) continue; // los ajenos al club sólo los ve el capitán
+    if (u.ext && !ctx.captain) continue; // los ajenos al club sólo los ve el admin
+    if (u.soc) continue; // los socios no suman en el ranking de nadie
     const pid = identity.pidOf(u.pub);
     const e = data[pid];
     if (!e || typeof e !== 'object' || typeof e.sig !== 'string') continue;

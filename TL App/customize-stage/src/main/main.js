@@ -2945,7 +2945,7 @@ handle('presence:roster', async () => (access.isExternal() ? [] : liveRoster));
 /* Ranking del club: cada app sube sus números y todos leen la carpeta entera. */
 let lastClubPush = 0;
 async function pushClubStats(force) {
-  if (!access.presenceUrl() || !access.getKey() || access.isExternal()) return;
+  if (!access.presenceUrl() || !access.getKey() || access.isExternal() || access.isSocio()) return; // los socios no suman en el ranking
   if (!force && Date.now() - lastClubPush < 120000) return;
   lastClubPush = Date.now();
   try {
@@ -2980,7 +2980,7 @@ const hostSession = hostRoom.create({
 });
 handle('host:state', () => ({ ...hostSession.state(), allowed: access.canHost() }));
 handle('host:start', async (_e, opts) => {
-  if (!access.canHost()) throw new Error('No tenés permiso para hostear. Pedíselo al capitán.');
+  if (!access.canHost()) throw new Error('No tenés permiso para hostear. Pedíselo al admin.');
   const o = { ...(opts || {}) };
   if (o.mode === 'interno') o.customPath = '';
   if (o.mode === 'interno' && !access.getKey()) throw new Error('El interno necesita tu clave para firmar los partidos.');
@@ -3018,7 +3018,7 @@ app.on('before-quit', () => { try { hostSession.stop(); } catch { /* ya cerrada 
 // Los informes ya no se guardan: se borra el archivo de la versión anterior.
 try { fs.unlinkSync(path.join(app.getPath('userData'), 'match-reports.json')); } catch { /* no estaba */ }
 
-// Panel del capitán: estado vigente + estado de cada miembro, y las acciones.
+// Panel del admin: estado vigente + estado de cada miembro, y las acciones.
 handle('admin:get', async () => {
   if (!access.isCaptain()) return null;
   await beatOnline();
@@ -3031,7 +3031,7 @@ handle('admin:get', async () => {
   return { doc: access.getEffective(), members: liveRoster || [], version: app.getVersion(), alerts, attempts, trials, undo: admin.undoInfo() };
 });
 handle('admin:person', async (_e, name) => {
-  if (!access.isCaptain()) throw new Error('Sólo el capitán puede hacer esto.');
+  if (!access.isCaptain()) throw new Error('Sólo el admin puede hacer esto.');
   return admin.readPerson(name);
 });
 handle('admin:clear-attempts', async () => { await admin.clearAttempts(); return true; });
