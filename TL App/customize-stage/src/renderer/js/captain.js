@@ -229,18 +229,14 @@
       rep.title = 'Que pueda ver los informes de partido.';
       rep.addEventListener('click', async () => { if (await act({ type: 'setReports', name: m.name, value: !m.rep })) flash(m.rep ? `${m.name} ya no ve los informes.` : `${m.name} ahora ve los informes.`); });
       const host = el('button', 'cap__btn cap__btn--ghost cap__btn--sm', m.host ? 'Hostea: sí' : 'Hostea: no');
-      host.type = 'button'; host.disabled = m.self || busy || !!m.ext;
+      host.type = 'button'; host.disabled = m.self || busy || !!m.ext || !!m.soc;
       host.title = 'Que pueda hostear internos y amistosos. Los resultados del interno que cargue cuentan para «Los reyes del x7».';
       host.addEventListener('click', async () => { if (await act({ type: 'setHost', name: m.name, value: !m.host })) flash(m.host ? `${m.name} ya no hostea.` : `${m.name} ahora puede hostear.`); });
-      const ext = el('button', 'cap__btn cap__btn--ghost cap__btn--sm', m.ext ? 'Ajeno: sí' : 'Ajeno: no');
-      ext.type = 'button'; ext.disabled = m.self || busy;
-      ext.title = 'Ajeno al club: no ve quién está conectado ni las estadísticas, y nadie del club lo ve a él. Sólo lo ves vos.';
-      ext.addEventListener('click', async () => { if (await act({ type: 'setExternal', name: m.name, value: !m.ext })) flash(m.ext ? `${m.name} vuelve a ser del club.` : `${m.name} quedó como ajeno al club.`); });
-      const soc = el('button', 'cap__btn cap__btn--ghost cap__btn--sm', m.soc ? 'Socio: sí' : 'Socio: no');
+      const soc = el('button', 'cap__btn cap__btn--ghost cap__btn--sm', (m.soc || m.ext) ? 'Socio: sí' : 'Socio: no');
       soc.type = 'button'; soc.disabled = m.self || busy;
-      soc.title = 'Socio: no lleva la insignia de la TL App (ni para vos ni para nadie), no suma en el ranking del club y no aparece como conectado para los demás. Sólo lo ves vos.';
-      soc.addEventListener('click', async () => { if (await act({ type: 'setSocio', name: m.name, value: !m.soc })) flash(m.soc ? `${m.name} ya no es socio.` : `${m.name} quedó catalogado como socio.`); });
-      acts.append(soc, ext, host, rep, free, nk, del);
+      soc.title = 'Socio: queda aparte del equipo. No lleva la insignia de la TL App ni el recuadro dorado, no suma stats, nadie lo ve conectado ni él ve a los del equipo, ni el panel Club. Sólo lo ves vos.';
+      soc.addEventListener('click', async () => { if (await act({ type: 'setSocio', name: m.name, value: !(m.soc || m.ext) })) flash((m.soc || m.ext) ? `${m.name} ya no es socio.` : `${m.name} quedó catalogado como socio.`); });
+      acts.append(soc, host, rep, free, nk, del);
       row.append(name, state, ver, acts);
       table.append(row);
     }

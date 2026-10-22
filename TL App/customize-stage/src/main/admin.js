@@ -108,7 +108,7 @@ function applyAction(cur, action, myPub) {
       const target = doc.users.find((u) => String(u.name).toLowerCase() === String(action.name || '').toLowerCase());
       if (!target) throw new Error('No encontré a esa persona.');
       if (target.pub === myPub) throw new Error('Vos sos el admin, no podés marcarte como socio.');
-      if (action.value === true) target.soc = true; else delete target.soc;
+      if (action.value === true) { target.soc = true; delete target.rep; delete target.host; } else { delete target.soc; delete target.ext; }
       break;
     }
     case 'setReports': {
@@ -120,7 +120,7 @@ function applyAction(cur, action, myPub) {
     case 'setHost': {
       const target = doc.users.find((u) => String(u.name).toLowerCase() === String(action.name || '').toLowerCase());
       if (!target) throw new Error('No encontré a esa persona.');
-      if (target.ext === true) throw new Error('Esa persona está marcada como ajena al club.');
+      if (target.ext === true || target.soc === true) throw new Error('Esa persona es socio: los socios no hostean.');
       if (action.value === true) target.host = true; else delete target.host;
       break;
     }

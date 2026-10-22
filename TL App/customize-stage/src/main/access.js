@@ -146,7 +146,7 @@ function rebuild(list) {
       legacyNotice: cleanNotice(base.announcement), seq: 0, source: 'github', removed: [], forceUpdate: false, history: []
     };
   }
-  roster = eff.users.filter((u) => u && HEX64.test(String(u.pub || ''))).map((u) => ({ name: String(u.name || '').slice(0, 40), pub: String(u.pub).toLowerCase(), trial: Number(u.trial) > 0, rep: u.rep === true, host: u.host === true, ext: u.ext === true, soc: u.soc === true }));
+  roster = eff.users.filter((u) => u && HEX64.test(String(u.pub || ''))).map((u) => ({ name: String(u.name || '').slice(0, 40), pub: String(u.pub).toLowerCase(), trial: Number(u.trial) > 0, rep: u.rep === true, host: u.host === true, ext: u.ext === true || u.soc === true, soc: u.soc === true || u.ext === true }));
   presence = typeof base.presence === 'string' ? base.presence : '';
 }
 
@@ -211,7 +211,7 @@ function isExternalKey(key) {
     const pub = identity.fromKey(key).pub;
     if (eff.captains.includes(pub)) return false;
     const me = eff.users.find((u) => u && String(u.pub || '').toLowerCase() === pub);
-    return !!(me && me.ext === true);
+    return !!(me && (me.ext === true || me.soc === true));
   } catch { return false; }
 }
 
@@ -222,7 +222,7 @@ function isSocioKey(key) {
     const pub = identity.fromKey(key).pub;
     if (eff.captains.includes(pub)) return false;
     const me = eff.users.find((u) => u && String(u.pub || '').toLowerCase() === pub);
-    return !!(me && me.soc === true);
+    return !!(me && (me.soc === true || me.ext === true));
   } catch { return false; }
 }
 
@@ -244,14 +244,14 @@ function hostAllowed(key) {
     const pub = identity.fromKey(key).pub;
     if (eff.captains.includes(pub)) return true;
     const me = eff.users.find((u) => u && String(u.pub || '').toLowerCase() === pub);
-    return !!(me && me.host === true && me.ext !== true);
+    return !!(me && me.host === true && me.ext !== true && me.soc !== true);
   } catch { return false; }
 }
 
 /** Las llaves públicas cuyos resultados de interno valen: el admin y los habilitados. */
 function hostPubs() {
   const out = new Set((eff.captains || []).map((p) => String(p).toLowerCase()));
-  for (const u of eff.users) if (u && u.host === true && u.ext !== true && HEX64.test(String(u.pub || ''))) out.add(String(u.pub).toLowerCase());
+  for (const u of eff.users) if (u && u.host === true && u.ext !== true && u.soc !== true && HEX64.test(String(u.pub || ''))) out.add(String(u.pub).toLowerCase());
   return out;
 }
 

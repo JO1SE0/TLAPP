@@ -10183,7 +10183,7 @@ function paintClubNow(list) {
     const txt = document.createElement('div');
     txt.className = 'cn__txt';
     const name = document.createElement('b');
-    name.textContent = m.name + (m.self ? (en ? ' (you)' : ' (vos)') : '') + (m.ext ? (en ? ' · outside' : ' · ajeno') : '') + (m.soc ? (en ? ' · partner' : ' · socio') : '');
+    name.textContent = m.name + (m.self ? (en ? ' (you)' : ' (vos)') : '') + ((m.ext || m.soc) ? (en ? ' · partner' : ' · socio') : '');
     const where = document.createElement('span');
     where.textContent = m.room ? (en ? `in “${m.room}”` : `en «${m.room}»`) : (en ? 'in the menu' : 'en el menú');
     if (m.room) where.classList.add('is-room');
@@ -10214,7 +10214,7 @@ function paintClubNow(list) {
     wrap.append(label);
     for (const m of off) {
       const chip = document.createElement('em');
-      chip.textContent = m.name + (m.ext ? (en ? ' · outside' : ' · ajeno') : '') + (m.soc ? (en ? ' · partner' : ' · socio') : '');
+      chip.textContent = m.name + ((m.ext || m.soc) ? (en ? ' · partner' : ' · socio') : '');
       chip.title = m.lastSeen ? (en ? 'last seen ' : 'visto ') + new Date(m.lastSeen).toLocaleDateString(en ? 'en' : 'es', { day: 'numeric', month: 'short' }) : (en ? 'never seen' : 'sin conexión');
       wrap.append(chip);
     }
@@ -10277,7 +10277,7 @@ function paintClubRank() {
 
   const unit = { goals: en ? 'goals' : 'goles', assists: en ? 'assists' : 'asist.', matches: en ? 'matches' : 'partidos', gpm: en ? 'goals/match' : 'gol/partido' }[clubRankKey];
   const mk = (tag, cls, txt) => { const e = document.createElement(tag); if (cls) e.className = cls; if (txt !== undefined) e.textContent = txt; return e; };
-  const label = (m) => m.name + (m.ext ? (en ? ' · outside' : ' · ajeno') : '') + (m.soc ? (en ? ' · partner' : ' · socio') : '');
+  const label = (m) => m.name + ((m.ext || m.soc) ? (en ? ' · partner' : ' · socio') : '');
 
   // Podio: los tres primeros, el primero más alto.
   const top = rows.filter((m) => value(m) > 0).slice(0, 3);
