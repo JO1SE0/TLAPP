@@ -8845,14 +8845,32 @@ $$('[data-win]').forEach((btn) => {
 
 $('#btnFullscreen').addEventListener('click', () => tvm.window.toggleFullscreen());
 
+let tbTimer = 0;
 function setTopbarCollapsed(collapsed) {
   const app = $('#app');
   const hideButton = $('#btnTopbarToggle');
   const showButton = $('#btnTopbarReveal');
-  app.dataset.topbarCollapsed = String(collapsed);
-  hideButton.setAttribute('aria-expanded', String(!collapsed));
-  showButton.hidden = !collapsed;
-  showButton.setAttribute('aria-expanded', String(!collapsed));
+  const was = app.dataset.topbarCollapsed === 'true';
+  const animate = document.documentElement.dataset.animations !== 'off' && was !== collapsed;
+  clearTimeout(tbTimer);
+  app.classList.remove('tb-leaving', 'tb-entering');
+  const apply = () => {
+    app.dataset.topbarCollapsed = String(collapsed);
+    hideButton.setAttribute('aria-expanded', String(!collapsed));
+    showButton.hidden = !collapsed;
+    showButton.setAttribute('aria-expanded', String(!collapsed));
+  };
+  if (collapsed && animate && app.dataset.fullscreen !== 'true') {
+    // Primero sube y se va (sigue ocupando su lugar), y recién después deja el flujo.
+    app.classList.add('tb-leaving');
+    tbTimer = setTimeout(() => { apply(); app.classList.remove('tb-leaving'); }, 260);
+    return;
+  }
+  apply();
+  if (!collapsed && animate) {
+    app.classList.add('tb-entering');
+    tbTimer = setTimeout(() => app.classList.remove('tb-entering'), 540);
+  }
 }
 
 $('#btnTopbarToggle').addEventListener('click', () => setTopbarCollapsed(true));
