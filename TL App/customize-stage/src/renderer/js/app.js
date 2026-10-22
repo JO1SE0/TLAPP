@@ -4851,6 +4851,17 @@ function paintNowTick() {
   $('#npCur').textContent = fmtT(t.cur);
   $('#npDur').textContent = `-${fmtT(t.dur - t.cur)}`;
 }
+function paintAudTick() {
+  const M = window.TLMusic;
+  if (!M) return;
+  const t = M.time();
+  const bar = $('#audBar');
+  if (bar) bar.style.transform = `scaleX(${(t.dur ? Math.min(1, t.cur / t.dur) : 0).toFixed(3)})`;
+  $('#audCur').textContent = fmtT(t.cur);
+  $('#audDur').textContent = `-${fmtT(t.dur - t.cur)}`;
+  const pos = M.position;
+  $('#audCount').textContent = pos.n ? `${String(pos.i).padStart(2, '0')} / ${String(pos.n).padStart(2, '0')}` : '';
+}
 function paintNowText() {
   $('#npTitle').textContent = npInfo.title;
   // Títulos largos: se deslizan.
@@ -4864,14 +4875,12 @@ function paintNowText() {
   const ar = $('#npArtist');
   ar.textContent = npInfo.artist || '';
   ar.hidden = !npInfo.artist;
-  // La barra de arriba (sala): «Artista · Tema».
-  const now = $('#audNow');
-  if (now) {
-    const line = npInfo.artist ? `${npInfo.artist} · ${npInfo.title}` : npInfo.title;
-    now.textContent = line;
-    now.title = line;
-    now.hidden = !npInfo.title;
-  }
+  // Panel de la barra de arriba.
+  $('#audTitle').textContent = npInfo.title || '—';
+  const aa = $('#audArtist');
+  aa.textContent = npInfo.artist || '';
+  aa.hidden = !npInfo.artist;
+  paintAudTick();
 }
 function showNowPlaying(ms) {
   const el = $('#nowPlaying');
@@ -4921,11 +4930,22 @@ window.addEventListener('tl:track', (e) => {
 $('#nowPlaying').addEventListener('mouseenter', () => clearTimeout(npTimer));
 $('#nowPlaying').addEventListener('mouseleave', () => { if (!$('#nowPlaying').classList.contains('np--card')) npTimer = setTimeout(hideNowPlaying, 2500); });
 // Al pasar por la música se muestra el tema; al pasar por los estilos de sonido se esconde, porque ahí se abre su selector.
-$('#audMusic').addEventListener('mouseenter', () => showNowPlaying(4500));
+// El panel de la barra ya muestra el tema: se esconde la tarjeta mientras está abierto.
+$('.audio__music').addEventListener('mouseenter', hideNowPlaying);
 $('.audio__sfx').addEventListener('mouseenter', hideNowPlaying);
-$('#npPlay').addEventListener('click', () => window.TLMusic && window.TLMusic.toggle());
+for (const id of ['npPlay', 'audPlay']) $('#' + id).addEventListener('click', () => window.TLMusic && window.TLMusic.toggle());
+$('#audSeek').addEventListener('click', (e) => {
+  const r = $('#audSeek').getBoundingClientRect();
+  if (window.TLMusic && r.width) { window.TLMusic.seek((e.clientX - r.left) / r.width); paintAudTick(); }
+});
+// El avance del panel sólo se actualiza mientras está abierto.
+let audTick = null;
+$('.audio__music').addEventListener('mouseenter', () => { paintAudTick(); clearInterval(audTick); audTick = setInterval(paintAudTick, 500); });
+$('.audio__music').addEventListener('mouseleave', () => { clearInterval(audTick); audTick = null; });
 window.addEventListener('tl:musicstate', (e) => {
   const paused = !!(e.detail && e.detail.paused);
+  $('#audio').classList.toggle('is-paused', paused);
+  $('#audPlay').title = paused ? (isEn() ? 'Play' : 'Reanudar') : (isEn() ? 'Pause' : 'Pausar');
   const el = $('#nowPlaying');
   el.classList.toggle('is-paused', paused);
   $('#nowPlaying .eq').classList.toggle('is-playing', !paused && npPlaying);
@@ -4962,6 +4982,7 @@ function paintAudio() {
   const range = $('#audVol');
   if (document.activeElement !== range) range.value = String(vol);
   syncRangeFill(range);
+  $('#audPct').textContent = `${Math.round(vol * 100)}%`;
 }
 $('#audMusic').addEventListener('click', () => patchConfig({ appearance: { music: state.config.appearance.music === false } }));
 $('#audSfx').addEventListener('click', () => patchConfig({ appearance: { uiSounds: state.config.appearance.uiSounds === false } }));
@@ -4974,6 +4995,7 @@ document.querySelectorAll('#audSfxMenu .chip').forEach((chip) => {
 });
 $('#audVol').addEventListener('input', (e) => {
   syncRangeFill(e.target);
+  $('#audPct').textContent = `${Math.round(Number(e.target.value) * 100)}%`;
   if (window.TLMusic) window.TLMusic.configure(state.config.appearance.music !== false, Number(e.target.value), state.config.appearance.musicClub !== false);
 });
 $('#audVol').addEventListener('change', (e) => patchConfig({ appearance: { musicVolume: Number(e.target.value), music: true } }));
