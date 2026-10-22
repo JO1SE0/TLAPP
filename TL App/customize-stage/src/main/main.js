@@ -1568,6 +1568,14 @@ function createWindow() {
     // Maximizar ANTES de mostrar: al revés se ve un cuadro en tamaño ventana y
     // enseguida el salto, que es justo lo que se está tratando de sacar.
     if (saved && saved.maximized) mainWindow.maximize();
+    // «Abrir en pantalla completa»: se entra ANTES de mostrar y de que haya un juego andando, que es
+    // cuando el cambio no se traba en las PCs que se congelan al apretar F11 durante una partida.
+    let startFull = false;
+    try { startFull = !!(store.get().perf && store.get().perf.startFullscreen); } catch { /* sin config */ }
+    if (startFull) {
+      windowFullscreen = true;
+      try { mainWindow.setFullScreen(true); } catch { windowFullscreen = false; }
+    }
     mainWindow.show();
     if (isDev) mainWindow.webContents.openDevTools({ mode: 'detach' });
   });
@@ -1583,6 +1591,7 @@ function createWindow() {
    */
   mainWindow.webContents.on('did-finish-load', () => {
     applyUiScale();
+    if (windowFullscreen) emitWindowState();
     sentAvatars = new Set();
     pushMyAvatar();
   });

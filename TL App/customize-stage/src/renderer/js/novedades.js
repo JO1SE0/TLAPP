@@ -11,6 +11,7 @@ window.TL_NEWS = {
   title: { es: 'Qué hay de nuevo', en: "What's new" },
   items: {
     es: [
+      'Nuevo ajuste «Abrir en pantalla completa» (Configuración → Rendimiento): la app arranca ya en pantalla completa, pensado para las PCs que se traban al apretar F11 con una partida abierta.',
       'Festejo de gol del club más vistoso (destello, rayos de luz, barras doradas, marco y más cintas) y un cartel más prolijo para los goles de los demás. El resultado en el piso de la cancha ahora detecta los arcos (sin arcos no se muestra), se adapta al tamaño de la cancha —también en las de x7— y tiene un anillo que se dibuja y se abre cuando cambia el marcador.',
       'El panel del capitán ahora es el panel del admin, con un estado nuevo: «Socio». Un socio queda aparte del equipo: nadie lo ve con la insignia ni el recuadro dorado (él sí ve los de los demás, y se ve a sí mismo con su recuadro, sin el logo), no suma stats, nadie lo ve conectado ni él ve a los conectados ni el panel Club; sólo el admin lo ve. Reemplaza a «Ajeno».',
       'Música del menú renovada: 26 temas nuevos (sin la de Free Fire) y vuelve la tarjeta «Ahora suena» con tapa, tema y artista, animada y con anterior / siguiente. Al entrar a una sala la música sigue más baja, la tarjeta se va y el tema, anterior / siguiente y el volumen quedan en la barra de arriba.',
@@ -66,6 +67,7 @@ window.TL_NEWS = {
       'Cada clave se usa en una sola PC: si cambiás de computadora, pedile a miclo que te la libere.'
     ],
     en: [
+      'New “Open in fullscreen” setting (Settings → Performance): the app starts already in fullscreen, meant for PCs that freeze when pressing F11 during a match.',
       'Club goal celebration is flashier (flash, light rays, gold bars, frame, more ribbons) and other players’ goals get a tidier banner. The on-pitch score now detects goals (no goals, no sign), scales to the pitch size —x7 maps included— and has a ring that draws itself and opens when the score changes.',
       'The captain panel is now the admin panel, with a new status: “Partner”. A partner is kept apart from the team: nobody sees their badge or gold frame (they do see everyone else’s, and their own frame without the logo), no stats, nobody sees them online and they cannot see who is online or the Club panel; only the admin sees them. Replaces “Outside”.',
       'Menu music refreshed: 26 tracks (Free Fire one removed) and the “Now playing” card is back with cover, title and artist, animated, with previous / next. Inside a room the music keeps playing quieter, the card goes away and the track, previous / next and volume live in the top bar.',
