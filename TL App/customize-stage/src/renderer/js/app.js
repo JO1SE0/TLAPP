@@ -1955,6 +1955,8 @@ function setStage(kind) {
   $('#app').dataset.stage = kind;
   if (kind === 'game') roomCurtain();
   if (window.TLMusic) window.TLMusic.setInGame(kind === 'game');
+  // Al volver al menú reaparece la tarjeta del tema que sigue sonando.
+  try { if (kind !== 'game' && npPlaying) setTimeout(() => showNowPlaying(6000), 450); } catch (e) { /* todavía no se armó el cartel */ }
   if (kind === 'browser') setTimeout(showNoticeIfReady, 600);
   // El fondo ambiental se apaga cuando hay cancha detrás, no cuando estás en la
   // pestaña Salas: con los paneles encima son cosas distintas.
@@ -4809,12 +4811,14 @@ async function renderMusicOwn() {
   }
 }
 
-/* «Ahora suena». Si a la derecha de la lista de salas hay un hueco ancho, es una tarjeta que se queda mientras suena
-   la música; si no hay lugar, es una píldora que se muestra unos segundos al cambiar de tema. */
+/* «Ahora suena». En el menú: si a la derecha de la lista de salas hay un hueco ancho, es una tarjeta que se queda
+   mientras suena la música; si no hay lugar, es una píldora que se muestra unos segundos al cambiar de tema.
+   Dentro de una sala no hay tarjeta: el tema y los botones quedan en la barra de arriba. */
 let npTimer = null;
-let npTitle = '';
+let npInfo = { title: '', artist: '', name: '', user: false };
 let npPlaying = false;
 let npProgress = null;
+const npCovers = new Map();
 const NP_CARD_W = 250;
 function layoutNowPlaying() {
   const el = $('#nowPlaying');
@@ -4825,18 +4829,56 @@ function layoutNowPlaying() {
   el.style.right = card ? `${Math.round((gap - NP_CARD_W) / 2)}px` : '';
   return card;
 }
+function hueOf(text) {
+  let h = 0;
+  for (let i = 0; i < text.length; i++) h = (h * 31 + text.charCodeAt(i)) % 360;
+  return h;
+}
+/** Tapa del archivo si la trae; si no, un disco con el escudo y un color propio de cada tema. */
+async function paintNowCover() {
+  const art = $('#npArt');
+  const img = $('#npCover');
+  if (!art || !img) return;
+  const key = `${npInfo.user ? 'u' : 'c'}:${npInfo.name}`;
+  art.style.setProperty('--np-hue', String(hueOf(npInfo.title + npInfo.artist)));
+  img.hidden = true;
+  art.classList.remove('has-cover');
+  let url = npCovers.get(key);
+  if (url === undefined) {
+    try { url = (window.tvm && window.tvm.tracks.cover) ? await window.tvm.tracks.cover(npInfo.name, npInfo.user) : null; } catch (e) { url = null; }
+    npCovers.set(key, url || null);
+  }
+  if (`${npInfo.user ? 'u' : 'c'}:${npInfo.name}` !== key || !url) return;
+  img.src = url;
+  img.hidden = false;
+  art.classList.add('has-cover');
+}
+function paintNowText() {
+  $('#npTitle').textContent = npInfo.title;
+  const ar = $('#npArtist');
+  ar.textContent = npInfo.artist || '';
+  ar.hidden = !npInfo.artist;
+  // La barra de arriba (sala): «Artista · Tema».
+  const now = $('#audNow');
+  if (now) {
+    const line = npInfo.artist ? `${npInfo.artist} · ${npInfo.title}` : npInfo.title;
+    now.textContent = line;
+    now.title = line;
+    now.hidden = !npInfo.title;
+  }
+}
 function showNowPlaying(ms) {
-  // El cartel «Ahora suena» ya no se muestra: la música se controla (silencio y
-  // volumen) desde la barra de arriba. Se deja el código por si vuelve como opción.
-  return;
   const el = $('#nowPlaying');
-  if (!el || !npTitle) return;
+  if (!el || !npInfo.title) return;
+  // Dentro de una sala no hay tarjeta (la oculta el CSS); sólo se actualiza la barra.
   const card = layoutNowPlaying();
-  $('#npTitle').textContent = npTitle;
   el.hidden = false;
+  // Cada tema nuevo reinicia la animación de entrada.
+  el.classList.remove('np--swap');
+  void el.offsetWidth;
+  el.classList.add('np--swap');
   requestAnimationFrame(() => el.classList.add('is-in'));
   clearTimeout(npTimer);
-  // La tarjeta se queda mientras suene algo; la píldora se va sola.
   if (!card) npTimer = setTimeout(hideNowPlaying, ms || 6000);
   clearInterval(npProgress);
   npProgress = setInterval(() => {
@@ -4866,16 +4908,20 @@ window.addEventListener('tl:track', (e) => {
   $('#nowPlaying .eq').classList.toggle('is-playing', !!d.playing);
   $('#nowPlaying').classList.toggle('is-playing', !!d.playing);
   npPlaying = !!d.playing;
-  if (d.playing && d.title) { npTitle = d.title; showNowPlaying(6000); }
-  else if (!d.playing) hideNowPlaying();
+  if (d.playing && d.title) {
+    npInfo = { title: d.title, artist: d.artist || '', name: d.name || '', user: !!d.user };
+    paintNowText();
+    paintNowCover();
+    showNowPlaying(6000);
+  } else if (!d.playing) hideNowPlaying();
 });
 $('#nowPlaying').addEventListener('mouseenter', () => clearTimeout(npTimer));
 $('#nowPlaying').addEventListener('mouseleave', () => { if (!$('#nowPlaying').classList.contains('np--card')) npTimer = setTimeout(hideNowPlaying, 2500); });
 // Al pasar por la música se muestra el tema; al pasar por los estilos de sonido se esconde, porque ahí se abre su selector.
 $('#audMusic').addEventListener('mouseenter', () => showNowPlaying(4500));
 $('.audio__sfx').addEventListener('mouseenter', hideNowPlaying);
-$('#npPrev').addEventListener('click', () => window.TLMusic && window.TLMusic.prev());
-$('#npNext').addEventListener('click', () => window.TLMusic && window.TLMusic.next());
+for (const id of ['npPrev', 'audPrev']) $('#' + id).addEventListener('click', () => window.TLMusic && window.TLMusic.prev());
+for (const id of ['npNext', 'audNext']) $('#' + id).addEventListener('click', () => window.TLMusic && window.TLMusic.next());
 
 /* Audio del menú (barra superior): música on/off, volumen y sonidos de botones. */
 function paintAudio() {

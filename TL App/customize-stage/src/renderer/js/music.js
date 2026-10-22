@@ -4,7 +4,7 @@
  *
  * - Cada vez que aparece el menú arranca una distinta, al azar (nunca la misma).
  * - Si te quedás, siguen en orden (la 5, la 6, la 7...) y se funden una con otra.
- * - Al entrar a una sala se silencia (hay que oír el juego).
+ * - Al entrar a una sala sigue sonando, más bajo (hay que oír el juego).
  * - Arranca cuando termina la bienvenida.
  *
  * Dos reproductores se turnan para poder fundir el final de un tema con el
@@ -21,8 +21,10 @@
     introDone: false, errors: 0, xfade: 3000, crossing: false, loading: null, timers: new WeakMap()
   };
 
-  const gain = () => Math.min(1, Math.max(0, M.volume));
-  const wantPlaying = () => M.enabled && M.allowed && !M.inGame && M.tracks.length > 0;
+  // Dentro de una sala la música sigue, pero más baja, para oír el juego.
+  const IN_GAME_GAIN = 0.4;
+  const gain = () => Math.min(1, Math.max(0, M.volume)) * (M.inGame ? IN_GAME_GAIN : 1);
+  const wantPlaying = () => M.enabled && M.allowed && M.tracks.length > 0;
   const current = () => M.pool[M.cur];
   /** Una canción del club que empieza con «00» es la de arranque (hoy no hay ninguna): suena una sola vez, al abrir la app. */
   const isIntro = (t) => !!t && !t.user && /^\s*0+\s*[-.)]/.test(t.name || '');
@@ -47,7 +49,7 @@
   function announce() {
     const t = M.tracks[M.index % M.tracks.length];
     if (!t) return;
-    window.dispatchEvent(new CustomEvent('tl:track', { detail: { title: t.title, user: !!t.user, playing: true } }));
+    window.dispatchEvent(new CustomEvent('tl:track', { detail: { title: t.title, artist: t.artist || '', name: t.name, user: !!t.user, playing: true } }));
   }
 
   function make() {
@@ -140,8 +142,8 @@
     try {
       const list = await window.tvm.tracks.list();
       M.all = (Array.isArray(list) ? list : []).map((t) => (typeof t === 'string'
-        ? { name: t, title: titleOf(t), url: `../../assets/music/${encodeURIComponent(t)}`, user: false }
-        : { name: t.name, title: titleOf(t.name), url: t.url, user: !!t.user }));
+        ? { name: t, title: titleOf(t), artist: '', url: `../../assets/music/${encodeURIComponent(t)}`, user: false }
+        : { name: t.name, title: t.title || titleOf(t.name), artist: t.artist || '', url: t.url, user: !!t.user }));
     } catch (e) { M.all = []; }
     applyFilter();
   }
@@ -187,20 +189,12 @@
     },
     /** `true` dentro de una sala o partida: se silencia. */
     setInGame(flag) {
-      const back = M.inGame && !flag;
       M.inGame = !!flag;
       if (!M.allowed) return;
-      // Cada vez que aparece el menú suena una canción distinta al azar, nunca la misma.
-      if (back && wantPlaying()) {
-        if (M.tracks.length > 1) {
-          const pick = Math.floor(Math.random() * (M.tracks.length - 1));
-          M.index = (M.index % M.tracks.length + 1 + pick) % M.tracks.length;
-          for (let i = 0; M.introDone && isIntro(M.tracks[M.index]) && i < M.tracks.length; i++) M.index = (M.index + 1) % M.tracks.length;
-        }
-        playIndex(0);
-        return;
-      }
-      sync();
+      // No se corta ni cambia de tema: sólo baja (en sala) o vuelve (en el menú).
+      const a = current();
+      if (a && !a.paused && wantPlaying()) fade(a, gain(), 900);
+      else sync();
     },
     /** Cuánto va de la canción que suena (0 a 1), para la barrita del cartel. */
     progress() { const a = current(); return a && isFinite(a.duration) && a.duration ? Math.min(1, a.currentTime / a.duration) : 0; },
@@ -210,6 +204,9 @@
     /** Sólo para pruebas: duración del fundido. */
     setCrossfade(ms) { M.xfade = Math.max(0, Number(ms) || 0); },
     get count() { return M.tracks.length; },
-    get tracks() { return M.all.map((t) => ({ name: t.name, title: t.title, user: t.user })); }
+    get tracks() { return M.all.map((t) => ({ name: t.name, title: t.title, artist: t.artist, user: t.user })); },
+    /** El tema que suena ahora: { title, artist, name, user }. */
+    get now() { const t = M.tracks[M.index % (M.tracks.length || 1)]; return t ? { title: t.title, artist: t.artist, name: t.name, user: !!t.user } : null; },
+    get playing() { const a = current(); return !!(a && !a.paused && wantPlaying()); }
   };
 })();

@@ -11,6 +11,7 @@ window.TL_NEWS = {
   title: { es: 'Qué hay de nuevo', en: "What's new" },
   items: {
     es: [
+      'Música del menú renovada: 26 temas nuevos (sin la de Free Fire) y vuelve la tarjeta «Ahora suena» con tapa, tema y artista, animada y con anterior / siguiente. Al entrar a una sala la música sigue más baja, la tarjeta se va y el tema, anterior / siguiente y el volumen quedan en la barra de arriba.',
       'Carteles de resultado en el piso con animación nueva: entran escalonados con rebote, el número cambia como contador y se abren hacia su arco al salir. Y mejores acabados de cancha: madera, hielo, arena, hormigón, arcilla, mármol, nieve y carbono con más detalle.',
       'Sacamos el «Filtro de estilo» y «Filtro aplicado a» de las fichas.',
       'Nuevo: más clima para la cancha (hojas de otoño, brasas, luciérnagas, ventisca). Todo se dibuja con formas baratas y apagado no corre nada.',
@@ -63,6 +64,7 @@ window.TL_NEWS = {
       'Cada clave se usa en una sola PC: si cambiás de computadora, pedile a miclo que te la libere.'
     ],
     en: [
+      'Menu music refreshed: 26 tracks (Free Fire one removed) and the “Now playing” card is back with cover, title and artist, animated, with previous / next. Inside a room the music keeps playing quieter, the card goes away and the track, previous / next and volume live in the top bar.',
       'Goal celebration rebuilt in club colours (navy, gold, cream): full version when a squad member using the app scores, a short tidy banner for any other goal. On-pitch score signs have a new animation (staggered bounce-in, rolling counter) and the pitch finishes (wood, ice, sand, concrete, clay, marble, snow, carbon) have more detail. Disc style filters were removed.',
       'New: more pitch weather (autumn leaves, embers, fireflies, blizzard). All drawn with cheap shapes: nothing runs when it is off.',
       'Menu music: seven new club songs (the Free Fire one is gone). It starts on its own when the app opens, a random one, then plays in order. With this version it comes on for everyone; turn it off in Settings or from the music icon in the top bar.',

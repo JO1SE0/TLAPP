@@ -148,6 +148,9 @@
           <svg data-icon viewBox="0 0 24 24"><path d="M4 9.6v4.8h3.4L12 18.4V5.6L7.4 9.6H4z"/><path class="audio__on" d="M15.4 9.2a4 4 0 0 1 0 5.6M17.9 6.7a7.5 7.5 0 0 1 0 10.6"/><path class="audio__off" d="M15.5 9.5l5 5M20.5 9.5l-5 5"/></svg>
         </button>
         <span class="eq eq--mini" id="audEq" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+        <button class="iconbtn audio__btn audio__skip" id="audPrev" type="button" data-i18n-title="audio.prev" title="Tema anterior" aria-label="Tema anterior"><svg data-icon viewBox="0 0 24 24"><path d="M7 5.5v13M18 6l-8 6 8 6z"/></svg></button>
+        <button class="iconbtn audio__btn audio__skip" id="audNext" type="button" data-i18n-title="audio.next" title="Tema siguiente" aria-label="Tema siguiente"><svg data-icon viewBox="0 0 24 24"><path d="M17 5.5v13M6 6l8 6-8 6z"/></svg></button>
+        <span class="audio__now" id="audNow" hidden></span>
         <input type="range" class="audio__vol" id="audVol" min="0" max="1" step="0.01" aria-label="Volumen de la música" />
         <div class="audio__sfx">
           <button class="iconbtn audio__btn" id="audSfx" type="button" data-i18n-title="audio.sfx" title="Sonidos de los botones" aria-label="Sonidos de los botones">
@@ -200,8 +203,11 @@
 
     <!-- «Ahora suena»: aparece unos segundos al cambiar de tema -->
     <div class="nowplaying" id="nowPlaying" hidden>
-      <span class="np__disc" aria-hidden="true"><img src="../../assets/toda-la-lecce.png" alt="" /></span>
-      <div class="nowplaying__text"><small data-i18n="audio.now">Ahora suena</small><b id="npTitle"></b></div>
+      <span class="np__glow" aria-hidden="true"></span>
+      <span class="np__disc" aria-hidden="true">
+        <span class="np__art" id="npArt"><img id="npCover" alt="" hidden /><img class="np__crest" id="npCrest" src="../../assets/toda-la-lecce.png" alt="" /></span>
+      </span>
+      <div class="nowplaying__text"><small data-i18n="audio.now">Ahora suena</small><b id="npTitle"></b><em id="npArtist"></em></div>
       <span class="eq" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
       <span class="np__bar" aria-hidden="true"><i id="npBar"></i></span>
       <span class="np__btns">

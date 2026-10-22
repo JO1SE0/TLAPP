@@ -2265,6 +2265,7 @@ function handle(channel, fn) {
 }
 
 /* Música del menú: las del club (assets/music) y las que cada jugador suma ---- */
+const musicMeta = require('./music-meta');
 const MUSIC_EXT = /\.(mp3|ogg|m4a|wav|flac|opus)$/i;
 const MUSIC_MAX_BYTES = 60 * 1024 * 1024;
 const MUSIC_MAX_FILES = 60;
@@ -2277,13 +2278,23 @@ async function listMusic(dir) {
 
 handle('tracks:list', async () => {
   // Todas las canciones del club (assets/music).
+  // La de Free Fire ya no va: si quedó una copia vieja en la carpeta, se ignora.
   const club = (await listMusic(path.join(ROOT, 'assets', 'music')))
-    .map((name) => ({ name, user: false, url: `../../assets/music/${encodeURIComponent(name)}` }));
+    .filter((name) => !/free\s*_?fire/i.test(name) && !/^\s*0+\s*[-.)]/.test(name))
+    .map((name) => ({ name, user: false, url: `../../assets/music/${encodeURIComponent(name)}`, ...musicMeta.parseName(name) }));
   const dir = userMusicDir();
   const { pathToFileURL } = require('url');
   const mine = (await listMusic(dir))
-    .map((name) => ({ name, user: true, url: pathToFileURL(path.join(dir, name)).href }));
+    .map((name) => ({ name, user: true, url: pathToFileURL(path.join(dir, name)).href, ...musicMeta.parseName(name) }));
   return [...club, ...mine];
+});
+
+/** Tapa embebida de una canción (club o propia), si el archivo la trae. */
+handle('tracks:cover', async (_e, name, user) => {
+  const clean = path.basename(String(name || ''));
+  if (!clean || !MUSIC_EXT.test(clean)) return null;
+  const file = user ? path.join(userMusicDir(), clean) : path.join(ROOT, 'assets', 'music', clean);
+  return musicMeta.readCover(file);
 });
 
 handle('tracks:add', async () => {
