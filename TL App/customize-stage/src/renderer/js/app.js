@@ -4831,8 +4831,36 @@ function layoutNowPlaying() {
   el.style.right = card ? `${Math.round((gap - NP_CARD_W) / 2)}px` : '';
   return card;
 }
+const fmtT = (t) => { t = Math.max(0, Math.floor(t || 0)); return `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`; };
+function paintNowExtra() {
+  const M = window.TLMusic;
+  if (!M) return;
+  const pos = M.position;
+  $('#npCount').textContent = pos.n ? `${String(pos.i).padStart(2, '0')} / ${String(pos.n).padStart(2, '0')}` : '';
+  const up = M.upNext;
+  const el = $('#npUp');
+  el.hidden = !up;
+  if (up) { el.textContent = ''; const k = document.createElement('i'); k.textContent = isEn() ? 'Next' : 'Sigue'; el.append(k, ` ${up.artist ? up.artist + ' · ' : ''}${up.title}`); }
+}
+function paintNowTick() {
+  const M = window.TLMusic;
+  if (!M) return;
+  const t = M.time();
+  const bar = $('#npBar');
+  if (bar) bar.style.transform = `scaleX(${(t.dur ? Math.min(1, t.cur / t.dur) : 0).toFixed(3)})`;
+  $('#npCur').textContent = fmtT(t.cur);
+  $('#npDur').textContent = `-${fmtT(t.dur - t.cur)}`;
+}
 function paintNowText() {
   $('#npTitle').textContent = npInfo.title;
+  // Títulos largos: se deslizan.
+  const mq = $('#npTitle').parentElement;
+  mq.classList.remove('is-marq');
+  requestAnimationFrame(() => {
+    const over = $('#npTitle').scrollWidth - mq.clientWidth;
+    if (over > 4) { mq.style.setProperty('--np-shift', `-${over + 12}px`); mq.style.setProperty('--np-dur', `${Math.max(6, over / 18 + 4)}s`); mq.classList.add('is-marq'); }
+  });
+  paintNowExtra();
   const ar = $('#npArtist');
   ar.textContent = npInfo.artist || '';
   ar.hidden = !npInfo.artist;
@@ -4859,10 +4887,8 @@ function showNowPlaying(ms) {
   clearTimeout(npTimer);
   if (!card) npTimer = setTimeout(hideNowPlaying, ms || 6000);
   clearInterval(npProgress);
-  npProgress = setInterval(() => {
-    const bar = $('#npBar');
-    if (bar && window.TLMusic) bar.style.transform = `scaleX(${window.TLMusic.progress().toFixed(3)})`;
-  }, 500);
+  paintNowTick();
+  npProgress = setInterval(paintNowTick, 500);
 }
 function hideNowPlaying() {
   const el = $('#nowPlaying');
@@ -4897,6 +4923,18 @@ $('#nowPlaying').addEventListener('mouseleave', () => { if (!$('#nowPlaying').cl
 // Al pasar por la música se muestra el tema; al pasar por los estilos de sonido se esconde, porque ahí se abre su selector.
 $('#audMusic').addEventListener('mouseenter', () => showNowPlaying(4500));
 $('.audio__sfx').addEventListener('mouseenter', hideNowPlaying);
+$('#npPlay').addEventListener('click', () => window.TLMusic && window.TLMusic.toggle());
+window.addEventListener('tl:musicstate', (e) => {
+  const paused = !!(e.detail && e.detail.paused);
+  const el = $('#nowPlaying');
+  el.classList.toggle('is-paused', paused);
+  $('#nowPlaying .eq').classList.toggle('is-playing', !paused && npPlaying);
+  $('#npPlay').title = paused ? (isEn() ? 'Play' : 'Reanudar') : (isEn() ? 'Pause' : 'Pausar');
+});
+$('#npSeek').addEventListener('click', (e) => {
+  const r = $('#npSeek').getBoundingClientRect();
+  if (window.TLMusic && r.width) { window.TLMusic.seek((e.clientX - r.left) / r.width); paintNowTick(); }
+});
 for (const id of ['npPrev', 'audPrev']) $('#' + id).addEventListener('click', () => window.TLMusic && window.TLMusic.prev());
 for (const id of ['npNext', 'audNext']) $('#' + id).addEventListener('click', () => window.TLMusic && window.TLMusic.next());
 

@@ -17,14 +17,14 @@
   const M = {
     all: [], tracks: [], index: 0, pool: [], cur: 0,
     enabled: true, volume: 0.35, club: true,
-    allowed: false, inGame: false, started: false,
+    allowed: false, inGame: false, started: false, userPaused: false,
     introDone: false, errors: 0, xfade: 3000, crossing: false, loading: null, timers: new WeakMap()
   };
 
   // Dentro de una sala la música sigue, pero más baja, para oír el juego.
   const IN_GAME_GAIN = 0.4;
   const gain = () => Math.min(1, Math.max(0, M.volume)) * (M.inGame ? IN_GAME_GAIN : 1);
-  const wantPlaying = () => M.enabled && M.allowed && M.tracks.length > 0;
+  const wantPlaying = () => M.enabled && M.allowed && !M.userPaused && M.tracks.length > 0;
   const current = () => M.pool[M.cur];
   /** Una canción del club que empieza con «00» es la de arranque (hoy no hay ninguna): suena una sola vez, al abrir la app. */
   const isIntro = (t) => !!t && !t.user && /^\s*0+\s*[-.)]/.test(t.name || '');
@@ -44,6 +44,10 @@
       if (k >= 1) { clearInterval(id); if (done) done(); }
     }, 40);
     M.timers.set(a, id);
+  }
+
+  function state() {
+    window.dispatchEvent(new CustomEvent('tl:musicstate', { detail: { paused: M.userPaused } }));
   }
 
   function announce() {
@@ -95,6 +99,8 @@
   /** Avanza (o retrocede) en la lista. */
   function step(dir, smooth) {
     if (!M.tracks.length) return;
+    // Saltear con la música en pausa la retoma.
+    if (M.userPaused) { M.userPaused = false; state(); }
     const n = M.tracks.length;
     M.index = ((M.index + dir) % n + n) % n;
     // Ya sonó la de bienvenida: no vuelve (salvo que no haya otra).
@@ -198,6 +204,32 @@
     },
     /** Cuánto va de la canción que suena (0 a 1), para la barrita del cartel. */
     progress() { const a = current(); return a && isFinite(a.duration) && a.duration ? Math.min(1, a.currentTime / a.duration) : 0; },
+    /** Pausa / reanuda sin tocar el interruptor de ajustes. */
+    toggle() {
+      if (!M.allowed || !M.enabled) return;
+      const a = current();
+      if (!M.userPaused) {
+        M.userPaused = true;
+        if (a && !a.paused) fade(a, 0, 250, () => { if (M.userPaused) a.pause(); });
+        state();
+      } else {
+        M.userPaused = false;
+        state();
+        if (a && a.src) {
+          const p = a.play();
+          if (p && p.catch) p.catch(() => {});
+          fade(a, gain(), 300);
+        } else sync();
+      }
+    },
+    get paused() { return M.userPaused; },
+    /** Salta a una parte del tema actual (0 a 1). */
+    seek(f) { const a = current(); if (a && isFinite(a.duration) && a.duration) a.currentTime = Math.min(1, Math.max(0, f)) * a.duration; },
+    /** Segundos que lleva y que dura el tema actual. */
+    time() { const a = current(); return a && isFinite(a.duration) ? { cur: a.currentTime, dur: a.duration } : { cur: 0, dur: 0 }; },
+    /** Lugar en la lista y el tema que viene. */
+    get position() { return { i: M.tracks.length ? (M.index % M.tracks.length) + 1 : 0, n: M.tracks.length }; },
+    get upNext() { const n = M.tracks.length; const t = n > 1 ? M.tracks[(M.index + 1) % n] : null; return t ? { title: t.title, artist: t.artist } : null; },
     next() { step(1, false); },
     prev() { step(-1, false); },
     skip() { step(1, false); },

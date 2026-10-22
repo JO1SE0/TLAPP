@@ -203,19 +203,28 @@
 
     <!-- «Ahora suena»: aparece unos segundos al cambiar de tema -->
     <div class="nowplaying" id="nowPlaying" hidden>
-      <span class="np__edge" aria-hidden="true"></span>
       <div class="np__top">
         <small data-i18n="audio.now">Ahora suena</small>
+        <span class="np__count" id="npCount"></span>
         <span class="eq" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
       </div>
-      <div class="nowplaying__text"><b id="npTitle"></b><em id="npArtist"></em></div>
-      <div class="np__foot">
-        <span class="np__bar" aria-hidden="true"><i id="npBar"></i></span>
-        <span class="np__btns">
-          <button class="iconbtn" id="npPrev" type="button" data-i18n-title="audio.prev" title="Anterior" aria-label="Anterior"><svg data-icon viewBox="0 0 24 24"><path d="M7 5.5v13M18 6l-8 6 8 6z"/></svg></button>
-          <button class="iconbtn" id="npNext" type="button" data-i18n-title="audio.next" title="Siguiente" aria-label="Siguiente"><svg data-icon viewBox="0 0 24 24"><path d="M17 5.5v13M6 6l8 6-8 6z"/></svg></button>
-        </span>
+      <div class="nowplaying__text">
+        <span class="np__marq"><b id="npTitle"></b></span>
+        <em id="npArtist"></em>
       </div>
+      <div class="np__seek" id="npSeek" role="slider" aria-label="Avance del tema" tabindex="-1">
+        <span class="np__bar" aria-hidden="true"><i id="npBar"></i></span>
+        <span class="np__times"><span id="npCur">0:00</span><span id="npDur">0:00</span></span>
+      </div>
+      <span class="np__btns">
+        <button class="iconbtn" id="npPrev" type="button" data-i18n-title="audio.prev" title="Anterior" aria-label="Anterior"><svg data-icon viewBox="0 0 24 24"><path d="M7 5.5v13M18 6l-8 6 8 6z"/></svg></button>
+        <button class="np__play" id="npPlay" type="button" title="Pausar" aria-label="Pausar">
+          <svg viewBox="0 0 24 24" class="np__ico-pause"><path d="M8.5 6v12M15.5 6v12"/></svg>
+          <svg viewBox="0 0 24 24" class="np__ico-play"><path d="M8 5.5v13l10.5-6.5z"/></svg>
+        </button>
+        <button class="iconbtn" id="npNext" type="button" data-i18n-title="audio.next" title="Siguiente" aria-label="Siguiente"><svg data-icon viewBox="0 0 24 24"><path d="M17 5.5v13M6 6l8 6-8 6z"/></svg></button>
+      </span>
+      <div class="np__next" id="npUp" hidden></div>
     </div>
 
     <button class="topbar-reveal" id="btnTopbarReveal" type="button" data-i18n-title="topbar.show" title="Mostrar la barra superior" aria-controls="topbar" aria-expanded="false" hidden>
