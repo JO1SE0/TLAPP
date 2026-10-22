@@ -304,18 +304,16 @@ async function readPerson(name) {
 async function readTrials() {
   const url = presence.cleanUrl(access.presenceUrl());
   const cur = access.getEffective();
-  const out = [];
-  for (const u of cur.users) {
+  // Una consulta por clave de prueba, todas juntas (antes una atrás de otra).
+  return Promise.all(cur.users.filter((u) => (Number(u.trial) || 0) > 0).map(async (u) => {
     const minutes = Number(u.trial) || 0;
-    if (minutes <= 0) continue;
     let start = 0;
     try {
       const rec = url ? await presence.call(`${url}/devices/${identity.pidOf(u.pub)}.json`, 'GET') : null;
       if (rec && typeof rec.t === 'number' && rec.e === (Number(u.epoch) || 0) && identity.verify(u.pub, `dev|${rec.d}|${rec.e}|${rec.t}`, rec.s)) start = rec.t;
     } catch { /* sin dato */ }
-    out.push({ name: u.name, minutes, start, end: start ? start + minutes * 60000 : 0 });
-  }
-  return out;
+    return { name: u.name, minutes, start, end: start ? start + minutes * 60000 : 0 };
+  }));
 }
 
 module.exports = { readTrials, run, applyAction, readAlerts, readAttempts, clearAttempts, readPerson, undoInfo };

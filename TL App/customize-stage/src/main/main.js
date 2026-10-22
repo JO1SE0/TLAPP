@@ -3028,15 +3028,25 @@ app.on('before-quit', () => { try { hostSession.stop(); } catch { /* ya cerrada 
 try { fs.unlinkSync(path.join(app.getPath('userData'), 'match-reports.json')); } catch { /* no estaba */ }
 
 // Panel del admin: estado vigente + estado de cada miembro, y las acciones.
+/*
+ * Todo lo que necesita el panel, pedido a la vez. Antes iba una cosa después de la otra
+ * (latido, alertas, intentos y una consulta por cada clave de prueba), así que el panel
+ * tardaba la suma de todas; ahora tarda lo que la más lenta. Si el latido se demora, se
+ * muestra el plantel de la última vez en vez de hacer esperar.
+ */
+const withCap = (p, ms) => Promise.race([p, new Promise((resolve) => setTimeout(resolve, ms))]);
+async function adminSnapshot() {
+  const [, alerts, attempts, trials] = await Promise.all([
+    withCap(beatOnline(), 4000),
+    admin.readAlerts().catch(() => []),
+    admin.readAttempts().catch(() => []),
+    admin.readTrials().catch(() => [])
+  ]);
+  return { alerts, attempts, trials };
+}
 handle('admin:get', async () => {
   if (!access.isCaptain()) return null;
-  await beatOnline();
-  let alerts = [];
-  let attempts = [];
-  try { alerts = await admin.readAlerts(); } catch { /* sin alertas */ }
-  try { attempts = await admin.readAttempts(); } catch { /* sin datos */ }
-  let trials = [];
-  try { trials = await admin.readTrials(); } catch { /* sin datos */ }
+  const { alerts, attempts, trials } = await adminSnapshot();
   return { doc: access.getEffective(), members: liveRoster || [], version: app.getVersion(), alerts, attempts, trials, undo: admin.undoInfo() };
 });
 handle('admin:person', async (_e, name) => {
@@ -3055,13 +3065,7 @@ handle('admin:pending', async () => {
 });
 handle('admin:do', async (_e, action) => {
   const res = await admin.run(action);
-  await beatOnline();
-  let alerts = [];
-  let attempts = [];
-  try { alerts = await admin.readAlerts(); } catch { /* sin alertas */ }
-  try { attempts = await admin.readAttempts(); } catch { /* sin datos */ }
-  let trials = [];
-  try { trials = await admin.readTrials(); } catch { /* sin datos */ }
+  const { alerts, attempts, trials } = await adminSnapshot();
   return { ...res, members: liveRoster || [], alerts, attempts, trials, undo: admin.undoInfo() };
 });
 (function startOnline() {
