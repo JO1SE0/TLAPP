@@ -4820,40 +4820,16 @@ let npTimer = null;
 let npInfo = { title: '', artist: '', name: '', user: false };
 let npPlaying = false;
 let npProgress = null;
-const npCovers = new Map();
-const NP_CARD_W = 250;
+const NP_CARD_W = 270;
 function layoutNowPlaying() {
   const el = $('#nowPlaying');
   const panel = document.querySelector('.rpanel');
   const gap = panel && panel.offsetParent ? window.innerWidth - panel.getBoundingClientRect().right : 0;
   const card = gap >= NP_CARD_W + 40;
   el.classList.toggle('np--card', card);
+  // Con hueco a la derecha de la lista, la tarjeta queda centrada ahí y se queda; si no, flota arriba a la derecha unos segundos.
   el.style.right = card ? `${Math.round((gap - NP_CARD_W) / 2)}px` : '';
   return card;
-}
-function hueOf(text) {
-  let h = 0;
-  for (let i = 0; i < text.length; i++) h = (h * 31 + text.charCodeAt(i)) % 360;
-  return h;
-}
-/** Tapa del archivo si la trae; si no, un disco con el escudo y un color propio de cada tema. */
-async function paintNowCover() {
-  const art = $('#npArt');
-  const img = $('#npCover');
-  if (!art || !img) return;
-  const key = `${npInfo.user ? 'u' : 'c'}:${npInfo.name}`;
-  art.style.setProperty('--np-hue', String(hueOf(npInfo.title + npInfo.artist)));
-  img.hidden = true;
-  art.classList.remove('has-cover');
-  let url = npCovers.get(key);
-  if (url === undefined) {
-    try { url = (window.tvm && window.tvm.tracks.cover) ? await window.tvm.tracks.cover(npInfo.name, npInfo.user) : null; } catch (e) { url = null; }
-    npCovers.set(key, url || null);
-  }
-  if (`${npInfo.user ? 'u' : 'c'}:${npInfo.name}` !== key || !url) return;
-  img.src = url;
-  img.hidden = false;
-  art.classList.add('has-cover');
 }
 function paintNowText() {
   $('#npTitle').textContent = npInfo.title;
@@ -4913,7 +4889,6 @@ window.addEventListener('tl:track', (e) => {
   if (d.playing && d.title) {
     npInfo = { title: d.title, artist: d.artist || '', name: d.name || '', user: !!d.user };
     paintNowText();
-    paintNowCover();
     showNowPlaying(6000);
   } else if (!d.playing) hideNowPlaying();
 });
