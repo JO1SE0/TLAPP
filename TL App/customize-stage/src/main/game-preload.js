@@ -6764,6 +6764,70 @@ function crestImage(ctx) {
 }
 
 /**
+ * Qué tiene la cancha de verdad: arcos y medidas, mirando el estadio.
+ *
+ * El fondo dibujado (`pitchBounds`) no alcanza: muchos mapas —los de x7, por
+ * ejemplo— no traen fondo y quedaban sin medidas. Acá se miran los arcos y los
+ * vértices del propio estadio, que están siempre. Los nombres de los campos
+ * están minificados, así que se reconocen por su forma:
+ *   · arco: un objeto con dos puntos {x, y} sueltos y un equipo;
+ *   · vértice: un objeto con un punto {x, y} en `a` y un coeficiente de rebote.
+ * Devuelve { goals, halfW, halfH } o null si no se pudo leer nada. Se calcula
+ * una vez por estadio.
+ */
+const matchGeomCache = new WeakMap();
+const isPoint = (o) => !!o && typeof o === 'object' && Number.isFinite(o.x) && Number.isFinite(o.y) && Object.keys(o).length === 2;
+
+function matchGeom(stadium) {
+  if (!stadium || typeof stadium !== 'object') return null;
+  if (matchGeomCache.has(stadium)) return matchGeomCache.get(stadium);
+  let res = null;
+  try {
+    const goals = [];
+    const pts = [];
+    for (const key of Object.keys(stadium)) {
+      const arr = stadium[key];
+      if (!Array.isArray(arr) || !arr.length || arr.length > 2000) continue;
+      const first = arr[0];
+      if (!first || typeof first !== 'object') continue;
+      const own = Object.keys(first);
+      const pointProps = own.filter((k) => isPoint(first[k]));
+      const hasTeam = own.some((k) => first[k] && typeof first[k] === 'object' && !isPoint(first[k]) && !Array.isArray(first[k]));
+      if (pointProps.length === 2 && hasTeam && arr.length <= 24 && !own.some((k) => typeof first[k] === 'number' && !Number.isInteger(first[k]))) {
+        for (const g of arr) {
+          const a = g && g[pointProps[0]];
+          const b = g && g[pointProps[1]];
+          if (isPoint(a) && isPoint(b)) goals.push({ x0: a.x, y0: a.y, x1: b.x, y1: b.y });
+        }
+      } else if (own.some((k) => isPoint(first[k]) && k.length <= 2) && own.some((k) => typeof first[k] === 'number')) {
+        // Vértices (y discos): sirven para estimar el alto cuando no hay fondo.
+        const pk = own.find((k) => isPoint(first[k]));
+        for (const v of arr) if (v && isPoint(v[pk])) pts.push(v[pk]);
+      }
+    }
+    let halfW = 0;
+    for (const g of goals) halfW = Math.max(halfW, Math.abs(g.x0), Math.abs(g.x1));
+    let halfH = 0;
+    const bounds = pitchBounds(stadium);
+    if (bounds) {
+      halfH = bounds.halfH;
+      if (!halfW) halfW = bounds.halfW;
+    } else {
+      if (!halfW && pts.length) {
+        const xs = pts.map((p) => Math.abs(p.x)).sort((a, b) => b - a);
+        halfW = xs[Math.floor(xs.length * 0.1)] || 0;
+      }
+      const ys = pts.filter((p) => !halfW || Math.abs(p.x) <= halfW * 1.05).map((p) => Math.abs(p.y)).sort((a, b) => b - a);
+      halfH = ys.length ? ys[Math.floor(ys.length * 0.1)] : 0;
+      if (halfW) halfH = Math.min(halfH, halfW * 0.95);
+    }
+    if (halfW > 0 && halfH > 0) res = { goals: goals.length, halfW, halfH };
+  } catch (e) { res = null; }
+  matchGeomCache.set(stadium, res);
+  return res;
+}
+
+/**
  * Las medidas de la cancha, en coordenadas de cancha. `null` si el parche no
  * las pudo capturar o si el estadio no tiene fondo dibujado (`bgType` 0), que
  * es donde no hay ningún borde que respetar.
@@ -7052,7 +7116,9 @@ function paintPitch(ctx, renderer, zoom) {
 
   if (wantWeather) lookfx.paintWeather(ctx, visual.weather, visual.weatherAmount, performance.now());
   if (wantScore) {
-    const bounds = pitchBounds(currentStadium);
+    // Sólo con arcos: sin ellos no hay resultado que mostrar.
+    const geom = matchGeom(currentStadium);
+    const bounds = geom && geom.goals > 0 ? geom : null;
     const now = performance.now();
     if (bounds) {
       lookfx.paintMatchMark(ctx, {

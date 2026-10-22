@@ -1861,13 +1861,28 @@ function paintMatchMark(ctx, o) {
       ctx.translate(side * o.halfW * 0.5 + ox, oy);
       ctx.scale(mir * sc * pop, sc * pop);
 
-      // Halo suave detrás del número (sólo mientras llega el gol).
-      if (flash > 0.02) {
-        ctx.globalAlpha = base * a * flash * 0.5;
-        ctx.fillStyle = fill;
+      // Anillo que se dibuja alrededor del número al llegar (y se desdibuja al irse).
+      const ringR = size * 0.74;
+      const sweep = mm.dir >= 0 ? easeOutCubic(q) : q;
+      if (sweep > 0.01) {
+        ctx.lineCap = 'round';
+        ctx.lineWidth = Math.max(1.5, size * 0.022);
+        ctx.strokeStyle = fill;
+        ctx.globalAlpha = base * a * 0.85;
         ctx.beginPath();
-        ctx.arc(0, 0, size * (0.55 + 0.35 * (1 - flash)), 0, TAU);
-        ctx.fill();
+        const start = -Math.PI / 2 + (mm.dir < 0 ? (1 - sweep) * TAU * 0.5 : 0);
+        ctx.arc(0, 0, ringR, start, -Math.PI / 2 + TAU * sweep);
+        ctx.stroke();
+      }
+      // Cuando cambia el marcador, un segundo anillo se abre y se apaga.
+      if (since < 0.9) {
+        const pr = clamp01(since / 0.9);
+        ctx.lineWidth = Math.max(1.5, size * 0.03 * (1 - pr));
+        ctx.strokeStyle = fill;
+        ctx.globalAlpha = base * a * (1 - pr) * 1.1;
+        ctx.beginPath();
+        ctx.arc(0, 0, ringR * (1 + 0.55 * easeOutCubic(pr)), 0, TAU);
+        ctx.stroke();
       }
 
       // El número: contador de cuenta (el viejo sube y sale, el nuevo entra).
@@ -1889,13 +1904,6 @@ function paintMatchMark(ctx, o) {
       }
       ctx.restore();
 
-      // Filete bajo el número: crece desde el centro con la llegada.
-      const lw = size * 0.62 * easeOutCubic(q);
-      if (lw > 1) {
-        ctx.globalAlpha = base * a * 0.9;
-        ctx.fillStyle = fill;
-        ctx.fillRect(-lw / 2, size * 0.58, lw, Math.max(1.5, size * 0.035));
-      }
       ctx.restore();
     }
   } finally {

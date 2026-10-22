@@ -29,6 +29,17 @@
     '.cg-vig{position:absolute;inset:0;opacity:0;background:radial-gradient(ellipse at center,rgba(19,36,63,0) 40%,rgba(19,36,63,.58) 100%),radial-gradient(ellipse at center,rgba(208,184,120,0) 60%,rgba(208,184,120,.26) 100%);animation:cgVig 3.1s ease both;will-change:opacity}',
     '.cg-vig.lite{animation-duration:2s;filter:none;opacity:0}',
     '@keyframes cgVig{0%{opacity:0}12%{opacity:1}68%{opacity:.85}100%{opacity:0}}',
+    /* destello inicial, rayos de luz y barras al costado del GOL */
+    '.cg-flash{position:absolute;inset:0;opacity:0;background:radial-gradient(circle at 50% 46%,rgba(244,240,223,.85),rgba(233,212,154,.35) 28%,rgba(233,212,154,0) 60%);animation:cgFlash .7s ease-out both;will-change:opacity}',
+    '@keyframes cgFlash{0%{opacity:0}12%{opacity:1}100%{opacity:0}}',
+    '.cg-rays{position:absolute;left:50%;top:46%;width:150vmax;height:150vmax;margin:-75vmax 0 0 -75vmax;opacity:0;background:repeating-conic-gradient(from 0deg,rgba(233,212,154,.14) 0 5deg,rgba(233,212,154,0) 5deg 15deg);-webkit-mask-image:radial-gradient(circle,#000 0,rgba(0,0,0,.45) 12%,transparent 34%);mask-image:radial-gradient(circle,#000 0,rgba(0,0,0,.45) 12%,transparent 34%);animation:cgRays 3.1s ease both;will-change:transform,opacity}',
+    '@keyframes cgRays{0%{opacity:0;transform:rotate(0) scale(.6)}15%{opacity:1}80%{opacity:.8}100%{opacity:0;transform:rotate(40deg) scale(1.15)}}',
+    '.cg-bar{position:absolute;top:calc(36% + 8.2vmin);height:.55vmin;width:30vw;opacity:0;background:linear-gradient(90deg,transparent,#e9d49a 55%,#f4f0df);box-shadow:0 0 2vmin rgba(233,212,154,.8);animation:cgBar 3s cubic-bezier(.2,.8,.2,1) .15s both;will-change:transform,opacity;transform-origin:right center;right:calc(50% + 24vmin)}',
+    '.cg-bar.r{right:auto;left:calc(50% + 24vmin);transform-origin:left center;background:linear-gradient(270deg,transparent,#e9d49a 55%,#f4f0df)}',
+    '@keyframes cgBar{0%{opacity:0;transform:scaleX(0)}18%{opacity:1;transform:scaleX(1)}80%{opacity:.9;transform:scaleX(1)}100%{opacity:0;transform:scaleX(1)}}',
+    /* marco dorado en los bordes */
+    '.cg-frame{position:absolute;inset:0;opacity:0;box-shadow:inset 0 0 6vmin 1vmin rgba(233,212,154,.55),inset 0 0 0 .35vmin rgba(233,212,154,.6);animation:cgFrame 3s ease both;will-change:opacity}',
+    '@keyframes cgFrame{0%{opacity:0}10%{opacity:1}30%{opacity:.5}45%{opacity:.9}80%{opacity:.5}100%{opacity:0}}',
     /* ondas */
     '.cg-ring{position:absolute;left:50%;top:46%;width:30vmin;height:30vmin;margin:-15vmin 0 0 -15vmin;border-radius:50%;border:.55vmin solid #e9d49a;box-shadow:0 0 3vmin rgba(208,184,120,.5);opacity:0;animation:cgRing 1.35s cubic-bezier(.16,.8,.3,1) both;will-change:transform,opacity}',
     '.cg-ring.r2{border-width:.25vmin;border-color:#f4f0df;animation-delay:.16s}',
@@ -63,10 +74,14 @@
     '.cg-rb{position:absolute;top:-5vmin;width:.8vmin;height:2.6vmin;border-radius:1px;opacity:0;animation:cgFall var(--d) cubic-bezier(.3,.1,.55,1) var(--w) both;will-change:transform,opacity}',
     '@keyframes cgFall{0%{opacity:0;transform:translate3d(0,0,0) rotate(0)}8%{opacity:1}100%{opacity:.9;transform:translate3d(var(--sx),118vh,0) rotate(var(--r))}}',
     /* versión corta */
-    '.cgl{position:absolute;left:50%;top:11%;display:flex;align-items:center;gap:1.8vmin;padding:1.3vmin 3.4vmin;border-radius:99px;background:rgba(19,36,63,.84);border:.2vmin solid rgba(208,184,120,.6);box-shadow:0 .8vmin 3vmin rgba(10,20,40,.5);opacity:0;animation:cgLite 2.1s cubic-bezier(.2,.9,.25,1) both;will-change:transform,opacity}',
-    '.cgl b{font:900 4.4vmin/1 ' + FONT + ';letter-spacing:.14em;background:linear-gradient(180deg,#f4f0df,#d0b878);-webkit-background-clip:text;background-clip:text;color:transparent}',
-    '.cgl span{font:700 2.6vmin/1 ' + FONT + ';letter-spacing:.16em;text-transform:uppercase;color:#f4f0df;padding-left:1.8vmin;border-left:.2vmin solid rgba(208,184,120,.5)}',
-    '@keyframes cgLite{0%{opacity:0;transform:translate(-50%,-4vmin) scale(.94)}14%{opacity:1;transform:translate(-50%,0) scale(1.02)}22%{transform:translate(-50%,0) scale(1)}80%{opacity:1;transform:translate(-50%,0) scale(1)}100%{opacity:0;transform:translate(-50%,-2.5vmin) scale(.98)}}'
+    '.cgl{position:absolute;left:50%;top:11%;display:flex;align-items:center;gap:1.8vmin;padding:1.2vmin 3.2vmin 1.2vmin 2.4vmin;border-radius:.8vmin;background:linear-gradient(90deg,rgba(19,36,63,.92),rgba(19,36,63,.78));border-left:.7vmin solid #d0b878;box-shadow:0 1vmin 3vmin rgba(10,20,40,.5);opacity:0;animation:cgLite 2.1s cubic-bezier(.2,.9,.25,1) both;will-change:transform,opacity;overflow:hidden}',
+    '.cgl::after{content:"";position:absolute;inset:0;background:linear-gradient(105deg,transparent 35%,rgba(244,240,223,.28) 50%,transparent 65%);transform:translateX(-120%);animation:cgLiteShine 1.1s ease .25s both}',
+    '@keyframes cgLiteShine{to{transform:translateX(120%)}}',
+    '.cgl b{font:900 4.2vmin/1 ' + FONT + ';letter-spacing:.14em;background:linear-gradient(180deg,#f4f0df,#d0b878);-webkit-background-clip:text;background-clip:text;color:transparent}',
+    '.cgl span{font:700 2.5vmin/1 ' + FONT + ';letter-spacing:.16em;text-transform:uppercase;color:#f4f0df;padding-left:1.8vmin;border-left:.2vmin solid rgba(208,184,120,.5)}',
+    '.cgl-line{position:absolute;left:50%;top:calc(11% + 7.6vmin);height:.3vmin;width:0;margin-left:0;background:linear-gradient(90deg,#d0b878,transparent);opacity:0;animation:cgLiteLine 2.1s ease .2s both}',
+    '@keyframes cgLiteLine{0%{width:0;opacity:0;transform:translateX(-50%)}25%{width:18vmin;opacity:.9;transform:translateX(-50%)}80%{width:18vmin;opacity:.7;transform:translateX(-50%)}100%{width:18vmin;opacity:0;transform:translateX(-50%)}}',
+    '@keyframes cgLite{0%{opacity:0;transform:translate(-80%,0)}16%{opacity:1;transform:translate(-50%,0)}22%{transform:translate(-50%,0) scale(1.02)}28%{transform:translate(-50%,0) scale(1)}80%{opacity:1;transform:translate(-50%,0)}100%{opacity:0;transform:translate(-20%,0)}}'
   ].join('\n');
 
   function cleanName(v) {
@@ -118,38 +133,41 @@
     box.append(el(doc, 'cg-vig' + (club ? '' : ' lite')));
 
     if (!club) {
-      box.append(el(doc, 'cg-ring lite'));
       var pill = el(doc, 'cgl');
       pill.append(el(doc, '', 'b', 'GOL'));
       var label = o.own ? ('EN CONTRA' + (name ? ' · ' + name : '')) : name;
       if (label) pill.append(el(doc, '', 'span', label));
-      box.append(pill);
+      box.append(pill, el(doc, 'cgl-line'));
       doc.body.append(box);
       timer = setTimeout(function () { stop(doc); }, 2300);
       return true;
     }
 
-    // Cintas: pocas y prolijas.
+    box.append(el(doc, 'cg-flash'), el(doc, 'cg-rays'), el(doc, 'cg-frame'));
+    // Cintas: de tres tamaños, con vaivén.
     var i;
-    for (i = 0; i < 34; i++) {
+    for (i = 0; i < 58; i++) {
       var rb = el(doc, 'cg-rb');
       rb.style.left = rnd(2, 98).toFixed(1) + '%';
       rb.style.background = CONF[i % CONF.length];
       rb.style.setProperty('--d', rnd(1.9, 3).toFixed(2) + 's');
       rb.style.setProperty('--w', rnd(0.05, 0.9).toFixed(2) + 's');
       rb.style.setProperty('--r', Math.round(rnd(200, 620)) + 'deg');
-      rb.style.setProperty('--sx', Math.round(rnd(-9, 9)) + 'vmin');
+      rb.style.setProperty('--sx', Math.round(rnd(-14, 14)) + 'vmin');
+      var sz = 0.6 + (i % 3) * 0.35;
+      rb.style.width = sz.toFixed(2) + 'vmin';
+      rb.style.height = (sz * 3.2).toFixed(2) + 'vmin';
       box.append(rb);
     }
 
     box.append(el(doc, 'cg-ring'), el(doc, 'cg-ring r2'), el(doc, 'cg-ring r3'));
 
     // Abanico de chispas desde el centro.
-    var n = 16;
+    var n = 30;
     for (i = 0; i < n; i++) {
       var sp = el(doc, 'cg-sp');
       var ang = (i / n) * Math.PI * 2 + (i % 2 ? 0.1 : -0.1);
-      var dist = 24 + (i % 3) * 8;
+      var dist = 20 + (i % 4) * 9;
       sp.style.background = GOLD[i % 3];
       sp.style.setProperty('--dx', (Math.cos(ang) * dist).toFixed(1) + 'vmin');
       sp.style.setProperty('--dy', (Math.sin(ang) * dist).toFixed(1) + 'vmin');
@@ -172,7 +190,7 @@
       s.style.animationDelay = d + 's,' + (0.5 + idx * 0.12).toFixed(2) + 's';
       word.append(s);
     });
-    box.append(word);
+    box.append(el(doc, 'cg-bar'), el(doc, 'cg-bar r'), word);
 
     var label2 = o.own ? ('EN CONTRA' + (name ? ' · ' + name : '')) : name;
     if (label2) {
