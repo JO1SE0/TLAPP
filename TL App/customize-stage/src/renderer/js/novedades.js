@@ -11,8 +11,8 @@ window.TL_NEWS = {
   title: { es: 'Qué hay de nuevo', en: "What's new" },
   items: {
     es: [
-      'Menú de la sala (el lobby al entrar a un host) rediseñado: panel con luz del color de acento, nombre de sala grande con línea luminosa, columnas Rojo y Azul con el color de su equipo, filas redondeadas con barrita al pasar el mouse, reglas en tarjeta y botones de empezar, parar y pausar más grandes. Todo estático, sin costo de FPS.',
-      'Configuración y Personalización rediseñadas con un estilo de vidrio claro y suave: panel luminoso con tonos pastel de tu color de acento, índice flotante con píldoras, tarjetas redondeadas con sombras difusas, icono por sección, interruptores tipo iOS, grupos de opciones y barras limpias. Sin desenfoques ni animaciones en bucle: no cuesta FPS.',
+      'Menú de la sala (el lobby al entrar a un host) con diseño nuevo estilo arena: nombre en mayúsculas, línea roja → acento → azul arriba, cabeceras de equipo en cinta inclinada con el color de cada uno, listas con franja y trama diagonal, reglas como panel de datos con esquinas y un «Empezar» en cinta grande. Todo estático, sin costo de FPS.',
+      'Configuración y Personalización rediseñadas en vidrio y más compactas: tarjetas redondeadas, índice flotante con píldoras, icono por sección, interruptores tipo iOS y colores de tu tema y acento. Sin desenfoques ni animaciones en bucle: no cuesta FPS.',
       'Marcador en el piso mucho más personalizable (Aspecto → Cancha): 6 estilos (anillo, sólido, contorno, neón, insignia y con volumen), tipografía, tamaño, distancia al medio, 4 entradas distintas, colores propios por equipo, destello con rayitas al convertir y la opción de dejarlo siempre visible, tenue, mientras se juega.',
       'Ahora vienen activados por defecto (también para quienes ya usaban la app): el festejo de gol, el marcador en el piso de la cancha (con el color de cada equipo) y abrir la app en pantalla completa. Si no te gusta alguno, lo apagás desde Ajustes.',
       'Música: corazón en la tarjeta para que un tema suene más seguido, y «no volver a poner» para ocultarlo (se vuelve a sumar desde Ajustes → Música). Ya no repite el mismo tema enseguida. Además, en la barra de arriba aparece un chip «N del club jugando» cuando hay gente del club en una sala.',
@@ -73,8 +73,8 @@ window.TL_NEWS = {
       'Cada clave se usa en una sola PC: si cambiás de computadora, pedile a miclo que te la libere.'
     ],
     en: [
-      'Room menu (the lobby when you enter a host) redesigned: a panel with accent glow, a big room name with a light line, Red and Blue columns in their team colour, rounded rows with a bar on hover, settings in a card and bigger start, stop and pause buttons. All static, no FPS cost.',
-      'Settings and Personalization redesigned in a soft, light glass style: a bright panel with pastel tones of your accent colour, a floating pill index, rounded cards with diffuse shadows, an icon per section, iOS-style switches, and clean option groups and sliders. No blur or looping animations: no FPS cost.',
+      'Room menu (the lobby when you enter a host) with a new arena style: uppercase name, a red → accent → blue line on top, slanted team ribbons in each team colour, striped lists with a diagonal pattern, settings as a data panel with corner marks and a big slanted Start button. All static, no FPS cost.',
+      'Settings and Personalization redesigned in glass and more compact: rounded cards, a floating pill index, an icon per section, iOS-style switches and your theme and accent colours. No blur or looping animations: no FPS cost.',
       'Pitch score sign is far more customizable (Look → Pitch): 6 styles (ring, solid, outline, neon, badge, extruded), typeface, size, distance from centre, 4 entrances, custom team colours, a burst with rays on goals and an option to keep it always visible, dimmed, during play.',
       'Now on by default (also for existing users): the goal celebration, the score on the pitch floor (in each team color) and opening the app in fullscreen. Turn any of them off in Settings.',
       'Music: a heart on the card to make a song play more often, and a hide button to never play it again (bring it back in Settings → Music). It no longer repeats a song right away. Also, a "N from the club playing" chip shows in the top bar when club members are in a room.',

@@ -6092,165 +6092,129 @@ html[data-roomview="board"] .rtable, html[data-roomview="map"] .rtable { overflo
 .sec[data-sec="config"] { --sec-ico: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%20fill='none'%20stroke='%2314161f'%20stroke-width='2'%20stroke-linecap='round'%20stroke-linejoin='round'%3E%3Ccircle%20cx='12'%20cy='12'%20r='3'/%3E%3Cpath%20d='M12%203.500v2.200M12%2018.300v2.200M3.500%2012h2.200M18.300%2012h2.200M6%206l1.500%201.500M16.500%2016.500%2018%2018M18%206l-1.500%201.500M7.500%2016.500%206%2018'/%3E%3C/svg%3E"); }
 
 /* ══════════════════════════════════════════════════════════════════════
-   Ajustes · Vidrio claro
-   Configuración y Personalización en un estilo claro y suave: tarjetas de
-   vidrio redondeadas, sombras difusas, colores pastel con tu acento y
-   controles tipo iOS. Se reasignan las variables de color SÓLO dentro del
-   panel, así que todo lo de adentro se vuelve claro solo. Cero desenfoques
-   (backdrop-filter) y cero animaciones en bucle: se pinta una vez.
+   Ajustes · Vidrio
+   Configuración y Personalización: tarjetas de vidrio redondeadas, sombras
+   difusas, controles tipo iOS y compacto. Usa los colores de TU tema (oscuro
+   o claro) y tu acento; no fuerza ninguna paleta. Sin backdrop-filter ni
+   animaciones en bucle: se pinta una vez.
    ══════════════════════════════════════════════════════════════════════ */
 :root { --st-ease: cubic-bezier(.2, .8, .2, 1); }
+:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel { padding: 14px; }
 :is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel__card {
-  --bg-0: #e9edf7; --bg-1: #f1f4fb; --bg-2: #ffffff; --panel: #ffffff; --panel-top: #f7f9fe;
-  --field: rgb(255 255 255 / 85%); --surface: rgb(255 255 255 / 64%); --surface-hi: rgb(255 255 255 / 92%);
-  --line: rgb(40 52 96 / 9%); --line-hi: rgb(40 52 96 / 15%);
-  --text: #1c2340; --text-rgb: 28 35 64; --text-dim: #566083; --text-faint: #8b94b0;
-  --accent-text: #26306a; --accent-mid: #26306a; --accent-soft: rgb(var(--accent-rgb) / 16%); --accent-line: rgb(var(--accent-rgb) / 45%);
-  --shadow-strong: 0 18px 40px -22px rgba(40, 52, 110, .35);
-  color: var(--text);
-  border: 1px solid rgb(255 255 255 / 70%);
-  border-radius: 28px;
+  max-width: min(1180px, 100%); height: min(100%, 800px); margin: auto; border-radius: 22px;
+  border: 1px solid rgb(var(--text-rgb) / 12%);
   background:
-    radial-gradient(50% 40% at 8% 0%, rgb(var(--accent-rgb) / 22%), transparent 70%),
-    radial-gradient(45% 40% at 100% 6%, rgb(150 170 255 / 28%), transparent 72%),
-    radial-gradient(50% 45% at 90% 100%, rgb(255 190 220 / 22%), transparent 70%),
-    radial-gradient(40% 40% at 0% 100%, rgb(150 230 210 / 22%), transparent 70%),
-    #eef1f9;
-  box-shadow: 0 40px 90px -30px rgba(10, 16, 40, .65), 0 0 0 1px rgb(255 255 255 / 40%) inset;
+    radial-gradient(46% 38% at 6% 0%, rgb(var(--accent-rgb) / 20%), transparent 70%),
+    radial-gradient(40% 36% at 100% 100%, rgb(var(--accent-rgb) / 10%), transparent 70%),
+    var(--bg-1);
+  box-shadow: 0 34px 80px -26px rgba(0, 0, 0, .7), 0 1px 0 rgb(var(--text-rgb) / 10%) inset;
 }
-:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel__scrim { background: rgb(16 20 40 / 52%); }
-:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel { --pn: 0; }
-:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel__card { max-width: min(1400px, 100%); }
-:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .page__inner { max-width: 900px; padding: 30px 30px 60px; }
-:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel__close { background: rgb(255 255 255 / 80%); border: 1px solid var(--line); color: var(--text-dim); border-radius: 50%; box-shadow: 0 6px 16px -8px rgba(40, 52, 110, .4); }
-:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel__close:hover { color: var(--text); background: #fff; }
+:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel__scrim { background: radial-gradient(120% 90% at 50% 20%, rgb(var(--accent-rgb) / 8%), rgb(3 6 16 / 78%) 70%); }
+:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .page__inner { max-width: 740px; padding: 22px 24px 48px; }
+:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel__close { border-radius: 50%; background: rgb(var(--text-rgb) / 8%); border: 1px solid rgb(var(--text-rgb) / 12%); }
+:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel__close:hover { background: rgb(var(--text-rgb) / 16%); }
 
-/* Índice: una tarjeta flotante de vidrio con píldoras. */
+/* Índice: una tarjeta flotante con píldoras. */
 :is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .pnav {
-  margin: 14px 0 14px 14px; padding: 16px 12px; border-radius: 22px; border: 1px solid rgb(255 255 255 / 75%);
-  background: linear-gradient(180deg, rgb(255 255 255 / 78%), rgb(255 255 255 / 52%));
-  box-shadow: 0 18px 40px -26px rgba(40, 52, 110, .45);
+  width: 232px; margin: 10px 0 10px 10px; padding: 12px 9px; border-radius: 18px;
+  border: 1px solid rgb(var(--text-rgb) / 9%);
+  background: linear-gradient(180deg, rgb(var(--text-rgb) / 6%), rgb(var(--text-rgb) / 2%));
+  box-shadow: 0 16px 34px -24px rgba(0, 0, 0, .8);
 }
-:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .pnav__search { background: rgb(255 255 255 / 85%); border: 1px solid var(--line); border-radius: 14px; box-shadow: 0 4px 12px -8px rgba(40, 52, 110, .3); }
-:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .pnav__search input[type="text"] { color: var(--text); }
-:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .pnav__tab, :is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .pnav__i { border-radius: 16px; transition: background-color .18s ease, box-shadow .2s ease, transform .2s var(--st-ease); }
-:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .pnav__tab:hover, :is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .pnav__i:hover { background: rgb(255 255 255 / 70%); }
+:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .pnav__search { background: rgb(var(--text-rgb) / 7%); border: 1px solid rgb(var(--text-rgb) / 10%); border-radius: 12px; }
+:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .pnav__tab, :is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .pnav__i { border-radius: 13px; transition: background-color .16s ease, box-shadow .2s ease; }
+:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .pnav__tab:hover, :is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .pnav__i:hover { background: rgb(var(--text-rgb) / 7%); transform: none; }
 :is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .pnav__tab.is-on, :is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .pnav__i.is-on {
-  background: #fff; box-shadow: 0 10px 24px -12px rgba(40, 52, 110, .5), 0 0 0 1px rgb(var(--accent-rgb) / 35%) inset;
+  background: linear-gradient(145deg, rgb(var(--accent-rgb) / 26%), rgb(var(--accent-rgb) / 8%));
+  box-shadow: 0 0 0 1px rgb(var(--accent-rgb) / 42%) inset, 0 10px 22px -14px rgb(var(--accent-rgb) / 80%);
 }
 :is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .pnav__tab.is-on::before, :is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .pnav__i.is-on::before { display: none; }
-:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .pnav__group, :is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .pnav__label { color: var(--text-faint); }
 
-/* Cabecera: título grande y limpio, sin recuadro. */
-:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .page[data-page] .pagehead {
-  background: none !important; border: 0 !important; box-shadow: none !important; padding: 8px 4px 6px; margin-bottom: 14px; overflow: visible;
-  animation: none !important;
-}
-:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .page[data-page] .pagehead::before { color: var(--text-faint); }
+/* Cabecera: título limpio, sin recuadro. */
+:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .page[data-page] .pagehead { background: none !important; border: 0 !important; box-shadow: none !important; padding: 2px 2px 4px; margin-bottom: 10px; overflow: visible; animation: none !important; }
 :is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .page[data-page] .pagehead::after { display: none; }
-:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .page[data-page] .pagehead h1 {
-  font-size: 40px; font-weight: 800; letter-spacing: -.04em; color: var(--text);
-  background: none; -webkit-text-fill-color: currentColor;
-}
-:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .page[data-page] .pagehead p { color: var(--text-dim); }
-:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .pagehead .crumb, :is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .pagehead [class*="crumb"] { color: var(--text-dim); }
+:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .page[data-page] .pagehead h1 { font-size: 30px; font-weight: 800; letter-spacing: -.035em; color: var(--text); background: none; -webkit-text-fill-color: currentColor; }
+:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .page[data-page] .pagehead p { color: var(--text-dim); font-size: 13px; }
 
-/* Atajos: pastillas blancas. */
-:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .tabbar { background: none; }
-:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .tabbar__chip, :is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .tabbar__fold {
-  background: rgb(255 255 255 / 80%); border: 1px solid rgb(255 255 255 / 90%); color: var(--text-dim); border-radius: 999px;
-  box-shadow: 0 6px 14px -10px rgba(40, 52, 110, .5);
-}
-:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .tabbar__chip:hover, :is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .tabbar__fold:hover { background: #fff; color: var(--text); transform: translateY(-1px); border-color: rgb(var(--accent-rgb) / 45%); }
+/* Atajos. */
+:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .tabbar { background: linear-gradient(var(--bg-1) 78%, transparent); padding: 4px 0 8px; }
+:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .tabbar__chip, :is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .tabbar__fold { background: rgb(var(--text-rgb) / 7%); border: 1px solid rgb(var(--text-rgb) / 10%); color: var(--text-dim); border-radius: 999px; font-size: 12px; padding: 5px 12px; }
+:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .tabbar__chip:hover, :is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .tabbar__fold:hover { background: rgb(var(--accent-rgb) / 18%); color: var(--text); border-color: rgb(var(--accent-rgb) / 45%); transform: none; box-shadow: none; }
 
 /* Secciones: tarjetas de vidrio. */
 :is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .page[data-page] .sec {
-  padding: 22px 26px 16px; border-radius: 26px; border: 1px solid rgb(255 255 255 / 85%);
-  background: linear-gradient(180deg, rgb(255 255 255 / 82%), rgb(255 255 255 / 60%));
-  box-shadow: 0 22px 44px -28px rgba(40, 52, 110, .5), 0 1px 0 rgb(255 255 255 / 90%) inset;
+  padding: 16px 20px 10px; border-radius: 20px; border: 1px solid rgb(var(--text-rgb) / 10%);
+  background: linear-gradient(180deg, rgb(var(--text-rgb) / 6.5%), rgb(var(--text-rgb) / 2.5%));
+  box-shadow: 0 18px 36px -26px rgba(0, 0, 0, .85), 0 1px 0 rgb(var(--text-rgb) / 8%) inset;
 }
 :is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .page[data-page] .sec::after { display: none; }
-:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .page[data-page] .sec--feature { background: radial-gradient(90% 100% at 0% 0%, rgb(var(--accent-rgb) / 16%), transparent 60%), linear-gradient(180deg, rgb(255 255 255 / 85%), rgb(255 255 255 / 62%)); }
-:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .page[data-page] .sec + .sec { margin-top: 20px; }
-:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .sec__head { border-bottom: 0; padding-bottom: 12px; margin-bottom: 6px; }
+:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .page[data-page] .sec--feature { background: radial-gradient(90% 100% at 0% 0%, rgb(var(--accent-rgb) / 16%), transparent 60%), linear-gradient(180deg, rgb(var(--text-rgb) / 6.5%), rgb(var(--text-rgb) / 2.5%)); }
+:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .page[data-page] .sec + .sec { margin-top: 14px; }
+:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .sec__head { border-bottom: 0; padding-bottom: 8px; margin-bottom: 4px; }
 :is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .sec__head::after { display: none; }
-:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .sec__title {
-  display: flex; align-items: center; min-height: 40px; padding-left: 52px; text-transform: none; letter-spacing: -.01em;
-  font-size: 20px; font-weight: 750; color: var(--text);
-}
+:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .sec__title { display: flex; align-items: center; min-height: 32px; padding-left: 42px; text-transform: none; letter-spacing: -.01em; font-size: 16.5px; font-weight: 750; color: var(--text); }
 :is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .sec__title::before {
-  content: ""; left: 0; top: 50%; bottom: auto; width: 40px; height: 40px; transform: translateY(-50%); border-radius: 14px;
-  background:
-    var(--sec-ico, none) center / 21px no-repeat,
-    linear-gradient(145deg, rgb(var(--accent-rgb) / 55%), rgb(var(--accent-rgb) / 22%));
-  box-shadow: 0 8px 18px -10px rgb(var(--accent-rgb) / 90%), 0 1px 0 rgb(255 255 255 / 80%) inset;
+  content: ""; left: 0; top: 50%; bottom: auto; width: 32px; height: 32px; transform: translateY(-50%); border-radius: 11px;
+  background: var(--sec-ico, none) center / 17px no-repeat, linear-gradient(145deg, rgb(var(--accent-rgb) / 90%), rgb(var(--accent-rgb) / 55%));
+  box-shadow: 0 8px 16px -8px rgb(var(--accent-rgb) / 90%), 0 1px 0 rgb(255 255 255 / 35%) inset;
 }
-:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .sec__desc { color: var(--text-dim); }
-:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .sec__chev { background: rgb(255 255 255 / 85%); color: var(--text-dim); box-shadow: 0 4px 10px -6px rgba(40, 52, 110, .4); }
+:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .sec__desc { color: var(--text-dim); font-size: 12px; }
+:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .sec__chev { background: rgb(var(--text-rgb) / 8%); color: var(--text-dim); width: 24px; height: 24px; }
 
-/* Filas: finas, con una raya sutil entre ellas. */
-:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .row { border-radius: 16px; transition: background-color .16s ease; }
-:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .row:hover { background: rgb(255 255 255 / 70%); }
+/* Filas. */
+:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .row { border-radius: 14px; min-height: 46px; padding: 8px 12px; transition: background-color .16s ease; }
+:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .row:hover { background: rgb(var(--text-rgb) / 5%); }
 :is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .row:not(.row--tog):not(.row--block):not(.row--text)::before { display: none; }
-:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .row + .row:not(.row--tog) { box-shadow: 0 -1px 0 var(--line); }
+:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .row + .row:not(.row--tog) { box-shadow: 0 -1px 0 rgb(var(--text-rgb) / 7%); }
 :is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .row--block:hover, :is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .row--text:hover { background: none; }
-:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .row__label { color: var(--text); font-weight: 650; }
-:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .row__desc { color: var(--text-dim); }
-:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .hint { background: rgb(var(--accent-rgb) / 20%); color: var(--accent-text); }
+:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .row__label { font-size: 13.5px; font-weight: 650; color: var(--text); }
+:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .row__desc { font-size: 12px; color: var(--text-dim); }
 
-/* Interruptores sueltos como tarjetitas de vidrio; al prenderlos, un tinte pastel. */
-:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .rows { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 12px; align-items: stretch; }
-:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .rows + .rows { margin-top: 12px; }
+/* Interruptores: tarjetitas de vidrio que se tiñen con tu acento al prenderlos. */
+:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .rows { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 9px; align-items: stretch; }
+:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .rows + .rows { margin-top: 9px; }
 :is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .rows > .row:not(.row--tog) { grid-column: 1 / -1; }
 :is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .row--tog {
-  margin: 0; padding: 14px 16px; min-height: 78px; border-radius: 20px; align-items: center; gap: 12px; box-shadow: none !important;
-  border: 1px solid rgb(255 255 255 / 95%);
-  background: rgb(255 255 255 / 70%);
-  box-shadow: 0 12px 26px -20px rgba(40, 52, 110, .55) !important;
-  transition: background-color .2s ease, border-color .2s ease, transform .2s var(--st-ease), box-shadow .25s ease;
+  margin: 0; padding: 10px 13px; min-height: 62px; border-radius: 16px; align-items: center; gap: 10px;
+  border: 1px solid rgb(var(--text-rgb) / 9%); background: rgb(var(--text-rgb) / 4.5%); box-shadow: none !important;
+  transition: background-color .18s ease, border-color .18s ease, transform .18s var(--st-ease);
 }
-:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .row--tog:hover { transform: translateY(-2px); background: #fff; box-shadow: 0 18px 32px -20px rgba(40, 52, 110, .6) !important; }
+:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .row--tog:hover { transform: translateY(-1px); background: rgb(var(--text-rgb) / 8%); }
 :is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .row--tog::before { display: none !important; }
-:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .row--tog.is-on { background: linear-gradient(145deg, rgb(var(--accent-rgb) / 24%), rgb(var(--accent-rgb) / 8%)), #fff; border-color: rgb(var(--accent-rgb) / 40%); }
-:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .row--tog .row__label { font-size: 14px; }
-:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .row--tog .row__desc { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; font-size: 12px; }
+:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .row--tog.is-on { background: linear-gradient(145deg, rgb(var(--accent-rgb) / 24%), rgb(var(--accent-rgb) / 6%)); border-color: rgb(var(--accent-rgb) / 42%); }
+:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .row--tog .row__label { font-size: 13px; }
+:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .row--tog .row__desc { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-size: 11.5px; }
 
 /* Interruptor tipo iOS. */
-:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .switch { width: 48px; height: 28px; background: rgb(40 52 96 / 16%); border: 0; box-shadow: inset 0 1px 3px rgb(20 26 60 / 25%); }
-:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .switch::after { top: 2px; left: 2px; width: 24px; height: 24px; background: #fff; box-shadow: 0 3px 8px rgb(20 26 60 / 35%); }
-:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .switch.is-on { background: linear-gradient(135deg, var(--accent), var(--accent-2, var(--accent))); box-shadow: 0 6px 16px -6px rgb(var(--accent-rgb) / 85%), inset 0 1px 2px rgb(255 255 255 / 30%); }
-:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .switch.is-on::after { transform: translateX(20px); background: #fff; }
+:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .switch { width: 42px; height: 25px; background: rgb(var(--text-rgb) / 18%); border: 0; box-shadow: inset 0 1px 3px rgb(0 0 0 / 35%); }
+:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .switch::after { top: 2px; left: 2px; width: 21px; height: 21px; background: #fff; box-shadow: 0 3px 8px rgb(0 0 0 / 40%); }
+:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .switch.is-on { background: linear-gradient(135deg, var(--accent), var(--accent-2, var(--accent))); box-shadow: 0 6px 14px -6px rgb(var(--accent-rgb) / 85%), inset 0 1px 2px rgb(255 255 255 / 30%); }
+:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .switch.is-on::after { transform: translateX(17px); background: #fff; }
 
-/* Controles: blancos, redondeados, con sombra suave. */
+/* Controles. */
 :is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel select, :is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel input[type="text"]:not(#settingsSearch), :is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel input[type="number"] {
-  background-color: rgb(255 255 255 / 92%); color: var(--text); border: 1px solid rgb(255 255 255 / 95%); border-radius: 14px;
-  box-shadow: 0 6px 14px -10px rgba(40, 52, 110, .5), 0 0 0 1px var(--line) inset;
+  background-color: rgb(var(--text-rgb) / 7%); color: var(--text); border: 1px solid rgb(var(--text-rgb) / 12%); border-radius: 12px; font-size: 13px;
 }
-:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel select:focus, :is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel input[type="text"]:focus, :is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel input[type="number"]:focus { border-color: var(--accent); box-shadow: 0 0 0 4px rgb(var(--accent-rgb) / 25%); background-color: #fff; }
-:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel select option { background: #fff; color: #1c2340; }
-:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel input[type="range"] { height: 6px; background: linear-gradient(90deg, var(--accent) var(--fill, 50%), rgb(40 52 96 / 14%) var(--fill, 50%)); box-shadow: none; }
-:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel input[type="range"]::-webkit-slider-thumb { width: 22px; height: 22px; background: #fff; border: 0; box-shadow: 0 4px 12px rgb(20 26 60 / 40%), 0 0 0 1px rgb(40 52 96 / 10%); }
-:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .seg { background: rgb(40 52 96 / 9%); border: 0; border-radius: 14px; box-shadow: inset 0 1px 3px rgb(20 26 60 / 15%); }
-:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .seg button { color: var(--text-dim); border-radius: 11px; }
-:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .seg button.is-on { background: #fff; color: var(--text); box-shadow: 0 4px 12px -4px rgba(20, 26, 60, .45); }
-:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .btn, :is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .ghostbtn { border-radius: 14px; }
-:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .btn--ghost, :is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .ghostbtn { background: rgb(255 255 255 / 85%); color: var(--text); border: 1px solid rgb(255 255 255 / 95%); box-shadow: 0 6px 14px -10px rgba(40, 52, 110, .5), 0 0 0 1px var(--line) inset; }
-:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .btn--ghost:hover, :is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .ghostbtn:hover { background: #fff; }
+:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel select:focus, :is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel input[type="text"]:focus, :is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel input[type="number"]:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgb(var(--accent-rgb) / 24%); background-color: rgb(var(--accent-rgb) / 8%); }
+:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel select option { background: var(--bg-2); color: var(--text); }
+:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel input[type="range"] { height: 5px; box-shadow: none; }
+:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel input[type="range"]::-webkit-slider-thumb { width: 18px; height: 18px; background: #fff; border: 0; box-shadow: 0 3px 10px rgb(0 0 0 / 50%), 0 0 0 4px rgb(var(--accent-rgb) / 25%); }
+:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .seg { background: rgb(0 0 0 / 22%); border: 1px solid rgb(var(--text-rgb) / 8%); border-radius: 13px; padding: 3px; }
+:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .seg button { color: var(--text-dim); border-radius: 10px; font-size: 12px; padding: 6px 12px; }
+:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .seg button.is-on { background: linear-gradient(135deg, var(--accent), var(--accent-2, var(--accent))); color: var(--accent-text-on); box-shadow: 0 6px 14px -6px rgb(var(--accent-rgb) / 80%); }
+:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .btn, :is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .ghostbtn { border-radius: 12px; }
 
-/* Perfiles de rendimiento y tarjetas de tema: blancas, con aro del acento al elegir. */
-:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .presetbtn { border-radius: 20px; background: rgb(255 255 255 / 75%); border: 1px solid rgb(255 255 255 / 95%); box-shadow: 0 14px 28px -22px rgba(40, 52, 110, .6); color: var(--text); transition: transform .2s var(--st-ease), box-shadow .22s ease, background-color .16s ease; }
-:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .presetbtn:hover { transform: translateY(-3px); background: #fff; }
-:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .presetbtn b { color: var(--text); }
-:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .presetbtn small { color: var(--text-dim); }
-:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .presetbtn.is-on { background: linear-gradient(145deg, rgb(var(--accent-rgb) / 26%), rgb(var(--accent-rgb) / 8%)), #fff; box-shadow: 0 0 0 2px var(--accent), 0 18px 34px -18px rgb(var(--accent-rgb) / 80%); }
-:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .presetbtn.is-on b { color: var(--text); }
-:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .themecard { background: rgb(255 255 255 / 75%); border: 1px solid rgb(255 255 255 / 95%); border-radius: 20px; box-shadow: 0 14px 28px -22px rgba(40, 52, 110, .6); color: var(--text); }
-:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .themecard.is-on { box-shadow: 0 0 0 2px var(--accent), 0 18px 34px -18px rgb(var(--accent-rgb) / 80%); }
+/* Perfiles de rendimiento y temas. */
+:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .presetbtn { border-radius: 16px; padding: 12px 13px; transition: transform .18s var(--st-ease), box-shadow .2s ease, background-color .16s ease; }
+:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .presetbtn:hover { transform: translateY(-2px); }
+:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .presetbtn.is-on { background: linear-gradient(145deg, rgb(var(--accent-rgb) / 26%), rgb(var(--accent-rgb) / 7%)); box-shadow: 0 0 0 2px var(--accent), 0 14px 28px -16px rgb(var(--accent-rgb) / 80%); }
+:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .presetbtn.is-on::after { top: 9px; right: 9px; }
+:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .themecard { border-radius: 16px; }
+:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .themecard.is-on { box-shadow: 0 0 0 2px var(--accent), 0 14px 28px -16px rgb(var(--accent-rgb) / 80%); }
 
 /* Etiquetas y scroll. */
-:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .tag { background: rgb(40 52 96 / 8%); color: var(--text-dim); }
 :is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .tag--accent { background: rgb(var(--accent-rgb) / 24%); color: var(--accent-text); box-shadow: none; }
 :is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel__pages { scrollbar-width: thin; }
-:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel__pages::-webkit-scrollbar { width: 10px; }
-:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel__pages::-webkit-scrollbar-thumb { border-radius: 10px; border: 3px solid transparent; background-clip: padding-box; background-color: rgb(40 52 96 / 22%); }
-:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel__pages::-webkit-scrollbar-thumb:hover { background-color: rgb(40 52 96 / 40%); }
+:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel__pages::-webkit-scrollbar { width: 9px; }
+:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel__pages::-webkit-scrollbar-thumb { border-radius: 9px; border: 2px solid transparent; background-clip: padding-box; background-color: rgb(var(--accent-rgb) / 35%); }
+:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel__pages::-webkit-scrollbar-thumb:hover { background-color: rgb(var(--accent-rgb) / 65%); }
