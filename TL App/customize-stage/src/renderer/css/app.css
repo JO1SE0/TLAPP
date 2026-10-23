@@ -6054,187 +6054,6 @@ html[data-roomview="board"] .rtable, html[data-roomview="map"] .rtable { overflo
 @media (prefers-reduced-motion: reduce) { .topchip, .topchip__dot { animation: none; } }
 @media (max-width: 1100px) { .topchip span { display: none; } .topchip { padding: 0 9px; } }
 
-/* ══════════════════════════════════════════════════════════════════════
-   Ajustes y Personalización 2.0
-   Sólo pintura: bordes de luz, insignias, entradas escalonadas y controles
-   con más cuerpo. Nada se anima en bucle: lo que se mueve lo hace una vez al
-   abrir la página o al tocar, así que el panel no cuesta FPS.
-   ══════════════════════════════════════════════════════════════════════ */
-:root { --st-ease: cubic-bezier(.2, .8, .2, 1); }
-
-/* Marco del panel: un filo de luz arriba y sombra más profunda. */
-.panel__card {
-  box-shadow: 0 30px 80px -20px rgb(0 0 0 / 70%), 0 0 0 1px rgb(var(--accent-rgb) / 10%), inset 0 1px 0 rgb(255 255 255 / 7%);
-}
-
-/* ── Índice de la izquierda ── */
-.pnav__i, .pnav__tab { position: relative; transition: color .16s ease, background-color .16s ease, transform .2s var(--st-ease); }
-.pnav__i:hover, .pnav__tab:hover { transform: translateX(3px); }
-.pnav__tab.is-on, .pnav__i.is-on {
-  background: linear-gradient(100deg, rgb(var(--accent-rgb) / 24%), rgb(var(--accent-rgb) / 6%) 70%, transparent);
-  box-shadow: inset 0 0 0 1px rgb(var(--accent-rgb) / 40%), 0 10px 26px -14px rgb(var(--accent-rgb) / 70%);
-}
-.pnav__tab.is-on::before, .pnav__i.is-on::before {
-  content: ""; position: absolute; left: -9px; top: 22%; bottom: 22%; width: 3px; border-radius: 3px;
-  background: linear-gradient(var(--accent), var(--accent-2, var(--accent)));
-  box-shadow: 0 0 12px var(--accent);
-}
-.pnav__search { transition: border-color .2s ease, box-shadow .25s ease, background .2s ease; }
-.pnav__search:focus-within { background: rgb(var(--accent-rgb) / 7%); }
-
-/* ── Cabecera de cada página ── */
-.page[data-page="aspecto"] .pagehead,
-.page[data-page="ajustes"] .pagehead {
-  border-radius: 20px; padding: 24px 28px;
-  background:
-    radial-gradient(90% 140% at 0% 0%, rgb(var(--accent-rgb) / 30%), transparent 60%),
-    radial-gradient(60% 120% at 100% 100%, rgb(var(--accent-rgb) / 12%), transparent 70%),
-    linear-gradient(160deg, rgb(255 255 255 / 6%), rgb(255 255 255 / 1%));
-  box-shadow: inset 0 1px 0 rgb(255 255 255 / 10%), 0 18px 40px -26px rgb(var(--accent-rgb) / 60%);
-}
-.page[data-page="aspecto"] .pagehead h1,
-.page[data-page="ajustes"] .pagehead h1 {
-  font-size: 36px;
-  background: linear-gradient(100deg, var(--text) 30%, var(--accent-text) 100%);
-  -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
-}
-/* Un destello que cruza la cabecera una sola vez (primera capa del fondo). */
-.page[data-page="aspecto"] .pagehead,
-.page[data-page="ajustes"] .pagehead {
-  background:
-    linear-gradient(100deg, transparent 42%, rgb(255 255 255 / 10%) 50%, transparent 58%) 150% 0 / 300% 100% no-repeat,
-    radial-gradient(90% 140% at 0% 0%, rgb(var(--accent-rgb) / 30%), transparent 60%),
-    radial-gradient(60% 120% at 100% 100%, rgb(var(--accent-rgb) / 12%), transparent 70%),
-    linear-gradient(160deg, rgb(255 255 255 / 6%), rgb(255 255 255 / 1%));
-}
-html:not([data-animations="off"]) .page.is-active .pagehead { animation: stSheen 1.4s .3s var(--st-ease) 1 both; }
-@keyframes stSheen { to { background-position: -50% 0, 0 0, 0 0, 0 0; } }
-
-/* ── Secciones: tarjeta con filo de luz y entrada escalonada ── */
-.page[data-page="aspecto"] .sec,
-.page[data-page="ajustes"] .sec {
-  position: relative; border-color: transparent; border-radius: 18px;
-  background:
-    linear-gradient(180deg, rgb(255 255 255 / 4.5%), rgb(255 255 255 / 1.5%) 40%),
-    var(--surface);
-  box-shadow: 0 16px 36px -28px rgb(0 0 0 / 80%), inset 0 1px 0 rgb(255 255 255 / 6%);
-  transition: box-shadow .3s ease;
-}
-.page[data-page="aspecto"] .sec::after,
-.page[data-page="ajustes"] .sec::after {
-  content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 1px; pointer-events: none;
-  background: linear-gradient(155deg, rgb(var(--accent-rgb) / 40%), var(--line-hi) 32%, transparent 62%, rgb(var(--accent-rgb) / 14%));
-  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-  -webkit-mask-composite: xor; mask-composite: exclude;
-  opacity: .8; transition: opacity .25s ease;
-}
-.page[data-page="aspecto"] .sec:hover::after,
-.page[data-page="ajustes"] .sec:hover::after { opacity: 1; }
-.page[data-page="aspecto"] .sec--feature,
-.page[data-page="ajustes"] .sec--feature {
-  background:
-    radial-gradient(110% 90% at 6% 0%, rgb(var(--accent-rgb) / 20%), transparent 62%),
-    var(--surface);
-}
-.sec__title { text-transform: uppercase; letter-spacing: .1em; font-size: 13.5px; font-weight: 800; }
-.sec__title::before {
-  width: 5px; top: 1px; bottom: 1px; border-radius: 3px;
-  background: linear-gradient(var(--accent), var(--accent-2, var(--accent)));
-  box-shadow: 0 0 14px rgb(var(--accent-rgb) / 70%);
-}
-
-/* ── Filas: una línea de acento aparece al pasar el mouse ── */
-.row { position: relative; border-radius: 12px; transition: background-color .18s ease; }
-.row:hover { background: linear-gradient(90deg, rgb(var(--accent-rgb) / 9%), rgb(255 255 255 / 2%) 55%, transparent); }
-.row:not(.row--block):not(.row--text)::before {
-  content: ""; position: absolute; left: 0; top: 24%; bottom: 24%; width: 3px; border-radius: 3px;
-  background: var(--accent); box-shadow: 0 0 10px var(--accent);
-  transform: scaleY(0); transition: transform .2s var(--st-ease);
-}
-.row:not(.row--block):not(.row--text):hover::before { transform: scaleY(1); }
-.row__label { letter-spacing: -.005em; }
-.row__desc { opacity: .92; }
-
-/* ── Interruptor: más grande, con tilde y brillo ── */
-.switch { width: 46px; height: 26px; background: rgb(255 255 255 / 7%); border-color: rgb(255 255 255 / 14%); box-shadow: inset 0 2px 5px rgb(0 0 0 / 35%); }
-.switch::after {
-  top: 2px; left: 2px; width: 20px; height: 20px;
-  background: linear-gradient(180deg, #ffffff, #cdd3e0);
-  box-shadow: 0 2px 6px rgb(0 0 0 / 50%);
-}
-.switch.is-on {
-  background: linear-gradient(120deg, var(--accent), var(--accent-2, var(--accent)));
-  box-shadow: 0 0 0 3px rgb(var(--accent-rgb) / 18%), 0 6px 18px -4px rgb(var(--accent-rgb) / 80%);
-}
-.switch.is-on::after {
-  transform: translateX(20px);
-  background:
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Cpath d='M5.6 10.4l3 3 5.8-6.4' fill='none' stroke='%23222' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / 14px no-repeat,
-    linear-gradient(180deg, #ffffff, #e6e9f2);
-}
-
-/* ── Barras ── */
-input[type="range"] { height: 6px; box-shadow: inset 0 1px 2px rgb(0 0 0 / 40%); }
-input[type="range"]::-webkit-slider-thumb {
-  width: 18px; height: 18px; background: #fff; border: 4px solid var(--accent);
-  box-shadow: 0 0 0 4px rgb(var(--accent-rgb) / 18%), 0 3px 10px rgb(0 0 0 / 55%);
-  transition: box-shadow .15s ease;
-}
-input[type="range"]:hover::-webkit-slider-thumb, input[type="range"]:active::-webkit-slider-thumb {
-  box-shadow: 0 0 0 7px rgb(var(--accent-rgb) / 22%), 0 3px 10px rgb(0 0 0 / 55%);
-}
-
-/* ── Selectores y cajas de texto ── */
-.panel select, .panel input[type="text"]:not(#settingsSearch), .panel input[type="number"] {
-  border-radius: 10px; background-color: rgb(255 255 255 / 5%); border: 1px solid rgb(255 255 255 / 11%);
-  transition: border-color .18s ease, box-shadow .2s ease, background-color .18s ease;
-}
-.panel select:hover, .panel input[type="text"]:hover { border-color: rgb(var(--accent-rgb) / 45%); }
-.panel select:focus, .panel input[type="text"]:focus, .panel input[type="number"]:focus {
-  border-color: var(--accent); box-shadow: 0 0 0 3px rgb(var(--accent-rgb) / 20%); background-color: rgb(var(--accent-rgb) / 6%);
-}
-
-/* ── Perfiles de rendimiento ── */
-.presetbtn { position: relative; overflow: hidden; border-radius: 14px; padding: 14px 15px; transition: border-color .18s ease, background-color .18s ease, transform .22s var(--st-ease), box-shadow .25s ease; }
-.presetbtn:hover { transform: translateY(-3px); box-shadow: 0 16px 30px -18px rgb(0 0 0 / 80%); }
-.presetbtn.is-on {
-  background: linear-gradient(150deg, rgb(var(--accent-rgb) / 24%), rgb(var(--accent-rgb) / 6%));
-  box-shadow: 0 0 0 1px var(--accent), 0 14px 34px -14px rgb(var(--accent-rgb) / 75%);
-}
-.presetbtn.is-on::after {
-  content: ""; position: absolute; top: 10px; right: 10px; width: 16px; height: 16px; border-radius: 50%;
-  background:
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M4.4 8.2l2.4 2.4 4.6-5' fill='none' stroke='%23222' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / 12px no-repeat,
-    var(--accent);
-  box-shadow: 0 0 12px rgb(var(--accent-rgb) / 80%);
-}
-
-/* ── Atajos de arriba (chips) ── */
-.tabbar__chip, .tabbar__fold { transition: color .15s, border-color .15s, background .15s, transform .18s var(--st-ease), box-shadow .2s ease; }
-.tabbar__chip:hover, .tabbar__fold:hover { transform: translateY(-2px); border-color: var(--accent-line); color: var(--text); box-shadow: 0 8px 18px -10px rgb(var(--accent-rgb) / 70%); }
-
-/* ── Scroll del panel ── */
-.panel__pages { scrollbar-width: thin; }
-.panel__pages::-webkit-scrollbar { width: 10px; }
-.panel__pages::-webkit-scrollbar-track { background: transparent; }
-.panel__pages::-webkit-scrollbar-thumb {
-  border-radius: 10px; border: 3px solid transparent; background-clip: padding-box;
-  background-color: rgb(var(--accent-rgb) / 35%);
-}
-.panel__pages::-webkit-scrollbar-thumb:hover { background-color: rgb(var(--accent-rgb) / 65%); }
-
-/* ── Etiquetas e info ── */
-.tag--accent { background: linear-gradient(120deg, rgb(var(--accent-rgb) / 28%), rgb(var(--accent-rgb) / 12%)); box-shadow: 0 0 14px -4px rgb(var(--accent-rgb) / 70%); }
-.hint { transition: background-color .15s, color .15s, transform .18s var(--st-ease); }
-.hint:hover { transform: scale(1.18); }
-
-@media (prefers-reduced-motion: reduce) {
-  .page .pagehead, .page .sec, .page .adv { animation: none !important; }
-}
-:root[data-animations="off"] .page .pagehead,
-:root[data-animations="off"] .page .page__inner > * { animation: none !important; }
-.row--block:hover, .row--text:hover { background: none; }
-
 /* Iconos de sección: un SVG por [data-sec], horneado en un data-URI (cero costo en ejecución). */
 .sec[data-sec="perfil"] { --sec-ico: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%20fill='none'%20stroke='%2314161f'%20stroke-width='2'%20stroke-linecap='round'%20stroke-linejoin='round'%3E%3Cpath%20d='M13%203%205%2013.5h6L10%2021l8-10.5h-6z'/%3E%3C/svg%3E"); }
 .sec[data-sec="graficos"] { --sec-ico: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%20fill='none'%20stroke='%2314161f'%20stroke-width='2'%20stroke-linecap='round'%20stroke-linejoin='round'%3E%3Crect%20x='3.5'%20y='5'%20width='17'%20height='11.5'%20rx='2'/%3E%3Cpath%20d='M9%2020h6M12%2016.5V20'/%3E%3C/svg%3E"); }
@@ -6273,85 +6092,165 @@ input[type="range"]:hover::-webkit-slider-thumb, input[type="range"]:active::-we
 .sec[data-sec="config"] { --sec-ico: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%20fill='none'%20stroke='%2314161f'%20stroke-width='2'%20stroke-linecap='round'%20stroke-linejoin='round'%3E%3Ccircle%20cx='12'%20cy='12'%20r='3'/%3E%3Cpath%20d='M12%203.500v2.200M12%2018.300v2.200M3.500%2012h2.200M18.300%2012h2.200M6%206l1.500%201.500M16.500%2016.500%2018%2018M18%206l-1.500%201.500M7.500%2016.500%206%2018'/%3E%3C/svg%3E"); }
 
 /* ══════════════════════════════════════════════════════════════════════
-   Ajustes 3.0 — rediseño de fondo (Configuración y Personalización)
-   Panel más grande, secciones con icono, interruptores como tarjetas que se
-   iluminan, cabecera con retícula. Todo estático: sin blur, sin bucles.
+   Ajustes · Vidrio claro
+   Configuración y Personalización en un estilo claro y suave: tarjetas de
+   vidrio redondeadas, sombras difusas, colores pastel con tu acento y
+   controles tipo iOS. Se reasignan las variables de color SÓLO dentro del
+   panel, así que todo lo de adentro se vuelve claro solo. Cero desenfoques
+   (backdrop-filter) y cero animaciones en bucle: se pinta una vez.
    ══════════════════════════════════════════════════════════════════════ */
-#app[data-view="ajustes"] .panel__card,
-#app[data-view="aspecto"] .panel__card { max-width: min(1440px, 100%); border-radius: 22px; }
-#app[data-view="ajustes"] .page__inner,
-#app[data-view="aspecto"] .page__inner { max-width: 940px; padding-left: 28px; padding-right: 28px; }
-
-/* Velo: viñeta con un toque del color de acento. */
-.panel__scrim { background: radial-gradient(120% 90% at 50% 20%, rgb(var(--accent-rgb) / 10%), rgb(3 6 16 / 82%) 70%); }
-
-/* Cabecera: retícula tenue que se desvanece hacia la derecha. */
-.page[data-page="aspecto"] .pagehead,
-.page[data-page="ajustes"] .pagehead { padding: 30px 32px; border-radius: 24px; }
-.page[data-page="aspecto"] .pagehead::after,
-.page[data-page="ajustes"] .pagehead::after {
-  right: 0; top: 0; bottom: 0; left: 38%; width: auto; height: auto; border-radius: 0; border: 0; box-shadow: none;
+:root { --st-ease: cubic-bezier(.2, .8, .2, 1); }
+:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel__card {
+  --bg-0: #e9edf7; --bg-1: #f1f4fb; --bg-2: #ffffff; --panel: #ffffff; --panel-top: #f7f9fe;
+  --field: rgb(255 255 255 / 85%); --surface: rgb(255 255 255 / 64%); --surface-hi: rgb(255 255 255 / 92%);
+  --line: rgb(40 52 96 / 9%); --line-hi: rgb(40 52 96 / 15%);
+  --text: #1c2340; --text-rgb: 28 35 64; --text-dim: #566083; --text-faint: #8b94b0;
+  --accent-text: #26306a; --accent-mid: #26306a; --accent-soft: rgb(var(--accent-rgb) / 16%); --accent-line: rgb(var(--accent-rgb) / 45%);
+  --shadow-strong: 0 18px 40px -22px rgba(40, 52, 110, .35);
+  color: var(--text);
+  border: 1px solid rgb(255 255 255 / 70%);
+  border-radius: 28px;
   background:
-    linear-gradient(rgb(var(--accent-rgb) / 12%) 1px, transparent 1px) 0 0 / 28px 28px,
-    linear-gradient(90deg, rgb(var(--accent-rgb) / 12%) 1px, transparent 1px) 0 0 / 28px 28px;
-  -webkit-mask-image: linear-gradient(90deg, transparent, #000 70%);
-  mask-image: linear-gradient(90deg, transparent, #000 70%);
+    radial-gradient(50% 40% at 8% 0%, rgb(var(--accent-rgb) / 22%), transparent 70%),
+    radial-gradient(45% 40% at 100% 6%, rgb(150 170 255 / 28%), transparent 72%),
+    radial-gradient(50% 45% at 90% 100%, rgb(255 190 220 / 22%), transparent 70%),
+    radial-gradient(40% 40% at 0% 100%, rgb(150 230 210 / 22%), transparent 70%),
+    #eef1f9;
+  box-shadow: 0 40px 90px -30px rgba(10, 16, 40, .65), 0 0 0 1px rgb(255 255 255 / 40%) inset;
 }
-.page[data-page="aspecto"] .pagehead h1,
-.page[data-page="ajustes"] .pagehead h1 { font-size: 42px; letter-spacing: -.045em; }
+:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel__scrim { background: rgb(16 20 40 / 52%); }
+:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel { --pn: 0; }
+:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel__card { max-width: min(1400px, 100%); }
+:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .page__inner { max-width: 900px; padding: 30px 30px 60px; }
+:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel__close { background: rgb(255 255 255 / 80%); border: 1px solid var(--line); color: var(--text-dim); border-radius: 50%; box-shadow: 0 6px 16px -8px rgba(40, 52, 110, .4); }
+:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel__close:hover { color: var(--text); background: #fff; }
 
-/* Secciones: icono en un mosaico con degradado. */
-.sec__title { padding-left: 46px; min-height: 34px; display: flex; align-items: center; font-size: 14px; letter-spacing: .12em; }
-.sec__title::before {
-  content: ""; left: 0; top: 50%; bottom: auto; width: 34px; height: 34px; transform: translateY(-50%);
-  border-radius: 11px;
+/* Índice: una tarjeta flotante de vidrio con píldoras. */
+:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .pnav {
+  margin: 14px 0 14px 14px; padding: 16px 12px; border-radius: 22px; border: 1px solid rgb(255 255 255 / 75%);
+  background: linear-gradient(180deg, rgb(255 255 255 / 78%), rgb(255 255 255 / 52%));
+  box-shadow: 0 18px 40px -26px rgba(40, 52, 110, .45);
+}
+:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .pnav__search { background: rgb(255 255 255 / 85%); border: 1px solid var(--line); border-radius: 14px; box-shadow: 0 4px 12px -8px rgba(40, 52, 110, .3); }
+:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .pnav__search input[type="text"] { color: var(--text); }
+:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .pnav__tab, :is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .pnav__i { border-radius: 16px; transition: background-color .18s ease, box-shadow .2s ease, transform .2s var(--st-ease); }
+:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .pnav__tab:hover, :is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .pnav__i:hover { background: rgb(255 255 255 / 70%); }
+:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .pnav__tab.is-on, :is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .pnav__i.is-on {
+  background: #fff; box-shadow: 0 10px 24px -12px rgba(40, 52, 110, .5), 0 0 0 1px rgb(var(--accent-rgb) / 35%) inset;
+}
+:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .pnav__tab.is-on::before, :is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .pnav__i.is-on::before { display: none; }
+:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .pnav__group, :is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .pnav__label { color: var(--text-faint); }
+
+/* Cabecera: título grande y limpio, sin recuadro. */
+:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .page[data-page] .pagehead {
+  background: none !important; border: 0 !important; box-shadow: none !important; padding: 8px 4px 6px; margin-bottom: 14px; overflow: visible;
+  animation: none !important;
+}
+:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .page[data-page] .pagehead::before { color: var(--text-faint); }
+:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .page[data-page] .pagehead::after { display: none; }
+:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .page[data-page] .pagehead h1 {
+  font-size: 40px; font-weight: 800; letter-spacing: -.04em; color: var(--text);
+  background: none; -webkit-text-fill-color: currentColor;
+}
+:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .page[data-page] .pagehead p { color: var(--text-dim); }
+:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .pagehead .crumb, :is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .pagehead [class*="crumb"] { color: var(--text-dim); }
+
+/* Atajos: pastillas blancas. */
+:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .tabbar { background: none; }
+:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .tabbar__chip, :is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .tabbar__fold {
+  background: rgb(255 255 255 / 80%); border: 1px solid rgb(255 255 255 / 90%); color: var(--text-dim); border-radius: 999px;
+  box-shadow: 0 6px 14px -10px rgba(40, 52, 110, .5);
+}
+:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .tabbar__chip:hover, :is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .tabbar__fold:hover { background: #fff; color: var(--text); transform: translateY(-1px); border-color: rgb(var(--accent-rgb) / 45%); }
+
+/* Secciones: tarjetas de vidrio. */
+:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .page[data-page] .sec {
+  padding: 22px 26px 16px; border-radius: 26px; border: 1px solid rgb(255 255 255 / 85%);
+  background: linear-gradient(180deg, rgb(255 255 255 / 82%), rgb(255 255 255 / 60%));
+  box-shadow: 0 22px 44px -28px rgba(40, 52, 110, .5), 0 1px 0 rgb(255 255 255 / 90%) inset;
+}
+:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .page[data-page] .sec::after { display: none; }
+:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .page[data-page] .sec--feature { background: radial-gradient(90% 100% at 0% 0%, rgb(var(--accent-rgb) / 16%), transparent 60%), linear-gradient(180deg, rgb(255 255 255 / 85%), rgb(255 255 255 / 62%)); }
+:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .page[data-page] .sec + .sec { margin-top: 20px; }
+:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .sec__head { border-bottom: 0; padding-bottom: 12px; margin-bottom: 6px; }
+:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .sec__head::after { display: none; }
+:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .sec__title {
+  display: flex; align-items: center; min-height: 40px; padding-left: 52px; text-transform: none; letter-spacing: -.01em;
+  font-size: 20px; font-weight: 750; color: var(--text);
+}
+:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .sec__title::before {
+  content: ""; left: 0; top: 50%; bottom: auto; width: 40px; height: 40px; transform: translateY(-50%); border-radius: 14px;
   background:
-    var(--sec-ico, none) center / 19px no-repeat,
-    linear-gradient(140deg, var(--accent), var(--accent-2, var(--accent)));
-  box-shadow: 0 8px 20px -6px rgb(var(--accent-rgb) / 75%), inset 0 1px 0 rgb(255 255 255 / 40%);
+    var(--sec-ico, none) center / 21px no-repeat,
+    linear-gradient(145deg, rgb(var(--accent-rgb) / 55%), rgb(var(--accent-rgb) / 22%));
+  box-shadow: 0 8px 18px -10px rgb(var(--accent-rgb) / 90%), 0 1px 0 rgb(255 255 255 / 80%) inset;
 }
-.page[data-page="aspecto"] .sec, .page[data-page="ajustes"] .sec { padding: 22px 24px 18px; border-radius: 22px; }
-.page[data-page="aspecto"] .sec + .sec, .page[data-page="ajustes"] .sec + .sec { margin-top: 20px; }
-.sec__head { padding-bottom: 16px; margin-bottom: 14px; border-bottom: 0; position: relative; }
-.sec__head::after {
-  content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 1px;
-  background: linear-gradient(90deg, rgb(var(--accent-rgb) / 55%), var(--line-hi) 35%, transparent);
-}
+:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .sec__desc { color: var(--text-dim); }
+:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .sec__chev { background: rgb(255 255 255 / 85%); color: var(--text-dim); box-shadow: 0 4px 10px -6px rgba(40, 52, 110, .4); }
 
-/* Interruptores como tarjetas: se encienden con el color de acento. */
-.page[data-page="aspecto"] .rows, .page[data-page="ajustes"] .rows {
-  display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 10px; align-items: stretch;
-}
-.page[data-page="aspecto"] .rows + .rows, .page[data-page="ajustes"] .rows + .rows { margin-top: 10px; }
-.rows > .row:not(.row--tog) { grid-column: 1 / -1; }
-.row--tog {
-  margin: 0; padding: 13px 15px; min-height: 76px; border-radius: 15px; align-items: center; gap: 12px;
-  border: 1px solid rgb(255 255 255 / 8%);
-  background: linear-gradient(160deg, rgb(255 255 255 / 4.5%), rgb(255 255 255 / 1.5%));
-  box-shadow: none !important;
+/* Filas: finas, con una raya sutil entre ellas. */
+:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .row { border-radius: 16px; transition: background-color .16s ease; }
+:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .row:hover { background: rgb(255 255 255 / 70%); }
+:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .row:not(.row--tog):not(.row--block):not(.row--text)::before { display: none; }
+:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .row + .row:not(.row--tog) { box-shadow: 0 -1px 0 var(--line); }
+:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .row--block:hover, :is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .row--text:hover { background: none; }
+:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .row__label { color: var(--text); font-weight: 650; }
+:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .row__desc { color: var(--text-dim); }
+:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .hint { background: rgb(var(--accent-rgb) / 20%); color: var(--accent-text); }
+
+/* Interruptores sueltos como tarjetitas de vidrio; al prenderlos, un tinte pastel. */
+:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .rows { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 12px; align-items: stretch; }
+:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .rows + .rows { margin-top: 12px; }
+:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .rows > .row:not(.row--tog) { grid-column: 1 / -1; }
+:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .row--tog {
+  margin: 0; padding: 14px 16px; min-height: 78px; border-radius: 20px; align-items: center; gap: 12px; box-shadow: none !important;
+  border: 1px solid rgb(255 255 255 / 95%);
+  background: rgb(255 255 255 / 70%);
+  box-shadow: 0 12px 26px -20px rgba(40, 52, 110, .55) !important;
   transition: background-color .2s ease, border-color .2s ease, transform .2s var(--st-ease), box-shadow .25s ease;
 }
-.row--tog:hover { transform: translateY(-2px); border-color: rgb(var(--accent-rgb) / 38%); box-shadow: 0 14px 28px -18px rgb(0 0 0 / 80%) !important; }
-.row--tog::before { display: none !important; }
-.row--tog.is-on {
-  border-color: rgb(var(--accent-rgb) / 50%);
-  background:
-    radial-gradient(120% 140% at 0% 0%, rgb(var(--accent-rgb) / 22%), transparent 65%),
-    linear-gradient(160deg, rgb(255 255 255 / 4%), rgb(255 255 255 / 1%));
+:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .row--tog:hover { transform: translateY(-2px); background: #fff; box-shadow: 0 18px 32px -20px rgba(40, 52, 110, .6) !important; }
+:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .row--tog::before { display: none !important; }
+:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .row--tog.is-on { background: linear-gradient(145deg, rgb(var(--accent-rgb) / 24%), rgb(var(--accent-rgb) / 8%)), #fff; border-color: rgb(var(--accent-rgb) / 40%); }
+:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .row--tog .row__label { font-size: 14px; }
+:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .row--tog .row__desc { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; font-size: 12px; }
+
+/* Interruptor tipo iOS. */
+:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .switch { width: 48px; height: 28px; background: rgb(40 52 96 / 16%); border: 0; box-shadow: inset 0 1px 3px rgb(20 26 60 / 25%); }
+:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .switch::after { top: 2px; left: 2px; width: 24px; height: 24px; background: #fff; box-shadow: 0 3px 8px rgb(20 26 60 / 35%); }
+:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .switch.is-on { background: linear-gradient(135deg, var(--accent), var(--accent-2, var(--accent))); box-shadow: 0 6px 16px -6px rgb(var(--accent-rgb) / 85%), inset 0 1px 2px rgb(255 255 255 / 30%); }
+:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .switch.is-on::after { transform: translateX(20px); background: #fff; }
+
+/* Controles: blancos, redondeados, con sombra suave. */
+:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel select, :is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel input[type="text"]:not(#settingsSearch), :is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel input[type="number"] {
+  background-color: rgb(255 255 255 / 92%); color: var(--text); border: 1px solid rgb(255 255 255 / 95%); border-radius: 14px;
+  box-shadow: 0 6px 14px -10px rgba(40, 52, 110, .5), 0 0 0 1px var(--line) inset;
 }
-.row--tog .row__label { font-size: 14px; }
-.row--tog .row__desc { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; font-size: 12px; }
-.row--tog .row__ctl { align-self: center; }
+:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel select:focus, :is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel input[type="text"]:focus, :is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel input[type="number"]:focus { border-color: var(--accent); box-shadow: 0 0 0 4px rgb(var(--accent-rgb) / 25%); background-color: #fff; }
+:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel select option { background: #fff; color: #1c2340; }
+:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel input[type="range"] { height: 6px; background: linear-gradient(90deg, var(--accent) var(--fill, 50%), rgb(40 52 96 / 14%) var(--fill, 50%)); box-shadow: none; }
+:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel input[type="range"]::-webkit-slider-thumb { width: 22px; height: 22px; background: #fff; border: 0; box-shadow: 0 4px 12px rgb(20 26 60 / 40%), 0 0 0 1px rgb(40 52 96 / 10%); }
+:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .seg { background: rgb(40 52 96 / 9%); border: 0; border-radius: 14px; box-shadow: inset 0 1px 3px rgb(20 26 60 / 15%); }
+:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .seg button { color: var(--text-dim); border-radius: 11px; }
+:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .seg button.is-on { background: #fff; color: var(--text); box-shadow: 0 4px 12px -4px rgba(20, 26, 60, .45); }
+:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .btn, :is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .ghostbtn { border-radius: 14px; }
+:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .btn--ghost, :is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .ghostbtn { background: rgb(255 255 255 / 85%); color: var(--text); border: 1px solid rgb(255 255 255 / 95%); box-shadow: 0 6px 14px -10px rgba(40, 52, 110, .5), 0 0 0 1px var(--line) inset; }
+:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .btn--ghost:hover, :is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .ghostbtn:hover { background: #fff; }
 
-/* Filas comunes: separadas con aire y sin renglones. */
-.sec .row:not(.row--tog):not(.row--block):not(.row--text) { border-radius: 14px; }
-.sec .row + .row:not(.row--tog) { box-shadow: none; }
-.sec .row:not(.row--tog):not(.row--block):not(.row--text) + .row:not(.row--tog) { border-top: 1px solid rgb(255 255 255 / 5%); border-radius: 0 0 14px 14px; }
+/* Perfiles de rendimiento y tarjetas de tema: blancas, con aro del acento al elegir. */
+:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .presetbtn { border-radius: 20px; background: rgb(255 255 255 / 75%); border: 1px solid rgb(255 255 255 / 95%); box-shadow: 0 14px 28px -22px rgba(40, 52, 110, .6); color: var(--text); transition: transform .2s var(--st-ease), box-shadow .22s ease, background-color .16s ease; }
+:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .presetbtn:hover { transform: translateY(-3px); background: #fff; }
+:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .presetbtn b { color: var(--text); }
+:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .presetbtn small { color: var(--text-dim); }
+:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .presetbtn.is-on { background: linear-gradient(145deg, rgb(var(--accent-rgb) / 26%), rgb(var(--accent-rgb) / 8%)), #fff; box-shadow: 0 0 0 2px var(--accent), 0 18px 34px -18px rgb(var(--accent-rgb) / 80%); }
+:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .presetbtn.is-on b { color: var(--text); }
+:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .themecard { background: rgb(255 255 255 / 75%); border: 1px solid rgb(255 255 255 / 95%); border-radius: 20px; box-shadow: 0 14px 28px -22px rgba(40, 52, 110, .6); color: var(--text); }
+:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .themecard.is-on { box-shadow: 0 0 0 2px var(--accent), 0 18px 34px -18px rgb(var(--accent-rgb) / 80%); }
 
-/* Grupos de opciones (Compacta / Normal / Cómoda…): pastillas más cuidadas. */
-.seg { padding: 4px; border-radius: 14px; background: rgb(0 0 0 / 22%); border-color: rgb(255 255 255 / 9%); box-shadow: inset 0 2px 6px rgb(0 0 0 / 30%); }
-.seg button { border-radius: 10px; transition: color .15s ease, background-color .15s ease, box-shadow .2s ease; }
-.seg button.is-on { background: linear-gradient(135deg, var(--accent), var(--accent-2, var(--accent))); box-shadow: 0 6px 16px -6px rgb(var(--accent-rgb) / 80%); }
-
-/* Índice: mosaicos con más presencia. */
-.pnav { background: linear-gradient(180deg, rgb(var(--accent-rgb) / 5%), transparent 40%), var(--bg-0); }
+/* Etiquetas y scroll. */
+:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .tag { background: rgb(40 52 96 / 8%); color: var(--text-dim); }
+:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .tag--accent { background: rgb(var(--accent-rgb) / 24%); color: var(--accent-text); box-shadow: none; }
+:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel__pages { scrollbar-width: thin; }
+:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel__pages::-webkit-scrollbar { width: 10px; }
+:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel__pages::-webkit-scrollbar-thumb { border-radius: 10px; border: 3px solid transparent; background-clip: padding-box; background-color: rgb(40 52 96 / 22%); }
+:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel__pages::-webkit-scrollbar-thumb:hover { background-color: rgb(40 52 96 / 40%); }
