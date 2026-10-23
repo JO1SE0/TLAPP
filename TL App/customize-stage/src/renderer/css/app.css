@@ -6053,3 +6053,192 @@ html[data-roomview="board"] .rtable, html[data-roomview="map"] .rtable { overflo
 @keyframes topchipPulse { 70% { box-shadow: 0 0 0 7px rgb(61 220 132 / 0%); } 100% { box-shadow: 0 0 0 0 rgb(61 220 132 / 0%); } }
 @media (prefers-reduced-motion: reduce) { .topchip, .topchip__dot { animation: none; } }
 @media (max-width: 1100px) { .topchip span { display: none; } .topchip { padding: 0 9px; } }
+
+/* ══════════════════════════════════════════════════════════════════════
+   Ajustes y Personalización 2.0
+   Sólo pintura: bordes de luz, insignias, entradas escalonadas y controles
+   con más cuerpo. Nada se anima en bucle: lo que se mueve lo hace una vez al
+   abrir la página o al tocar, así que el panel no cuesta FPS.
+   ══════════════════════════════════════════════════════════════════════ */
+:root { --st-ease: cubic-bezier(.2, .8, .2, 1); }
+
+/* Marco del panel: un filo de luz arriba y sombra más profunda. */
+.panel__card {
+  box-shadow: 0 30px 80px -20px rgb(0 0 0 / 70%), 0 0 0 1px rgb(var(--accent-rgb) / 10%), inset 0 1px 0 rgb(255 255 255 / 7%);
+}
+
+/* ── Índice de la izquierda ── */
+.pnav__i, .pnav__tab { position: relative; transition: color .16s ease, background-color .16s ease, transform .2s var(--st-ease); }
+.pnav__i:hover, .pnav__tab:hover { transform: translateX(3px); }
+.pnav__tab.is-on, .pnav__i.is-on {
+  background: linear-gradient(100deg, rgb(var(--accent-rgb) / 24%), rgb(var(--accent-rgb) / 6%) 70%, transparent);
+  box-shadow: inset 0 0 0 1px rgb(var(--accent-rgb) / 40%), 0 10px 26px -14px rgb(var(--accent-rgb) / 70%);
+}
+.pnav__tab.is-on::before, .pnav__i.is-on::before {
+  content: ""; position: absolute; left: -9px; top: 22%; bottom: 22%; width: 3px; border-radius: 3px;
+  background: linear-gradient(var(--accent), var(--accent-2, var(--accent)));
+  box-shadow: 0 0 12px var(--accent);
+}
+.pnav__search { transition: border-color .2s ease, box-shadow .25s ease, background .2s ease; }
+.pnav__search:focus-within { background: rgb(var(--accent-rgb) / 7%); }
+
+/* ── Cabecera de cada página ── */
+.page[data-page="aspecto"] .pagehead,
+.page[data-page="ajustes"] .pagehead {
+  border-radius: 20px; padding: 24px 28px;
+  background:
+    radial-gradient(90% 140% at 0% 0%, rgb(var(--accent-rgb) / 30%), transparent 60%),
+    radial-gradient(60% 120% at 100% 100%, rgb(var(--accent-rgb) / 12%), transparent 70%),
+    linear-gradient(160deg, rgb(255 255 255 / 6%), rgb(255 255 255 / 1%));
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 10%), 0 18px 40px -26px rgb(var(--accent-rgb) / 60%);
+}
+.page[data-page="aspecto"] .pagehead h1,
+.page[data-page="ajustes"] .pagehead h1 {
+  font-size: 36px;
+  background: linear-gradient(100deg, var(--text) 30%, var(--accent-text) 100%);
+  -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+}
+/* Un destello que cruza la cabecera una sola vez (primera capa del fondo). */
+.page[data-page="aspecto"] .pagehead,
+.page[data-page="ajustes"] .pagehead {
+  background:
+    linear-gradient(100deg, transparent 42%, rgb(255 255 255 / 10%) 50%, transparent 58%) 150% 0 / 300% 100% no-repeat,
+    radial-gradient(90% 140% at 0% 0%, rgb(var(--accent-rgb) / 30%), transparent 60%),
+    radial-gradient(60% 120% at 100% 100%, rgb(var(--accent-rgb) / 12%), transparent 70%),
+    linear-gradient(160deg, rgb(255 255 255 / 6%), rgb(255 255 255 / 1%));
+}
+html:not([data-animations="off"]) .page.is-active .pagehead { animation: stSheen 1.4s .3s var(--st-ease) 1 both; }
+@keyframes stSheen { to { background-position: -50% 0, 0 0, 0 0, 0 0; } }
+
+/* ── Secciones: tarjeta con filo de luz y entrada escalonada ── */
+.page[data-page="aspecto"] .sec,
+.page[data-page="ajustes"] .sec {
+  position: relative; border-color: transparent; border-radius: 18px;
+  background:
+    linear-gradient(180deg, rgb(255 255 255 / 4.5%), rgb(255 255 255 / 1.5%) 40%),
+    var(--surface);
+  box-shadow: 0 16px 36px -28px rgb(0 0 0 / 80%), inset 0 1px 0 rgb(255 255 255 / 6%);
+  transition: box-shadow .3s ease;
+}
+.page[data-page="aspecto"] .sec::after,
+.page[data-page="ajustes"] .sec::after {
+  content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 1px; pointer-events: none;
+  background: linear-gradient(155deg, rgb(var(--accent-rgb) / 40%), var(--line-hi) 32%, transparent 62%, rgb(var(--accent-rgb) / 14%));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor; mask-composite: exclude;
+  opacity: .8; transition: opacity .25s ease;
+}
+.page[data-page="aspecto"] .sec:hover::after,
+.page[data-page="ajustes"] .sec:hover::after { opacity: 1; }
+.page[data-page="aspecto"] .sec--feature,
+.page[data-page="ajustes"] .sec--feature {
+  background:
+    radial-gradient(110% 90% at 6% 0%, rgb(var(--accent-rgb) / 20%), transparent 62%),
+    var(--surface);
+}
+.sec__title { text-transform: uppercase; letter-spacing: .1em; font-size: 13.5px; font-weight: 800; }
+.sec__title::before {
+  width: 5px; top: 1px; bottom: 1px; border-radius: 3px;
+  background: linear-gradient(var(--accent), var(--accent-2, var(--accent)));
+  box-shadow: 0 0 14px rgb(var(--accent-rgb) / 70%);
+}
+html:not([data-animations="off"]) .page.is-active .page__inner > .sec,
+html:not([data-animations="off"]) .page.is-active .page__inner > .adv { animation: stRise .5s var(--st-ease) both; }
+html:not([data-animations="off"]) .page.is-active .page__inner > :nth-child(3) { animation-delay: .04s; }
+html:not([data-animations="off"]) .page.is-active .page__inner > :nth-child(4) { animation-delay: .08s; }
+html:not([data-animations="off"]) .page.is-active .page__inner > :nth-child(5) { animation-delay: .12s; }
+html:not([data-animations="off"]) .page.is-active .page__inner > :nth-child(6) { animation-delay: .16s; }
+html:not([data-animations="off"]) .page.is-active .page__inner > :nth-child(n+7) { animation-delay: .2s; }
+@keyframes stRise { from { opacity: 0; transform: translateY(14px); } }
+
+/* ── Filas: una línea de acento aparece al pasar el mouse ── */
+.row { position: relative; border-radius: 12px; transition: background-color .18s ease; }
+.row:hover { background: linear-gradient(90deg, rgb(var(--accent-rgb) / 9%), rgb(255 255 255 / 2%) 55%, transparent); }
+.row:not(.row--block):not(.row--text)::before {
+  content: ""; position: absolute; left: 0; top: 24%; bottom: 24%; width: 3px; border-radius: 3px;
+  background: var(--accent); box-shadow: 0 0 10px var(--accent);
+  transform: scaleY(0); transition: transform .2s var(--st-ease);
+}
+.row:not(.row--block):not(.row--text):hover::before { transform: scaleY(1); }
+.row__label { letter-spacing: -.005em; }
+.row__desc { opacity: .92; }
+
+/* ── Interruptor: más grande, con tilde y brillo ── */
+.switch { width: 46px; height: 26px; background: rgb(255 255 255 / 7%); border-color: rgb(255 255 255 / 14%); box-shadow: inset 0 2px 5px rgb(0 0 0 / 35%); }
+.switch::after {
+  top: 2px; left: 2px; width: 20px; height: 20px;
+  background: linear-gradient(180deg, #ffffff, #cdd3e0);
+  box-shadow: 0 2px 6px rgb(0 0 0 / 50%);
+}
+.switch.is-on {
+  background: linear-gradient(120deg, var(--accent), var(--accent-2, var(--accent)));
+  box-shadow: 0 0 0 3px rgb(var(--accent-rgb) / 18%), 0 6px 18px -4px rgb(var(--accent-rgb) / 80%);
+}
+.switch.is-on::after {
+  transform: translateX(20px);
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Cpath d='M5.6 10.4l3 3 5.8-6.4' fill='none' stroke='%23222' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / 14px no-repeat,
+    linear-gradient(180deg, #ffffff, #e6e9f2);
+}
+
+/* ── Barras ── */
+input[type="range"] { height: 6px; box-shadow: inset 0 1px 2px rgb(0 0 0 / 40%); }
+input[type="range"]::-webkit-slider-thumb {
+  width: 18px; height: 18px; background: #fff; border: 4px solid var(--accent);
+  box-shadow: 0 0 0 4px rgb(var(--accent-rgb) / 18%), 0 3px 10px rgb(0 0 0 / 55%);
+  transition: box-shadow .15s ease;
+}
+input[type="range"]:hover::-webkit-slider-thumb, input[type="range"]:active::-webkit-slider-thumb {
+  box-shadow: 0 0 0 7px rgb(var(--accent-rgb) / 22%), 0 3px 10px rgb(0 0 0 / 55%);
+}
+
+/* ── Selectores y cajas de texto ── */
+.panel select, .panel input[type="text"]:not(#settingsSearch), .panel input[type="number"] {
+  border-radius: 10px; background-color: rgb(255 255 255 / 5%); border: 1px solid rgb(255 255 255 / 11%);
+  transition: border-color .18s ease, box-shadow .2s ease, background-color .18s ease;
+}
+.panel select:hover, .panel input[type="text"]:hover { border-color: rgb(var(--accent-rgb) / 45%); }
+.panel select:focus, .panel input[type="text"]:focus, .panel input[type="number"]:focus {
+  border-color: var(--accent); box-shadow: 0 0 0 3px rgb(var(--accent-rgb) / 20%); background-color: rgb(var(--accent-rgb) / 6%);
+}
+
+/* ── Perfiles de rendimiento ── */
+.presetbtn { position: relative; overflow: hidden; border-radius: 14px; padding: 14px 15px; transition: border-color .18s ease, background-color .18s ease, transform .22s var(--st-ease), box-shadow .25s ease; }
+.presetbtn:hover { transform: translateY(-3px); box-shadow: 0 16px 30px -18px rgb(0 0 0 / 80%); }
+.presetbtn.is-on {
+  background: linear-gradient(150deg, rgb(var(--accent-rgb) / 24%), rgb(var(--accent-rgb) / 6%));
+  box-shadow: 0 0 0 1px var(--accent), 0 14px 34px -14px rgb(var(--accent-rgb) / 75%);
+}
+.presetbtn.is-on::after {
+  content: ""; position: absolute; top: 10px; right: 10px; width: 16px; height: 16px; border-radius: 50%;
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M4.4 8.2l2.4 2.4 4.6-5' fill='none' stroke='%23222' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / 12px no-repeat,
+    var(--accent);
+  box-shadow: 0 0 12px rgb(var(--accent-rgb) / 80%);
+}
+
+/* ── Atajos de arriba (chips) ── */
+.tabbar__chip, .tabbar__fold { transition: color .15s, border-color .15s, background .15s, transform .18s var(--st-ease), box-shadow .2s ease; }
+.tabbar__chip:hover, .tabbar__fold:hover { transform: translateY(-2px); border-color: var(--accent-line); color: var(--text); box-shadow: 0 8px 18px -10px rgb(var(--accent-rgb) / 70%); }
+
+/* ── Scroll del panel ── */
+.panel__pages { scrollbar-width: thin; }
+.panel__pages::-webkit-scrollbar { width: 10px; }
+.panel__pages::-webkit-scrollbar-track { background: transparent; }
+.panel__pages::-webkit-scrollbar-thumb {
+  border-radius: 10px; border: 3px solid transparent; background-clip: padding-box;
+  background-color: rgb(var(--accent-rgb) / 35%);
+}
+.panel__pages::-webkit-scrollbar-thumb:hover { background-color: rgb(var(--accent-rgb) / 65%); }
+
+/* ── Etiquetas e info ── */
+.tag--accent { background: linear-gradient(120deg, rgb(var(--accent-rgb) / 28%), rgb(var(--accent-rgb) / 12%)); box-shadow: 0 0 14px -4px rgb(var(--accent-rgb) / 70%); }
+.hint { transition: background-color .15s, color .15s, transform .18s var(--st-ease); }
+.hint:hover { transform: scale(1.18); }
+
+@media (prefers-reduced-motion: reduce) {
+  .page .pagehead, .page .sec, .page .adv { animation: none !important; }
+}
+:root[data-animations="off"] .page .pagehead,
+:root[data-animations="off"] .page .page__inner > * { animation: none !important; }
+.row--block:hover, .row--text:hover { background: none; }
