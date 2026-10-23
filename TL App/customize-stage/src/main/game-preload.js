@@ -7132,6 +7132,15 @@ function paintPitch(ctx, renderer, zoom) {
         halfH: bounds.halfH,
         tint: visual.score,
         opacity: visual.scoreOpacity,
+        style: visual.scoreStyle,
+        font: visual.scoreFont,
+        size: visual.scoreSize,
+        pos: visual.scorePos,
+        mode: visual.scoreMode,
+        anim: visual.scoreAnim,
+        burst: visual.scoreBurst,
+        colorR: visual.scoreColorR,
+        colorB: visual.scoreColorB,
         mirrored: mirrorOn
       });
     }
@@ -9524,7 +9533,7 @@ const visual = {
   pitchLine: 1, discLine: 1, ballLine: 1, ballSize: 1, discSize: 1, lines: false, sizes: false,
   texture: 'none', crest: false, crestOpacity: 0.18, crestSize: 0.45,
   lineColor: '', postColor: '', discOutline: '', ballOutline: '',
-  discStyle: 'default', ownRing: false, ownRingColor: '', ownRingAlpha: 0.3, ownRingRadius: 25, ownRingSoft: 0, weather: '', weatherAmount: 0.6, score: '', scoreOpacity: 0.16, ballStyle: 'default', ringStyle: 'default', ringColor: '', light: '', shadows: false, ballColor: '', lineGlow: false,
+  discStyle: 'default', ownRing: false, ownRingColor: '', ownRingAlpha: 0.3, ownRingRadius: 25, ownRingSoft: 0, weather: '', weatherAmount: 0.6, score: '', scoreOpacity: 0.16, scoreStyle: 'ring', scoreFont: 'default', scoreSize: 1, scorePos: 0.5, scoreMode: 'kickoff', scoreAnim: 'rise', scoreBurst: true, scoreColorR: '', scoreColorB: '', ballStyle: 'default', ringStyle: 'default', ringColor: '', light: '', shadows: false, ballColor: '', lineGlow: false,
   selfTrail: false, selfTrailColor: '',
   nameScale: 1, nameColor: '', nameOutline: false, nameFont: 'default',
   /** Hay algo que hacerle a las fichas o a la pelota en el `stroke()`. */
@@ -9570,7 +9579,16 @@ function syncCanvasHotFlags() {
   visual.weather = ['rain', 'storm', 'snow', 'fog', 'dust', 'leaves', 'embers', 'fireflies', 'blizzard'].includes(cfg.pitchWeather) ? cfg.pitchWeather : '';
   visual.weatherAmount = clampNum(cfg.pitchWeatherAmount, 0.2, 1, 0.6);
   visual.score = ['white', 'team'].includes(cfg.pitchScore) ? cfg.pitchScore : '';
-  visual.scoreOpacity = clampNum(cfg.pitchScoreOpacity, 0.06, 0.4, 0.16);
+  visual.scoreOpacity = clampNum(cfg.pitchScoreOpacity, 0.06, 0.7, 0.16);
+  visual.scoreStyle = ['ring', 'solid', 'outline', 'neon', 'badge', '3d'].includes(cfg.pitchScoreStyle) ? cfg.pitchScoreStyle : 'ring';
+  visual.scoreFont = ['impact', 'mono', 'serif', 'round', 'outfit'].includes(cfg.pitchScoreFont) ? cfg.pitchScoreFont : 'default';
+  visual.scoreSize = clampNum(cfg.pitchScoreSize, 0.5, 1.6, 1);
+  visual.scorePos = clampNum(cfg.pitchScorePos, 0.25, 0.8, 0.5);
+  visual.scoreMode = cfg.pitchScoreMode === 'always' ? 'always' : 'kickoff';
+  visual.scoreAnim = ['zoom', 'slide', 'drop'].includes(cfg.pitchScoreAnim) ? cfg.pitchScoreAnim : 'rise';
+  visual.scoreBurst = cfg.pitchScoreBurst !== false;
+  visual.scoreColorR = lookfx.safeColor(cfg.pitchScoreColorR);
+  visual.scoreColorB = lookfx.safeColor(cfg.pitchScoreColorB);
   visual.shadows = !!cfg.softShadows;
   visual.ballColor = lookfx.safeColor(cfg.ballColor);
   visual.lineGlow = !!cfg.lineGlow;

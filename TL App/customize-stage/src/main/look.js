@@ -1759,7 +1759,7 @@ const mm = {
 };
 
 function resetMatchMark() {
-  mm.p = 0; mm.dir = 0; mm.rest = 0; mm.last = 0; mm.red = -1; mm.blue = -1;
+  mm.p = 0; mm.dir = 0; mm.rest = 0; mm.last = 0; mm.red = -1; mm.blue = -1; mm.lv = undefined;
   mm.shR = mm.shB = mm.prevR = mm.prevB = -1;
   mm.bumpR = mm.bumpB = 0;
   mm.pendR = mm.pendB = false;
@@ -1774,12 +1774,22 @@ const easeOutBack = (v) => {
   return 1 + c3 * Math.pow(v - 1, 3) + c1 * Math.pow(v - 1, 2);
 };
 
+const MM_FONTS = {
+  default: '"Bahnschrift","Segoe UI","Arial Narrow",system-ui,sans-serif',
+  impact: '"Impact","Haettenschweiler","Arial Narrow Bold",sans-serif',
+  mono: '"Consolas","Cascadia Mono","Courier New",monospace',
+  serif: '"Georgia","Times New Roman",serif',
+  round: '"Arial Rounded MT Bold","Trebuchet MS","Segoe UI",sans-serif',
+  outfit: '"Segoe UI Black","Segoe UI","Arial Black",sans-serif'
+};
+
 function paintMatchMark(ctx, o) {
   const now = o.now;
   let dt = mm.last ? (now - mm.last) / 1000 : 0.016;
   mm.last = now;
   if (dt > 0.1) dt = 0.1;
   if (dt < 0) dt = 0;
+  const always = o.mode === 'always';
 
   if (mm.red >= 0 && o.red !== mm.red) mm.pendR = true;
   if (mm.blue >= 0 && o.blue !== mm.blue) mm.pendB = true;
@@ -1790,8 +1800,12 @@ function paintMatchMark(ctx, o) {
 
   const near = o.hasBall && Math.hypot(o.ballX, o.ballY) < 3;
   if (near) { if (!mm.rest) mm.rest = now; } else mm.rest = 0;
-  if (near && now - mm.rest > 220) mm.dir = 1;
+  if (always) mm.dir = 1;
+  else if (near && now - mm.rest > 220) mm.dir = 1;
   else if (!near) mm.dir = -1;
+  // En modo «siempre» el cartel sigue ahí durante el juego, más apagado.
+  const liveTarget = always && !near ? 0.42 : 1;
+  mm.lv = mm.lv === undefined ? liveTarget : mm.lv + (liveTarget - mm.lv) * Math.min(1, dt * 5);
 
   // Entra en 0.75 s y sale en 0.5 s.
   mm.p += (mm.dir > 0 ? dt / 0.75 : -dt / 0.5) * (mm.dir ? 1 : 0);
@@ -1804,24 +1818,28 @@ function paintMatchMark(ctx, o) {
     if (mm.pendB) { mm.prevB = mm.shB; mm.shB = o.blue; mm.bumpB = now; mm.pendB = false; }
   }
   if (mm.dir < 0) {
-    // Si se fue sin llegar a mostrar el cambio, se lo deja listo para la próxima.
     if (mm.pendR) { mm.shR = o.red; mm.pendR = false; }
     if (mm.pendB) { mm.shB = o.blue; mm.pendB = false; }
   }
 
-  const size = Math.min(o.halfH * 0.62, o.halfW * 0.3);
+  const k = o.size > 0 ? o.size : 1;
+  const size = Math.min(o.halfH * 0.62, o.halfW * 0.3) * k;
   if (!(size > 4)) return;
-  const base = Math.min(1, Math.max(0, o.opacity));
+  const base = Math.min(1, Math.max(0, o.opacity)) * mm.lv;
+  const style = o.style || 'ring';
+  const anim = o.anim || 'rise';
+  const pos = o.pos > 0 ? o.pos : 0.5;
+  const burst = o.burst !== false;
 
   ctx.save();
   try {
-    ctx.font = `800 ${size.toFixed(1)}px "Bahnschrift","Segoe UI","Arial Narrow",system-ui,sans-serif`;
+    ctx.font = `800 ${size.toFixed(1)}px ${MM_FONTS[o.font] || MM_FONTS.default}`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
+    ctx.lineJoin = 'round';
     const mir = o.mirrored ? -1 : 1;
     for (let side = -1; side <= 1; side += 2) {
       const red = side < 0;
-      // Escalonado: entra primero el de la izquierda; al irse, se va primero el de la derecha.
       const lag = 0.22;
       let q;
       if (mm.dir >= 0) q = clamp01((mm.p - (red ? 0 : lag)) / (1 - lag));
@@ -1833,14 +1851,13 @@ function paintMatchMark(ctx, o) {
       let oy = 0;
       let a;
       if (mm.dir >= 0) {
-        // Llega: sube desde el piso con un pequeño rebote y se abre hacia su arco.
         const e = easeOutBack(q);
-        sc = 0.7 + 0.3 * e;
-        oy = (1 - e) * size * 0.35;
-        ox = side * (1 - easeOutCubic(q)) * o.halfW * 0.06;
         a = easeOutCubic(q);
+        if (anim === 'zoom') { sc = 2.2 - 1.2 * easeOutCubic(q); a = easeOutCubic(clamp01(q * 1.4)); }
+        else if (anim === 'slide') { sc = 0.9 + 0.1 * e; ox = side * (1 - easeOutCubic(q)) * o.halfW * 0.5; }
+        else if (anim === 'drop') { sc = 1; oy = -(1 - e) * size * 1.6; a = clamp01(q * 2.5); }
+        else { sc = 0.7 + 0.3 * e; oy = (1 - e) * size * 0.35; ox = side * (1 - easeOutCubic(q)) * o.halfW * 0.06; }
       } else {
-        // Se va: crece, se separa hacia su arco y se disuelve acelerando.
         const e = easeInCubic(1 - q);
         sc = 1 + e * 0.28;
         ox = side * e * o.halfW * 0.16;
@@ -1852,30 +1869,40 @@ function paintMatchMark(ctx, o) {
       const roll = clamp01(since / 0.55);
       const value = red ? mm.shR : mm.shB;
       const prev = red ? mm.prevR : mm.prevB;
-      // Un destello leve cuando cambia el número.
       const flash = since < 0.9 ? Math.exp(-since * 4.5) : 0;
-      const pop = 1 + 0.12 * flash;
-      const fill = o.tint === 'team' ? (red ? '#ff6b5e' : '#5fa6ff') : '#ffffff';
+      const pop = 1 + (burst ? 0.12 : 0.05) * flash;
+      const custom = red ? o.colorR : o.colorB;
+      const fill = custom || (o.tint === 'team' ? (red ? '#ff6b5e' : '#5fa6ff') : '#ffffff');
 
       ctx.save();
-      ctx.translate(side * o.halfW * 0.5 + ox, oy);
+      ctx.translate(side * o.halfW * pos + ox, oy);
       ctx.scale(mir * sc * pop, sc * pop);
 
-      // Anillo que se dibuja alrededor del número al llegar (y se desdibuja al irse).
       const ringR = size * 0.74;
       const sweep = mm.dir >= 0 ? easeOutCubic(q) : q;
-      if (sweep > 0.01) {
+      const hasRing = style === 'ring' || style === 'neon' || style === 'badge';
+
+      // Fondo de la insignia: disco tenue del color del equipo.
+      if (style === 'badge') {
+        ctx.globalAlpha = base * a * 0.22;
+        ctx.fillStyle = fill;
+        ctx.beginPath();
+        ctx.arc(0, 0, ringR, 0, TAU);
+        ctx.fill();
+      }
+      if (hasRing && sweep > 0.01) {
         ctx.lineCap = 'round';
         ctx.lineWidth = Math.max(1.5, size * 0.022);
         ctx.strokeStyle = fill;
         ctx.globalAlpha = base * a * 0.85;
+        if (style === 'neon') { ctx.shadowColor = fill; ctx.shadowBlur = size * 0.2; }
         ctx.beginPath();
         const start = -Math.PI / 2 + (mm.dir < 0 ? (1 - sweep) * TAU * 0.5 : 0);
         ctx.arc(0, 0, ringR, start, -Math.PI / 2 + TAU * sweep);
         ctx.stroke();
+        ctx.shadowBlur = 0;
       }
-      // Cuando cambia el marcador, un segundo anillo se abre y se apaga.
-      if (since < 0.9) {
+      if (burst && since < 0.9) {
         const pr = clamp01(since / 0.9);
         ctx.lineWidth = Math.max(1.5, size * 0.03 * (1 - pr));
         ctx.strokeStyle = fill;
@@ -1883,24 +1910,70 @@ function paintMatchMark(ctx, o) {
         ctx.beginPath();
         ctx.arc(0, 0, ringR * (1 + 0.55 * easeOutCubic(pr)), 0, TAU);
         ctx.stroke();
+        // Rayitas que salen del número al convertir.
+        ctx.lineCap = 'round';
+        ctx.lineWidth = Math.max(1.5, size * 0.025 * (1 - pr));
+        ctx.globalAlpha = base * a * (1 - pr);
+        ctx.beginPath();
+        const r0 = ringR * (1.05 + 0.2 * pr);
+        const r1 = ringR * (1.15 + 0.7 * easeOutCubic(pr));
+        for (let n = 0; n < 14; n++) {
+          const ang = (n / 14) * TAU + 0.2;
+          ctx.moveTo(Math.cos(ang) * r0, Math.sin(ang) * r0);
+          ctx.lineTo(Math.cos(ang) * r1, Math.sin(ang) * r1);
+        }
+        ctx.stroke();
       }
 
-      // El número: contador de cuenta (el viejo sube y sale, el nuevo entra).
+      // El número.
       ctx.save();
       ctx.beginPath();
-      ctx.rect(-size * 1.2, -size * 0.62, size * 2.4, size * 1.24);
+      ctx.rect(-size * 1.4, -size * 0.8, size * 2.8, size * 1.6);
       ctx.clip();
-      ctx.fillStyle = fill;
+      const drawNum = (txt, yoff, alpha) => {
+        if (alpha <= 0.002) return;
+        const y = size * 0.03 + yoff;
+        if (style === '3d') {
+          // Volumen: copias hacia abajo y a la derecha, más oscuras.
+          ctx.fillStyle = '#000000';
+          ctx.globalAlpha = alpha * 0.45;
+          const depth = Math.max(2, Math.round(size * 0.05));
+          for (let d = depth; d >= 1; d--) ctx.fillText(txt, d * 0.9, y + d * 0.9);
+          ctx.fillStyle = fill;
+          ctx.globalAlpha = alpha;
+          ctx.fillText(txt, 0, y);
+        } else if (style === 'outline') {
+          ctx.globalAlpha = alpha * 0.18;
+          ctx.fillStyle = fill;
+          ctx.fillText(txt, 0, y);
+          ctx.globalAlpha = Math.min(1, alpha * 1.6);
+          ctx.lineWidth = Math.max(2, size * 0.045);
+          ctx.strokeStyle = fill;
+          ctx.strokeText(txt, 0, y);
+        } else if (style === 'neon') {
+          ctx.globalAlpha = alpha * 0.25;
+          ctx.fillStyle = fill;
+          ctx.fillText(txt, 0, y);
+          ctx.globalAlpha = Math.min(1, alpha * 1.5);
+          ctx.lineWidth = Math.max(2, size * 0.03);
+          ctx.strokeStyle = fill;
+          ctx.shadowColor = fill;
+          ctx.shadowBlur = size * 0.28;
+          ctx.strokeText(txt, 0, y);
+          ctx.shadowBlur = 0;
+        } else {
+          ctx.globalAlpha = alpha;
+          ctx.fillStyle = fill;
+          ctx.fillText(txt, 0, y);
+        }
+      };
       if (roll < 1 && prev >= 0 && prev !== value) {
         const er = easeOutCubic(roll);
-        ctx.globalAlpha = base * a * (1 - er);
-        ctx.fillText(String(prev), 0, size * 0.03 - er * size * 0.8);
+        drawNum(String(prev), -er * size * 0.8, base * a * (1 - er));
         const en = easeOutBack(roll);
-        ctx.globalAlpha = base * a * clamp01(roll * 2.2);
-        ctx.fillText(String(value), 0, size * 0.03 + (1 - en) * size * 0.8);
+        drawNum(String(value), (1 - en) * size * 0.8, base * a * clamp01(roll * 2.2));
       } else {
-        ctx.globalAlpha = base * a;
-        ctx.fillText(String(value), 0, size * 0.03);
+        drawNum(String(value), 0, base * a);
       }
       ctx.restore();
 

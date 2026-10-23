@@ -433,6 +433,22 @@ const DEFAULTS = {
     pitchScore: 'team',
     /** Opacidad del marcador de piso. */
     pitchScoreOpacity: 0.16,
+    /** Estilo del cartel: `ring` · `solid` · `outline` · `neon` · `badge` · `3d`. */
+    pitchScoreStyle: 'ring',
+    /** Tipografía: `default` · `impact` · `mono` · `serif` · `round` · `outfit`. */
+    pitchScoreFont: 'default',
+    /** Tamaño (0.5–1.6) y distancia al medio (0.25–0.8 de media cancha). */
+    pitchScoreSize: 1,
+    pitchScorePos: 0.5,
+    /** `kickoff` (sólo en el saque) o `always` (queda tenue durante el juego). */
+    pitchScoreMode: 'kickoff',
+    /** Entrada: `rise` · `zoom` · `slide` · `drop`. */
+    pitchScoreAnim: 'rise',
+    /** Anillo y rayitas al convertir. */
+    pitchScoreBurst: true,
+    /** Colores propios por equipo (vacío = los del equipo). */
+    pitchScoreColorR: '',
+    pitchScoreColorB: '',
     /** Sombra suave bajo las fichas y la pelota. */
     softShadows: false,
     /** Aspecto de las fichas: `default` · `sphere` · `glass` · `neon` · `metal` · `bubble` · `target` · `stripes` · `gem` · `cartoon` · `dots`. */

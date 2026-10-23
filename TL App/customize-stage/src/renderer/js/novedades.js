@@ -11,6 +11,7 @@ window.TL_NEWS = {
   title: { es: 'Qué hay de nuevo', en: "What's new" },
   items: {
     es: [
+      'Marcador en el piso mucho más personalizable (Aspecto → Cancha): 6 estilos (anillo, sólido, contorno, neón, insignia y con volumen), tipografía, tamaño, distancia al medio, 4 entradas distintas, colores propios por equipo, destello con rayitas al convertir y la opción de dejarlo siempre visible, tenue, mientras se juega.',
       'Ahora vienen activados por defecto (también para quienes ya usaban la app): el festejo de gol, el marcador en el piso de la cancha (con el color de cada equipo) y abrir la app en pantalla completa. Si no te gusta alguno, lo apagás desde Ajustes.',
       'Música: corazón en la tarjeta para que un tema suene más seguido, y «no volver a poner» para ocultarlo (se vuelve a sumar desde Ajustes → Música). Ya no repite el mismo tema enseguida. Además, en la barra de arriba aparece un chip «N del club jugando» cuando hay gente del club en una sala.',
       'Barra superior rediseñada: vidrio con línea de acento, pestañas con indicador, buscador de salas con halo, controles de música en una cápsula (tema, anterior / siguiente y volumen) y deslizamiento suave al ocultarla y mostrarla.',
@@ -70,6 +71,7 @@ window.TL_NEWS = {
       'Cada clave se usa en una sola PC: si cambiás de computadora, pedile a miclo que te la libere.'
     ],
     en: [
+      'Pitch score sign is far more customizable (Look → Pitch): 6 styles (ring, solid, outline, neon, badge, extruded), typeface, size, distance from centre, 4 entrances, custom team colours, a burst with rays on goals and an option to keep it always visible, dimmed, during play.',
       'Now on by default (also for existing users): the goal celebration, the score on the pitch floor (in each team color) and opening the app in fullscreen. Turn any of them off in Settings.',
       'Music: a heart on the card to make a song play more often, and a hide button to never play it again (bring it back in Settings → Music). It no longer repeats a song right away. Also, a "N from the club playing" chip shows in the top bar when club members are in a room.',
       'Top bar redesigned: glass with an accent line, tabs with an indicator, room search with a glow, music controls in a capsule (track, previous / next and volume) and a smooth slide when hiding and showing it.',

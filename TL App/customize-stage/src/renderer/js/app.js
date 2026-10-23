@@ -9030,8 +9030,17 @@ const LOOK_SECTIONS = {
     { key: 'pitchWeather', type: 'select', label: 'look.weather', desc: 'look.weatherHelp', options: [['none', 'look.opt.none'], ['rain', 'look.wx.rain'], ['storm', 'look.wx.storm'], ['snow', 'look.wx.snow'], ['fog', 'look.wx.fog'], ['dust', 'look.wx.dust'], ['leaves', 'look.wx.leaves'], ['embers', 'look.wx.embers'], ['fireflies', 'look.wx.fireflies'], ['blizzard', 'look.wx.blizzard']] },
     { key: 'pitchWeatherAmount', type: 'range', label: 'look.weatherAmount', min: 0.2, max: 1, step: 0.05, showIf: (v) => v.pitchWeather && v.pitchWeather !== 'none' },
     { key: 'pitchScore', type: 'select', label: 'look.pitchScore', desc: 'look.pitchScoreHelp', options: [['none', 'look.opt.none'], ['white', 'look.ps.white'], ['team', 'look.ps.team']] },
-    { key: 'pitchScoreOpacity', type: 'range', label: 'look.pitchScoreOpacity', min: 0.06, max: 0.4, step: 0.01, showIf: (v) => v.pitchScore && v.pitchScore !== 'none' },
-    { type: 'reset', key: '_wxReset', label: 'look.resetWeather', keys: ['pitchWeather', 'pitchWeatherAmount', 'pitchScore', 'pitchScoreOpacity'] },
+    { key: 'pitchScoreStyle', type: 'select', label: 'look.psStyle', options: [['ring', 'look.pss.ring'], ['solid', 'look.pss.solid'], ['outline', 'look.pss.outline'], ['neon', 'look.pss.neon'], ['badge', 'look.pss.badge'], ['3d', 'look.pss.3d']], showIf: (v) => v.pitchScore && v.pitchScore !== 'none' },
+    { key: 'pitchScoreFont', type: 'select', label: 'look.psFont', options: [['default', 'look.font.default'], ['impact', 'look.font.impact'], ['outfit', 'look.psf.black'], ['round', 'look.font.round'], ['mono', 'look.font.mono'], ['serif', 'look.font.serif']], showIf: (v) => v.pitchScore && v.pitchScore !== 'none' },
+    { key: 'pitchScoreSize', type: 'range', label: 'look.psSize', min: 0.5, max: 1.6, step: 0.05, showIf: (v) => v.pitchScore && v.pitchScore !== 'none' },
+    { key: 'pitchScorePos', type: 'range', label: 'look.psPos', desc: 'look.psPosHelp', min: 0.25, max: 0.8, step: 0.01, showIf: (v) => v.pitchScore && v.pitchScore !== 'none' },
+    { key: 'pitchScoreOpacity', type: 'range', label: 'look.pitchScoreOpacity', min: 0.06, max: 0.7, step: 0.01, showIf: (v) => v.pitchScore && v.pitchScore !== 'none' },
+    { key: 'pitchScoreMode', type: 'select', label: 'look.psMode', desc: 'look.psModeHelp', options: [['kickoff', 'look.psm.kickoff'], ['always', 'look.psm.always']], showIf: (v) => v.pitchScore && v.pitchScore !== 'none' },
+    { key: 'pitchScoreAnim', type: 'select', label: 'look.psAnim', options: [['rise', 'look.psa.rise'], ['zoom', 'look.psa.zoom'], ['slide', 'look.psa.slide'], ['drop', 'look.psa.drop']], showIf: (v) => v.pitchScore && v.pitchScore !== 'none' },
+    { key: 'pitchScoreBurst', type: 'switch', label: 'look.psBurst', desc: 'look.psBurstHelp', showIf: (v) => v.pitchScore && v.pitchScore !== 'none' },
+    { key: 'pitchScoreColorR', type: 'color', label: 'look.psColorR', desc: 'look.psColorHelp', showIf: (v) => v.pitchScore && v.pitchScore !== 'none' },
+    { key: 'pitchScoreColorB', type: 'color', label: 'look.psColorB', showIf: (v) => v.pitchScore && v.pitchScore !== 'none' },
+    { type: 'reset', key: '_wxReset', label: 'look.resetWeather', keys: ['pitchWeather', 'pitchWeatherAmount', 'pitchScore', 'pitchScoreOpacity', 'pitchScoreStyle', 'pitchScoreFont', 'pitchScoreSize', 'pitchScorePos', 'pitchScoreMode', 'pitchScoreAnim', 'pitchScoreBurst', 'pitchScoreColorR', 'pitchScoreColorB'] },
     { key: 'crest', type: 'switch', label: 'look.crest', desc: 'look.crestHelp' },
     { key: 'crestOpacity', type: 'range', label: 'look.crestOpacity', min: 0.05, max: 0.6, step: 0.01, showIf: (v) => v.crest },
     { key: 'crestSize', type: 'range', label: 'look.crestSize', min: 0.2, max: 1, step: 0.01, showIf: (v) => v.crest },
@@ -9075,7 +9084,7 @@ const LOOK_SECTIONS = {
 };
 
 const LOOK_DEFAULTS = {
-  texture: 'none', pitchLight: 'none', ownRingColor: '', ownRingAlpha: 0.3, ownRingRadius: 25, ownRingSoft: 0, pitchWeather: 'none', pitchWeatherAmount: 0.6, pitchScore: 'team', pitchScoreOpacity: 0.16, softShadows: false, crest: false, crestOpacity: 0.18, crestSize: 0.45, lineColor: '', postColor: '',
+  texture: 'none', pitchLight: 'none', ownRingColor: '', ownRingAlpha: 0.3, ownRingRadius: 25, ownRingSoft: 0, pitchWeather: 'none', pitchWeatherAmount: 0.6, pitchScore: 'team', pitchScoreOpacity: 0.16, pitchScoreStyle: 'ring', pitchScoreFont: 'default', pitchScoreSize: 1, pitchScorePos: 0.5, pitchScoreMode: 'kickoff', pitchScoreAnim: 'rise', pitchScoreBurst: true, pitchScoreColorR: '', pitchScoreColorB: '', softShadows: false, crest: false, crestOpacity: 0.18, crestSize: 0.45, lineColor: '', postColor: '',
   discStyle: 'default', ballStyle: 'default', ballColor: '', lineGlow: false, discOutline: '', ballOutline: '', ringStyle: 'default', ringColor: '',
   selfTrail: false, selfTrailColor: '', nameScale: 1, nameColor: '', nameOutline: false, nameFont: 'default',
   chatScale: 1, chatBg: -1, chatFont: 'default', chatOpacity: 1, statsOpacity: 1, statsStyle: 'default', menuBg: 'none'
