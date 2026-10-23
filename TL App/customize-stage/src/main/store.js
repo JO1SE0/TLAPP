@@ -9,7 +9,7 @@ const haxball = require('./haxball-settings');
 const FILE = 'config.json';
 
 const DEFAULTS = {
-  version: 26,
+  version: 27,
   general: {
     gameUrl: 'https://www.haxball.com/play',
     nickname: '',
@@ -170,7 +170,7 @@ const DEFAULTS = {
     /** Preferencia de GPU de alto rendimiento y sin optimizaciones de pantalla completa de Windows para TL App.exe. */
     windowsTweaks: false,
     /** Abre la app ya en pantalla completa (para PCs que se traban al cambiar con F11 con el juego andando). */
-    startFullscreen: false,
+    startFullscreen: true,
     /** Opcional: reusa la simulación del cuadro anterior si pasó <4 ms (ver patchLightSim). */
     lightSim: false,
     /** «Modo PC lenta»: apaga de una vez lo visual que cuesta. `lowEndBackup` guarda lo que había para volver. */
@@ -430,7 +430,7 @@ const DEFAULTS = {
     /** Cuánto clima (0.2–1). */
     pitchWeatherAmount: 0.6,
     /** Marcador de piso en cada mitad: `none` · `white` · `team`. */
-    pitchScore: 'none',
+    pitchScore: 'team',
     /** Opacidad del marcador de piso. */
     pitchScoreOpacity: 0.16,
     /** Sombra suave bajo las fichas y la pelota. */
@@ -774,9 +774,16 @@ function migrate(stored) {
     next.appearance.musicVolume = 0.5;
   }
 
+  // v27: festejo de gol, marcador en el piso y pantalla completa vienen prendidos para todos, una sola vez.
+  if (!(next.version >= 27)) {
+    if (next.pitch) { next.pitch.goalClub = true; next.pitch.goalFlash = true; }
+    if (next.visual && (!next.visual.pitchScore || next.visual.pitchScore === 'none')) next.visual.pitchScore = 'team';
+    if (next.perf) next.perf.startFullscreen = true;
+  }
+
   if (next.vip) next.vip.discord = null;
   delete next.privacy;
-  next.version = 26;
+  next.version = 27;
   return next;
 }
 

@@ -9075,7 +9075,7 @@ const LOOK_SECTIONS = {
 };
 
 const LOOK_DEFAULTS = {
-  texture: 'none', pitchLight: 'none', ownRingColor: '', ownRingAlpha: 0.3, ownRingRadius: 25, ownRingSoft: 0, pitchWeather: 'none', pitchWeatherAmount: 0.6, pitchScore: 'none', pitchScoreOpacity: 0.16, softShadows: false, crest: false, crestOpacity: 0.18, crestSize: 0.45, lineColor: '', postColor: '',
+  texture: 'none', pitchLight: 'none', ownRingColor: '', ownRingAlpha: 0.3, ownRingRadius: 25, ownRingSoft: 0, pitchWeather: 'none', pitchWeatherAmount: 0.6, pitchScore: 'team', pitchScoreOpacity: 0.16, softShadows: false, crest: false, crestOpacity: 0.18, crestSize: 0.45, lineColor: '', postColor: '',
   discStyle: 'default', ballStyle: 'default', ballColor: '', lineGlow: false, discOutline: '', ballOutline: '', ringStyle: 'default', ringColor: '',
   selfTrail: false, selfTrailColor: '', nameScale: 1, nameColor: '', nameOutline: false, nameFont: 'default',
   chatScale: 1, chatBg: -1, chatFont: 'default', chatOpacity: 1, statsOpacity: 1, statsStyle: 'default', menuBg: 'none'

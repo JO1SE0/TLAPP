@@ -11,6 +11,7 @@ window.TL_NEWS = {
   title: { es: 'Qué hay de nuevo', en: "What's new" },
   items: {
     es: [
+      'Ahora vienen activados por defecto (también para quienes ya usaban la app): el festejo de gol, el marcador en el piso de la cancha (con el color de cada equipo) y abrir la app en pantalla completa. Si no te gusta alguno, lo apagás desde Ajustes.',
       'Música: corazón en la tarjeta para que un tema suene más seguido, y «no volver a poner» para ocultarlo (se vuelve a sumar desde Ajustes → Música). Ya no repite el mismo tema enseguida. Además, en la barra de arriba aparece un chip «N del club jugando» cuando hay gente del club en una sala.',
       'Barra superior rediseñada: vidrio con línea de acento, pestañas con indicador, buscador de salas con halo, controles de música en una cápsula (tema, anterior / siguiente y volumen) y deslizamiento suave al ocultarla y mostrarla.',
       'Nuevo ajuste «Abrir en pantalla completa» (Configuración → Rendimiento): la app arranca ya en pantalla completa, pensado para las PCs que se traban al apretar F11 con una partida abierta.',
@@ -69,6 +70,7 @@ window.TL_NEWS = {
       'Cada clave se usa en una sola PC: si cambiás de computadora, pedile a miclo que te la libere.'
     ],
     en: [
+      'Now on by default (also for existing users): the goal celebration, the score on the pitch floor (in each team color) and opening the app in fullscreen. Turn any of them off in Settings.',
       'Music: a heart on the card to make a song play more often, and a hide button to never play it again (bring it back in Settings → Music). It no longer repeats a song right away. Also, a "N from the club playing" chip shows in the top bar when club members are in a room.',
       'Top bar redesigned: glass with an accent line, tabs with an indicator, room search with a glow, music controls in a capsule (track, previous / next and volume) and a smooth slide when hiding and showing it.',
       'New “Open in fullscreen” setting (Settings → Performance): the app starts already in fullscreen, meant for PCs that freeze when pressing F11 during a match.',
