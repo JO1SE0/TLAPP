@@ -11,6 +11,7 @@ window.TL_NEWS = {
   title: { es: 'Qué hay de nuevo', en: "What's new" },
   items: {
     es: [
+      'Menú de la sala (el lobby al entrar a un host) rediseñado: panel con luz del color de acento, nombre de sala grande con línea luminosa, columnas Rojo y Azul con el color de su equipo, filas redondeadas con barrita al pasar el mouse, reglas en tarjeta y botones de empezar, parar y pausar más grandes. Todo estático, sin costo de FPS.',
       'Configuración y Personalización rediseñadas de arriba abajo: panel más grande, cabecera con retícula, cada sección con su icono en un mosaico de color, los interruptores ahora son tarjetas en dos columnas que se iluminan cuando están prendidos, grupos de opciones y barras con más cuerpo, índice con indicador luminoso y perfiles de rendimiento con marca de selección. Todo estático, sin costo de FPS.',
       'Marcador en el piso mucho más personalizable (Aspecto → Cancha): 6 estilos (anillo, sólido, contorno, neón, insignia y con volumen), tipografía, tamaño, distancia al medio, 4 entradas distintas, colores propios por equipo, destello con rayitas al convertir y la opción de dejarlo siempre visible, tenue, mientras se juega.',
       'Ahora vienen activados por defecto (también para quienes ya usaban la app): el festejo de gol, el marcador en el piso de la cancha (con el color de cada equipo) y abrir la app en pantalla completa. Si no te gusta alguno, lo apagás desde Ajustes.',
@@ -72,6 +73,7 @@ window.TL_NEWS = {
       'Cada clave se usa en una sola PC: si cambiás de computadora, pedile a miclo que te la libere.'
     ],
     en: [
+      'Room menu (the lobby when you enter a host) redesigned: a panel with accent glow, a big room name with a light line, Red and Blue columns in their team colour, rounded rows with a bar on hover, settings in a card and bigger start, stop and pause buttons. All static, no FPS cost.',
       'Settings and Personalization redesigned top to bottom: a bigger panel, a header with a grid, every section with its own icon tile, switches are now two-column cards that light up when on, option groups and sliders with more body, an index with a glowing marker and performance profiles with a selected mark. All static, no FPS cost.',
       'Pitch score sign is far more customizable (Look → Pitch): 6 styles (ring, solid, outline, neon, badge, extruded), typeface, size, distance from centre, 4 entrances, custom team colours, a burst with rays on goals and an option to keep it always visible, dimmed, during play.',
       'Now on by default (also for existing users): the goal celebration, the score on the pitch floor (in each team color) and opening the app in fullscreen. Turn any of them off in Settings.',
