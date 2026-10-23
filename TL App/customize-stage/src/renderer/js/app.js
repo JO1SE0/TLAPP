@@ -1080,9 +1080,11 @@ function switchRow(item, onToggle) {
   toggle.setAttribute('role', 'switch');
   toggle.setAttribute('aria-label', item.label);
 
+  let rowEl = null;
   const sync = (value) => {
     toggle.classList.toggle('is-on', !!value);
     toggle.setAttribute('aria-checked', String(!!value));
+    if (rowEl) rowEl.classList.toggle('is-on', !!value);
   };
   sync(item.value());
 
@@ -1105,6 +1107,10 @@ function switchRow(item, onToggle) {
     hint: item.hint,
     control: toggle
   });
+  // Tarjeta de interruptor: la fila misma se ilumina cuando está prendido.
+  rowEl = row;
+  row.classList.add('row--tog');
+  row.classList.toggle('is-on', !!item.value());
 
   /*
    * El ↻ de «pide reinicio» se colgaba del final de la descripción, así que un
