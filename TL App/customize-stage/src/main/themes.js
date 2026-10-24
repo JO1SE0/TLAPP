@@ -1511,33 +1511,83 @@ ${scoreboardCss(p, options.scoreboard)}
 .connecting-view-log p { color: ${p.dim} !important; font-size: 12px !important; }
 .spinner > div { background: ${p.accent} !important; }
 
-/* Entrar a una sala, captcha y crear sala: el fondo de siempre, con los recuadros en estilo iOS
-   (esquinas grandes, tarjeta limpia, botones redondeados). Pintura estática. */
-.connecting-view > .dialog, .disconnected-view > .dialog, .simple-dialog-view > .dialog,
-.view-wrapper > div > .dialog {
+/* Entrar a una sala, captcha, contraseña, kick/ban y crear sala: el fondo de siempre, con los
+   recuadros en estilo iOS (esquinas grandes, tarjeta limpia, botones redondeados).
+   El prefijo html body sube la especificidad para ganarle a las reglas de cada pantalla de arriba. */
+html body .connecting-view > .dialog,
+html body .disconnected-view > .dialog,
+html body .simple-dialog-view > .dialog,
+html body .room-password-view > .dialog,
+html body .choose-nickname-view > .dialog,
+html body .create-room-view > .dialog,
+html body .roomlist-view > .dialog {
   padding: 22px 24px 20px !important;
   border-radius: 22px !important;
   border: 1px solid ${rgba(p.text, 0.1)} !important;
   background: linear-gradient(180deg, ${rgba(p.text, 0.06)}, ${rgba(p.text, 0.02)}), ${p.panel} !important;
   box-shadow: 0 24px 60px -24px rgba(0,0,0,.75), 0 1px 0 ${rgba(p.text, 0.12)} inset !important;
 }
-.connecting-view > .dialog > h1, .disconnected-view > .dialog > h1, .simple-dialog-view > .dialog > h1 {
-  margin-bottom: 12px !important;
-}
+html body .connecting-view > .dialog > h1,
+html body .disconnected-view > .dialog > h1,
+html body .simple-dialog-view > .dialog > h1,
+html body .room-password-view > .dialog > h1,
+html body .choose-nickname-view > .dialog > h1,
+html body .create-room-view > .dialog > h1,
+html body .roomlist-view > .dialog > h1 { margin-bottom: 12px !important; padding-bottom: 10px !important; }
 .spinner { margin: 8px auto !important; }
-.connecting-view > .dialog button, .disconnected-view > .dialog button, .simple-dialog-view > .dialog button,
-.view-wrapper > div > .dialog button {
+html body .connecting-view > .dialog button,
+html body .disconnected-view > .dialog button,
+html body .simple-dialog-view > .dialog button,
+html body .room-password-view > .dialog button,
+html body .choose-nickname-view > .dialog button,
+html body .create-room-view > .dialog button,
+html body .roomlist-view > .dialog button {
   padding: 10px 20px !important; border-radius: 14px !important; font-weight: 700 !important;
   background: ${rgba(p.text, 0.09)} !important;
   box-shadow: none !important;
 }
-.connecting-view > .dialog button:hover:not(:disabled), .disconnected-view > .dialog button:hover:not(:disabled), .simple-dialog-view > .dialog button:hover:not(:disabled),
-.view-wrapper > div > .dialog button:hover:not(:disabled) {
-  background: ${rgba(p.accent, 0.26)} !important;
+html body .connecting-view > .dialog button:hover:not(:disabled),
+html body .disconnected-view > .dialog button:hover:not(:disabled),
+html body .simple-dialog-view > .dialog button:hover:not(:disabled),
+html body .room-password-view > .dialog button:hover:not(:disabled),
+html body .choose-nickname-view > .dialog button:hover:not(:disabled),
+html body .create-room-view > .dialog button:hover:not(:disabled),
+html body .roomlist-view > .dialog button:hover:not(:disabled) {
+  background: ${rgba(p.accent, 0.26)} !important; filter: none !important;
 }
-.view-wrapper > div > .dialog input:not([type="range"]), .view-wrapper > div > .dialog select {
-  border-radius: 12px !important; padding: 9px 12px !important;
+/* La acción principal (Ok, Entrar, Unirse) lleva el acento. */
+html body .room-password-view > .dialog .buttons > button[data-hook="ok"],
+html body .choose-nickname-view > .dialog > button[data-hook="ok"],
+html body .roomlist-view > .dialog > .splitter > .buttons > button[data-hook="join"] {
+  background: ${p.duo ? `linear-gradient(90deg, ${p.accent}, ${p.accent2})` : p.accent} !important;
+  color: ${p.accentText} !important;
 }
+html body .room-password-view > .dialog .buttons > button[data-hook="ok"]:hover:not(:disabled),
+html body .choose-nickname-view > .dialog > button[data-hook="ok"]:hover:not(:disabled),
+html body .roomlist-view > .dialog > .splitter > .buttons > button[data-hook="join"]:hover:not(:disabled) {
+  background: ${p.duo ? `linear-gradient(90deg, ${p.accent}, ${p.accent2})` : p.accent} !important;
+  filter: brightness(1.1) !important;
+}
+html body .connecting-view > .dialog .label-input,
+html body .disconnected-view > .dialog .label-input,
+html body .simple-dialog-view > .dialog .label-input,
+html body .room-password-view > .dialog .label-input,
+html body .choose-nickname-view > .dialog .label-input,
+html body .create-room-view > .dialog .label-input,
+html body .roomlist-view > .dialog .label-input { border-radius: 14px !important; padding: 4px 4px 4px 14px !important; }
+html body .connecting-view > .dialog input:not([type="range"]),
+html body .disconnected-view > .dialog input:not([type="range"]),
+html body .simple-dialog-view > .dialog input:not([type="range"]),
+html body .room-password-view > .dialog input:not([type="range"]),
+html body .choose-nickname-view > .dialog input:not([type="range"]),
+html body .create-room-view > .dialog input:not([type="range"]),
+html body .roomlist-view > .dialog input:not([type="range"]), html body .connecting-view > .dialog select,
+html body .disconnected-view > .dialog select,
+html body .simple-dialog-view > .dialog select,
+html body .room-password-view > .dialog select,
+html body .choose-nickname-view > .dialog select,
+html body .create-room-view > .dialog select,
+html body .roomlist-view > .dialog select { border-radius: 10px !important; padding: 8px 12px !important; }
 /* El captcha de Google queda dentro de una tarjeta clara: se le da su marco redondeado. */
 .view-wrapper .dialog iframe, .view-wrapper .dialog .g-recaptcha { border-radius: 14px !important; overflow: hidden; }
 
