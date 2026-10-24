@@ -32,7 +32,7 @@
     /* destello inicial, rayos de luz y barras al costado del GOL */
     '.cg-flash{position:absolute;inset:0;opacity:0;background:radial-gradient(circle at 50% 46%,rgba(244,240,223,.85),rgba(233,212,154,.35) 28%,rgba(233,212,154,0) 60%);animation:cgFlash .7s ease-out both;will-change:opacity}',
     '@keyframes cgFlash{0%{opacity:0}12%{opacity:1}100%{opacity:0}}',
-    '.cg-rays{position:absolute;left:50%;top:46%;width:110vmax;height:110vmax;margin:-55vmax 0 0 -55vmax;opacity:0;background:repeating-conic-gradient(from 0deg,rgba(233,212,154,.14) 0 5deg,rgba(233,212,154,0) 5deg 15deg);-webkit-mask-image:radial-gradient(circle,#000 0,rgba(0,0,0,.45) 12%,transparent 34%);mask-image:radial-gradient(circle,#000 0,rgba(0,0,0,.45) 12%,transparent 34%);animation:cgRays 3.1s ease both;will-change:transform,opacity}',
+    '.cg-rays{position:absolute;left:50%;top:46%;width:80vmax;height:80vmax;margin:-40vmax 0 0 -40vmax;opacity:0;background:repeating-conic-gradient(from 0deg,rgba(233,212,154,.14) 0 5deg,rgba(233,212,154,0) 5deg 15deg);-webkit-mask-image:radial-gradient(circle,#000 0,rgba(0,0,0,.45) 16%,transparent 47%);mask-image:radial-gradient(circle,#000 0,rgba(0,0,0,.45) 16%,transparent 47%);animation:cgRays 3.1s ease both;will-change:transform,opacity}',
     '@keyframes cgRays{0%{opacity:0;transform:rotate(0) scale(.6)}15%{opacity:1}80%{opacity:.8}100%{opacity:0;transform:rotate(40deg) scale(1.15)}}',
     '.cg-bar{position:absolute;top:calc(36% + 8.2vmin);height:.55vmin;width:30vw;opacity:0;background:linear-gradient(90deg,transparent,#e9d49a 55%,#f4f0df);box-shadow:0 0 2vmin rgba(233,212,154,.8);animation:cgBar 3s cubic-bezier(.2,.8,.2,1) .15s both;will-change:transform,opacity;transform-origin:right center;right:calc(50% + 24vmin)}',
     '.cg-bar.r{right:auto;left:calc(50% + 24vmin);transform-origin:left center;background:linear-gradient(270deg,transparent,#e9d49a 55%,#f4f0df)}',
@@ -57,21 +57,21 @@
     /* nombre y asistencia */
     '.cg-name{position:absolute;left:0;right:0;top:60%;display:flex;justify-content:center;align-items:center;gap:2.2vmin;font:700 3.6vmin/1 ' + FONT + ';letter-spacing:.24em;text-transform:uppercase;color:#f4f0df;text-shadow:0 .3vmin 1vmin rgba(10,20,40,.8)}',
     '.cg-name b{font-weight:700;opacity:0;animation:cgUp 3s ease .35s both}',
-    '.cg-name i{display:block;height:.28vmin;width:0;background:linear-gradient(90deg,transparent,#e9d49a);animation:cgLine 3s ease .35s both}',
-    '.cg-name i:last-child{background:linear-gradient(270deg,transparent,#e9d49a)}',
-    '@keyframes cgLine{0%{width:0;opacity:0}20%{width:11vmin;opacity:1}80%{width:11vmin;opacity:1}100%{width:11vmin;opacity:0}}',
+    '.cg-name i{display:block;height:.28vmin;width:11vmin;opacity:0;transform:scaleX(0);transform-origin:right center;background:linear-gradient(90deg,transparent,#e9d49a);animation:cgLine 3s ease .35s both}',
+    '.cg-name i:last-child{transform-origin:left center;background:linear-gradient(270deg,transparent,#e9d49a)}',
+    '@keyframes cgLine{0%{transform:scaleX(0);opacity:0}20%{transform:scaleX(1);opacity:1}80%{transform:scaleX(1);opacity:1}100%{transform:scaleX(1);opacity:0}}',
     '@keyframes cgUp{0%{opacity:0;transform:translateY(1.6vmin)}16%{opacity:1;transform:translateY(0)}80%{opacity:1}100%{opacity:0;transform:translateY(-1vmin)}}',
     '.cg-sub{position:absolute;left:0;right:0;top:66%;text-align:center;font:600 2.3vmin/1 ' + FONT + ';letter-spacing:.2em;text-transform:uppercase;color:#d0b878;opacity:0;animation:cgUp 3s ease .55s both;text-shadow:0 .2vmin .8vmin rgba(10,20,40,.8)}',
     '.cg-pill{position:absolute;left:50%;top:71%;transform:translateX(-50%);padding:.9vmin 2.6vmin;border-radius:99px;background:linear-gradient(180deg,#e9d49a,#c9a95c);color:#13243f;font:800 2.3vmin/1 ' + FONT + ';letter-spacing:.2em;opacity:0;animation:cgPill 3s cubic-bezier(.2,.9,.25,1.2) .7s both;will-change:transform,opacity}',
     '@keyframes cgPill{0%{opacity:0;transform:translateX(-50%) scale(.6)}14%{opacity:1;transform:translateX(-50%) scale(1.08)}22%{transform:translateX(-50%) scale(1)}78%{opacity:1}100%{opacity:0;transform:translateX(-50%) scale(1)}}',
     /* franja del club */
-    '.cg-club{position:absolute;left:0;right:0;bottom:10%;text-align:center;font:800 2.4vmin/1 ' + FONT + ';letter-spacing:.7em;text-indent:.7em;color:#d0b878;opacity:0;clip-path:inset(0 50% 0 50%);animation:cgClub 3s cubic-bezier(.3,.7,.2,1) both;will-change:clip-path,opacity}',
-    '@keyframes cgClub{0%,12%{opacity:0;clip-path:inset(0 50% 0 50%)}34%{opacity:1;clip-path:inset(0 0 0 0)}80%{opacity:1;clip-path:inset(0 0 0 0)}100%{opacity:0;clip-path:inset(0 0 0 0)}}',
+    '.cg-club{position:absolute;left:0;right:0;bottom:10%;text-align:center;font:800 2.4vmin/1 ' + FONT + ';letter-spacing:.7em;text-indent:.7em;color:#d0b878;opacity:0;transform:scaleX(.6);animation:cgClub 3s cubic-bezier(.3,.7,.2,1) both;will-change:transform,opacity}',
+    '@keyframes cgClub{0%,12%{opacity:0;transform:scaleX(.6)}34%{opacity:1;transform:scaleX(1)}80%{opacity:1;transform:scaleX(1)}100%{opacity:0;transform:scaleX(1)}}',
     /* chispas del centro */
-    '.cg-sp{position:absolute;left:50%;top:46%;width:1.1vmin;height:1.1vmin;margin:-.55vmin 0 0 -.55vmin;border-radius:50%;opacity:0;animation:cgSpark 1.15s cubic-bezier(.1,.7,.3,1) both;will-change:transform,opacity}',
+    '.cg-sp{position:absolute;left:50%;top:46%;width:1.1vmin;height:1.1vmin;margin:-.55vmin 0 0 -.55vmin;border-radius:50%;opacity:0;animation:cgSpark 1.15s cubic-bezier(.1,.7,.3,1) both}',
     '@keyframes cgSpark{0%{opacity:1;transform:translate(0,0) scale(1)}100%{opacity:0;transform:translate(var(--dx),var(--dy)) scale(.2)}}',
     /* cintas */
-    '.cg-rb{position:absolute;top:-5vmin;width:.8vmin;height:2.6vmin;border-radius:1px;opacity:0;animation:cgFall var(--d) cubic-bezier(.3,.1,.55,1) var(--w) both;will-change:transform,opacity}',
+    '.cg-rb{position:absolute;top:-5vmin;width:.8vmin;height:2.6vmin;border-radius:1px;opacity:0;animation:cgFall var(--d) cubic-bezier(.3,.1,.55,1) var(--w) both}',
     '@keyframes cgFall{0%{opacity:0;transform:translate3d(0,0,0) rotate(0)}8%{opacity:1}100%{opacity:.9;transform:translate3d(var(--sx),118vh,0) rotate(var(--r))}}',
     /* versión corta */
     '.cgl{position:absolute;left:50%;top:11%;display:flex;align-items:center;gap:1.8vmin;padding:1.2vmin 3.2vmin 1.2vmin 2.4vmin;border-radius:.8vmin;background:linear-gradient(90deg,rgba(19,36,63,.92),rgba(19,36,63,.78));border-left:.7vmin solid #d0b878;box-shadow:0 1vmin 3vmin rgba(10,20,40,.5);opacity:0;animation:cgLite 2.1s cubic-bezier(.2,.9,.25,1) both;will-change:transform,opacity;overflow:hidden}',
@@ -79,8 +79,8 @@
     '@keyframes cgLiteShine{to{transform:translateX(120%)}}',
     '.cgl b{font:900 4.2vmin/1 ' + FONT + ';letter-spacing:.14em;background:linear-gradient(180deg,#f4f0df,#d0b878);-webkit-background-clip:text;background-clip:text;color:transparent}',
     '.cgl span{font:700 2.5vmin/1 ' + FONT + ';letter-spacing:.16em;text-transform:uppercase;color:#f4f0df;padding-left:1.8vmin;border-left:.2vmin solid rgba(208,184,120,.5)}',
-    '.cgl-line{position:absolute;left:50%;top:calc(11% + 7.6vmin);height:.3vmin;width:0;margin-left:0;background:linear-gradient(90deg,#d0b878,transparent);opacity:0;animation:cgLiteLine 2.1s ease .2s both}',
-    '@keyframes cgLiteLine{0%{width:0;opacity:0;transform:translateX(-50%)}25%{width:18vmin;opacity:.9;transform:translateX(-50%)}80%{width:18vmin;opacity:.7;transform:translateX(-50%)}100%{width:18vmin;opacity:0;transform:translateX(-50%)}}',
+    '.cgl-line{position:absolute;left:50%;top:calc(11% + 7.6vmin);height:.3vmin;width:18vmin;margin-left:0;background:linear-gradient(90deg,#d0b878,transparent);opacity:0;animation:cgLiteLine 2.1s ease .2s both}',
+    '@keyframes cgLiteLine{0%{opacity:0;transform:translateX(-50%) scaleX(0)}25%{opacity:.9;transform:translateX(-50%) scaleX(1)}80%{opacity:.7;transform:translateX(-50%) scaleX(1)}100%{opacity:0;transform:translateX(-50%) scaleX(1)}}',
     '@keyframes cgLite{0%{opacity:0;transform:translate(-80%,0)}16%{opacity:1;transform:translate(-50%,0)}22%{transform:translate(-50%,0) scale(1.02)}28%{transform:translate(-50%,0) scale(1)}80%{opacity:1;transform:translate(-50%,0)}100%{opacity:0;transform:translate(-20%,0)}}'
   ].join('\n');
 
@@ -106,6 +106,25 @@
   }
 
   var timer = 0;
+  var warmed = null;
+
+  /**
+   * Se llama al entrar a la sala, no al primer gol: deja el estilo puesto y el escudo
+   * ya decodificado, así el primer festejo no tiene que hacer nada de eso en el
+   * mismo cuadro en que aparece.
+   */
+  function warm(doc, crestUrl) {
+    try {
+      if (!doc || !doc.head) return;
+      ensureStyle(doc);
+      if (crestUrl && warmed !== crestUrl) {
+        warmed = crestUrl;
+        var img = new doc.defaultView.Image();
+        img.src = crestUrl;
+        if (img.decode) img.decode().catch(function () {});
+      }
+    } catch (e) { /* adorno */ }
+  }
 
   function stop(doc) {
     var old = doc && doc.getElementById(BOX_ID);
@@ -146,7 +165,7 @@
     box.append(el(doc, 'cg-flash'), el(doc, 'cg-rays'), el(doc, 'cg-frame'));
     // Cintas: de tres tamaños, con vaivén.
     var i;
-    for (i = 0; i < 30; i++) {
+    for (i = 0; i < 20; i++) {
       var rb = el(doc, 'cg-rb');
       rb.style.left = rnd(2, 98).toFixed(1) + '%';
       rb.style.background = CONF[i % CONF.length];
@@ -163,7 +182,7 @@
     box.append(el(doc, 'cg-ring'), el(doc, 'cg-ring r2'), el(doc, 'cg-ring r3'));
 
     // Abanico de chispas desde el centro.
-    var n = 20;
+    var n = 14;
     for (i = 0; i < n; i++) {
       var sp = el(doc, 'cg-sp');
       var ang = (i / n) * Math.PI * 2 + (i % 2 ? 0.1 : -0.1);
@@ -211,7 +230,7 @@
     return true;
   }
 
-  var api = { play: play, stop: stop };
+  var api = { play: play, stop: stop, warm: warm };
   root.TLClubGoal = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
 })(typeof window !== 'undefined' ? window : (typeof globalThis !== 'undefined' ? globalThis : this));

@@ -1690,6 +1690,8 @@ function watchViews(doc) {
        * solo que la sala aparezca y desaparezca con el botón Menu.
        */
       kind === 'room' || kind === 'game' ? watchRoomPanel(doc) : stopRoomPanel();
+      // El festejo de gol queda listo antes del primer gol (estilo y escudo ya cargados).
+      if (kind === 'room' || kind === 'game') safe(() => clubGoal.warm(doc, assetUrl('crest')));
       // El selector de estadios sale del panel de la sala, así que sigue la
       // misma vida que él: fuera de la sala no hay diálogo que vigilar.
       kind === 'room' || kind === 'game' ? watchStadiumPicker(doc) : stopStadiumPicker();

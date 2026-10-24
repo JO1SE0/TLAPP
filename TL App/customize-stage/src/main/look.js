@@ -626,8 +626,49 @@ function paintCrest(ctx, world, bounds, img, opacity, sizeRatio) {
  * Brillo y relieve sobre un disco ya rellenado. Usa el trazo en curso (el
  * círculo del disco) como recorte, así que se llama justo antes del `stroke()`.
  */
+/* Los degradados de las fichas se arman una vez por estilo y tamaño, alrededor del (0,0), y se
+   corren con translate. Antes se creaban de nuevo por cada ficha en cada cuadro. */
+const discGrads = new Map();
+function discGradient(ctx, style, r) {
+  const key = style + '|' + r.toFixed(2);
+  let g = discGrads.get(key);
+  if (g) return g;
+  if (style === 'metal') {
+    g = ctx.createLinearGradient(-r, -r, r, r);
+    g.addColorStop(0, 'rgba(255,255,255,0.6)');
+    g.addColorStop(0.32, 'rgba(255,255,255,0)');
+    g.addColorStop(0.55, 'rgba(0,0,0,0.3)');
+    g.addColorStop(0.8, 'rgba(255,255,255,0.32)');
+    g.addColorStop(1, 'rgba(0,0,0,0.4)');
+  } else if (style === 'glass') {
+    g = ctx.createRadialGradient(-r * 0.3, -r * 0.45, r * 0.05, 0, 0, r);
+    g.addColorStop(0, 'rgba(255,255,255,0.75)');
+    g.addColorStop(0.28, 'rgba(255,255,255,0.18)');
+    g.addColorStop(0.7, 'rgba(255,255,255,0)');
+    g.addColorStop(1, 'rgba(255,255,255,0.28)');
+  } else {
+    g = ctx.createRadialGradient(-r * 0.35, -r * 0.4, r * 0.05, 0, 0, r);
+    g.addColorStop(0, 'rgba(255,255,255,0.5)');
+    g.addColorStop(0.45, 'rgba(255,255,255,0.04)');
+    g.addColorStop(1, 'rgba(0,0,0,0.5)');
+  }
+  if (discGrads.size > 48) discGrads.clear();
+  discGrads.set(key, g);
+  return g;
+}
+
 function discOverlay(ctx, style, x, y, r, strokeFn) {
   if (!(r > 0)) return;
+  // Camino rápido: los estilos de un solo degradado rellenan el trazado del disco tal cual está
+  // (sin recorte ni rectángulo), con el degradado guardado. El trazado queda intacto para el contorno.
+  if (style === 'metal' || style === 'glass' || style === 'sphere' || !style) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.fillStyle = discGradient(ctx, style || 'sphere', r);
+    ctx.fill();
+    ctx.restore();
+    return;
+  }
   // `stroke` es el que parchea el preload: llamarlo desde acá se re-entraba a sí
   // mismo (era lo que hacía desaparecer todo con «Neón»). Se usa el original.
   const doStroke = () => (strokeFn ? strokeFn.call(ctx) : ctx.stroke());

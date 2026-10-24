@@ -11,6 +11,7 @@ window.TL_NEWS = {
   title: { es: 'Qué hay de nuevo', en: "What's new" },
   items: {
     es: [
+      'FPS con más gente en la sala: las fichas con estilo (esfera, vidrio, metal) se dibujan ~30 % más liviano, y el festejo de gol del club ya no tiene animaciones que recalculen el diseño en cada cuadro, usa menos piezas y queda precargado desde que entrás a la sala (el primer gol ya no tironea).',
       'Replays rediseñado en vidrio: encabezado destacado, buscador y filtros en pastilla, y cada partido como tarjeta redondeada.',
       'Nueva pantalla de carga (haces de luz y anillo girando alrededor del escudo), recuadros de captcha, conexión y crear sala en estilo iOS, y escudo del Club con flote y ondas.',
             'Pantalla de carga y de apodo renovadas: cancha dibujada de fondo, escudo más grande con brillo, tarjeta de vidrio y botón «Entrar» en pastilla dorada.',
@@ -87,6 +88,7 @@ window.TL_NEWS = {
       'Cada clave se usa en una sola PC: si cambiás de computadora, pedile a miclo que te la libere.'
     ],
     en: [
+      'FPS with more people in the room: styled discs (sphere, glass, metal) draw ~30% lighter, and the club goal celebration no longer runs layout-heavy animations, uses fewer pieces and is preloaded when you enter the room (no hitch on the first goal).',
       'Replays redesigned in glass style: highlighted header, pill search and filters, and each match as a rounded card.',
       'New loading screen (light beams and a ring spinning around the crest), iOS-style captcha, connecting and create-room dialogs, and an animated Club crest.',
             'New loading and nickname screens: pitch drawn in the background, bigger glowing crest, glass card and a pill-shaped “Enter” button.',
