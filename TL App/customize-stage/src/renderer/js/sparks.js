@@ -13,6 +13,10 @@
   const COUNT = 40;
   let count = COUNT;
   const FRAME_MS = 1000 / 30;
+  // El lienzo se dibuja a la mitad de resolución y el navegador lo estira: son motas suaves, no se nota,
+  // y se pintan/componen 4 veces menos píxeles por cuadro.
+  const S = 0.5;
+  let check = 0;
   let canvas = null;
   let ctx = null;
   let sprite = null;
@@ -111,9 +115,12 @@
     if (!canvas) return;
     w = window.innerWidth;
     h = window.innerHeight;
-    if (canvas.width !== w || canvas.height !== h) {
-      canvas.width = w;
-      canvas.height = h;
+    const cw = Math.ceil(w * S);
+    const ch = Math.ceil(h * S);
+    if (canvas.width !== cw || canvas.height !== ch) {
+      canvas.width = cw;
+      canvas.height = ch;
+      if (ctx) ctx.setTransform(S, 0, 0, S, 0, 0);
     }
   }
 
@@ -130,7 +137,9 @@
 
   function frame(now) {
     raf = 0;
-    if (!visible()) { stop(); return; }
+    // `visible()` toca el DOM (offsetParent fuerza recalcular estilos): se mira cada ~2 s, no en cada cuadro.
+    // Los cambios de pantalla, panel y ventana ya avisan solos (ver `sync`).
+    if (--check <= 0) { check = 60; if (!visible()) { stop(); return; } }
     raf = requestAnimationFrame(frame);
     if (now - last < FRAME_MS) return;
     const dt = Math.min(0.1, (now - last) / 1000);
@@ -151,9 +160,9 @@
         const rot = t * p.sp * 2 + p.ph;
         const sx = Math.abs(Math.cos(rot)); // el giro en 3D se finge achicando el ancho
         ctx.globalAlpha = style === 'petalos' ? 0.7 : 0.85;
-        ctx.setTransform(sx, 0, 0, 1, p.x, p.y);
+        ctx.setTransform(sx * S, 0, 0, S, p.x * S, p.y * S);
         ctx.drawImage(sp, -p.r, -p.r * 1.6, p.r * 2, p.r * 3.2);
-        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.setTransform(S, 0, 0, S, 0, 0);
         continue;
       }
       const tw = style === 'luciernagas'
@@ -170,6 +179,7 @@
   function start() {
     if (raf || !canvas) return;
     canvas.hidden = false;
+    check = 60;
     last = performance.now();
     raf = requestAnimationFrame(frame);
   }
@@ -194,7 +204,7 @@
     canvas.setAttribute('aria-hidden', 'true');
     canvas.hidden = true;
     document.body.append(canvas);
-    ctx = canvas.getContext('2d');
+    ctx = canvas.getContext('2d', { alpha: true });
     sprites = makeSprites(style);
     resize();
     parts = Array.from({ length: count }, () => spawn({}, true));
