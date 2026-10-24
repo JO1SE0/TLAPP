@@ -6387,3 +6387,86 @@ html:not([data-animations="off"]) .cap__card { animation: capIn .28s cubic-bezie
 .cap__tline .cap__hist { position: relative; display: flex; flex-direction: column; gap: 2px; margin: 0 0 8px 16px; }
 .cap__tline .cap__hist::before { content: ""; position: absolute; left: -23px; top: 14px; width: 10px; height: 10px; border-radius: 50%; background: var(--c-accent); }
 .cap__tline .cap__hist .cap__muted { font-size: 11.5px; }
+
+/* ═══ Club · Informes · Hostear — Vidrio (pintura estática, sin blur ni animaciones infinitas) ═══ */
+#app[data-view="club"] .panel__card,
+#app[data-view="informes"] .panel__card,
+#app[data-view="hostear"] .panel__card { width: min(1080px, 100%); max-width: 1080px; border-radius: 28px; }
+#app[data-view="club"] .page[data-page="club"] .page__inner,
+#app[data-view="informes"] .page[data-page="informes"] .page__inner,
+#app[data-view="hostear"] .page[data-page="hostear"] .page__inner { padding: 46px 28px 30px; gap: 18px; }
+.club { gap: 18px; }
+.club__hero { padding: 22px 26px 20px; border-radius: 24px; border-color: rgb(var(--accent-rgb) / 30%);
+  background: radial-gradient(90% 160% at 0% 0%, rgb(var(--accent-rgb) / 24%), transparent 62%), radial-gradient(60% 120% at 100% 100%, rgb(var(--accent-rgb) / 10%), transparent 70%), linear-gradient(160deg, rgb(var(--text-rgb) / 6%), rgb(var(--text-rgb) / 1%)); box-shadow: inset 0 1px 0 rgb(var(--text-rgb) / 8%); }
+.club__hero::after { right: -30px; top: -50px; width: 200px; height: 200px; }
+.club__title { font-size: 38px; margin: 2px 0 14px; }
+.page[data-page="informes"] .club__title, .page[data-page="hostear"] .club__title { margin-bottom: 2px; }
+.kpi { padding: 12px 16px; border-radius: 16px; background: rgb(var(--bg-0-rgb) / 38%); border-color: rgb(var(--text-rgb) / 9%); }
+.kpi b { font-size: 30px; color: var(--accent-text); }
+.csec { gap: 14px; padding: 18px 20px; border-radius: 22px; border: 1px solid var(--line); background: linear-gradient(165deg, rgb(var(--text-rgb) / 5%), rgb(var(--text-rgb) / 1.5%)); box-shadow: inset 0 1px 0 rgb(var(--text-rgb) / 6%); }
+.csec__head h2 { font-size: 13px; }
+.csec__tag { border: 1px solid var(--accent-line); }
+
+/* Club conectado */
+.clubnow { grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 10px; }
+.cn__card { padding: 12px 14px; border-radius: 18px; background: linear-gradient(120deg, rgb(61 220 132 / 9%), rgb(var(--text-rgb) / 3%) 55%); border-color: rgb(var(--text-rgb) / 9%); }
+.cn__card:hover { border-color: var(--accent-line); }
+.cn__av { width: 44px; height: 44px; border-radius: 14px; }
+.cn__go { border-radius: 99px; padding-inline: 14px; }
+.cn__off em { background: rgb(var(--text-rgb) / 4%); }
+
+/* Ranking */
+.seg { border-radius: 99px; padding: 4px; }
+.seg button { border-radius: 99px; padding: 7px 15px; }
+.seg button.is-on { box-shadow: 0 4px 14px rgb(0 0 0 / 28%); }
+.podium { gap: 14px; }
+.pod { border-radius: 22px; padding: 20px 10px 16px; }
+.pod--1 { box-shadow: 0 16px 36px -20px rgba(232,193,90,.8), inset 0 1px 0 rgba(255,255,255,.12); }
+.pod__av { border-radius: 16px; }
+.cr__row { border-radius: 14px; background: rgb(var(--text-rgb) / 4%); }
+.cr__row:not(.cr__row--head):hover { background: rgb(var(--text-rgb) / 8%); }
+.cr__row.is-self { background: linear-gradient(90deg, rgb(var(--accent-rgb) / 16%), rgb(var(--text-rgb) / 4%)); }
+.cr__row--head { background: transparent; }
+.cr__bar2 { height: 7px; background: rgb(var(--text-rgb) / 9%); }
+
+/* Informes */
+.rpt__drop { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 18px; padding: 20px 22px; border-radius: 20px; border: 1.5px dashed var(--accent-line); background: radial-gradient(80% 140% at 0% 0%, rgb(var(--accent-rgb) / 12%), transparent 65%); }
+.rpt__ico { width: 62px; height: 62px; display: grid; place-items: center; font-size: 28px; border-radius: 20px; background: rgb(var(--accent-rgb) / 16%); border: 1px solid var(--accent-line); }
+.rpt__txt { display: grid; gap: 10px; min-width: 0; }
+.rpt__txt .note { margin: 0; }
+.rpt__chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.rpt__chips em { font-style: normal; font-size: 11.5px; font-weight: 700; padding: 4px 11px; border-radius: 99px; background: rgb(var(--text-rgb) / 6%); border: 1px solid var(--line); color: var(--text-dim); }
+.rpt__drop .hostact { margin: 0; }
+.rpt__drop .btn--primary { padding: 12px 22px; border-radius: 99px; font-weight: 800; }
+.reports__status { padding: 10px 14px; border-radius: 12px; background: rgb(var(--accent-rgb) / 10%); }
+.reports__status.is-err { background: rgb(255 120 100 / 12%); }
+.reports__pick { padding: 12px; border-radius: 16px; background: rgb(var(--text-rgb) / 4%); border: 1px solid var(--line); }
+.rep__modal { background: rgb(0 0 0 / 62%); }
+.rep__card { width: min(720px, 100%); padding: 20px; border-radius: 24px; border: 1px solid var(--accent-line); background: var(--bg-1, #141b2c); box-shadow: 0 30px 80px rgb(0 0 0 / 55%); }
+.rep__text { border-radius: 16px; background: rgb(var(--bg-0-rgb) / 45%); border: 1px solid var(--line); padding: 14px; }
+
+/* Hostear */
+.hostmode { align-self: flex-start; }
+.hostmode button { padding: 10px 26px; font-size: 14px; }
+.hcard { display: grid; gap: 12px; padding: 16px 18px; border-radius: 18px; border: 1px solid var(--line); background: rgb(var(--text-rgb) / 3.5%); }
+.hcard__t { margin: 0; font-size: 11px; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; color: var(--accent-text); }
+.hcard__t + .field > label { display: none; }
+.hostform { gap: 14px; }
+.hostgrid input, .hostgrid select { border-radius: 12px; }
+.hostmaps__row { padding: 8px 12px; border-radius: 12px; background: rgb(var(--text-rgb) / 4%); }
+.hostmut__body { border-radius: 16px; }
+.hostlive { padding: 16px 18px; border-radius: 18px; border: 1px solid rgb(61 220 132 / 40%); background: linear-gradient(120deg, rgb(61 220 132 / 12%), rgb(var(--text-rgb) / 3%)); }
+.hostlive > b { font-size: 17px; }
+.hostact { gap: 10px; }
+#hostGo { padding: 14px 34px; border-radius: 99px; font-size: 15px; font-weight: 800; letter-spacing: .02em; box-shadow: 0 10px 26px -10px rgb(var(--accent-rgb) / 70%); }
+#hostStop { border-radius: 99px; }
+@media (max-width: 760px) { .rpt__drop { grid-template-columns: 1fr; } .club__kpis { grid-template-columns: repeat(2, 1fr); } }
+#app[data-view="club"] .page[data-page="club"] .page__inner,
+#app[data-view="informes"] .page[data-page="informes"] .page__inner,
+#app[data-view="hostear"] .page[data-page="hostear"] .page__inner { width: 100%; box-sizing: border-box; }
+#app[data-view="club"] .panel__pages,
+#app[data-view="informes"] .panel__pages,
+#app[data-view="hostear"] .panel__pages { flex: 1 1 auto; min-width: 0; width: 100%; }
+#app[data-view="club"] .page.is-active,
+#app[data-view="informes"] .page.is-active,
+#app[data-view="hostear"] .page.is-active { width: 100%; }
