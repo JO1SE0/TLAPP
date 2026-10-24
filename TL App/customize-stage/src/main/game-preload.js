@@ -5393,10 +5393,17 @@ function myAvatarTexts() {
 function loadAvatarImage(view) {
   const file = (state.config.vip && state.config.vip.avatarImage) || '';
   if (!file) {
+    // Si había una imagen puesta, la ficha ya está pintada con ella: hay que
+    // rehacer la textura o queda la imagen vieja hasta el próximo cambio de avatar.
+    const habia = !!(avatarImage || avatarImageSrc || gifSheet);
     avatarImage = null;
     avatarRaw = null;
     avatarImageSrc = '';
     stopGifAvatar();
+    if (habia) {
+      myTextureCanvas = null;
+      safe(refreshAvatarTexture);
+    }
     return;
   }
 
