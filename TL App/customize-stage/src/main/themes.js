@@ -933,131 +933,116 @@ ${each(FIELDS, ':focus')} {
   color: ${p.dark === false ? danger : '#ff9aa2'} !important;
 }
 
-/* ══ Sala · Arena ════════════════════════════════════════════
- * El lobby como un vestuario de estadio: cabeceras de equipo en cinta
- * inclinada, listas con franja del color del equipo y trama diagonal, reglas
- * como un panel de datos con esquinas y un «Empezar» en cinta. Sólo pintura
- * estática (degradados, bordes y clip-path): sin desenfoques ni bucles, porque
- * el juego queda corriendo detrás. No se tocan medidas. */
+/* ══ Sala · Vidrio ═══════════════════════════════════════════
+ * El lobby con el mismo estilo de vidrio que Configuración: tarjetas muy
+ * redondeadas, píldoras, sombras difusas y el color de cada equipo en suave.
+ * Sólo pintura estática (degradados, bordes y sombras fijas): sin desenfoques
+ * ni bucles, porque el juego queda corriendo detrás. No se tocan medidas. */
 .room-view > .container {
   position: relative !important;
-  border-radius: 14px !important;
-  border: 1px solid ${rgba(p.text, 0.1)} !important;
+  border-radius: 28px !important;
+  border: 1px solid ${rgba(p.text, 0.12)} !important;
   background:
-    linear-gradient(115deg, ${rgba(p.red, 0.1)} 0%, transparent 34%, transparent 66%, ${rgba(p.blue, 0.1)} 100%),
-    radial-gradient(70% 45% at 50% 0%, ${rgba(p.accent, 0.2)}, transparent 70%),
+    radial-gradient(60% 42% at 8% 0%, ${rgba(p.accent, 0.2)}, transparent 70%),
+    radial-gradient(45% 40% at 100% 100%, ${rgba(p.accent, 0.1)}, transparent 70%),
+    linear-gradient(180deg, ${rgba(p.text, 0.05)}, transparent 28%),
     ${p.panel || p.bg} !important;
-  box-shadow: 0 34px 80px -24px rgba(0, 0, 0, 0.75), 0 0 0 1px ${rgba(p.accent, 0.16)}, 0 1px 0 ${rgba(p.text, 0.12)} inset !important;
+  box-shadow: 0 36px 80px -26px rgba(0, 0, 0, 0.7), 0 1px 0 ${rgba(p.text, 0.12)} inset !important;
 }
-/* Una línea de luz de lado a lado, arriba: roja → acento → azul. */
-.room-view > .container::before {
-  content: ""; position: absolute; left: 14px; right: 14px; top: 0; height: 3px; border-radius: 0 0 3px 3px;
-  background: linear-gradient(90deg, ${p.red}, ${p.accent} 50%, ${p.blue}); box-shadow: 0 6px 24px ${rgba(p.accent, 0.55)}; pointer-events: none;
-}
-@keyframes tvmRoomIn { from { opacity: 0; transform: translateY(12px); } }
-.room-view > .container { animation: tvmRoomIn .34s cubic-bezier(.2, .8, .2, 1) both; }
+@keyframes tvmRoomIn { from { opacity: 0; transform: translateY(12px) scale(.985); } }
+.room-view > .container { animation: tvmRoomIn .36s cubic-bezier(.2, .8, .2, 1) both; }
 @media (prefers-reduced-motion: reduce) { .room-view > .container { animation: none; } }
 
-/* Nombre de la sala: mayúsculas anchas, con la etiqueta «SALA» encima. */
+/* Nombre de la sala. */
 .room-view > .container > h1 {
-  position: relative !important;
-  font-size: 22px !important; font-weight: 800 !important; letter-spacing: .06em !important; text-transform: uppercase !important;
-  color: ${p.text} !important; border-bottom: 0 !important; padding: 16px 0 12px !important;
-  background: linear-gradient(90deg, ${rgba(p.text, 0.18)}, transparent 70%) bottom / 100% 1px no-repeat !important;
-}
-.room-view > .container > h1::before {
-  content: "SALA"; position: absolute; left: 10px; top: 2px; font-size: 9.5px; letter-spacing: .32em; font-weight: 800; color: ${p.accent}; opacity: .95;
+  font-size: 24px !important; font-weight: 750 !important; letter-spacing: -.02em !important; text-transform: none !important;
+  color: ${p.text} !important; border-bottom: 0 !important; padding: 8px 0 12px !important;
+  background: linear-gradient(90deg, ${rgba(p.text, 0.14)}, transparent 70%) bottom / 100% 1px no-repeat !important;
 }
 
-/* Cabecera (Grabar / Link / Salir): botones rectos con esquina cortada. */
+/* Cabecera (Grabar / Link / Salir): píldoras de vidrio. */
 .room-view > .container > .header-btns button {
-  border-radius: 0 !important;
-  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%) !important;
-  padding: 7px 14px !important;
-  text-transform: uppercase !important; letter-spacing: .06em !important; font-size: 11.5px !important; font-weight: 800 !important;
-  transition: background-color .14s ease, color .14s ease !important;
+  border-radius: 999px !important; padding: 7px 16px !important;
+  background: ${rgba(p.text, 0.08)} !important; box-shadow: 0 0 0 1px ${rgba(p.text, 0.1)} inset !important;
+  transition: background-color .16s ease, transform .18s cubic-bezier(.2, .8, .2, 1) !important;
 }
-.room-view > .container > .header-btns button:hover:not(:disabled) { background: ${p.accent} !important; color: ${p.accentText} !important; box-shadow: none !important; }
+.room-view > .container > .header-btns button:hover:not(:disabled) {
+  transform: translateY(-1px) !important; background: ${rgba(p.accent, 0.28)} !important; color: ${p.text} !important;
+  box-shadow: 0 0 0 1px ${rgba(p.accent, 0.5)} inset !important;
+}
 
-/* Equipos: lista con franja de color a la izquierda y trama diagonal. */
+/* Columnas de equipo: tarjetas redondeadas con el color del equipo en suave. */
 .room-view > .container > .teams .player-list-view .list {
-  border-radius: 0 0 10px 10px !important; scrollbar-width: thin;
-  background:
-    repeating-linear-gradient(135deg, ${rgba(p.text, 0.028)} 0 6px, transparent 6px 12px),
-    ${rgba(p.bg, 0.72)} !important;
-  border: 1px solid ${p.edgeSoft} !important; border-top: 0 !important;
+  border-radius: 0 0 20px 20px !important; scrollbar-width: thin;
+  border: 1px solid ${rgba(p.text, 0.1)} !important; border-top: 0 !important; box-shadow: none !important;
+  background: linear-gradient(180deg, ${rgba(p.text, 0.06)}, ${rgba(p.text, 0.02)}) !important;
 }
-.room-view > .container > .teams .player-list-view.t-red .list { box-shadow: inset 4px 0 0 ${p.red}, inset 0 40px 50px -40px ${rgba(p.red, 0.35)} !important; }
-.room-view > .container > .teams .player-list-view.t-blue .list { box-shadow: inset -4px 0 0 ${p.blue}, inset 0 40px 50px -40px ${rgba(p.blue, 0.35)} !important; }
-
-/* Cabeceras de columna: cinta inclinada, sólida con el color del equipo. */
+.room-view > .container > .teams .player-list-view.t-red .list {
+  background: linear-gradient(180deg, ${rgba(p.red, 0.17)}, ${rgba(p.red, 0.03)} 70%) !important; border-color: ${rgba(p.red, 0.3)} !important;
+}
+.room-view > .container > .teams .player-list-view.t-blue .list {
+  background: linear-gradient(180deg, ${rgba(p.blue, 0.17)}, ${rgba(p.blue, 0.03)} 70%) !important; border-color: ${rgba(p.blue, 0.3)} !important;
+}
 .room-view > .container > .teams .player-list-view .buttons button[data-hook="join-btn"] {
-  border-radius: 0 !important; padding: 9px 18px !important;
-  background: ${rgba(p.text, 0.12)} !important; color: ${p.text} !important;
-  font-size: 13px !important; font-weight: 900 !important; letter-spacing: .2em !important;
-  clip-path: polygon(0 0, 100% 0, calc(100% - 14px) 100%, 0 100%) !important; box-shadow: none !important;
+  clip-path: none !important; border-radius: 20px 20px 0 0 !important; padding: 10px 14px !important;
+  background: ${rgba(p.text, 0.1)} !important; color: ${p.text} !important;
+  font-size: 12.5px !important; font-weight: 800 !important; letter-spacing: .12em !important; box-shadow: none !important; text-shadow: none !important;
 }
 .room-view > .container > .teams .player-list-view.t-red .buttons button[data-hook="join-btn"] {
-  background: linear-gradient(90deg, ${p.red}, ${rgba(p.red, 0.7)}) !important; color: #ffffff !important; text-shadow: 0 1px 6px rgba(0, 0, 0, 0.45) !important; box-shadow: none !important;
+  background: linear-gradient(180deg, ${rgba(p.red, 0.38)}, ${rgba(p.red, 0.2)}) !important; color: ${p.dark === false ? p.red : '#ffd5d8'} !important; box-shadow: none !important;
 }
 .room-view > .container > .teams .player-list-view.t-blue .buttons button[data-hook="join-btn"] {
-  background: linear-gradient(270deg, ${p.blue}, ${rgba(p.blue, 0.7)}) !important; color: #ffffff !important; text-shadow: 0 1px 6px rgba(0, 0, 0, 0.45) !important; box-shadow: none !important;
-  clip-path: polygon(14px 0, 100% 0, 100% 100%, 0 100%) !important;
+  background: linear-gradient(180deg, ${rgba(p.blue, 0.38)}, ${rgba(p.blue, 0.2)}) !important; color: ${p.dark === false ? p.blue : '#d6e6ff'} !important; box-shadow: none !important; clip-path: none !important;
 }
 
-/* Jugadores: barras con un tajo de color al pasar el mouse. */
+/* Jugadores: filas redondeadas, un tinte suave al pasar el mouse. */
 .room-view .player-list-item {
-  border-radius: 3px !important; padding: 5px 10px !important; margin: 2px 8px !important;
-  border-left: 2px solid ${rgba(p.text, 0.12)} !important;
-  transition: background-color .12s ease, border-color .12s ease, padding-left .14s ease !important;
+  border-radius: 12px !important; padding: 6px 10px !important; margin: 3px 7px !important; border-left: 0 !important;
+  transition: background-color .14s ease !important;
 }
-.room-view .player-list-item:hover { padding-left: 14px !important; background: ${rgba(p.text, 0.08)} !important; }
-.room-view > .container > .teams .t-red .player-list-item { border-left-color: ${rgba(p.red, 0.55)} !important; }
-.room-view > .container > .teams .t-blue .player-list-item { border-left-color: ${rgba(p.blue, 0.55)} !important; }
-.room-view > .container > .teams .t-red .player-list-item:hover { border-left-color: ${p.red} !important; background: linear-gradient(90deg, ${rgba(p.red, 0.25)}, transparent) !important; }
-.room-view > .container > .teams .t-blue .player-list-item:hover { border-left-color: ${p.blue} !important; background: linear-gradient(90deg, ${rgba(p.blue, 0.25)}, transparent) !important; }
-.room-view .player-list-item.admin { border-left-color: ${adminGold} !important; background: linear-gradient(90deg, ${rgba(adminGold, 0.14)}, transparent 75%) !important; }
+.room-view .player-list-item:hover { padding-left: 10px !important; background: ${rgba(p.text, 0.1)} !important; transform: none !important; box-shadow: none !important; }
+.room-view > .container > .teams .t-red .player-list-item:hover { background: ${rgba(p.red, 0.22)} !important; border-left: 0 !important; }
+.room-view > .container > .teams .t-blue .player-list-item:hover { background: ${rgba(p.blue, 0.22)} !important; border-left: 0 !important; }
+.room-view .player-list-item.admin { background: linear-gradient(90deg, ${rgba(adminGold, 0.16)}, ${rgba(adminGold, 0.03)}) !important; border-left: 0 !important; }
 
-/* Herramientas: botones de panel de control. */
+/* Herramientas: píldoras de vidrio. */
 .room-view > .container > .teams > .tools button {
-  border-radius: 3px !important; background: ${rgba(p.text, 0.05)} !important; color: ${p.dim} !important;
-  text-transform: uppercase !important; letter-spacing: .08em !important; font-size: 11px !important; font-weight: 800 !important;
-  border-left: 2px solid ${rgba(p.accent, 0.5)} !important; box-shadow: none !important;
-  transition: background-color .12s ease, color .12s ease !important;
+  border-radius: 14px !important; background: ${rgba(p.text, 0.07)} !important; color: ${p.text} !important;
+  text-transform: none !important; letter-spacing: 0 !important; font-size: 12.5px !important; font-weight: 650 !important;
+  border-left: 0 !important; box-shadow: 0 0 0 1px ${rgba(p.text, 0.09)} inset !important;
+  transition: background-color .16s ease, transform .18s cubic-bezier(.2, .8, .2, 1) !important;
 }
-.room-view > .container > .teams > .tools button:hover:not(:disabled) { background: ${p.accent} !important; color: ${p.accentText} !important; box-shadow: none !important; }
+.room-view > .container > .teams > .tools button:hover:not(:disabled) {
+  background: ${rgba(p.accent, 0.26)} !important; color: ${p.text} !important; transform: translateY(-1px) !important;
+  box-shadow: 0 0 0 1px ${rgba(p.accent, 0.5)} inset !important;
+}
 
-/* Reglas: panel de datos con esquinas de mira. */
+/* Reglas: una tarjeta de vidrio limpia. */
 .room-view > .container > .settings {
-  position: relative !important; border-radius: 4px !important; padding: 14px 20px !important;
-  background: linear-gradient(180deg, ${rgba(p.text, 0.07)}, ${rgba(p.text, 0.02)}) !important;
-  box-shadow: 0 0 0 1px ${p.edgeSoft} inset !important;
+  position: relative !important; border-radius: 22px !important; padding: 16px 22px !important;
+  background: linear-gradient(180deg, ${rgba(p.text, 0.08)}, ${rgba(p.text, 0.03)}) !important;
+  box-shadow: 0 0 0 1px ${rgba(p.text, 0.1)} inset, 0 18px 36px -26px rgba(0, 0, 0, 0.8) !important;
 }
-.room-view > .container > .settings::before, .room-view > .container > .settings::after {
-  content: ""; position: absolute; width: 14px; height: 14px; pointer-events: none; border: 2px solid ${p.accent};
-}
-.room-view > .container > .settings::before { left: -1px; top: -1px; border-right: 0; border-bottom: 0; }
-.room-view > .container > .settings::after { right: -1px; bottom: -1px; border-left: 0; border-top: 0; }
+.room-view > .container > .settings::before, .room-view > .container > .settings::after { display: none !important; }
 .room-view > .container > .settings > div > .lbl {
-  text-transform: uppercase !important; letter-spacing: .14em !important; font-size: 10.5px !important; font-weight: 800 !important; color: ${p.accent} !important;
+  text-transform: none !important; letter-spacing: 0 !important; font-size: 12.5px !important; font-weight: 600 !important; color: ${p.dim} !important;
 }
-.room-view > .container > .settings > div > .val { font-size: 15px !important; font-weight: 800 !important; letter-spacing: .02em !important; }
-.room-view > .container > .settings input, .room-view > .container > .settings select { border-radius: 3px !important; }
+.room-view > .container > .settings > div > .val { font-size: 15px !important; font-weight: 750 !important; letter-spacing: 0 !important; color: ${p.text} !important; }
+.room-view > .container > .settings input, .room-view > .container > .settings select { border-radius: 12px !important; }
 
-/* Empezar: cinta grande e inclinada; Parar y Pausar, rectos con esquina cortada. */
+/* Empezar: píldora grande con brillo; Parar y Pausar, píldoras de vidrio. */
 .room-view > .container > .controls { gap: 10px !important; }
 .room-view > .container > .controls button {
-  border-radius: 0 !important; padding: 10px 22px !important;
-  text-transform: uppercase !important; letter-spacing: .1em !important; font-size: 12.5px !important; font-weight: 900 !important;
-  clip-path: polygon(10px 0, 100% 0, calc(100% - 10px) 100%, 0 100%) !important;
-  transition: filter .14s ease, background-color .14s ease !important;
+  clip-path: none !important; border-radius: 999px !important; padding: 11px 24px !important;
+  text-transform: none !important; letter-spacing: 0 !important; font-size: 14px !important; font-weight: 750 !important;
+  transition: transform .18s cubic-bezier(.2, .8, .2, 1), filter .16s ease, background-color .16s ease !important;
 }
 .room-view > .container > .controls button[data-hook="start-btn"] {
-  padding: 12px 38px !important; font-size: 14px !important; letter-spacing: .14em !important;
-  box-shadow: none !important; background: linear-gradient(100deg, ${p.accent}, ${p.duo ? p.accent2 : lighten(p.accent, 0.18)}) !important;
+  padding: 12px 36px !important; font-size: 15px !important;
+  background: linear-gradient(135deg, ${p.accent}, ${p.duo ? p.accent2 : lighten(p.accent, 0.16)}) !important;
+  box-shadow: 0 14px 28px -12px ${rgba(p.accent, 0.85)}, 0 1px 0 rgba(255, 255, 255, 0.35) inset !important;
 }
-.room-view > .container > .controls button:hover:not(:disabled) { filter: brightness(1.15) !important; transform: none !important; }
-.room-view > .container > .controls button[data-hook="stop-btn"]:hover:not(:disabled) { box-shadow: none !important; }
+.room-view > .container > .controls button:hover:not(:disabled) { filter: brightness(1.1) !important; transform: translateY(-2px) !important; }
 
 /* ── Diálogos sobre la partida ───────────────────────────── *
    El velo de fábrica es verde oliva (rgba(115,136,92,.5)) y ningún tema lo
