@@ -5286,6 +5286,66 @@ function softShadow(ctx, x, y, r, rebuild) {
   }
 }
 
+const postSprites = new Map();
+/** El palo dibujado una vez (128 px, con margen para el brillo) por estilo y color. */
+function postSprite(ctx, style, color) {
+  const key = `${style}|${color}`;
+  let spr = postSprites.get(key);
+  if (spr !== undefined) return spr;
+  spr = null;
+  try {
+    const doc = ctx.canvas && ctx.canvas.ownerDocument;
+    const cv = doc.createElement('canvas');
+    cv.width = 160; cv.height = 160;
+    const c = cv.getContext('2d');
+    const R = 64; const C = 80;
+    const base = /^#[0-9a-f]{6}$/i.test(color) ? color : '#ffffff';
+    const rgb = [1, 3, 5].map((i) => parseInt(base.slice(i, i + 2), 16));
+    const mix = (t, to) => `rgb(${rgb.map((v, i) => Math.round(v + ((to[i] - v) * t))).join(',')})`;
+    c.beginPath(); c.arc(C, C, R, 0, Math.PI * 2);
+    if (style === 'metal') {
+      const g = c.createRadialGradient(C - R * 0.4, C - R * 0.45, R * 0.05, C, C, R);
+      g.addColorStop(0, '#ffffff'); g.addColorStop(0.25, '#e4e8ee'); g.addColorStop(0.6, '#8d96a3'); g.addColorStop(1, '#3a414b');
+      c.fillStyle = g; c.fill();
+      c.lineWidth = 6; c.strokeStyle = 'rgba(255,255,255,0.35)'; c.beginPath(); c.arc(C, C, R * 0.72, Math.PI * 1.05, Math.PI * 1.55); c.stroke();
+    } else if (style === 'gold') {
+      const g = c.createRadialGradient(C - R * 0.4, C - R * 0.45, R * 0.05, C, C, R);
+      g.addColorStop(0, '#fff6cf'); g.addColorStop(0.3, '#f3cf62'); g.addColorStop(0.7, '#b8862a'); g.addColorStop(1, '#5e3f0e');
+      c.fillStyle = g; c.fill();
+    } else if (style === 'neon') {
+      const glow = /^#[0-9a-f]{6}$/i.test(color) && !['#000000', '#ffffff'].includes(color.toLowerCase()) ? color : '#45f0ff';
+      c.fillStyle = '#0b0f14'; c.fill();
+      c.shadowColor = glow; c.shadowBlur = 22;
+      c.lineWidth = 12; c.strokeStyle = glow; c.beginPath(); c.arc(C, C, R - 8, 0, Math.PI * 2); c.stroke();
+      c.shadowBlur = 0; c.lineWidth = 4; c.strokeStyle = '#ffffff'; c.globalAlpha = 0.8; c.beginPath(); c.arc(C, C, R - 8, 0, Math.PI * 2); c.stroke();
+    } else if (style === 'wood') {
+      const g = c.createRadialGradient(C, C, 0, C, C, R);
+      g.addColorStop(0, '#d9a066'); g.addColorStop(1, '#8a5530');
+      c.fillStyle = g; c.fill();
+      c.strokeStyle = 'rgba(80,45,20,0.45)'; c.lineWidth = 3;
+      for (let rr = 10; rr < R; rr += 11) { c.beginPath(); c.arc(C + 3, C - 2, rr, 0, Math.PI * 2); c.stroke(); }
+    } else if (style === 'glass') {
+      const g = c.createRadialGradient(C - R * 0.35, C - R * 0.4, R * 0.05, C, C, R);
+      g.addColorStop(0, 'rgba(255,255,255,0.95)'); g.addColorStop(0.35, mix(0.35, [255, 255, 255]).replace('rgb', 'rgba').replace(')', ',0.55)')); g.addColorStop(1, mix(0.2, [0, 0, 0]).replace('rgb', 'rgba').replace(')', ',0.75)'));
+      c.fillStyle = g; c.fill();
+      c.lineWidth = 3; c.strokeStyle = 'rgba(255,255,255,0.6)'; c.beginPath(); c.arc(C, C, R - 2, 0, Math.PI * 2); c.stroke();
+    } else if (style === 'ball') {
+      // Palo con forma de bolita brillante del color del palo.
+      const g = c.createRadialGradient(C - R * 0.4, C - R * 0.45, R * 0.05, C, C, R);
+      g.addColorStop(0, '#ffffff'); g.addColorStop(0.3, mix(0.15, [255, 255, 255])); g.addColorStop(1, mix(0.55, [0, 0, 0]));
+      c.fillStyle = g; c.fill();
+    } else {
+      return null;
+    }
+    spr = cv;
+  } catch (err) {
+    log('error', `no se pudo armar el palo: ${err.message}`, 'juego');
+  }
+  if (postSprites.size > 40) postSprites.clear();
+  postSprites.set(key, spr);
+  return spr;
+}
+
 function drawBall(ctx, x, y, r, indice) {
   const wantSize = indice === 0 && visual.ballSize !== 1;
   if (wantSize) {
@@ -5297,6 +5357,15 @@ function drawBall(ctx, x, y, r, indice) {
   }
   // Palos con color propio: el relleno que sigue lo hace el juego con este color.
   if (indice > 0 && visual.postColor) ctx.fillStyle = visual.postColor;
+  // Palos con estilo: una figura armada una vez por estilo/color/tamaño y pegada.
+  if (indice > 0 && visual.postStyle !== 'default' && r > 0) {
+    const spr = postSprite(ctx, visual.postStyle, visual.postColor || String(ctx.fillStyle));
+    if (spr) {
+      ctx.drawImage(spr, x - r * 1.25, y - r * 1.25, r * 2.5, r * 2.5);
+      if (visual.lines) { pend.on = true; pend.kind = 'post'; pend.k = 1; pend.x = x; pend.y = y; pend.r = r; }
+      return true;
+    }
+  }
   if (visual.shadows && indice === 0 && r > 0) softShadow(ctx, x, y, r, true);
   let handled = false;
   try {
@@ -6792,7 +6861,8 @@ function skinPitch(ctx, w, h, stadium) {
    */
   const modeOn = skin.mode === 'theme' || skin.mode === 'custom';
   const tex = lookfx.textureSpec(visual.texture);
-  if (!modeOn && !tex && !visual.crest && !visual.light) return;
+  const pimg = pitchImage(ctx);
+  if (!modeOn && !tex && !visual.crest && !visual.light && !pimg) return;
 
   let field = modeOn ? pitchSkinColor() : null;
   let outside = modeOn ? pitchOutsideColor(field) : null;
@@ -6808,7 +6878,7 @@ function skinPitch(ctx, w, h, stadium) {
     // (arena, cemento, mármol) la levantan para no quedar barrosos.
     brightness = tex.lum || 0;
   }
-  if (!field && !outside && !brightness && !stripes && !tex && !visual.crest && !visual.light) return;
+  if (!field && !outside && !brightness && !stripes && !tex && !visual.crest && !visual.light && !pimg) return;
 
   /*
    * El contexto llega con la transformación de mundo puesta: es la que usó el
@@ -6831,7 +6901,35 @@ function skinPitch(ctx, w, h, stadium) {
     tintRegion(ctx, w, h, world, null, 'all', field, strength);
   }
 
-  if (stripes && bounds) paintStripes(ctx, w, h, world, bounds, stripes);
+  // Tu imagen de césped: adentro del campo, debajo de los cortes, la luz y el escudo.
+  if (pimg && bounds) {
+    let lines = null;
+    try { lines = keepLines(ctx, world, bounds, w, h); } catch (err) { lines = null; }
+    ctx.save();
+    try {
+      ctx.setTransform(world);
+      ctx.beginPath();
+      roundedRect(ctx, -bounds.halfW, -bounds.halfH, 2 * bounds.halfW, 2 * bounds.halfH, bounds.corner);
+      ctx.clip();
+      ctx.globalAlpha = clampNum(skin.imageAlpha, 0.1, 1, 1);
+      paintCover(ctx, pimg, -bounds.halfW, -bounds.halfH, 2 * bounds.halfW, 2 * bounds.halfH, (state.config.vip || {}).pitchCrop);
+      if (lines) {
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.globalAlpha = 1;
+        ctx.drawImage(lines.canvas, lines.x, lines.y);
+      }
+    } catch (err) {
+      log('error', `la imagen de la cancha no se pudo dibujar: ${err.message}`, 'vip');
+    } finally {
+      ctx.restore();
+    }
+  }
+
+  const cut = ['diagonal', 'checker', 'circles', 'diamonds'].includes(skin.cut) ? skin.cut : 'lines';
+  if (stripes && bounds) {
+    if (cut === 'lines') paintStripes(ctx, w, h, world, bounds, stripes);
+    else paintCut(ctx, w, h, world, bounds, stripes, cut);
+  }
 
   if (tex) {
     ctx.save();
@@ -6877,6 +6975,134 @@ function skinPitch(ctx, w, h, stadium) {
  * le tira el cache al estadio para que se dibuje.
  */
 let crestImg = null;
+/*
+ * Imagen propia de césped (Personalización → Cancha). Se carga una vez y, cuando
+ * llega, se tira el cache del estadio: queda adentro de la cancha ya dibujada, así
+ * que en la partida no cuesta nada. Zoom/posición/giro: `pitch.skin.imageCrop`.
+ */
+let pitchImg = null;
+let pitchImgFile = '';
+function pitchImage(ctx) {
+  const file = (state.config.vip && state.config.vip.pitchImage) || '';
+  if (!file) { pitchImg = null; pitchImgFile = ''; return null; }
+  if (pitchImgFile === file) return pitchImg && pitchImg.complete && pitchImg.naturalWidth ? pitchImg : null;
+  const doc = ctx && ctx.canvas && ctx.canvas.ownerDocument;
+  const view = doc && doc.defaultView;
+  if (!view) return null;
+  pitchImgFile = file;
+  const img = new view.Image();
+  img.crossOrigin = 'anonymous';
+  img.onload = () => { if (pitchImgFile === file) flushStadiumCache(view); };
+  img.onerror = () => log('error', 'No se pudo cargar la imagen de la cancha', 'vip');
+  img.src = assetUrl('pitch', hashOf(file));
+  pitchImg = img;
+  return null;
+}
+/*
+ * Las líneas de la cancha, sueltas. Esto corre sobre la cancha YA dibujada (con
+ * líneas), así que antes de taparla con la imagen se copian los píxeles que se
+ * apartan del color del césped —líneas, arcos, marcas del mapa— y se vuelven a
+ * pegar encima. Se hace sólo sobre el rectángulo del campo y una vez por armado
+ * de la cancha (el cache del estadio), nunca por cuadro.
+ */
+function keepLines(ctx, world, bounds, w, h) {
+  const pts = [[-bounds.halfW, -bounds.halfH], [bounds.halfW, -bounds.halfH], [bounds.halfW, bounds.halfH], [-bounds.halfW, bounds.halfH]]
+    .map(([x, y]) => [world.a * x + world.c * y + world.e, world.b * x + world.d * y + world.f]);
+  const pad = 6;
+  const x0 = Math.max(0, Math.floor(Math.min(...pts.map((p) => p[0]))) - pad);
+  const y0 = Math.max(0, Math.floor(Math.min(...pts.map((p) => p[1]))) - pad);
+  const x1 = Math.min(w, Math.ceil(Math.max(...pts.map((p) => p[0]))) + pad);
+  const y1 = Math.min(h, Math.ceil(Math.max(...pts.map((p) => p[1]))) + pad);
+  const cw = x1 - x0;
+  const ch = y1 - y0;
+  if (cw <= 0 || ch <= 0 || cw * ch > 16e6) return null;
+  const data = ctx.getImageData(x0, y0, cw, ch);
+  const px = data.data;
+  // El color del césped: la mediana de una grilla de muestras.
+  const lums = [];
+  for (let gy = 1; gy < 16; gy++) for (let gx = 1; gx < 16; gx++) {
+    const i = ((Math.floor((ch * gy) / 16) * cw) + Math.floor((cw * gx) / 16)) * 4;
+    lums.push(0.2126 * px[i] + 0.7152 * px[i + 1] + 0.0722 * px[i + 2]);
+  }
+  lums.sort((a, b) => a - b);
+  const grass = lums[lums.length >> 1];
+  for (let i = 0; i < px.length; i += 4) {
+    const d = Math.abs(0.2126 * px[i] + 0.7152 * px[i + 1] + 0.0722 * px[i + 2] - grass);
+    // Borde suave: lo que se aparta poco (franjas de fábrica) no es línea.
+    px[i + 3] = d <= 22 ? 0 : d >= 48 ? 255 : Math.round(((d - 22) / 26) * 255);
+  }
+  const doc = ctx.canvas.ownerDocument;
+  const off = doc.createElement('canvas');
+  off.width = cw; off.height = ch;
+  off.getContext('2d').putImageData(data, 0, 0);
+  return { canvas: off, x: x0, y: y0 };
+}
+
+/** La imagen cubre el rectángulo (como `cover`), con el zoom/posición/giro del editor. */
+function paintCover(ctx, img, x, y, W, H, c) {
+  const sw = img.naturalWidth || img.width;
+  const sh = img.naturalHeight || img.height;
+  if (!sw || !sh) return;
+  const cc = c || {};
+  ctx.save();
+  ctx.translate(x + W / 2, y + H / 2);
+  ctx.rotate(((+cc.r || 0) * Math.PI) / 180);
+  const k = Math.min(8, Math.max(0.2, +cc.z || 1)) * Math.max(W / sw, H / sh);
+  ctx.scale(cc.fx ? -k : k, k);
+  ctx.translate(-(sw / 2 + ((+cc.x || 0) * sw) / 2), -(sh / 2 + ((+cc.y || 0) * sh) / 2));
+  ctx.drawImage(img, 0, 0, sw, sh);
+  ctx.restore();
+}
+
+/** Cortes de césped que no son franjas rectas. `n` = cuántas bandas. */
+function paintCut(ctx, w, h, world, bounds, n, kind) {
+  ctx.save();
+  try {
+    ctx.setTransform(world);
+    ctx.beginPath();
+    roundedRect(ctx, -bounds.halfW, -bounds.halfH, 2 * bounds.halfW, 2 * bounds.halfH, bounds.corner);
+    ctx.clip();
+    const dark = isLightAt(ctx, world, w, h);
+    ctx.globalCompositeOperation = dark ? 'multiply' : 'screen';
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = dark ? 'rgb(240,240,240)' : 'rgb(26,26,26)';
+    const W = 2 * bounds.halfW;
+    const H = 2 * bounds.halfH;
+    const band = W / n;
+    ctx.beginPath();
+    if (kind === 'diagonal') {
+      const L = W + H;
+      for (let i = 0; i * band < L * 2; i += 2) {
+        const x0 = -bounds.halfW - H + i * band;
+        ctx.moveTo(x0, -bounds.halfH); ctx.lineTo(x0 + band, -bounds.halfH);
+        ctx.lineTo(x0 + band + H, bounds.halfH); ctx.lineTo(x0 + H, bounds.halfH); ctx.closePath();
+      }
+    } else if (kind === 'checker') {
+      const rows = Math.max(1, Math.round(H / band));
+      const bh = H / rows;
+      for (let i = 0; i < n; i++) for (let j = 0; j < rows; j++) if ((i + j) % 2 === 0) ctx.rect(-bounds.halfW + i * band, -bounds.halfH + j * bh, band, bh);
+    } else if (kind === 'circles') {
+      const R = Math.hypot(bounds.halfW, bounds.halfH);
+      const step = R / Math.max(2, Math.round(n / 2));
+      for (let r = step; r <= R + step; r += 2 * step) {
+        ctx.moveTo(r, 0); ctx.arc(0, 0, r, 0, Math.PI * 2, false);
+        ctx.moveTo(r + step, 0); ctx.arc(0, 0, r + step, 0, Math.PI * 2, true);
+      }
+    } else if (kind === 'diamonds') {
+      const rows = Math.max(1, Math.round(H / band));
+      const bh = H / rows;
+      for (let i = 0; i < n; i++) for (let j = 0; j < rows; j++) {
+        const cx = -bounds.halfW + (i + 0.5) * band;
+        const cy = -bounds.halfH + (j + 0.5) * bh;
+        ctx.moveTo(cx, cy - bh / 2); ctx.lineTo(cx + band / 2, cy); ctx.lineTo(cx, cy + bh / 2); ctx.lineTo(cx - band / 2, cy); ctx.closePath();
+      }
+    }
+    ctx.fill(kind === 'circles' ? 'nonzero' : 'nonzero');
+  } finally {
+    ctx.restore();
+  }
+}
+
 function crestImage(ctx) {
   if (crestImg) return crestImg;
   const doc = ctx && ctx.canvas && ctx.canvas.ownerDocument;
@@ -7104,7 +7330,8 @@ function roundedRect(ctx, x, y, w, h, r) {
 function pitchSkinPrint() {
   const skin = (state.config.pitch && state.config.pitch.skin) || {};
   const field = pitchSkinColor();
-  return `${skin.mode}|${field}|${pitchOutsideColor(field)}|${skin.strength}|${skin.brightness}|${skin.stripes}|${visual.pitchLine}|${flatGraphicsEnabled}|${visual.texture}|${visual.light}|${visual.crest}|${visual.crestOpacity}|${visual.crestSize}|${visual.lineColor}`;
+  const vip = state.config.vip || {};
+  return `${skin.mode}|${field}|${pitchOutsideColor(field)}|${skin.strength}|${skin.brightness}|${skin.stripes}|${skin.cut}|${skin.imageAlpha}|${vip.pitchImage}|${JSON.stringify(vip.pitchCrop || null)}|${visual.pitchLine}|${flatGraphicsEnabled}|${visual.texture}|${visual.light}|${visual.crest}|${visual.crestOpacity}|${visual.crestSize}|${visual.lineColor}`;
 }
 
 /** Le tira el cache al estadio para que se vuelva a dibujar con el color nuevo. */
@@ -9659,7 +9886,7 @@ let flatGraphicsEnabled = false;
 const visual = {
   pitchLine: 1, discLine: 1, ballLine: 1, ballSize: 1, discSize: 1, lines: false, sizes: false,
   texture: 'none', crest: false, crestOpacity: 0.18, crestSize: 0.45,
-  lineColor: '', postColor: '', discOutline: '', ballOutline: '',
+  lineColor: '', postColor: '', postStyle: 'default', discOutline: '', ballOutline: '',
   discStyle: 'default', ownRing: false, ownRingColor: '', ownRingAlpha: 0.3, ownRingRadius: 25, ownRingSoft: 0, weather: '', weatherAmount: 0.6, score: '', scoreOpacity: 0.16, scoreStyle: 'ring', scoreFont: 'default', scoreSize: 1, scorePos: 0.5, scoreMode: 'kickoff', scoreAnim: 'rise', scoreBurst: true, scoreColorR: '', scoreColorB: '', ballStyle: 'default', ringStyle: 'default', ringColor: '', light: '', shadows: false, ballColor: '', lineGlow: false,
   selfTrail: false, selfTrailColor: '',
   nameScale: 1, nameColor: '', nameOutline: false, nameFont: 'default',
@@ -9695,6 +9922,7 @@ function syncCanvasHotFlags() {
   visual.crestSize = clampNum(cfg.crestSize, 0.15, 1.2, 0.45);
   visual.lineColor = lookfx.safeColor(cfg.lineColor);
   visual.postColor = lookfx.safeColor(cfg.postColor);
+  visual.postStyle = ['metal', 'gold', 'neon', 'wood', 'glass', 'ball'].includes(cfg.postStyle) ? cfg.postStyle : 'default';
   visual.discOutline = lookfx.safeColor(cfg.discOutline);
   visual.ballOutline = lookfx.safeColor(cfg.ballOutline);
   visual.discStyle = ['sphere', 'glass', 'neon', 'metal', 'bubble', 'target', 'stripes', 'gem', 'cartoon', 'dots'].includes(cfg.discStyle) ? cfg.discStyle : 'default';

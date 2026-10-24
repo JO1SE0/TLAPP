@@ -73,6 +73,33 @@
     return Number.isFinite(n) ? Math.min(hi, Math.max(lo, n)) : fb;
   }
 
+  /* Tu imagen de césped (vip.pitchImage): se carga una vez y se repinta al llegar. */
+  const pimg = { file: '', img: null };
+  function pitchImg(cfg) {
+    const file = (cfg.vip && cfg.vip.pitchImage) || '';
+    if (!file) { pimg.file = ''; pimg.img = null; return null; }
+    if (pimg.file !== file) {
+      pimg.file = file;
+      const img = new Image();
+      img.onload = () => { if (pimg.file === file && typeof window.paintPreview === 'function') window.paintPreview(); };
+      img.src = encodeURI(`file:///${String(file).replace(/\\/g, '/').replace(/^\/+/, '')}`);
+      pimg.img = img;
+    }
+    return pimg.img && pimg.img.complete && pimg.img.naturalWidth ? pimg.img : null;
+  }
+  function cover(ctx, img, x, y, W, H, c) {
+    const sw = img.naturalWidth; const sh = img.naturalHeight;
+    const cc = c && c.on ? c : {};
+    ctx.save();
+    ctx.translate(x + W / 2, y + H / 2);
+    ctx.rotate(((+cc.r || 0) * Math.PI) / 180);
+    const k = Math.min(8, Math.max(0.2, +cc.z || 1)) * Math.max(W / sw, H / sh);
+    ctx.scale(cc.fx ? -k : k, k);
+    ctx.translate(-(sw / 2 + ((+cc.x || 0) * sw) / 2), -(sh / 2 + ((+cc.y || 0) * sh) / 2));
+    ctx.drawImage(img, 0, 0, sw, sh);
+    ctx.restore();
+  }
+
   function draw(canvas, cfg, opts) {
     if (!canvas || !cfg) return;
     const ctx = canvas.getContext('2d');
@@ -123,6 +150,12 @@
     const bands = 12;
     const bw = (2 * HALF_W) / bands;
     for (let i = 0; i < bands; i += 2) ctx.fillRect(-HALF_W + i * bw, -HALF_H, bw, 2 * HALF_H);
+    const pi = pitchImg(cfg);
+    if (pi) {
+      ctx.globalAlpha = num(skin.imageAlpha, 0.1, 1, 1);
+      cover(ctx, pi, -HALF_W, -HALF_H, 2 * HALF_W, 2 * HALF_H, (cfg.vip || {}).pitchCrop);
+      ctx.globalAlpha = 1;
+    }
     ctx.restore();
 
     ctx.lineWidth = 3 * pitchLine;
@@ -151,6 +184,21 @@
         ctx.arc(sx * HALF_W, sy * 62, 7, 0, TAU);
         ctx.fillStyle = postColor;
         ctx.fill();
+        if (V.postStyle && V.postStyle !== 'default') {
+          const X = sx * HALF_W; const Y = sy * 62;
+          const st = V.postStyle;
+          if (st === 'neon') {
+            ctx.fillStyle = '#0b0f14'; ctx.fill();
+            ctx.save(); ctx.shadowColor = postColor === '#ffffff' ? '#45f0ff' : postColor; ctx.shadowBlur = 8; ctx.lineWidth = 2.2; ctx.strokeStyle = ctx.shadowColor;
+            ctx.beginPath(); ctx.arc(X, Y, 5.6, 0, TAU); ctx.stroke(); ctx.restore();
+          } else {
+            const g = ctx.createRadialGradient(X - 2.8, Y - 3, 0.4, X, Y, 7);
+            const stops = { metal: ['#ffffff', '#8d96a3', '#3a414b'], gold: ['#fff6cf', '#d9a93f', '#5e3f0e'], wood: ['#e0aa72', '#b07040', '#7a4a28'], glass: ['rgba(255,255,255,.95)', 'rgba(220,235,255,.5)', 'rgba(40,60,80,.7)'], ball: ['#ffffff', postColor, '#222'] }[st] || ['#fff', postColor, '#000'];
+            g.addColorStop(0, stops[0]); g.addColorStop(0.55, stops[1]); g.addColorStop(1, stops[2]);
+            ctx.fillStyle = g; ctx.beginPath(); ctx.arc(X, Y, 7, 0, TAU); ctx.fill();
+          }
+          ctx.beginPath(); ctx.arc(X, Y, 7, 0, TAU);
+        }
         ctx.lineWidth = 2 * pitchLine;
         ctx.strokeStyle = '#000';
         ctx.stroke();
@@ -202,7 +250,10 @@
       ctx.fillRect(0, 0, W, H);
       ctx.restore();
     };
-    if (field && outside && outside !== field) {
+    if (pi) {
+      // Con imagen de césped el campo es la imagen (como en el juego): sólo se tiñe el afuera.
+      if (outside) tint('out', outside);
+    } else if (field && outside && outside !== field) {
       tint('in', field);
       tint('out', outside);
     } else if (field) {
@@ -224,7 +275,23 @@
       ctx.globalCompositeOperation = 'multiply';
       ctx.fillStyle = 'rgb(220,220,220)';
       const band = (2 * HALF_W) / stripes;
-      for (let i = 0; i < stripes; i += 2) ctx.fillRect(-HALF_W + i * band, -HALF_H, band, 2 * HALF_H);
+      const cut = skin.cut || 'lines';
+      const FW = 2 * HALF_W; const FH = 2 * HALF_H;
+      const rows = Math.max(1, Math.round(FH / band)); const bh = FH / rows;
+      ctx.beginPath();
+      if (cut === 'diagonal') {
+        for (let i = 0; i * band < (FW + FH) * 2; i += 2) { const x0 = -HALF_W - FH + i * band; ctx.moveTo(x0, -HALF_H); ctx.lineTo(x0 + band, -HALF_H); ctx.lineTo(x0 + band + FH, HALF_H); ctx.lineTo(x0 + FH, HALF_H); ctx.closePath(); }
+      } else if (cut === 'checker') {
+        for (let i = 0; i < stripes; i++) for (let j = 0; j < rows; j++) if ((i + j) % 2 === 0) ctx.rect(-HALF_W + i * band, -HALF_H + j * bh, band, bh);
+      } else if (cut === 'circles') {
+        const R = Math.hypot(HALF_W, HALF_H); const st = R / Math.max(2, Math.round(stripes / 2));
+        for (let r = st; r <= R + st; r += 2 * st) { ctx.moveTo(r, 0); ctx.arc(0, 0, r, 0, TAU, false); ctx.moveTo(r + st, 0); ctx.arc(0, 0, r + st, 0, TAU, true); }
+      } else if (cut === 'diamonds') {
+        for (let i = 0; i < stripes; i++) for (let j = 0; j < rows; j++) { const cx = -HALF_W + (i + 0.5) * band; const cy = -HALF_H + (j + 0.5) * bh; ctx.moveTo(cx, cy - bh / 2); ctx.lineTo(cx + band / 2, cy); ctx.lineTo(cx, cy + bh / 2); ctx.lineTo(cx - band / 2, cy); ctx.closePath(); }
+      } else {
+        for (let i = 0; i < stripes; i += 2) ctx.rect(-HALF_W + i * band, -HALF_H, band, 2 * HALF_H);
+      }
+      ctx.fill();
       ctx.restore();
     }
 

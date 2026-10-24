@@ -399,6 +399,7 @@ function appVars(p) {
     '--accent-lift': accentLift,
     '--accent-mid': accentMid,
     '--bg-0-rgb': rgb(p.bg),
+    '--bg-1-rgb': rgb(p.bg1),
     '--text-rgb': rgb(p.text),
     '--accent-text-on': p.accentText,
     '--bg-0': p.bg,

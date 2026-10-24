@@ -6,7 +6,7 @@
 // another computer's (a 60 Hz laptop's cap, V-Sync on) and locked the FPS.
 const GROUPS = ['general', 'appearance', 'game', 'overlay', 'notify', 'favorites',
   'discord', 'avatar', 'keys', 'countryOverride', 'vip', 'updates', 'privacy', 'chat', 'pitch'];
-const ASSETS = ['avatarImage', 'ballImage', 'goalSound', 'hitSound'];
+const ASSETS = ['avatarImage', 'ballImage', 'goalSound', 'hitSound', 'pitchImage'];
 const FORBIDDEN = new Set(['__proto__', 'prototype', 'constructor', '__replace']);
 function safe(value, depth = 0) {
   if (depth > 12) throw new Error('Configuración demasiado profunda');

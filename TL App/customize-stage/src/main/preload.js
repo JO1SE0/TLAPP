@@ -228,6 +228,7 @@ contextBridge.exposeInMainWorld('tvm', {
   vip: {
     pickAvatar: () => call('vip:pickAvatar'),
     pickBall: () => call('vip:pickBall'),
+    pickPitch: () => call('vip:pickPitch'),
     pickGoalSound: () => call('vip:pickGoalSound'),
     /** El sonido que suena con cada golpe a la pelota, sea de quien sea. */
     pickHitSound: () => call('vip:pickHitSound'),

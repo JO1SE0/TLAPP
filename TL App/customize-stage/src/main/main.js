@@ -418,6 +418,7 @@ function assetPath(kind) {
     : kind === 'ball' ? cfg.ballImage
     : kind === 'goal' ? cfg.goalSound
     : kind === 'hit' ? cfg.hitSound
+    : kind === 'pitch' ? cfg.pitchImage
     : '';
   return file && fs.existsSync(file) ? file : null;
 }
@@ -3324,6 +3325,16 @@ handle('vip:pickBall', async () => {
   return broadcastConfig(store.set({ vip: { ballImage: file } })).vip;
 });
 
+handle('vip:pickPitch', async () => {
+  const file = await pickAsset(
+    'Elegí la imagen del césped',
+    [{ name: 'Imágenes', extensions: ['png', 'jpg', 'jpeg', 'webp'] }],
+    'pitch'
+  );
+  if (!file) return store.get().vip;
+  return broadcastConfig(store.set({ vip: { pitchImage: file } })).vip;
+});
+
 handle('vip:pickGoalSound', async () => {
   const file = await pickAsset(
     'Elegí tu sonido de gol',
@@ -3348,6 +3359,7 @@ handle('vip:clearAsset', (_e, which) => {
   const key = which === 'avatar' ? 'avatarImage'
     : which === 'ball' ? 'ballImage'
     : which === 'hit' ? 'hitSound'
+    : which === 'pitch' ? 'pitchImage'
     : 'goalSound';
   return broadcastConfig(store.set({ vip: { [key]: '' } })).vip;
 });

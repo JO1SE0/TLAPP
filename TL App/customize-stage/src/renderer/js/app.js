@@ -873,6 +873,7 @@ function applyConfig(config) {
     try { openHub(rd.layout === 'consola'); } catch (e) { /* aún no está armado */ }
   }
   if (config.appearance.density === 'compact' || config.appearance.density === 'comfy') rd.density = config.appearance.density; else delete rd.density;
+  applyGlass(config.appearance.glass);
   const flag = (k, name) => { if (config.appearance[k] === false) rd[name] = 'off'; else delete rd[name]; };
   flag('crestBreath', 'crestBreath');
   flag('roomCurtain', 'roomCurtain');
@@ -4500,6 +4501,55 @@ function renderPitchSkin() {
     }
   }));
 
+  /* ── Tu imagen de césped (funciona con cualquier modo) ─────────── */
+  {
+    const vip = state.config.vip || {};
+    const file = vip.pitchImage || '';
+    const ctl = document.createElement('div');
+    ctl.className = 'assetrow';
+    const face = document.createElement('span');
+    face.className = 'assetrow__preview assetrow__preview--wide';
+    if (file) {
+      const cv = document.createElement('canvas');
+      cv.width = 132; cv.height = 60;
+      const img = new Image();
+      img.onload = () => { try { drawCropped(cv.getContext('2d'), img, 0, 0, 132, vip.pitchCrop && vip.pitchCrop.on ? vip.pitchCrop : { z: 1, x: 0, y: 0, r: 0 }, 60); } catch (e) { /* sin vista */ } };
+      img.src = fileUrl(file);
+      face.append(cv);
+    } else face.textContent = '—';
+    const mk = (txt, fn, ghost = true) => { const b = document.createElement('button'); b.type = 'button'; b.className = `btn btn--sm${ghost ? ' btn--ghost' : ''}`; b.textContent = txt; b.addEventListener('click', fn); return b; };
+    ctl.append(face, mk(en ? 'Choose…' : 'Elegir…', async () => {
+      const before = (state.config.vip || {}).pitchImage;
+      const next = await guard(tvm.vip.pickPitch(), 'Error');
+      if (!next) return;
+      state.config.vip = next;
+      if (next.pitchImage && next.pitchImage !== before) { crop.kind = 'pitch'; await saveCrop({ ...CROP_DEF, on: false }); openCrop('pitch'); }
+      renderPitchSkin();
+    }));
+    if (file) {
+      ctl.append(mk(en ? 'Adjust' : 'Ajustar', () => openCrop('pitch')), mk(en ? 'Remove' : 'Quitar', async () => {
+        const next = await guard(tvm.vip.clearAsset('pitch'), 'Error');
+        if (next) { state.config.vip = next; renderPitchSkin(); }
+      }));
+    }
+    box.append(settingRow({
+      label: en ? 'Your grass image' : 'Tu imagen de césped',
+      description: en ? 'Any picture as the pitch floor. Only you see it, and it costs no FPS: it goes into the pitch drawn once.'
+        : 'Cualquier imagen como piso de la cancha. Sólo la ves vos y no cuesta FPS: queda dentro de la cancha dibujada una vez.',
+      control: ctl
+    }));
+    if (file) {
+      box.append(skinRange({
+        id: 'pitch-skin-image-alpha',
+        label: en ? 'Image strength' : 'Cuánto se ve la imagen',
+        min: 10, max: 100, step: 1,
+        value: Math.round(numOr(skin.imageAlpha, 1) * 100),
+        format: (v) => `${v}%`,
+        onChange: (v) => patchConfig({ pitch: { skin: { imageAlpha: v / 100 } } })
+      }));
+    }
+  }
+
   // Con el color de fábrica no hay nada más que decidir: los controles de abajo
   // estarían ahí para no hacer nada.
   if (mode === 'off') return;
@@ -4614,6 +4664,23 @@ function renderPitchSkin() {
       ? 'Bands across the field, like a freshly mown pitch. They stay put in the world, not on your screen, and never spill outside the field.'
       : 'Franjas a lo ancho del campo, como una cancha recién cortada. Se quedan quietas sobre el campo aunque muevas la cámara, y no se salen del borde.',
     onChange: (v) => patchConfig({ pitch: { skin: { stripes: v } } })
+  }));
+
+  box.append(selectRow({
+    label: en ? 'Mowing pattern' : 'Patrón de corte',
+    id: 'pitch-skin-cut',
+    options: [
+      ['lines', en ? 'Straight stripes' : 'Franjas rectas'],
+      ['diagonal', en ? 'Diagonal' : 'Diagonales'],
+      ['checker', en ? 'Checks' : 'Cuadros'],
+      ['circles', en ? 'Circles' : 'Círculos'],
+      ['diamonds', en ? 'Diamonds' : 'Rombos']
+    ],
+    value: ['diagonal', 'checker', 'circles', 'diamonds'].includes(skin.cut) ? skin.cut : 'lines',
+    onChange: async (value) => {
+      await patchConfig({ pitch: { skin: { cut: value, stripes: numOr(skin.stripes, 0) || 10 } } });
+      renderPitchSkin();
+    }
   }));
 }
 
@@ -6123,16 +6190,20 @@ const CROP_DEF = { on: true, z: 1, x: 0, y: 0, r: 0, fx: false };
 const CROP_ZMIN = 0.3;
 const CROP_ZMAX = 6;
 const crop = { kind: 'avatar', img: null, c: { ...CROP_DEF }, orig: null, drag: null, snap: false, raf: 0 };
-const cropKeyOf = (kind) => (kind === 'ball' ? 'ballCrop' : 'avatarCrop');
+const cropKeyOf = (kind) => (kind === 'ball' ? 'ballCrop' : kind === 'pitch' ? 'pitchCrop' : 'avatarCrop');
+const cropFileOf = (kind) => (kind === 'ball' ? 'ballImage' : kind === 'pitch' ? 'pitchImage' : 'avatarImage');
+const PITCH_ASPECT = 2.2;
 
-function drawCropped(ctx, img, dx, dy, S, c) {
+function drawCropped(ctx, img, dx, dy, S, c, SH) {
   const sw = img.naturalWidth || img.width;
   const sh = img.naturalHeight || img.height;
   if (!sw || !sh) return;
+  const H = SH || S;
   ctx.save();
-  ctx.translate(dx + S / 2, dy + S / 2);
+  ctx.translate(dx + S / 2, dy + H / 2);
   ctx.rotate(((+c.r || 0) * Math.PI) / 180);
-  const k = (Math.min(8, Math.max(0.2, +c.z || 1)) * S) / Math.min(sw, sh);
+  // Igual que `paintCropped`/`paintCover` del juego: cubre el recuadro entero.
+  const k = Math.min(8, Math.max(0.2, +c.z || 1)) * Math.max(S / sw, H / sh);
   ctx.scale(c.fx ? -k : k, k);
   ctx.translate(-(sw / 2 + ((+c.x || 0) * sw) / 2), -(sh / 2 + ((+c.y || 0) * sh) / 2));
   ctx.drawImage(img, 0, 0, sw, sh);
@@ -6150,13 +6221,26 @@ const sliderToZ = (v) => CROP_ZMIN * Math.pow(CROP_ZMAX / CROP_ZMIN, v / 1000);
 function cropGeom() {
   const cv = $('#cropStage');
   const W = cv.width;
-  const S = Math.round(W * 0.72);
-  return { cv, W, S, d: (W - S) / 2 };
+  const pitch = crop.kind === 'pitch';
+  const S = Math.round(W * (pitch ? 0.92 : 0.72));
+  const SH = pitch ? Math.round(S / PITCH_ASPECT) : S;
+  return { cv, W, S, SH, d: (W - S) / 2, dy: (W - SH) / 2, pitch };
+}
+function cropMaskPath(ctx, g) {
+  ctx.beginPath();
+  if (g.pitch) {
+    const r = g.SH * 0.08;
+    ctx.moveTo(g.d + r, g.dy); ctx.arcTo(g.d + g.S, g.dy, g.d + g.S, g.dy + g.SH, r); ctx.arcTo(g.d + g.S, g.dy + g.SH, g.d, g.dy + g.SH, r);
+    ctx.arcTo(g.d, g.dy + g.SH, g.d, g.dy, r); ctx.arcTo(g.d, g.dy, g.d + g.S, g.dy, r); ctx.closePath();
+  } else ctx.arc(g.W / 2, g.W / 2, g.S / 2, 0, Math.PI * 2);
 }
 
 function cropPaint() {
   crop.raf = 0;
-  const { cv, W, S, d } = cropGeom();
+  const g = cropGeom();
+  const { cv, W, S, d } = g;
+  const dy = g.dy;
+  const SH = g.SH;
   const ctx = cv.getContext('2d');
   ctx.clearRect(0, 0, W, W);
   // Damero suave para ver lo transparente.
@@ -6167,20 +6251,26 @@ function cropPaint() {
   }
   if (crop.img) {
     // Lo que queda afuera también se ve, más apagado: así se entiende qué se corta.
-    ctx.save(); ctx.globalAlpha = 0.32; drawCropped(ctx, crop.img, d, d, S, crop.c); ctx.restore();
-    ctx.save(); ctx.beginPath(); ctx.arc(W / 2, W / 2, S / 2, 0, Math.PI * 2); ctx.clip();
-    drawCropped(ctx, crop.img, d, d, S, crop.c);
+    ctx.save(); ctx.globalAlpha = 0.32; drawCropped(ctx, crop.img, d, dy, S, crop.c, SH); ctx.restore();
+    ctx.save(); cropMaskPath(ctx, g); ctx.clip();
+    drawCropped(ctx, crop.img, d, dy, S, crop.c, SH);
+    if (g.pitch) {
+      // Las líneas de HaxBall encima, para ver cómo queda con la cancha.
+      ctx.strokeStyle = 'rgba(255,255,255,0.75)'; ctx.lineWidth = 4;
+      ctx.beginPath(); ctx.moveTo(W / 2, dy); ctx.lineTo(W / 2, dy + SH); ctx.stroke();
+      ctx.beginPath(); ctx.arc(W / 2, W / 2, SH * 0.22, 0, Math.PI * 2); ctx.stroke();
+    }
     if (crop.kind === 'ball') {
       // Brillo de esfera, como la pelota 3D.
       const g = ctx.createRadialGradient(W / 2 - S * 0.18, W / 2 - S * 0.2, S * 0.04, W / 2, W / 2, S / 2);
       g.addColorStop(0, 'rgba(255,255,255,0.22)'); g.addColorStop(0.55, 'rgba(255,255,255,0)'); g.addColorStop(1, 'rgba(0,0,0,0.28)');
-      ctx.fillStyle = g; ctx.fillRect(d, d, S, S);
+      ctx.fillStyle = g; ctx.fillRect(d, dy, S, SH);
     }
     if (crop.drag) {
       ctx.strokeStyle = 'rgba(255,255,255,0.22)'; ctx.lineWidth = 2;
       for (const f of [1 / 3, 2 / 3]) {
-        ctx.beginPath(); ctx.moveTo(d + S * f, d); ctx.lineTo(d + S * f, d + S); ctx.stroke();
-        ctx.beginPath(); ctx.moveTo(d, d + S * f); ctx.lineTo(d + S, d + S * f); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(d + S * f, dy); ctx.lineTo(d + S * f, dy + SH); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(d, dy + SH * f); ctx.lineTo(d + S, dy + SH * f); ctx.stroke();
       }
     }
     ctx.restore();
@@ -6189,7 +6279,7 @@ function cropPaint() {
   ctx.save();
   ctx.lineWidth = 5; ctx.strokeStyle = accent;
   ctx.shadowColor = accent; ctx.shadowBlur = crop.snap ? 34 : 18;
-  ctx.beginPath(); ctx.arc(W / 2, W / 2, S / 2, 0, Math.PI * 2); ctx.stroke();
+  cropMaskPath(ctx, g); ctx.stroke();
   ctx.restore();
   if (crop.snap) {
     ctx.save(); ctx.strokeStyle = accent; ctx.lineWidth = 3; ctx.globalAlpha = 0.9;
@@ -6209,6 +6299,24 @@ function cropPaint() {
 const cropQueue = () => { if (!crop.raf) crop.raf = requestAnimationFrame(cropPaint); };
 
 function cropPaintPreviews() {
+  if (crop.kind === 'pitch') {
+    const cv = $('#cropPrevPitch');
+    const ctx = cv.getContext('2d');
+    const W = cv.width; const H = cv.height;
+    ctx.clearRect(0, 0, W, H);
+    ctx.fillStyle = '#718c5a'; ctx.fillRect(0, 0, W, H);
+    const pw = W * 0.86; const ph = pw / PITCH_ASPECT; const px = (W - pw) / 2; const py = (H - ph) / 2;
+    ctx.save(); ctx.beginPath(); ctx.rect(px, py, pw, ph); ctx.clip();
+    if (crop.img) drawCropped(ctx, crop.img, px, py, pw, crop.c, ph);
+    ctx.restore();
+    ctx.strokeStyle = '#c7e6bd'; ctx.lineWidth = 2;
+    ctx.strokeRect(px, py, pw, ph);
+    ctx.beginPath(); ctx.moveTo(W / 2, py); ctx.lineTo(W / 2, py + ph); ctx.stroke();
+    ctx.beginPath(); ctx.arc(W / 2, H / 2, ph * 0.22, 0, Math.PI * 2); ctx.stroke();
+    const disc = (x, y, col) => { ctx.beginPath(); ctx.arc(x, y, 7, 0, Math.PI * 2); ctx.fillStyle = col; ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = '#000'; ctx.stroke(); };
+    disc(W * 0.36, H * 0.5, '#e56e56'); disc(W * 0.62, H * 0.4, '#5689e5'); disc(W * 0.5, H * 0.56, '#fff');
+    return;
+  }
   const ball = crop.kind === 'ball';
   for (const [id, frac] of [['#cropPrevBig', 0.78], ['#cropPrevMid', 0.74], ['#cropPrevReal', ball ? 0.34 : 0.5]]) {
     const cv = $(id);
@@ -6233,12 +6341,12 @@ function cropPaintPreviews() {
 
 /** Punto de pantalla (px del canvas) → cuánto mover el centro de la imagen. */
 function cropPanBy(dxs, dys) {
-  const { S } = cropGeom();
+  const { S, SH } = cropGeom();
   const img = crop.img;
   if (!img) return;
   const sw = img.naturalWidth || img.width;
   const sh = img.naturalHeight || img.height;
-  const k = (crop.c.z * S) / Math.min(sw, sh);
+  const k = crop.c.z * Math.max(S / sw, SH / sh);
   const a = (-crop.c.r * Math.PI) / 180;
   let ux = (dxs * Math.cos(a) - dys * Math.sin(a)) / k;
   const uy = (dxs * Math.sin(a) + dys * Math.cos(a)) / k;
@@ -6265,7 +6373,7 @@ function cropSnap() {
 }
 
 function openCrop(kind) {
-  const file = (state.config.vip || {})[kind === 'ball' ? 'ballImage' : 'avatarImage'] || '';
+  const file = (state.config.vip || {})[cropFileOf(kind)] || '';
   if (!file) return;
   const en = isEn();
   crop.kind = kind;
@@ -6275,7 +6383,8 @@ function openCrop(kind) {
   crop.img = null;
   crop.snap = false;
   $('#cropEyebrow').textContent = en ? 'Adjust image' : 'Ajustar imagen';
-  $('#cropTitle').textContent = kind === 'ball' ? (en ? 'Your ball' : 'Tu pelota') : (en ? 'Your disc' : 'Tu ficha');
+  $('#cropTitle').textContent = kind === 'ball' ? (en ? 'Your ball' : 'Tu pelota') : kind === 'pitch' ? (en ? 'Your pitch' : 'Tu cancha') : (en ? 'Your disc' : 'Tu ficha');
+  $('#cropModal').classList.toggle('crop--pitch', kind === 'pitch');
   $('#cropTip').textContent = en ? 'Drag to move · wheel = zoom · Shift + wheel = rotate · double click = center'
     : 'Arrastrá para mover · rueda = zoom · Shift + rueda = girar · doble clic = centrar';
   $('#cropPrevLabel').textContent = en ? 'How it looks on the pitch' : 'Así se ve en la cancha';
@@ -6303,7 +6412,7 @@ async function saveCrop(value) {
   const c = value || crop.c;
   const clean = { on: !!c.on, z: +(+c.z).toFixed(4), x: +(+c.x).toFixed(4), y: +(+c.y).toFixed(4), r: Math.round(+c.r || 0), fx: !!c.fx };
   await patchConfig({ vip: { [key]: clean } });
-  if (crop.kind === 'ball') renderBallImage(); else renderAvatarImage();
+  if (crop.kind === 'ball') renderBallImage(); else if (crop.kind === 'pitch') renderPitchSkin(); else renderAvatarImage();
 }
 
 (() => {
@@ -6362,8 +6471,11 @@ async function saveCrop(value) {
   $('#cropFit').addEventListener('click', () => {
     const img = crop.img; if (!img) return;
     const sw = img.naturalWidth || img.width; const sh = img.naturalHeight || img.height;
-    // Entera adentro del círculo: la diagonal tiene que entrar en el diámetro.
-    crop.c.z = Math.max(CROP_ZMIN, Math.min(sw, sh) / Math.hypot(sw, sh));
+    const gg = cropGeom();
+    // Entera adentro: en la cancha, que entre en el rectángulo; en el círculo, la diagonal en el diámetro.
+    crop.c.z = gg.pitch
+      ? Math.max(CROP_ZMIN, Math.min(gg.S / sw, gg.SH / sh) / Math.max(gg.S / sw, gg.SH / sh))
+      : Math.max(CROP_ZMIN, Math.min(sw, sh) / Math.hypot(sw, sh));
     crop.c.x = 0; crop.c.y = 0; crop.snap = true; cropQueue();
   });
   $('#cropCenter').addEventListener('click', () => { crop.c.x = 0; crop.c.y = 0; crop.snap = true; cropQueue(); });
@@ -9565,7 +9677,8 @@ const LOOK_SECTIONS = {
     { key: 'crestSize', type: 'range', label: 'look.crestSize', min: 0.2, max: 1, step: 0.01, showIf: (v) => v.crest },
     { key: 'lineColor', type: 'color', label: 'look.lineColor', desc: 'look.lineColorHelp' },
     { key: 'lineGlow', type: 'switch', label: 'look.lineGlow', desc: 'look.lineGlowHelp' },
-    { key: 'postColor', type: 'color', label: 'look.postColor' }
+    { key: 'postColor', type: 'color', label: 'look.postColor' },
+    { key: 'postStyle', type: 'select', label: 'look.postStyle', desc: 'look.postStyleHelp', options: [['default', 'look.opt.none'], ['metal', 'look.post.metal'], ['gold', 'look.post.gold'], ['neon', 'look.post.neon'], ['wood', 'look.post.wood'], ['glass', 'look.post.glass'], ['ball', 'look.post.ball']] }
   ],
   lookDiscs: [
     { key: 'discStyle', type: 'select', label: 'look.discStyle', options: [['default', 'look.opt.none'], ['sphere', 'look.ds.sphere'], ['glass', 'look.ds.glass'], ['neon', 'look.ds.neon'], ['metal', 'look.ds.metal'], ['bubble', 'look.ds.bubble'], ['target', 'look.ds.target'], ['stripes', 'look.ds.stripes'], ['gem', 'look.ds.gem'], ['cartoon', 'look.ds.cartoon'], ['dots', 'look.ds.dots']] },
@@ -9607,7 +9720,7 @@ const LOOK_SECTIONS = {
 };
 
 const LOOK_DEFAULTS = {
-  texture: 'none', pitchLight: 'none', ownRingColor: '', ownRingAlpha: 0.3, ownRingRadius: 25, ownRingSoft: 0, pitchWeather: 'none', pitchWeatherAmount: 0.6, pitchScore: 'team', pitchScoreOpacity: 0.16, pitchScoreStyle: 'ring', pitchScoreFont: 'default', pitchScoreSize: 1, pitchScorePos: 0.5, pitchScoreMode: 'kickoff', pitchScoreAnim: 'rise', pitchScoreBurst: true, pitchScoreColorR: '', pitchScoreColorB: '', softShadows: false, crest: false, crestOpacity: 0.18, crestSize: 0.45, lineColor: '', postColor: '',
+  texture: 'none', pitchLight: 'none', ownRingColor: '', ownRingAlpha: 0.3, ownRingRadius: 25, ownRingSoft: 0, pitchWeather: 'none', pitchWeatherAmount: 0.6, pitchScore: 'team', pitchScoreOpacity: 0.16, pitchScoreStyle: 'ring', pitchScoreFont: 'default', pitchScoreSize: 1, pitchScorePos: 0.5, pitchScoreMode: 'kickoff', pitchScoreAnim: 'rise', pitchScoreBurst: true, pitchScoreColorR: '', pitchScoreColorB: '', softShadows: false, crest: false, crestOpacity: 0.18, crestSize: 0.45, lineColor: '', postColor: '', postStyle: 'default',
   discStyle: 'default', ballStyle: 'default', ballColor: '', lineGlow: false, discOutline: '', ballOutline: '', ringStyle: 'default', ringColor: '',
   selfTrail: false, selfTrailColor: '', teamColors: 'room', teamRed: '#e0b04a', teamBlue: '#9aa3b5', teamKeepKits: false, nameScale: 1, nameColor: '', nameOutline: false, nameFont: 'default',
   chatScale: 1, chatBg: -1, chatFont: 'default', chatOpacity: 1, statsOpacity: 1, statsStyle: 'default', menuBg: 'none'
@@ -11835,11 +11948,35 @@ window.addEventListener('keydown', (e) => {
 }, true);
 
 
+/* Opacidad del vidrio: los paneles dejan ver lo de atrás (sin desenfoque, que cuesta). */
+function applyGlass(v) {
+  const a = Math.min(1, Math.max(0.5, Number(v) || 1));
+  const rd = document.documentElement.dataset;
+  if (a >= 0.995) { delete rd.glass; document.documentElement.style.removeProperty('--glass-a'); return; }
+  rd.glass = 'on';
+  document.documentElement.style.setProperty('--glass-a', a.toFixed(2));
+}
+function paintGlass() {
+  const r = $('#glassRange');
+  if (!r || !state.config) return;
+  const en = isEn();
+  $('#glassLabel').textContent = en ? 'Glass opacity' : 'Opacidad del vidrio';
+  $('#glassDesc').textContent = en ? 'Lower lets the background show through the panels. No blur, so it costs nothing.'
+    : 'Más bajo deja ver el fondo a través de los paneles. Sin desenfoque, así que no cuesta nada.';
+  const v = Math.round(Math.min(1, Math.max(0.5, Number(state.config.appearance.glass) || 1)) * 100);
+  if (document.activeElement !== r) r.value = String(v);
+  $('#glassValue').textContent = `${r.value}%`;
+  syncRangeFill(r);
+}
+$('#glassRange').addEventListener('input', (e) => { applyGlass(Number(e.target.value) / 100); $('#glassValue').textContent = `${e.target.value}%`; syncRangeFill(e.target); });
+$('#glassRange').addEventListener('change', (e) => patchConfig({ appearance: { glass: Number(e.target.value) / 100 } }));
+
 /* Densidad de la interfaz: sólo espaciado de menús (CSS por `data-density`). */
 const DENSITIES = [['compact', 'Compacta', 'Compact'], ['normal', 'Normal', 'Normal'], ['comfy', 'Cómoda', 'Comfortable']];
 function paintDensity() {
   const host = $('#denChips');
   if (!host || !state.config) return;
+  paintGlass();
   const en = isEn();
   $('#denTitle').textContent = en ? 'Interface density' : 'Densidad de la interfaz';
   $('#denDesc').textContent = en

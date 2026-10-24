@@ -84,6 +84,8 @@ const DEFAULTS = {
     themeHover: false,
     /** Densidad de los menús: compact | normal | comfy. Sólo espaciado, no toca el juego. */
     density: 'normal',
+    /** Opacidad de los paneles (1 = sólidos). Más bajo deja ver el fondo, sin desenfoque. */
+    glass: 1,
     // Tamaño de la interfaz: 'auto' (según el monitor) o un porcentaje fijo (60–150).
     uiScale: 'auto',
     /** Estructura de la interfaz: classic | top (barra superior) | dock (dock flotante). */
@@ -273,6 +275,9 @@ const DEFAULTS = {
     /** Zoom/posición/giro de cada imagen (editor «Ajustar imagen»). `on:false` = como siempre. */
     avatarCrop: { on: false, z: 1, x: 0, y: 0, r: 0, fx: false },
     ballCrop: { on: false, z: 1, x: 0, y: 0, r: 0, fx: false },
+    /** Imagen propia de césped (sólo la ves vos) y su zoom/posición/giro. */
+    pitchImage: '',
+    pitchCrop: { on: false, z: 1, x: 0, y: 0, r: 0, fx: false },
     /** Sonido de gol propio. Idem: archivo copiado a userData. */
     goalSound: '',
     goalVolume: 0.7,
@@ -418,6 +423,8 @@ const DEFAULTS = {
     /** Color de las líneas claras de la cancha y de los palos. Vacío = como viene. */
     lineColor: '',
     postColor: '',
+    /** Estilo de los palos: `default` · `metal` · `gold` · `neon` · `wood` · `glass` · `ball`. */
+    postStyle: 'default',
     /** Contorno de las fichas y de la pelota. Vacío = como viene. */
     discOutline: '',
     ballOutline: '',
@@ -522,7 +529,11 @@ const DEFAULTS = {
        */
       outside: '',
       /** Franjas de césped cortado. `0` las apaga; entre 4 y 24 se ven bien. */
-      stripes: 0
+      stripes: 0,
+      /** Forma del corte del césped: `lines` · `diagonal` · `checker` · `circles` · `diamonds`. */
+      cut: 'lines',
+      /** Cuánto se ve tu imagen de césped (vip.pitchImage). */
+      imageAlpha: 1
     },
     /**
      * Modo espejo: `off` · `red` · `blue`.

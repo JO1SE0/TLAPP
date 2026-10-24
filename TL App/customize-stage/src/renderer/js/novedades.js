@@ -11,6 +11,10 @@ window.TL_NEWS = {
   title: { es: 'Qué hay de nuevo', en: "What's new" },
   items: {
     es: [
+      'Tu imagen de césped (Personalización → Cancha): cualquier imagen como piso, con el editor de zoom/posición/giro. Las líneas quedan encima y no cuesta FPS.',
+      'Patrones de corte del césped: además de franjas rectas, diagonales, cuadros, círculos y rombos.',
+      'Estilo de los palos: metal, oro, neón, madera, vidrio o bolita brillante.',
+      'Opacidad del vidrio (Estilo → Densidad de la interfaz): paneles más transparentes, sin desenfoque.',
       'Colores de los equipos a elección (Personalización → Fichas y aro): cambiá el rojo y el azul por los que quieras, sólo en tu pantalla. Se aplica a fichas, marcador y listas, sin costo de FPS.',
       'Ajustar imagen de la ficha y de la pelota: zoom, posición, giro y espejo con un editor propio (arrastrá, rueda = zoom, Shift + rueda = girar) y vista previa en la cancha. Se abre solo al elegir una imagen nueva.',
       'Exportar config ahora también lleva gráficos, tamaño de ficha y pelota, líneas, estilos de la cancha y tus looks guardados (sin canciones ni imágenes).',
@@ -93,6 +97,10 @@ window.TL_NEWS = {
       'Cada clave se usa en una sola PC: si cambiás de computadora, pedile a miclo que te la libere.'
     ],
     en: [
+      'Your own grass image (Customize → Pitch): any picture as the floor, with the zoom/position/rotation editor. Lines stay on top, no FPS cost.',
+      'Mowing patterns: besides straight stripes, diagonal, checks, circles and diamonds.',
+      'Post style: metal, gold, neon, wood, glass or shiny ball.',
+      'Glass opacity (Style → Interface density): see-through panels, no blur.',
       'Pick your own team colours (Customize → Discs and ring): swap red and blue for any colours, only on your screen. Applies to discs, scoreboard and lists, no FPS cost.',
       'Adjust the disc and ball image: zoom, position, rotation and mirror in its own editor (drag, wheel = zoom, Shift + wheel = rotate) with a pitch preview. Opens by itself when you pick a new image.',
       'Export config now also carries graphics, disc/ball size, lines, pitch styles and your saved looks (no songs or images).',

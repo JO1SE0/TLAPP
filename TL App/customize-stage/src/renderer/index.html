@@ -688,6 +688,7 @@
                   <canvas id="cropPrevMid" width="112" height="112"></canvas>
                   <canvas id="cropPrevReal" width="64" height="64"></canvas>
                 </div>
+                <canvas class="crop__pitchprev" id="cropPrevPitch" width="560" height="300"></canvas>
               </div>
               <div class="crop__ctl">
                 <div class="crop__line">
@@ -1008,6 +1009,10 @@
               <div class="row">
                 <div class="row__text"><span class="row__label" id="scaleLabel">Tamaño de la interfaz</span><span class="row__desc" id="scaleDesc"></span></div>
                 <div class="row__ctl"><div class="chips" id="scaleChips"></div></div>
+              </div>
+              <div class="row">
+                <div class="row__text"><span class="row__label" id="glassLabel">Opacidad del vidrio</span><span class="row__desc" id="glassDesc"></span></div>
+                <div class="row__ctl"><input type="range" id="glassRange" min="50" max="100" step="1" value="100" /><b class="row__val" id="glassValue">100%</b></div>
               </div>
             </div>
           </section>
