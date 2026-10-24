@@ -6140,6 +6140,10 @@ function cardTouch(card, name, team) {
 }
 
 /** La distancia recorrida y la posesión, que se cobran por cuadro. */
+/* Nombre y equipo de cada jugador, leídos una vez y no en cada cuadro: antes cada cuadro armaba
+   dos cadenas nuevas por jugador (22 jugadores a 144 cuadros por segundo son miles por segundo). */
+const cardNames = new WeakMap();
+
 function cardTick(card, f, room, advanced) {
   if (!(advanced > 0)) return;
   card.total += advanced;
@@ -6153,7 +6157,14 @@ function cardTick(card, f, room, advanced) {
     const disc = p[f.disc];
     const at = disc && disc[f.pos];
     if (!at) continue;
-    const name = String(p[f.name] || '').trim();
+
+    const raw = p[f.name];
+    let c = cardNames.get(p);
+    if (!c || c.raw !== raw) {
+      c = { raw, name: String(raw || '').trim(), traw: undefined, team: null };
+      cardNames.set(p, c);
+    }
+    const name = c.name;
     if (!name) continue;
 
     const prev = card.lastAt.get(name);
@@ -6163,7 +6174,12 @@ function cardTick(card, f, room, advanced) {
       const d = Math.sqrt(dx * dx + dy * dy);
       // Un salto grande es un saque del medio o un cambio de partido, no una
       // corrida: se descarta en vez de inflar el número.
-      if (d < 60) cardEntry(card, name, teamNameOf(f, p)).distance += d;
+      if (d < 60) {
+        const t = p[f.team];
+        const traw = t ? t[f.name] : '';
+        if (c.traw !== traw) { c.traw = traw; c.team = t ? canonicalTeam(String(traw || '')) : null; }
+        cardEntry(card, name, c.team).distance += d;
+      }
       prev.x = at.x;
       prev.y = at.y;
     } else {
