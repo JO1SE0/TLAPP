@@ -11,6 +11,7 @@ window.TL_NEWS = {
   title: { es: 'Qué hay de nuevo', en: "What's new" },
   items: {
     es: [
+      'Entrar a una sala: las pantallas de «Conectando», captcha y desconexión usan la misma cancha y tarjeta de vidrio que la carga de la app.',
       'Pantalla de carga y de apodo renovadas: cancha dibujada de fondo, escudo más grande con brillo, tarjeta de vidrio y botón «Entrar» en pastilla dorada.',
       'Elegir estadio con estilo vidrio: buscador y botones en pastilla, lista con filas redondeadas y «Elegir» destacado.',
       'El menú del clic derecho a un jugador (y el cuadro de echar) ahora tiene el mismo estilo vidrio que la sala: esquinas redondeadas, botones en pastilla y brillo suave.',
@@ -85,6 +86,7 @@ window.TL_NEWS = {
       'Cada clave se usa en una sola PC: si cambiás de computadora, pedile a miclo que te la libere.'
     ],
     en: [
+      'Joining a room: the connecting, captcha and disconnected screens use the same pitch and glass card as the app loading screen.',
       'New loading and nickname screens: pitch drawn in the background, bigger glowing crest, glass card and a pill-shaped “Enter” button.',
       'Stadium picker in glass style: pill search and buttons, rounded list rows and a highlighted “Pick” button.',
       'The right-click player menu (and the kick dialog) now share the room’s glass look: rounded corners, pill buttons and a soft glow.',
