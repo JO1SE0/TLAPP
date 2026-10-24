@@ -6655,3 +6655,44 @@ html[lang="en"] .page[data-page="club"] .pod.is-self .pod__name::after { content
 .startcard input:focus { border-color: var(--accent); box-shadow: 0 0 0 4px rgb(var(--accent-rgb) / 20%), inset 0 2px 8px rgb(0 0 0 / 30%); }
 .startcard .btn--lg { height: 52px; margin-top: 8px; border-radius: 99px; font-size: 15px; font-weight: 800; letter-spacing: .03em; box-shadow: 0 14px 30px -12px rgb(var(--accent-rgb) / 80%), inset 0 1px 0 rgb(255 255 255 / 35%); }
 .startcard .btn--ghost { border-radius: 99px; }
+
+/* ═══ Carga v3: haces de luz de estadio + anillo de progreso alrededor del escudo (reemplaza la cancha de v2) ═══ */
+.splash::before {
+  background:
+    linear-gradient(104deg, transparent 30%, rgb(var(--accent-rgb, 123 63 228) / 11%) 38%, transparent 46%),
+    linear-gradient(76deg, transparent 54%, rgb(var(--accent-rgb, 123 63 228) / 11%) 62%, transparent 70%),
+    radial-gradient(40% 30% at 50% 100%, rgb(var(--accent-rgb, 123 63 228) / 28%), transparent 75%);
+  -webkit-mask-image: none; mask-image: none;
+}
+.splash {
+  background-image: radial-gradient(45% 45% at 50% 44%, rgb(var(--accent-rgb, 123 63 228) / 20%), transparent 72%), linear-gradient(180deg, var(--bg-0, #08070c), var(--bg-1, #0d0b14));
+}
+.splash__inner { position: relative; gap: 20px; }
+.splash__logo { height: 104px; animation: splashBreathe 2.6s ease-in-out infinite; }
+.splash__ring {
+  position: absolute; left: 50%; top: 16px; width: 180px; height: 180px; margin-left: -90px; border-radius: 50%;
+  background: conic-gradient(from 0deg, transparent 0 55%, rgb(var(--accent-rgb, 123 63 228) / 85%) 92%, var(--text, #fff) 100%);
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 2px));
+  mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 2px));
+  animation: splashSpin 1.4s linear infinite;
+}
+.splash__ring::after { content: ""; position: absolute; inset: 0; border-radius: 50%; box-shadow: inset 0 0 0 1px rgb(var(--text-rgb, 255 255 255) / 8%); }
+@keyframes splashSpin { to { transform: rotate(360deg); } }
+.splash__inner { padding-top: 54px; }
+.splash__bar { display: none; }
+.splash__word { margin-top: 22px; font-size: 30px; letter-spacing: .42em; margin-right: -.42em; }
+.splash__status { margin-top: -6px; }
+/* Una línea de luz bajo el nombre */
+.splash__word::after { content: ""; display: block; width: 64px; height: 2px; margin: 14px auto 0; border-radius: 2px; background: linear-gradient(90deg, transparent, var(--accent, #7b3fe4), transparent); -webkit-text-fill-color: initial; }
+
+/* ═══ Escudo del Club animado: flota despacio y emite ondas. Sólo transform/opacity; sólo corre con Club abierto. ═══ */
+.club__crest { position: absolute; right: 38px; top: 50%; width: 118px; height: 118px; margin-top: -59px; display: block; opacity: 1; filter: none; }
+.club__crest img { position: relative; z-index: 1; width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 10px 22px rgb(0 0 0 / 45%)) drop-shadow(0 0 18px rgb(var(--accent-rgb) / 45%)); animation: crestFloat 5s ease-in-out infinite; }
+.club__ring { position: absolute; inset: 6px; border-radius: 50%; border: 2px solid rgb(var(--accent-rgb) / 55%); opacity: 0; animation: crestRing 3.6s ease-out infinite; }
+.club__ring--2 { animation-delay: 1.8s; }
+@keyframes crestFloat { 0%, 100% { transform: translateY(0) rotate(-1.5deg); } 50% { transform: translateY(-7px) rotate(1.5deg); } }
+@keyframes crestRing { 0% { transform: scale(.7); opacity: .7; } 100% { transform: scale(1.75); opacity: 0; } }
+html[data-animations="off"] .club__crest img, html[data-animations="off"] .club__ring, #app[data-stage="game"] .club__crest img, #app[data-stage="game"] .club__ring { animation: none !important; }
+html[data-animations="off"] .club__ring, #app[data-stage="game"] .club__ring { display: none; }
+@media (max-width: 1080px) { .club__crest { width: 84px; height: 84px; margin-top: -42px; right: 24px; } }
+@media (max-width: 760px) { .club__crest { display: none; } }

@@ -1511,8 +1511,8 @@ ${scoreboardCss(p, options.scoreboard)}
 .connecting-view-log p { color: ${p.dim} !important; font-size: 12px !important; }
 .spinner > div { background: ${p.accent} !important; }
 
-/* Entrar a una sala (conectando, captcha, desconexión): la misma cancha y el mismo vidrio
-   que la pantalla de carga del cliente. Fondo estático; el spinner es el de HaxBall. */
+/* Entrar a una sala (conectando, captcha, desconexión): sin tarjeta. Los textos y el botón flotan
+   sobre la misma cancha de la pantalla de carga. Fondo estático. */
 .connecting-view, .disconnected-view, .simple-dialog-view {
   background-color: ${p.bg} !important;
   background-image:
@@ -1521,31 +1521,37 @@ ${scoreboardCss(p, options.scoreboard)}
     repeating-linear-gradient(90deg, ${rgba(p.text, 0.022)} 0 110px, transparent 110px 220px),
     radial-gradient(60% 50% at 50% 50%, ${rgba(p.accent, 0.22)}, transparent 70%) !important;
 }
-.connecting-view > .dialog, .disconnected-view > .dialog, .simple-dialog-view > .dialog, .view-wrapper > div > .dialog {
-  min-width: 360px !important;
-  padding: 26px 30px 22px !important;
-  border-radius: 28px !important;
+.connecting-view > .dialog, .disconnected-view > .dialog, .simple-dialog-view > .dialog {
+  min-width: 0 !important; width: min(520px, 90vw) !important;
+  padding: 0 !important; border: 0 !important; border-radius: 0 !important;
+  background: none !important; box-shadow: none !important;
+  display: flex !important; flex-direction: column !important; align-items: center !important; gap: 14px; text-align: center;
+}
+.connecting-view > .dialog > h1, .disconnected-view > .dialog > h1, .simple-dialog-view > .dialog > h1 {
+  font-size: 34px !important; font-weight: 900 !important; letter-spacing: .02em !important; text-transform: uppercase;
+  border: 0 !important; margin: 0 !important; padding: 0 !important;
+  background: linear-gradient(180deg, ${p.text} 30%, ${lighten(p.accent, 0.25)}); -webkit-background-clip: text; background-clip: text; color: transparent !important;
+  filter: drop-shadow(0 4px 14px rgba(0,0,0,.55));
+}
+.connecting-view > .dialog > h1::before, .disconnected-view > .dialog > h1::before, .simple-dialog-view > .dialog > h1::before { display: none !important; }
+.connecting-view-log { margin: 0 !important; padding: 0 !important; background: none !important; box-shadow: none !important; text-align: center; }
+.connecting-view-log p { margin: 3px 0 !important; font-size: 12.5px !important; font-weight: 700 !important; letter-spacing: .14em; text-transform: uppercase; color: ${p.faint} !important; }
+.connecting-view-log p:last-child { color: ${p.dim} !important; }
+.spinner { margin: 6px auto !important; filter: drop-shadow(0 0 10px ${rgba(p.accent, 0.7)}); transform: scale(1.5); }
+.connecting-view > .dialog button, .disconnected-view > .dialog button, .simple-dialog-view > .dialog button {
+  min-width: 150px; margin-top: 10px !important; padding: 12px 28px !important; border-radius: 99px !important; font-weight: 800 !important; letter-spacing: .04em;
+  background: ${rgba(p.text, 0.07)} !important;
+  box-shadow: 0 0 0 1px ${rgba(p.text, 0.14)} inset, 0 1px 0 ${rgba(p.text, 0.1)} inset !important;
+}
+.connecting-view > .dialog button:hover:not(:disabled), .disconnected-view > .dialog button:hover:not(:disabled), .simple-dialog-view > .dialog button:hover:not(:disabled) {
+  background: ${rgba(p.accent, 0.24)} !important; box-shadow: 0 0 0 1px ${rgba(p.accent, 0.6)} inset !important;
+}
+/* Contraseña, apodo y demás formularios sí llevan tarjeta de vidrio. */
+.view-wrapper > div:not(.connecting-view):not(.disconnected-view):not(.simple-dialog-view) > .dialog {
+  padding: 26px 30px 22px !important; border-radius: 28px !important;
   border: 1px solid ${rgba(p.accent, 0.34)} !important;
   background: radial-gradient(110% 60% at 50% 0%, ${rgba(p.accent, 0.22)}, transparent 70%), linear-gradient(168deg, ${rgba(p.text, 0.07)}, ${rgba(p.text, 0.015)}), ${p.panel} !important;
   box-shadow: 0 40px 90px -36px rgba(0,0,0,.95), 0 1px 0 ${rgba(p.text, 0.14)} inset !important;
-  text-align: center;
-}
-.connecting-view > .dialog > h1, .disconnected-view > .dialog > h1, .simple-dialog-view > .dialog > h1 {
-  font-size: 24px !important; font-weight: 900 !important; letter-spacing: -.02em !important;
-  border: 0 !important; margin: 0 0 8px !important; padding: 0 !important;
-}
-.connecting-view > .dialog > h1::before, .disconnected-view > .dialog > h1::before, .simple-dialog-view > .dialog > h1::before { display: none !important; }
-.connecting-view-log { margin-top: 10px !important; padding: 10px 14px !important; border-radius: 16px !important; background: ${rgba(p.bg, 0.45)} !important; box-shadow: 0 0 0 1px ${rgba(p.text, 0.08)} inset !important; text-align: left; }
-.connecting-view-log p { margin: 2px 0 !important; }
-.connecting-view > .dialog > button, .disconnected-view > .dialog > button { margin-top: 14px !important; }
-.spinner { margin: 14px auto !important; }
-.connecting-view > .dialog button, .disconnected-view > .dialog button, .view-wrapper > div > .dialog button {
-  border-radius: 99px !important; padding: 11px 22px !important; font-weight: 800 !important;
-  background: ${rgba(p.text, 0.08)} !important;
-  box-shadow: 0 0 0 1px ${rgba(p.text, 0.1)} inset, 0 1px 0 ${rgba(p.text, 0.08)} inset !important;
-}
-.connecting-view > .dialog button:hover:not(:disabled), .disconnected-view > .dialog button:hover:not(:disabled), .view-wrapper > div > .dialog button:hover:not(:disabled) {
-  background: ${rgba(p.accent, 0.24)} !important; box-shadow: 0 0 0 1px ${rgba(p.accent, 0.55)} inset !important;
 }
 /* El captcha de Google queda dentro de una tarjeta clara: se le da su marco redondeado. */
 .view-wrapper .dialog iframe, .view-wrapper .dialog .g-recaptcha { border-radius: 14px !important; overflow: hidden; }
