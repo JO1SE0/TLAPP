@@ -252,9 +252,9 @@
       phrase.append(sp);
     });
     // Chispas que salen del escudo al impacto (posiciones al azar, una sola vez).
-    for (let i = 0; i < 30; i++) {
+    for (let i = 0; i < 18; i++) {
       const sp = el('i', 'wl__spark');
-      const ang = (i / 30) * Math.PI * 2 + Math.random() * 0.4;
+      const ang = (i / 18) * Math.PI * 2 + Math.random() * 0.4;
       const dist = 110 + Math.random() * 210;
       sp.style.setProperty('--x', `${(Math.cos(ang) * dist).toFixed(0)}px`);
       sp.style.setProperty('--y', `${(Math.sin(ang) * dist).toFixed(0)}px`);
@@ -273,13 +273,13 @@
     // La cancha dibujándose en perspectiva, dos haces de luz y polvo dorado.
     const pitch = el('div', 'wl__pitch');
     pitch.innerHTML = '<svg viewBox="0 0 800 460" preserveAspectRatio="xMidYMid meet" aria-hidden="true">' +
-      '<g fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" pathLength="1">' +
-      '<rect pathLength="1" x="20" y="20" width="760" height="420" rx="6"/>' +
-      '<path pathLength="1" d="M400 20V440"/><circle pathLength="1" cx="400" cy="230" r="70"/>' +
-      '<path pathLength="1" d="M20 140h110v180H20M780 140H670v180h110"/>' +
-      '<path pathLength="1" d="M20 185h45v90H20M780 185h-45v90h45"/></g></svg>';
+      '<g fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">' +
+      '<rect x="20" y="20" width="760" height="420" rx="6"/>' +
+      '<path d="M400 20V440"/><circle cx="400" cy="230" r="70"/>' +
+      '<path d="M20 140h110v180H20M780 140H670v180h110"/>' +
+      '<path d="M20 185h45v90H20M780 185h-45v90h45"/></g></svg>';
     const dust = el('div', 'wl__dustwrap');
-    for (let i = 0; i < 26; i++) {
+    for (let i = 0; i < 14; i++) {
       const d = el('i', 'wl__dust');
       d.style.left = `${(Math.random() * 100).toFixed(1)}%`;
       d.style.setProperty('--r', `${(40 + Math.random() * 45).toFixed(0)}vh`);
@@ -297,6 +297,10 @@
       el('div', 'wl__skip', eng ? 'Click to skip' : 'Clic para saltar')
     );
     document.body.append(root);
+    // Mientras corre, el menú de abajo no pinta nada (visibility) y las partículas se frenan.
+    document.documentElement.classList.add('is-welcoming');
+    // Seguro: pase lo que pase, el menú nunca queda oculto más de 9 s.
+    setTimeout(() => document.documentElement.classList.remove('is-welcoming'), 9000);
 
     // Sonido: un AudioContext propio que se cierra al terminar.
     let ac = null;
@@ -327,6 +331,10 @@
         } catch (e) { /* nada que hacer */ }
       }
       root.classList.add('is-out');
+      // El menú entra con un deslizamiento corto apenas empieza la salida.
+      document.documentElement.classList.remove('is-welcoming');
+      document.documentElement.classList.add('tl-enter');
+      setTimeout(() => document.documentElement.classList.remove('tl-enter'), 1100);
       setTimeout(() => {
         root.remove();
         if (ac) ac.close().catch(() => {});

@@ -106,6 +106,7 @@
     const app = document.getElementById('app');
     if (!enabled || document.hidden || !app) return false;
     if (app.dataset.stage === 'game') return false;
+    if (document.getElementById('welcome')) return false;
     const panel = document.getElementById('panel');
     if (panel && !panel.hidden && panel.offsetParent !== null) return false;
     return true;

@@ -32,7 +32,7 @@
     /* destello inicial, rayos de luz y barras al costado del GOL */
     '.cg-flash{position:absolute;inset:0;opacity:0;background:radial-gradient(circle at 50% 46%,rgba(244,240,223,.85),rgba(233,212,154,.35) 28%,rgba(233,212,154,0) 60%);animation:cgFlash .7s ease-out both;will-change:opacity}',
     '@keyframes cgFlash{0%{opacity:0}12%{opacity:1}100%{opacity:0}}',
-    '.cg-rays{position:absolute;left:50%;top:46%;width:150vmax;height:150vmax;margin:-75vmax 0 0 -75vmax;opacity:0;background:repeating-conic-gradient(from 0deg,rgba(233,212,154,.14) 0 5deg,rgba(233,212,154,0) 5deg 15deg);-webkit-mask-image:radial-gradient(circle,#000 0,rgba(0,0,0,.45) 12%,transparent 34%);mask-image:radial-gradient(circle,#000 0,rgba(0,0,0,.45) 12%,transparent 34%);animation:cgRays 3.1s ease both;will-change:transform,opacity}',
+    '.cg-rays{position:absolute;left:50%;top:46%;width:110vmax;height:110vmax;margin:-55vmax 0 0 -55vmax;opacity:0;background:repeating-conic-gradient(from 0deg,rgba(233,212,154,.14) 0 5deg,rgba(233,212,154,0) 5deg 15deg);-webkit-mask-image:radial-gradient(circle,#000 0,rgba(0,0,0,.45) 12%,transparent 34%);mask-image:radial-gradient(circle,#000 0,rgba(0,0,0,.45) 12%,transparent 34%);animation:cgRays 3.1s ease both;will-change:transform,opacity}',
     '@keyframes cgRays{0%{opacity:0;transform:rotate(0) scale(.6)}15%{opacity:1}80%{opacity:.8}100%{opacity:0;transform:rotate(40deg) scale(1.15)}}',
     '.cg-bar{position:absolute;top:calc(36% + 8.2vmin);height:.55vmin;width:30vw;opacity:0;background:linear-gradient(90deg,transparent,#e9d49a 55%,#f4f0df);box-shadow:0 0 2vmin rgba(233,212,154,.8);animation:cgBar 3s cubic-bezier(.2,.8,.2,1) .15s both;will-change:transform,opacity;transform-origin:right center;right:calc(50% + 24vmin)}',
     '.cg-bar.r{right:auto;left:calc(50% + 24vmin);transform-origin:left center;background:linear-gradient(270deg,transparent,#e9d49a 55%,#f4f0df)}',
@@ -50,7 +50,7 @@
     '.cg-crest{position:absolute;left:50%;top:15%;width:15vmin;height:auto;margin-left:-7.5vmin;opacity:0;filter:drop-shadow(0 0 2.2vmin rgba(208,184,120,.65));animation:cgCrest 3.1s cubic-bezier(.2,.9,.25,1) both;will-change:transform,opacity}',
     '@keyframes cgCrest{0%{opacity:0;transform:translateY(3vmin) scale(.45)}13%{opacity:1;transform:translateY(-.6vmin) scale(1.1)}22%{transform:translateY(0) scale(1)}80%{opacity:1;transform:translateY(0) scale(1)}100%{opacity:0;transform:translateY(-2vmin) scale(1.04)}}',
     /* GOL */
-    '.cg-word{position:absolute;left:0;right:0;top:36%;text-align:center;font:900 17vmin/1 ' + FONT + ';letter-spacing:.12em;text-indent:.12em;white-space:nowrap;filter:drop-shadow(0 .9vmin .6vmin rgba(10,20,40,.55))}',
+    '.cg-word{position:absolute;left:0;right:0;top:36%;text-align:center;font:900 17vmin/1 ' + FONT + ';letter-spacing:.12em;text-indent:.12em;white-space:nowrap}',
     '.cg-word span{position:relative;display:inline-block;opacity:0;color:transparent;-webkit-background-clip:text;background-clip:text;background-image:linear-gradient(105deg,transparent 38%,rgba(255,255,255,.95) 50%,transparent 62%),linear-gradient(180deg,#f4f0df 0%,#e9d49a 38%,#d0b878 62%,#8a6f3a 100%);background-size:320% 100%,100% 100%;background-position:160% 0,0 0;animation:cgLetter 3s cubic-bezier(.2,.8,.2,1) both,cgShine 1.1s ease both;will-change:transform,opacity}',
     '@keyframes cgLetter{0%{opacity:0;transform:translateY(6vmin) scale(.82)}16%{opacity:1;transform:translateY(-1vmin) scale(1.05)}24%{transform:translateY(0) scale(1)}80%{opacity:1;transform:translateY(0) scale(1)}100%{opacity:0;transform:translateY(-3.5vmin) scale(1.02)}}',
     '@keyframes cgShine{from{background-position:160% 0,0 0}to{background-position:-60% 0,0 0}}',
@@ -146,7 +146,7 @@
     box.append(el(doc, 'cg-flash'), el(doc, 'cg-rays'), el(doc, 'cg-frame'));
     // Cintas: de tres tamaños, con vaivén.
     var i;
-    for (i = 0; i < 58; i++) {
+    for (i = 0; i < 30; i++) {
       var rb = el(doc, 'cg-rb');
       rb.style.left = rnd(2, 98).toFixed(1) + '%';
       rb.style.background = CONF[i % CONF.length];
@@ -163,7 +163,7 @@
     box.append(el(doc, 'cg-ring'), el(doc, 'cg-ring r2'), el(doc, 'cg-ring r3'));
 
     // Abanico de chispas desde el centro.
-    var n = 30;
+    var n = 20;
     for (i = 0; i < n; i++) {
       var sp = el(doc, 'cg-sp');
       var ang = (i / n) * Math.PI * 2 + (i % 2 ? 0.1 : -0.1);
