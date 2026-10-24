@@ -879,6 +879,10 @@ function applyConfig(config) {
   if (['square', 'check', 'thin'].includes(config.appearance.switchStyle)) rd.sw = config.appearance.switchStyle; else delete rd.sw;
   if (['lift', 'glow', 'scale', 'none'].includes(config.appearance.hoverFx)) rd.hover = config.appearance.hoverFx; else delete rd.hover;
   if (['compact', 'carnet', 'minimal'].includes(config.appearance.profCard)) rd.pc = config.appearance.profCard; else delete rd.pc;
+  if (['pill', 'card', 'bar'].includes(config.appearance.toastStyle)) rd.toast = config.appearance.toastStyle; else delete rd.toast;
+  if (['accent', 'glow', 'hidden'].includes(config.appearance.rosterStyle)) rd.roster = config.appearance.rosterStyle; else delete rd.roster;
+  if (['crest', 'flat'].includes(config.appearance.heroStyle)) rd.hero = config.appearance.heroStyle; else delete rd.hero;
+  if (config.appearance.dropdowns === 'glass') rd.dd = 'glass'; else { delete rd.dd; closeGlassSelect(); }
   const flag = (k, name) => { if (config.appearance[k] === false) rd[name] = 'off'; else delete rd[name]; };
   flag('crestBreath', 'crestBreath');
   flag('roomCurtain', 'roomCurtain');
@@ -11966,6 +11970,10 @@ const PANEL_WIDTHS = [['narrow', 'Angosto', 'Narrow'], ['normal', 'Normal', 'Nor
 const BTN_STYLES = [['normal', 'Como viene', 'Default'], ['flat', 'Plano', 'Flat'], ['shine', 'Brillante', 'Glossy'], ['outline', 'Contorno', 'Outline']];
 const SW_STYLES = [['normal', 'Como viene', 'Default'], ['square', 'Cuadrados', 'Square'], ['check', 'Con tilde', 'With tick'], ['thin', 'Finitos', 'Thin']];
 const HOVER_FX = [['normal', 'Como viene', 'Default'], ['lift', 'Se elevan', 'Lift'], ['glow', 'Brillan', 'Glow'], ['scale', 'Crecen', 'Grow'], ['none', 'Nada', 'None']];
+const TOAST_STYLES = [['normal', 'Como viene', 'Default'], ['pill', 'Píldora', 'Pill'], ['card', 'Tarjeta', 'Card'], ['bar', 'Barra arriba', 'Top bar']];
+const ROSTER_STYLES = [['normal', 'Dorado', 'Gold'], ['accent', 'Color del tema', 'Theme colour'], ['glow', 'Con brillo', 'Glowing'], ['hidden', 'Esconder', 'Hide']];
+const HERO_STYLES = [['normal', 'Degradé', 'Gradient'], ['crest', 'Con escudo', 'With crest'], ['flat', 'Liso', 'Plain']];
+const DD_STYLES = [['system', 'Del sistema', 'System'], ['glass', 'Vidrio', 'Glass']];
 const PROF_CARDS = [['normal', 'Como viene', 'Default'], ['compact', 'Compacta', 'Compact'], ['carnet', 'Carnet', 'ID card'], ['minimal', 'Mínima', 'Minimal']];
 function paintChipsInto(host, list, cur, attr) {
   const en = isEn();
@@ -11995,7 +12003,99 @@ function paintPanelLook() {
   paintChipsInto($('#swChips'), SW_STYLES, ap.switchStyle || 'normal', 'sws');
   paintChipsInto($('#hovChips'), HOVER_FX, ap.hoverFx || 'normal', 'hov');
   paintChipsInto($('#pcChips'), PROF_CARDS, ap.profCard || 'normal', 'pcs');
+  $('#tsLabel').textContent = en ? 'Notices' : 'Avisos';
+  $('#rsLabel').textContent = en ? 'Side menu roster' : 'Plantel del menú';
+  $('#hsLabel').textContent = en ? 'Page headers' : 'Encabezado de páginas';
+  $('#ddLabel').textContent = en ? 'Dropdown menus' : 'Menús desplegables';
+  $('#ddDesc').textContent = en ? 'Glass opens the list with the client look instead of the Windows one.' : 'Vidrio abre la lista con el estilo del cliente en vez de la de Windows.';
+  paintChipsInto($('#tsChips'), TOAST_STYLES, ap.toastStyle || 'normal', 'tss');
+  paintChipsInto($('#rsChips'), ROSTER_STYLES, ap.rosterStyle || 'normal', 'rss');
+  paintChipsInto($('#hsChips'), HERO_STYLES, ap.heroStyle || 'normal', 'hss');
+  paintChipsInto($('#ddChips'), DD_STYLES, ap.dropdowns === 'glass' ? 'glass' : 'system', 'dds');
 }
+$('#tsChips').addEventListener('click', (e) => { const b = e.target.closest('[data-tss]'); if (!b) return; patchConfig({ appearance: { toastStyle: b.dataset.tss } }).then(() => { paintPanelLook(); toast(isEn() ? 'This is how notices look' : 'Así se ven los avisos', 'ok'); }); });
+$('#rsChips').addEventListener('click', (e) => { const b = e.target.closest('[data-rss]'); if (b) patchConfig({ appearance: { rosterStyle: b.dataset.rss } }).then(paintPanelLook); });
+$('#hsChips').addEventListener('click', (e) => { const b = e.target.closest('[data-hss]'); if (b) patchConfig({ appearance: { heroStyle: b.dataset.hss } }).then(paintPanelLook); });
+$('#ddChips').addEventListener('click', (e) => { const b = e.target.closest('[data-dds]'); if (b) patchConfig({ appearance: { dropdowns: b.dataset.dds } }).then(paintPanelLook); });
+
+/* ── Desplegables de vidrio ──────────────────────────────────────────────────
+   Chromium no deja estilizar la lista abierta de un <select>: se reemplaza SÓLO
+   la lista. El <select> sigue siendo el de siempre (valor, teclado, eventos):
+   al elegir se le pone el valor y se le dispara `input` + `change`, así que el
+   resto del código no se entera. Sólo en la interfaz, nunca dentro del juego. */
+var glassSel = null; // var: la config se puede aplicar antes de llegar a esta línea
+function closeGlassSelect() {
+  if (!glassSel) return;
+  glassSel.pop.remove();
+  glassSel.sel.classList.remove('is-dd-open');
+  glassSel = null;
+}
+function openGlassSelect(sel) {
+  closeGlassSelect();
+  const pop = document.createElement('div');
+  pop.className = 'gsel';
+  pop.setAttribute('role', 'listbox');
+  const items = [];
+  const add = (opt) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'gsel__opt' + (opt.value === sel.value ? ' is-on' : '');
+    b.disabled = opt.disabled;
+    b.textContent = opt.textContent;
+    b.addEventListener('click', () => {
+      if (sel.value !== opt.value) {
+        sel.value = opt.value;
+        sel.dispatchEvent(new Event('input', { bubbles: true }));
+        sel.dispatchEvent(new Event('change', { bubbles: true }));
+      }
+      closeGlassSelect();
+      sel.focus();
+    });
+    items.push(b);
+    return b;
+  };
+  for (const node of sel.children) {
+    if (node.tagName === 'OPTGROUP') {
+      const g = document.createElement('div'); g.className = 'gsel__group'; g.textContent = node.label; pop.append(g);
+      for (const o of node.children) pop.append(add(o));
+    } else if (node.tagName === 'OPTION' && !node.hidden) pop.append(add(node));
+  }
+  document.body.append(pop);
+  const r = sel.getBoundingClientRect();
+  const w = Math.max(r.width, 180);
+  const below = window.innerHeight - r.bottom - 12;
+  const above = r.top - 12;
+  const h = Math.min(pop.scrollHeight, 340);
+  pop.style.minWidth = `${w}px`;
+  pop.style.left = `${Math.min(r.left, window.innerWidth - w - 10)}px`;
+  if (below >= h || below >= above) { pop.style.top = `${r.bottom + 6}px`; pop.style.maxHeight = `${Math.max(120, below)}px`; }
+  else { pop.style.bottom = `${window.innerHeight - r.top + 6}px`; pop.style.maxHeight = `${Math.max(120, above)}px`; }
+  sel.classList.add('is-dd-open');
+  glassSel = { sel, pop, items };
+  const cur = pop.querySelector('.gsel__opt.is-on') || items[0];
+  if (cur) { cur.focus({ preventScroll: true }); cur.scrollIntoView({ block: 'nearest' }); }
+}
+document.addEventListener('mousedown', (e) => {
+  if (glassSel && !glassSel.pop.contains(e.target) && e.target !== glassSel.sel) closeGlassSelect();
+  if (document.documentElement.dataset.dd !== 'glass') return;
+  const sel = e.target.closest && e.target.closest('select');
+  if (!sel || sel.disabled || sel.multiple || e.button !== 0) return;
+  e.preventDefault();
+  if (glassSel && glassSel.sel === sel) { closeGlassSelect(); return; }
+  sel.focus({ preventScroll: true });
+  openGlassSelect(sel);
+}, true);
+document.addEventListener('keydown', (e) => {
+  if (!glassSel) return;
+  const list = glassSel.items.filter((b) => !b.disabled);
+  const i = list.indexOf(document.activeElement);
+  if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); const s = glassSel.sel; closeGlassSelect(); s.focus(); }
+  else if (e.key === 'ArrowDown') { e.preventDefault(); (list[Math.min(list.length - 1, i + 1)] || list[0]).focus(); }
+  else if (e.key === 'ArrowUp') { e.preventDefault(); (list[Math.max(0, i - 1)] || list[0]).focus(); }
+  else if (e.key === 'Tab') closeGlassSelect();
+}, true);
+window.addEventListener('resize', closeGlassSelect);
+document.addEventListener('scroll', (e) => { if (glassSel && !glassSel.pop.contains(e.target)) closeGlassSelect(); }, true);
 $('#swChips').addEventListener('click', (e) => { const b = e.target.closest('[data-sws]'); if (b) patchConfig({ appearance: { switchStyle: b.dataset.sws } }).then(paintPanelLook); });
 $('#hovChips').addEventListener('click', (e) => { const b = e.target.closest('[data-hov]'); if (b) patchConfig({ appearance: { hoverFx: b.dataset.hov } }).then(paintPanelLook); });
 $('#pcChips').addEventListener('click', (e) => { const b = e.target.closest('[data-pcs]'); if (b) patchConfig({ appearance: { profCard: b.dataset.pcs } }).then(paintPanelLook); });

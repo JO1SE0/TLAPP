@@ -6949,3 +6949,53 @@ html[data-pc="carnet"] .profcard .profcard__av { border-radius: 10px; }
 html[data-pc="minimal"]:not([data-layout="dock"]):not([data-layout="island"]):not([data-layout="mini"]):not([data-layout="top"]):not([data-layout="bottom"]) .profcard { background: none; box-shadow: none; padding: 8px 10px; }
 html[data-pc="minimal"] .profcard .profcard__glow, html[data-pc="minimal"] .profcard .profcard__stats, html[data-pc="minimal"] .profcard .profcard__bar { display: none; }
 html[data-pc="minimal"] .profcard:hover { box-shadow: none; }
+
+/* ═══ Avisos (appearance.toastStyle) ═══ */
+html[data-toast="pill"] .toast { border-radius: 99px; padding: 9px 18px 9px 10px; border-color: rgb(var(--accent-rgb) / 35%); background: linear-gradient(135deg, rgb(var(--accent-rgb) / 22%), rgb(var(--text-rgb) / 4%)), var(--bg-1); font-weight: 600; }
+html[data-toast="pill"] .toast::before { width: 10px; height: 10px; align-self: center; border-radius: 50%; box-shadow: 0 0 10px currentColor; color: var(--accent); }
+html[data-toast="card"] .toast { max-width: 360px; padding: 14px 18px 14px 14px; border-radius: 18px; gap: 12px; font-size: 13px; font-weight: 600; border-color: rgb(var(--text-rgb) / 12%);
+  background: radial-gradient(80% 120% at 0% 0%, rgb(var(--accent-rgb) / 20%), transparent 60%), linear-gradient(160deg, rgb(var(--text-rgb) / 6%), rgb(var(--text-rgb) / 1%)), var(--bg-1); }
+html[data-toast="card"] .toast::before { content: "i"; width: 30px; height: 30px; flex: none; align-self: center; display: grid; place-items: center; border-radius: 50%; font: 900 14px/1 var(--font-display); color: var(--accent-text-on); }
+html[data-toast="card"] .toast.is-ok::before { content: "✓"; }
+html[data-toast="card"] .toast.is-err::before { content: "!"; }
+html[data-toast="bar"] .toasts { left: 0 !important; right: 0; top: calc(var(--topbar-h) + 8px); align-items: center; transform: none !important; }
+html[data-toast="bar"] .app[data-fullscreen="true"] ~ .toasts { top: 8px; }
+html[data-toast="bar"] .toast { max-width: min(560px, 90vw); min-width: 320px; justify-content: center; border-radius: 14px; border: 0; border-top: 3px solid var(--accent); background: rgb(var(--bg-1-rgb) / 96%); animation-name: toastBarIn; font-weight: 600; }
+html[data-toast="bar"] .toast.is-ok { border-top-color: var(--ok); }
+html[data-toast="bar"] .toast.is-err { border-top-color: var(--danger); }
+html[data-toast="bar"] .toast::before { display: none; }
+@keyframes toastBarIn { from { opacity: 0; transform: translateY(-10px); } }
+
+/* ═══ Plantel del menú (appearance.rosterStyle) ═══ */
+html[data-roster="hidden"] .roster { visibility: hidden; }
+html[data-roster="accent"] .roster__list li:not(.is-live) { background: linear-gradient(180deg, var(--accent-lift, #fff) 0%, var(--accent) 50%, var(--accent-2, var(--accent)) 100%); -webkit-background-clip: text; background-clip: text; }
+html[data-roster="accent"] .roster__crest { color: rgb(var(--accent-rgb) / 70%); }
+html[data-roster="accent"] .roster__orn::before { background: linear-gradient(90deg, transparent, rgb(var(--accent-rgb) / 55%) 28%, rgb(var(--accent-rgb) / 55%) 72%, transparent); }
+html[data-roster="accent"] .roster__orn i { background: var(--accent); }
+html[data-roster="glow"] .roster__list li:not(.is-live) { filter: drop-shadow(0 0 6px rgb(240 210 130 / 55%)) drop-shadow(0 1px 0 rgb(0 0 0 / 70%)); }
+html[data-roster="glow"] .roster__crest { color: #f3dc9b; text-shadow: 0 0 10px rgb(240 210 130 / 70%); }
+
+/* ═══ Encabezado de páginas (appearance.heroStyle) ═══ */
+html[data-hero="crest"] :is(.club__hero, .mus__hero, .page[data-page="replays"] .pagehead) { position: relative; overflow: hidden; }
+html[data-hero="crest"] :is(.club__hero, .mus__hero, .page[data-page="replays"] .pagehead)::before {
+  content: ""; position: absolute; right: -40px; top: 50%; width: 260px; height: 260px; transform: translateY(-50%) rotate(-12deg); pointer-events: none; z-index: 0;
+  background: url("../../../assets/toda-la-lecce.png") center / contain no-repeat; opacity: .1; filter: grayscale(.2);
+}
+html[data-hero="crest"] :is(.club__hero, .mus__hero, .page[data-page="replays"] .pagehead) > * { position: relative; z-index: 1; }
+html[data-hero="crest"] .page[data-page="club"] .club__hero::before { display: none; }
+html[data-hero="flat"] :is(.club__hero, .mus__hero, .page[data-page="replays"] .pagehead) { background: rgb(var(--text-rgb) / 4%) !important; border-color: var(--line) !important; box-shadow: none !important; }
+html[data-hero="flat"] :is(.club__hero, .page[data-page="replays"] .pagehead)::after { display: none !important; }
+
+/* ═══ Desplegables de vidrio ═══ */
+.gsel { position: fixed; z-index: 3000; overflow-y: auto; padding: 6px; display: flex; flex-direction: column; gap: 2px; border-radius: 16px; border: 1px solid rgb(var(--text-rgb) / 14%);
+  background: radial-gradient(90% 60% at 0% 0%, rgb(var(--accent-rgb) / 14%), transparent 70%), var(--bg-1);
+  box-shadow: 0 24px 48px -18px rgb(0 0 0 / 85%), inset 0 1px 0 rgb(var(--text-rgb) / 8%); animation: gselIn .12s var(--ease) both; }
+@keyframes gselIn { from { opacity: 0; transform: translateY(-4px); } }
+html[data-animations="off"] .gsel { animation: none; }
+.gsel__group { padding: 8px 12px 4px; font-size: 10px; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; color: var(--accent-text); }
+.gsel__opt { display: flex; align-items: center; gap: 8px; width: 100%; text-align: left; padding: 9px 12px 9px 30px; position: relative; border: 0; border-radius: 10px; background: none; color: var(--text); font: 600 13px/1.2 var(--font); cursor: pointer; white-space: nowrap; }
+.gsel__opt:hover, .gsel__opt:focus { background: rgb(var(--text-rgb) / 8%); outline: none; }
+.gsel__opt.is-on { background: rgb(var(--accent-rgb) / 18%); color: var(--accent-text); }
+.gsel__opt.is-on::before { content: "✓"; position: absolute; left: 11px; font-weight: 900; color: var(--accent-text); }
+.gsel__opt:disabled { opacity: .45; cursor: default; }
+select.is-dd-open { border-color: var(--accent-line) !important; box-shadow: 0 0 0 3px rgb(var(--accent-rgb) / 20%) !important; }

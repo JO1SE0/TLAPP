@@ -11,6 +11,7 @@ window.TL_NEWS = {
   title: { es: 'Qué hay de nuevo', en: "What's new" },
   items: {
     es: [
+      'Más opciones en Estilo → Densidad de la interfaz: avisos (píldora, tarjeta o barra arriba), plantel del menú (dorado, color del tema, con brillo o escondido), encabezados de página (con escudo o lisos) y menús desplegables de vidrio.',
       'Más estilo en Estilo → Densidad de la interfaz: interruptores (cuadrados, con tilde o finitos), efecto al pasar el mouse (se elevan, brillan o crecen) y tarjeta de perfil (compacta, carnet o mínima).',
       'Ancho de los paneles (angosto, normal o ancho) y estilo de los botones principales (plano, brillante o contorno), en Estilo → Densidad de la interfaz.',
       'Tu imagen de césped (Personalización → Cancha): cualquier imagen como piso, con el editor de zoom/posición/giro. Las líneas quedan encima y no cuesta FPS.',
@@ -99,6 +100,7 @@ window.TL_NEWS = {
       'Cada clave se usa en una sola PC: si cambiás de computadora, pedile a miclo que te la libere.'
     ],
     en: [
+      'More in Style → Interface density: notices (pill, card or top bar), side menu roster (gold, theme colour, glowing or hidden), page headers (with crest or plain) and glass dropdown menus.',
       'More style in Style → Interface density: switches (square, with tick or thin), hover effect (lift, glow or grow) and profile card (compact, ID card or minimal).',
       'Panel width (narrow, normal or wide) and main button style (flat, glossy or outline), in Style → Interface density.',
       'Your own grass image (Customize → Pitch): any picture as the floor, with the zoom/position/rotation editor. Lines stay on top, no FPS cost.',

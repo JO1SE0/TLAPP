@@ -96,6 +96,14 @@ const DEFAULTS = {
     hoverFx: 'normal',
     /** Tarjeta de perfil del menú: `normal` · `compact` · `carnet` · `minimal`. */
     profCard: 'normal',
+    /** Avisos: `normal` · `pill` · `card` · `bar`. */
+    toastStyle: 'normal',
+    /** Plantel del menú lateral: `normal` · `accent` · `glow` · `hidden`. */
+    rosterStyle: 'normal',
+    /** Encabezado de las páginas: `normal` · `crest` · `flat`. */
+    heroStyle: 'normal',
+    /** Menús desplegables: `system` (los de Windows) · `glass` (los del cliente). */
+    dropdowns: 'system',
     // Tamaño de la interfaz: 'auto' (según el monitor) o un porcentaje fijo (60–150).
     uiScale: 'auto',
     /** Estructura de la interfaz: classic | top (barra superior) | dock (dock flotante). */
