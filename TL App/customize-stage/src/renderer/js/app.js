@@ -9577,7 +9577,11 @@ const LOOK_SECTIONS = {
     { key: 'ringStyle', type: 'select', label: 'look.ringStyle', desc: 'look.ringHelp', options: [['default', 'look.opt.simple'], ['double', 'look.ring.double'], ['dashed', 'look.ring.dashed'], ['crown', 'look.ring.crown'], ['glow', 'look.ring.glow'], ['dots', 'look.ring.dots'], ['arrow', 'look.ring.arrow']] },
     { key: 'ringColor', type: 'color', label: 'look.ringColor' },
     { key: 'selfTrail', type: 'switch', label: 'look.selfTrail', desc: 'look.selfTrailHelp' },
-    { key: 'selfTrailColor', type: 'color', label: 'look.selfTrailColor', showIf: (v) => v.selfTrail }
+    { key: 'selfTrailColor', type: 'color', label: 'look.selfTrailColor', showIf: (v) => v.selfTrail },
+    { key: 'teamColors', type: 'select', label: 'look.teamColors', desc: 'look.teamColorsHelp', options: [['room', 'look.tc.room'], ['mine', 'look.tc.mine']] },
+    { key: 'teamRed', type: 'color', label: 'look.teamRed', showIf: (v) => v.teamColors === 'mine' },
+    { key: 'teamBlue', type: 'color', label: 'look.teamBlue', showIf: (v) => v.teamColors === 'mine' },
+    { key: 'teamKeepKits', type: 'switch', label: 'look.teamKeep', desc: 'look.teamKeepHelp', showIf: (v) => v.teamColors === 'mine' }
   ],
   lookNames: [
     { key: 'nameScale', type: 'range', label: 'look.nameScale', min: 0.6, max: 2, step: 0.05 },
@@ -9605,7 +9609,7 @@ const LOOK_SECTIONS = {
 const LOOK_DEFAULTS = {
   texture: 'none', pitchLight: 'none', ownRingColor: '', ownRingAlpha: 0.3, ownRingRadius: 25, ownRingSoft: 0, pitchWeather: 'none', pitchWeatherAmount: 0.6, pitchScore: 'team', pitchScoreOpacity: 0.16, pitchScoreStyle: 'ring', pitchScoreFont: 'default', pitchScoreSize: 1, pitchScorePos: 0.5, pitchScoreMode: 'kickoff', pitchScoreAnim: 'rise', pitchScoreBurst: true, pitchScoreColorR: '', pitchScoreColorB: '', softShadows: false, crest: false, crestOpacity: 0.18, crestSize: 0.45, lineColor: '', postColor: '',
   discStyle: 'default', ballStyle: 'default', ballColor: '', lineGlow: false, discOutline: '', ballOutline: '', ringStyle: 'default', ringColor: '',
-  selfTrail: false, selfTrailColor: '', nameScale: 1, nameColor: '', nameOutline: false, nameFont: 'default',
+  selfTrail: false, selfTrailColor: '', teamColors: 'room', teamRed: '#e0b04a', teamBlue: '#9aa3b5', teamKeepKits: false, nameScale: 1, nameColor: '', nameOutline: false, nameFont: 'default',
   chatScale: 1, chatBg: -1, chatFont: 'default', chatOpacity: 1, statsOpacity: 1, statsStyle: 'default', menuBg: 'none'
 };
 

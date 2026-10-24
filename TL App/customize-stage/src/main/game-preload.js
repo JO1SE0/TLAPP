@@ -510,7 +510,51 @@ function applyCleanMode(enabled) {
 
 function currentPalette() {
   const look = state.config.appearance;
-  return themes.palette(look.theme, look.accent, look.customThemes);
+  const p = themes.palette(look.theme, look.accent, look.customThemes);
+  // Colores de los equipos a elección: también los usa la interfaz de la sala
+  // (marcador, listas, chat) para que todo diga lo mismo.
+  const v = state.config.visual || {};
+  if (v.teamColors === 'mine') {
+    if (/^#[0-9a-f]{6}$/i.test(v.teamRed || '')) p.red = v.teamRed;
+    if (/^#[0-9a-f]{6}$/i.test(v.teamBlue || '')) p.blue = v.teamBlue;
+  }
+  return p;
+}
+
+/*
+ * Camisetas a elección (ver `patchTeamKit` en game-patch.js). Se llama por
+ * jugador y por cuadro: con la opción apagada devuelve lo mismo que recibió, y
+ * prendida devuelve un objeto cacheado — así HaxBall ve «la misma camiseta» y no
+ * rearma la textura. Se rearma sola una vez cuando cambia el color.
+ */
+const HB_RED = 15035990;   // #E56E56, la camiseta roja de fábrica
+const HB_BLUE = 5671397;   // #5689E5, la azul
+const teamKits = new WeakMap();
+const teamPick = { on: false, red: -1, blue: -1, keep: false };
+function syncTeamPick() {
+  const v = state.config.visual || {};
+  const hex = (h) => (/^#[0-9a-f]{6}$/i.test(h || '') ? parseInt(h.slice(1), 16) : -1);
+  teamPick.on = v.teamColors === 'mine';
+  teamPick.red = hex(v.teamRed);
+  teamPick.blue = hex(v.teamBlue);
+  teamPick.keep = !!v.teamKeepKits;
+}
+function teamKit(team, kit) {
+  if (!teamPick.on || !kit) return kit;
+  const col = team === 1 ? teamPick.red : team === 2 ? teamPick.blue : -1;
+  if (col < 0) return kit;
+  if (teamPick.keep && !(kit.ib && kit.ib.length === 1 && kit.ib[0] === (team === 1 ? HB_RED : HB_BLUE))) return kit;
+  let per = teamKits.get(kit);
+  if (!per) { per = new Map(); teamKits.set(kit, per); }
+  let mine = per.get(col);
+  if (!mine) {
+    const r = (col >> 16) & 255, g = (col >> 8) & 255, b = col & 255;
+    // El número del avatar, legible sobre el color nuevo.
+    const lum = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+    mine = { sd: kit.sd, pd: lum > 0.62 ? 0x111111 : 0xffffff, ib: [col] };
+    per.set(col, mine);
+  }
+  return mine;
 }
 
 /**
@@ -1077,6 +1121,7 @@ function onNewGameDocument(doc) {
       textureMineHint = textureOwner;
       if (textureOwner !== null) ownerVerdictSeen = true;
     };
+    doc.defaultView.__tvmTeamKit = teamKit;
   }
   if (gifBytes) safe(buildGifFrames);
   /*
@@ -9633,6 +9678,7 @@ const FONT_FAMILIES = {
 };
 
 function syncCanvasHotFlags() {
+  syncTeamPick();
   flatGraphicsEnabled = !!(state.config && state.config.perf && state.config.perf.flatGraphics);
   const cfg = (state.config && state.config.visual) || {};
   visual.pitchLine = clampNum(cfg.pitchLine, 0.3, 4, 1);

@@ -11,6 +11,7 @@ window.TL_NEWS = {
   title: { es: 'Qué hay de nuevo', en: "What's new" },
   items: {
     es: [
+      'Colores de los equipos a elección (Personalización → Fichas y aro): cambiá el rojo y el azul por los que quieras, sólo en tu pantalla. Se aplica a fichas, marcador y listas, sin costo de FPS.',
       'Ajustar imagen de la ficha y de la pelota: zoom, posición, giro y espejo con un editor propio (arrastrá, rueda = zoom, Shift + rueda = girar) y vista previa en la cancha. Se abre solo al elegir una imagen nueva.',
       'Exportar config ahora también lleva gráficos, tamaño de ficha y pelota, líneas, estilos de la cancha y tus looks guardados (sin canciones ni imágenes).',
       'Nueva página «Música» en el menú de la izquierda: reproductor con portada, barra, volumen, ♥ y interruptores; lista de todos los temas para activarlos/desactivarlos, marcar favoritos y agregar los tuyos.',
@@ -92,6 +93,7 @@ window.TL_NEWS = {
       'Cada clave se usa en una sola PC: si cambiás de computadora, pedile a miclo que te la libere.'
     ],
     en: [
+      'Pick your own team colours (Customize → Discs and ring): swap red and blue for any colours, only on your screen. Applies to discs, scoreboard and lists, no FPS cost.',
       'Adjust the disc and ball image: zoom, position, rotation and mirror in its own editor (drag, wheel = zoom, Shift + wheel = rotate) with a pitch preview. Opens by itself when you pick a new image.',
       'Export config now also carries graphics, disc/ball size, lines, pitch styles and your saved looks (no songs or images).',
       'New «Music» page in the left rail: player with cover, progress, volume, ♥ and switches; a list of every track to enable/disable, favorite and add your own.',

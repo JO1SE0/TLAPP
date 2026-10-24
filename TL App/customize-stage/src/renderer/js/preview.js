@@ -262,10 +262,14 @@
 
     const accent = css('--accent', '#d0b878');
     const nick = String((cfg.general && cfg.general.nickname) || '').trim() || 'Vos';
+    // Colores de los equipos a elección (Fichas y pelota → Colores de los equipos).
+    const mineTeams = V.teamColors === 'mine';
+    const RED = (mineTeams && L.safeColor(V.teamRed)) || '#e56e56';
+    const BLUE = (mineTeams && L.safeColor(V.teamBlue)) || '#5689e5';
     const discs = [
-      { x: -178, y: 6, team: '#e56e56', name: nick, mine: true },
-      { x: -62, y: -30, team: '#5689e5', name: 'Rival' },
-      { x: -34, y: 42, team: '#e56e56', name: 'Amigo' }
+      { x: -178, y: 6, team: RED, name: nick, mine: true },
+      { x: -62, y: -30, team: BLUE, name: 'Rival' },
+      { x: -34, y: 42, team: RED, name: 'Amigo' }
     ];
     const r0 = 15 * discSize;
 

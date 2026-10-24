@@ -815,6 +815,32 @@ function patchAvatar(source) {
   };
 }
 
+/* ── Colores de los equipos a elección (sólo en tu pantalla) ───────────────── *
+ *
+ * Cada cuadro, por jugador, el cache de la textura decide con qué colores pintar:
+ *
+ *   A(a,b){ … let c = m.j.Wm.v() ? b.ob[a.fa.ba] : a.fa.Vm, …
+ *           if(!Hb.uo(this.ob,c) …) Hb.Ko(this.ob,c), … this.sr(…) }
+ *
+ * `c` es la «camiseta» (franjas, ángulo, color del número). El parche le pasa esa
+ * camiseta y el id del equipo al cliente, que puede devolver otra. Como `uo` compara
+ * y sólo rearma la textura si cambió, devolver siempre el MISMO objeto (cacheado)
+ * no cuesta nada: la textura se rehace una vez y listo.
+ */
+const TEAM_KIT_SITE = /let\s+(\w+)\s*=\s*([\w$.]+)\.v\(\)\s*\?\s*(\w+)\.(\w+)\[\s*(\w+)\.(\w+)\.(\w+)\s*\]\s*:\s*\5\.\6\.(\w+)\s*,/;
+
+function patchTeamKit(source) {
+  const matches = source.match(new RegExp(TEAM_KIT_SITE.source, 'g')) || [];
+  if (matches.length !== 1) {
+    return { source, applied: false, reason: `la camiseta del equipo encajó ${matches.length} veces, se esperaba 1` };
+  }
+  const out = source.replace(TEAM_KIT_SITE, (full, c, opt, sala, kits, jug, eq, id, def) => {
+    const orig = `(${opt}.v()?${sala}.${kits}[${jug}.${eq}.${id}]:${jug}.${eq}.${def})`;
+    return `let ${c}=window.__tvmTeamKit?window.__tvmTeamKit(${jug}.${eq}.${id},${orig}):${orig},`;
+  });
+  return { source: out, applied: true, reason: 'camisetas de los equipos enganchadas' };
+}
+
 /* ── Cuál de los discos sos vos ──────────────────────────────────────────── *
  *
  * El problema que resuelve: la imagen de avatar del VIP se ponía en el disco de
@@ -1544,7 +1570,7 @@ function patch(source, opts) {
   const fields = {};
   let out = source;
 
-  for (const step of [patchCameraZoom, patchSettings, patchStadium, patchTracking, patchRoomName, patchPitchBounds, patchReplaySpeed, patchReplayScan, patchScore, patchSelf, patchAvatar, patchBall, patchMirror, patchSounds, patchRoomLink, patchLightSim]) {
+  for (const step of [patchCameraZoom, patchSettings, patchStadium, patchTracking, patchRoomName, patchPitchBounds, patchReplaySpeed, patchReplayScan, patchScore, patchSelf, patchAvatar, patchTeamKit, patchBall, patchMirror, patchSounds, patchRoomLink, patchLightSim]) {
     const res = step(out);
     out = res.source;
     if (res.fields) Object.assign(fields, res.fields);
@@ -1638,7 +1664,7 @@ const KEEP = 4;
  * 23: `__tvmRoomLink` publica el código de la sala al entrar o al hostear, así
  *     los clientes se reconocen aunque hayan entrado desde la lista de salas.
  */
-const PATCH_VERSION = 24;
+const PATCH_VERSION = 25;
 
 /** El idioma es parte de la clave: el mismo bundle parchea distinto en cada uno. */
 function keyOf(url, lang) {

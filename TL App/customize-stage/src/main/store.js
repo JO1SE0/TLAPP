@@ -429,6 +429,12 @@ const DEFAULTS = {
     lineGlow: false,
     /** Luz de la cancha: `none` · `vignette` · `spot` · `corners`. */
     pitchLight: 'none',
+    /** Colores de los equipos sólo en tu pantalla: `room` = los de la sala, `mine` = los tuyos. */
+    teamColors: 'room',
+    teamRed: '#e0b04a',
+    teamBlue: '#9aa3b5',
+    /** Con esto sólo se cambian las camisetas de fábrica: las que puso la sala se respetan. */
+    teamKeepKits: false,
     /** El anillo gris que HaxBall dibuja alrededor de tu ficha: color (vacío = blanco), opacidad, distancia y difuminado. */
     ownRingColor: '',
     ownRingAlpha: 0.3,
