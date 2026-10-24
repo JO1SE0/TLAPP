@@ -11,6 +11,7 @@ window.TL_NEWS = {
   title: { es: 'Qué hay de nuevo', en: "What's new" },
   items: {
     es: [
+      'Club rediseñado en vidrio: encabezado con el escudo y números destacados, ranking a la izquierda y «Club conectado» a la derecha, podio con medallas (sin el recuadro cuadrado) y filas redondeadas. Todo estático, sin costo de FPS.',
       'FPS: el clima Luciérnagas de la cancha es unas 100 veces más liviano, y las animaciones del menú que seguían corriendo debajo del juego (brillo de la tarjeta de perfil, escudo, borde de la tarjeta de música) se frenan mientras jugás, así la ventana deja de recomponer en cada cuadro. Las partículas del menú también son más livianas: se dibujan a media resolución (se ven igual) y ya no fuerzan recalcular estilos en cada cuadro.',
       'Lista de jugadores: las filas del club y las personalizadas usan el look vidrio del lobby (redondeadas, sin la barra dorada dura) y se fue el diamante VIP. Nuevo en Personalización → Lista de jugadores: forma de la fila (Vidrio, Sólida, Contorno, Neón, Barra lateral, Mínima) y un ícono delante del nombre. Además tu look se vuelve a mandar si un corte de red lo había frenado, para que el resto del club lo vea.',
       'Arreglé las partículas del menú que quedaban apagadas después de la bienvenida y agregué 3 estilos (Brasas, Neón, Pétalos). La lista de salas ya no pisa la tarjeta de música en pantallas anchas y la barra izquierda tiene el look vidrio. La luz de la cancha suma 5 estilos nuevos (Estadio de noche, Atardecer, Noche fría, Franjas de césped, Cine) y la viñeta y el foco son más suaves: se calculan una sola vez, no cuestan FPS.',
@@ -81,6 +82,7 @@ window.TL_NEWS = {
       'Cada clave se usa en una sola PC: si cambiás de computadora, pedile a miclo que te la libere.'
     ],
     en: [
+      'Club panel redesigned in glass style: crest header with highlighted numbers, ranking on the left and “Club online” on the right, medal podium (no square outline) and rounded rows. All static, no FPS cost.',
       'FPS: the Fireflies pitch weather is about 100× lighter, and the menu animations hidden behind the game (profile card glow, crest, music card border) now stop while you play, so the window stops recomposing every frame. Menu particles are also lighter: drawn at half resolution (looks the same) and no longer force style recalculation every frame.',
       'Player list: club and personalised rows now use the glass look of the lobby (rounded, no hard gold bar) and the VIP diamond is gone. New in Personalization → Player list: row shape (Glass, Solid, Outline, Neon, Side bar, Minimal) and an icon before your name. Your look is now re-sent if a network hiccup had stopped it, so the rest of the club sees it.',
       'Fixed the menu particles that stayed off after the welcome animation, and added 3 styles (Embers, Neon, Petals). The rooms list no longer sits under the music card on wide screens, and the left bar got the glass look. Pitch light has 5 new looks (Night stadium, Sunset, Cold night, Grass stripes, Cinema) and a softer vignette/spotlight — still computed once, no FPS cost.',
