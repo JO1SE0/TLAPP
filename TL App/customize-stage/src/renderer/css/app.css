@@ -6976,12 +6976,13 @@ html[data-roster="glow"] .roster__list li:not(.is-live) { filter: drop-shadow(0 
 html[data-roster="glow"] .roster__crest { color: #f3dc9b; text-shadow: 0 0 10px rgb(240 210 130 / 70%); }
 
 /* ═══ Encabezado de páginas (appearance.heroStyle) ═══ */
-html[data-hero="crest"] :is(.club__hero, .mus__hero, .page[data-page="replays"] .pagehead) { position: relative; overflow: hidden; }
+/* Sin tocar a los hijos (el escudo del Club va posicionado): el dibujo va con z-index -1 adentro de un contexto aislado. */
+html[data-hero="crest"] :is(.club__hero, .mus__hero, .page[data-page="replays"] .pagehead) { isolation: isolate; overflow: hidden; }
+html[data-hero="crest"] :is(.mus__hero, .page[data-page="replays"] .pagehead) { position: relative; }
 html[data-hero="crest"] :is(.club__hero, .mus__hero, .page[data-page="replays"] .pagehead)::before {
-  content: ""; position: absolute; right: -40px; top: 50%; width: 260px; height: 260px; transform: translateY(-50%) rotate(-12deg); pointer-events: none; z-index: 0;
+  content: ""; position: absolute; right: -40px; top: 50%; width: 260px; height: 260px; transform: translateY(-50%) rotate(-12deg); pointer-events: none; z-index: -1;
   background: url("../../../assets/toda-la-lecce.png") center / contain no-repeat; opacity: .1; filter: grayscale(.2);
 }
-html[data-hero="crest"] :is(.club__hero, .mus__hero, .page[data-page="replays"] .pagehead) > * { position: relative; z-index: 1; }
 html[data-hero="crest"] .page[data-page="club"] .club__hero::before { display: none; }
 html[data-hero="flat"] :is(.club__hero, .mus__hero, .page[data-page="replays"] .pagehead) { background: rgb(var(--text-rgb) / 4%) !important; border-color: var(--line) !important; box-shadow: none !important; }
 html[data-hero="flat"] :is(.club__hero, .page[data-page="replays"] .pagehead)::after { display: none !important; }
