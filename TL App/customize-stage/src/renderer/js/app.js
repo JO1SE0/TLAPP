@@ -4559,6 +4559,26 @@ function renderPitchSkin() {
     }
   }
 
+  /* ── Relieve de los bordes (con cualquier modo) ─────────────────── */
+  const relief = ['sunken', 'raised'].includes(skin.relief) ? skin.relief : 'none';
+  box.append(selectRow({
+    label: en ? 'Pitch relief' : 'Relieve de la cancha',
+    id: 'pitch-skin-relief',
+    options: [['none', en ? 'Flat' : 'Plana'], ['sunken', en ? 'Sunken' : 'Hundida'], ['raised', en ? 'Raised' : 'Elevada']],
+    value: relief,
+    onChange: async (value) => { await patchConfig({ pitch: { skin: { relief: value } } }); renderPitchSkin(); }
+  }));
+  if (relief !== 'none') {
+    box.append(skinRange({
+      id: 'pitch-skin-relief-amount',
+      label: en ? 'Relief depth' : 'Profundidad del relieve',
+      min: 10, max: 100, step: 1,
+      value: Math.round(numOr(skin.reliefAmount, 0.6) * 100),
+      format: (v) => `${v}%`,
+      onChange: (v) => patchConfig({ pitch: { skin: { reliefAmount: v / 100 } } })
+    }));
+  }
+
   // Con el color de fábrica no hay nada más que decidir: los controles de abajo
   // estarían ahí para no hacer nada.
   if (mode === 'off') return;

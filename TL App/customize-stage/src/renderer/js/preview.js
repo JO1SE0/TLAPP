@@ -321,6 +321,30 @@
 
     if (V.pitchLight && L.paintLight) L.paintLight(ctx, W, H, world, { halfW: HALF_W, halfH: HALF_H }, V.pitchLight);
 
+    /* Relieve de los bordes, la misma receta que `paintRelief` en el juego. */
+    const relief = skin.relief === 'sunken' || skin.relief === 'raised' ? skin.relief : '';
+    if (relief) {
+      const amount = num(skin.reliefAmount, 0.1, 1, 0.6);
+      const z = sc;
+      const frame = () => { ctx.beginPath(); ctx.rect(-HALF_W - 4000, -HALF_H - 4000, 2 * HALF_W + 8000, 2 * HALF_H + 8000); rounded(ctx, -HALF_W, -HALF_H, 2 * HALF_W, 2 * HALF_H, 6); };
+      ctx.save();
+      ctx.setTransform(world);
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.globalAlpha = 1;
+      if (relief === 'sunken') {
+        ctx.beginPath(); rounded(ctx, -HALF_W, -HALF_H, 2 * HALF_W, 2 * HALF_H, 6); ctx.clip();
+        frame();
+        ctx.shadowColor = `rgba(0,0,0,${(0.35 + amount * 0.5).toFixed(2)})`; ctx.shadowBlur = 26 * z * (0.5 + amount); ctx.shadowOffsetY = 6 * z * amount;
+        ctx.fillStyle = '#000'; ctx.fill('evenodd');
+      } else {
+        frame(); ctx.clip('evenodd');
+        ctx.beginPath(); rounded(ctx, -HALF_W, -HALF_H, 2 * HALF_W, 2 * HALF_H, 6);
+        ctx.shadowColor = `rgba(0,0,0,${(0.4 + amount * 0.45).toFixed(2)})`; ctx.shadowBlur = 26 * z * (0.5 + amount); ctx.shadowOffsetY = 10 * z * amount;
+        ctx.fillStyle = '#000'; ctx.fill();
+      }
+      ctx.restore();
+    }
+
     /* ── Fichas, pelota y nombres ───────────────────────────────────── */
     ctx.setTransform(sc, 0, 0, sc, tx, ty);
     ctx.globalCompositeOperation = 'source-over';

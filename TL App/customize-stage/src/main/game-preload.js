@@ -6862,7 +6862,8 @@ function skinPitch(ctx, w, h, stadium) {
   const modeOn = skin.mode === 'theme' || skin.mode === 'custom';
   const tex = lookfx.textureSpec(visual.texture);
   const pimg = pitchImage(ctx);
-  if (!modeOn && !tex && !visual.crest && !visual.light && !pimg) return;
+  const relief = ['sunken', 'raised'].includes(skin.relief) ? skin.relief : '';
+  if (!modeOn && !tex && !visual.crest && !visual.light && !pimg && !relief) return;
 
   let field = modeOn ? pitchSkinColor() : null;
   let outside = modeOn ? pitchOutsideColor(field) : null;
@@ -6878,7 +6879,7 @@ function skinPitch(ctx, w, h, stadium) {
     // (arena, cemento, mármol) la levantan para no quedar barrosos.
     brightness = tex.lum || 0;
   }
-  if (!field && !outside && !brightness && !stripes && !tex && !visual.crest && !visual.light && !pimg) return;
+  if (!field && !outside && !brightness && !stripes && !tex && !visual.crest && !visual.light && !pimg && !relief) return;
 
   /*
    * El contexto llega con la transformación de mundo puesta: es la que usó el
@@ -6947,6 +6948,8 @@ function skinPitch(ctx, w, h, stadium) {
   }
 
   if (visual.light) lookfx.paintLight(ctx, w, h, world, bounds, visual.light);
+
+  if (relief && bounds) paintRelief(ctx, w, h, world, bounds, relief, clampNum(skin.reliefAmount, 0.1, 1, 0.6));
 
   if (visual.crest) {
     lookfx.paintCrest(ctx, world, bounds, crestImage(ctx), visual.crestOpacity, visual.crestSize);
@@ -7098,6 +7101,60 @@ function paintCut(ctx, w, h, world, bounds, n, kind) {
       }
     }
     ctx.fill(kind === 'circles' ? 'nonzero' : 'nonzero');
+  } finally {
+    ctx.restore();
+  }
+}
+
+/*
+ * Relieve: sombra de los bordes del campo. Hundida = la sombra cae hacia adentro;
+ * elevada = cae hacia afuera y el borde lleva un filo de luz. Una vez por armado.
+ */
+function paintRelief(ctx, w, h, world, bounds, kind, amount) {
+  const zoom = Math.hypot(world.a, world.b) || 1;
+  const blur = 26 * zoom * (0.5 + amount);
+  const field = () => { ctx.beginPath(); roundedRect(ctx, -bounds.halfW, -bounds.halfH, 2 * bounds.halfW, 2 * bounds.halfH, bounds.corner); };
+  ctx.save();
+  try {
+    ctx.setTransform(world);
+    if (kind === 'sunken') {
+      field();
+      ctx.clip();
+      // Un marco enorme alrededor del campo, con sombra: lo único que se ve es la sombra que entra.
+      ctx.beginPath();
+      ctx.rect(-bounds.halfW - 4000, -bounds.halfH - 4000, 2 * bounds.halfW + 8000, 2 * bounds.halfH + 8000);
+      roundedRect(ctx, -bounds.halfW, -bounds.halfH, 2 * bounds.halfW, 2 * bounds.halfH, bounds.corner);
+      ctx.shadowColor = `rgba(0,0,0,${(0.35 + amount * 0.5).toFixed(2)})`;
+      ctx.shadowBlur = blur;
+      ctx.shadowOffsetX = 0;
+      ctx.shadowOffsetY = 6 * zoom * amount;
+      ctx.fillStyle = '#000';
+      ctx.fill('evenodd');
+    } else {
+      // Afuera del campo: la sombra que tira el campo «levantado».
+      ctx.beginPath();
+      ctx.rect(-bounds.halfW - 4000, -bounds.halfH - 4000, 2 * bounds.halfW + 8000, 2 * bounds.halfH + 8000);
+      roundedRect(ctx, -bounds.halfW, -bounds.halfH, 2 * bounds.halfW, 2 * bounds.halfH, bounds.corner);
+      ctx.clip('evenodd');
+      field();
+      ctx.shadowColor = `rgba(0,0,0,${(0.4 + amount * 0.45).toFixed(2)})`;
+      ctx.shadowBlur = blur;
+      ctx.shadowOffsetY = 10 * zoom * amount;
+      ctx.fillStyle = '#000';
+      ctx.fill();
+      ctx.restore();
+      ctx.save();
+      ctx.setTransform(world);
+      // Filo de luz arriba y sombra fina abajo, sobre el borde del campo.
+      const g = ctx.createLinearGradient(0, -bounds.halfH, 0, bounds.halfH);
+      g.addColorStop(0, `rgba(255,255,255,${(0.18 + amount * 0.25).toFixed(2)})`);
+      g.addColorStop(0.5, 'rgba(255,255,255,0)');
+      g.addColorStop(1, `rgba(0,0,0,${(0.15 + amount * 0.25).toFixed(2)})`);
+      ctx.strokeStyle = g;
+      ctx.lineWidth = 3;
+      field();
+      ctx.stroke();
+    }
   } finally {
     ctx.restore();
   }
@@ -7331,7 +7388,7 @@ function pitchSkinPrint() {
   const skin = (state.config.pitch && state.config.pitch.skin) || {};
   const field = pitchSkinColor();
   const vip = state.config.vip || {};
-  return `${skin.mode}|${field}|${pitchOutsideColor(field)}|${skin.strength}|${skin.brightness}|${skin.stripes}|${skin.cut}|${skin.imageAlpha}|${vip.pitchImage}|${JSON.stringify(vip.pitchCrop || null)}|${visual.pitchLine}|${flatGraphicsEnabled}|${visual.texture}|${visual.light}|${visual.crest}|${visual.crestOpacity}|${visual.crestSize}|${visual.lineColor}`;
+  return `${skin.mode}|${field}|${pitchOutsideColor(field)}|${skin.strength}|${skin.brightness}|${skin.stripes}|${skin.cut}|${skin.imageAlpha}|${skin.relief}|${skin.reliefAmount}|${vip.pitchImage}|${JSON.stringify(vip.pitchCrop || null)}|${visual.pitchLine}|${flatGraphicsEnabled}|${visual.texture}|${visual.light}|${visual.crest}|${visual.crestOpacity}|${visual.crestSize}|${visual.lineColor}`;
 }
 
 /** Le tira el cache al estadio para que se vuelva a dibujar con el color nuevo. */

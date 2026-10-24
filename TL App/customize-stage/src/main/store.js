@@ -551,7 +551,10 @@ const DEFAULTS = {
       /** Forma del corte del césped: `lines` · `diagonal` · `checker` · `circles` · `diamonds`. */
       cut: 'lines',
       /** Cuánto se ve tu imagen de césped (vip.pitchImage). */
-      imageAlpha: 1
+      imageAlpha: 1,
+      /** Relieve de los bordes de la cancha: `none` · `sunken` (hundida) · `raised` (elevada). */
+      relief: 'none',
+      reliefAmount: 0.6
     },
     /**
      * Modo espejo: `off` · `red` · `blue`.
