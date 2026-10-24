@@ -7000,3 +7000,13 @@ html[data-animations="off"] .gsel { animation: none; }
 .gsel__opt.is-on::before { content: "✓"; position: absolute; left: 11px; font-weight: 900; color: var(--accent-text); }
 .gsel__opt:disabled { opacity: .45; cursor: default; }
 select.is-dd-open { border-color: var(--accent-line) !important; box-shadow: 0 0 0 3px rgb(var(--accent-rgb) / 20%) !important; }
+
+/* ═══ Inclinación 3D (appearance.tilt) ═══ */
+html[data-tilt] body .is-tilt.is-tilt.is-tilt { transform: perspective(700px) rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg)) !important; transition: transform .09s linear !important; will-change: transform; }
+html[data-tilt] body .is-tilt.is-tilt-out.is-tilt-out { transition: transform .4s cubic-bezier(.2, .8, .2, 1) !important; will-change: auto; }
+/* El escudo: más profundidad; la sombra se corre al revés del mouse y se ilumina del lado que sube. */
+html[data-tilt] body .club__crest.is-tilt.is-tilt.is-tilt { transform: perspective(500px) rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg)) scale(1.06) !important; }
+html[data-tilt] body .club__crest.is-tilt.is-tilt-out.is-tilt-out { transform: perspective(500px) rotateX(0deg) rotateY(0deg) scale(1) !important; }
+html[data-tilt] .club__crest.is-tilt:not(.is-tilt-out) img { filter: drop-shadow(var(--sx, 0px) var(--sy, 10px) 18px rgb(0 0 0 / 55%)) drop-shadow(0 0 20px rgb(var(--accent-rgb) / 50%)) brightness(var(--lit, 1)) !important; }
+/* Mientras se inclina, el escudo deja de flotar para que el reflejo calce. */
+html[data-tilt] .club__crest.is-tilt img { animation-play-state: paused; }

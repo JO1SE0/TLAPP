@@ -11,6 +11,7 @@ window.TL_NEWS = {
   title: { es: 'Qué hay de nuevo', en: "What's new" },
   items: {
     es: [
+      'Inclinación 3D: el escudo del Club se inclina siguiendo el mouse (con sombra y luz que se mueven), y el podio, los temas y tu tarjeta de perfil también. Se apaga en Estilo → Densidad de la interfaz.',
       'Relieve de la cancha (Personalización → Cancha): hundida o elevada, con profundidad regulable. Se dibuja una vez con la cancha, sin costo de FPS.',
       'Más opciones en Estilo → Densidad de la interfaz: avisos (píldora, tarjeta o barra arriba), plantel del menú (dorado, color del tema, con brillo o escondido), encabezados de página (con escudo o lisos) y menús desplegables de vidrio.',
       'Más estilo en Estilo → Densidad de la interfaz: interruptores (cuadrados, con tilde o finitos), efecto al pasar el mouse (se elevan, brillan o crecen) y tarjeta de perfil (compacta, carnet o mínima).',
@@ -101,6 +102,7 @@ window.TL_NEWS = {
       'Cada clave se usa en una sola PC: si cambiás de computadora, pedile a miclo que te la libere.'
     ],
     en: [
+      '3D tilt: the Club crest leans towards the mouse (with moving shadow and light), and so do the podium, themes and your profile card. Turn it off in Style → Interface density.',
       'Pitch relief (Customize → Pitch): sunken or raised, adjustable depth. Drawn once with the pitch, no FPS cost.',
       'More in Style → Interface density: notices (pill, card or top bar), side menu roster (gold, theme colour, glowing or hidden), page headers (with crest or plain) and glass dropdown menus.',
       'More style in Style → Interface density: switches (square, with tick or thin), hover effect (lift, glow or grow) and profile card (compact, ID card or minimal).',

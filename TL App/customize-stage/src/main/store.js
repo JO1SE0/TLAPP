@@ -104,6 +104,8 @@ const DEFAULTS = {
     heroStyle: 'normal',
     /** Menús desplegables: `system` (los de Windows) · `glass` (los del cliente). */
     dropdowns: 'system',
+    /** Escudo del Club y tarjetas que se inclinan siguiendo el mouse (sólo en el menú). */
+    tilt: true,
     // Tamaño de la interfaz: 'auto' (según el monitor) o un porcentaje fijo (60–150).
     uiScale: 'auto',
     /** Estructura de la interfaz: classic | top (barra superior) | dock (dock flotante). */

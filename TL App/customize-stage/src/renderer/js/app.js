@@ -883,6 +883,7 @@ function applyConfig(config) {
   if (['accent', 'glow', 'hidden'].includes(config.appearance.rosterStyle)) rd.roster = config.appearance.rosterStyle; else delete rd.roster;
   if (['crest', 'flat'].includes(config.appearance.heroStyle)) rd.hero = config.appearance.heroStyle; else delete rd.hero;
   if (config.appearance.dropdowns === 'glass') rd.dd = 'glass'; else { delete rd.dd; closeGlassSelect(); }
+  if (config.appearance.tilt !== false) rd.tilt = 'on'; else delete rd.tilt;
   const flag = (k, name) => { if (config.appearance[k] === false) rd[name] = 'off'; else delete rd[name]; };
   flag('crestBreath', 'crestBreath');
   flag('roomCurtain', 'roomCurtain');
@@ -12032,7 +12033,71 @@ function paintPanelLook() {
   paintChipsInto($('#rsChips'), ROSTER_STYLES, ap.rosterStyle || 'normal', 'rss');
   paintChipsInto($('#hsChips'), HERO_STYLES, ap.heroStyle || 'normal', 'hss');
   paintChipsInto($('#ddChips'), DD_STYLES, ap.dropdowns === 'glass' ? 'glass' : 'system', 'dds');
+  $('#tiltLabel').textContent = en ? '3D tilt' : 'Inclinación 3D';
+  $('#tiltDesc').textContent = en ? 'The Club crest, the podium, themes and your profile card lean towards the mouse.' : 'El escudo del Club, el podio, los temas y tu tarjeta de perfil se inclinan hacia el mouse.';
+  paintChipsInto($('#tiltChips'), [['on', 'Sí', 'On'], ['off', 'No', 'Off']], ap.tilt === false ? 'off' : 'on', 'tlt');
 }
+$('#tiltChips').addEventListener('click', (e) => { const b = e.target.closest('[data-tlt]'); if (b) patchConfig({ appearance: { tilt: b.dataset.tlt === 'on' } }).then(paintPanelLook); });
+
+/* ── Inclinación 3D ──────────────────────────────────────────────────────────
+   El elemento bajo el mouse se inclina hacia él (transform puro, un rAF por
+   movimiento). El escudo del Club sigue al mouse en toda la cabecera y lleva un
+   reflejo. Nada de esto corre jugando ni con las animaciones apagadas. */
+const TILTS = [
+  { sel: '.page[data-page="club"] .club__hero', target: '.club__crest', max: 20 },
+  { sel: '.pod', max: 9 },
+  { sel: '.themecard', max: 8 },
+  { sel: '.profcard', max: 9 }
+];
+const tiltNow = { el: null, target: null, raf: 0, x: 0, y: 0, max: 8 };
+function tiltOn() {
+  const d = document.documentElement.dataset;
+  return d.tilt === 'on' && d.animations !== 'off' && state.stage !== 'game';
+}
+function tiltRelease() {
+  const t = tiltNow.target;
+  if (!t) return;
+  t.style.setProperty('--rx', '0deg');
+  t.style.setProperty('--ry', '0deg');
+  t.classList.add('is-tilt-out');
+  const old = t;
+  setTimeout(() => { if (tiltNow.target !== old) old.classList.remove('is-tilt', 'is-tilt-out'); }, 420);
+  tiltNow.el = null; tiltNow.target = null;
+}
+document.addEventListener('pointermove', (e) => {
+  if (!tiltOn()) { if (tiltNow.target) tiltRelease(); return; }
+  let hit = null;
+  let cfg = null;
+  for (const c of TILTS) { const el = e.target.closest && e.target.closest(c.sel); if (el) { hit = el; cfg = c; break; } }
+  if (!hit) { if (tiltNow.target) tiltRelease(); return; }
+  const target = cfg.target ? hit.querySelector(cfg.target) : hit;
+  if (!target) return;
+  if (tiltNow.target !== target) {
+    if (tiltNow.target) tiltRelease();
+    tiltNow.el = hit; tiltNow.target = target; tiltNow.max = cfg.max;
+    target.classList.remove('is-tilt-out');
+    target.classList.add('is-tilt');
+  }
+  tiltNow.x = e.clientX; tiltNow.y = e.clientY;
+  if (tiltNow.raf) return;
+  tiltNow.raf = requestAnimationFrame(() => {
+    tiltNow.raf = 0;
+    const el = tiltNow.el; const t = tiltNow.target;
+    if (!el || !t) return;
+    const r = el.getBoundingClientRect();
+    const px = Math.min(1, Math.max(0, (tiltNow.x - r.left) / r.width));
+    const py = Math.min(1, Math.max(0, (tiltNow.y - r.top) / r.height));
+    t.style.setProperty('--ry', `${((px - 0.5) * 2 * tiltNow.max).toFixed(2)}deg`);
+    t.style.setProperty('--rx', `${((0.5 - py) * 2 * tiltNow.max).toFixed(2)}deg`);
+    t.style.setProperty('--gx', `${(px * 100).toFixed(1)}%`);
+    t.style.setProperty('--gy', `${(py * 100).toFixed(1)}%`);
+    t.style.setProperty('--sx', `${((0.5 - px) * 18).toFixed(1)}px`);
+    t.style.setProperty('--sy', `${(10 + (0.5 - py) * 14).toFixed(1)}px`);
+    t.style.setProperty('--lit', (1.06 + (0.5 - py) * 0.22).toFixed(3));
+  });
+}, { passive: true });
+document.addEventListener('pointerleave', tiltRelease);
+window.addEventListener('blur', tiltRelease);
 $('#tsChips').addEventListener('click', (e) => { const b = e.target.closest('[data-tss]'); if (!b) return; patchConfig({ appearance: { toastStyle: b.dataset.tss } }).then(() => { paintPanelLook(); toast(isEn() ? 'This is how notices look' : 'Así se ven los avisos', 'ok'); }); });
 $('#rsChips').addEventListener('click', (e) => { const b = e.target.closest('[data-rss]'); if (b) patchConfig({ appearance: { rosterStyle: b.dataset.rss } }).then(paintPanelLook); });
 $('#hsChips').addEventListener('click', (e) => { const b = e.target.closest('[data-hss]'); if (b) patchConfig({ appearance: { heroStyle: b.dataset.hss } }).then(paintPanelLook); });
