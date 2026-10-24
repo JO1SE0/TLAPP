@@ -855,6 +855,7 @@ function applyConfig(config) {
   // Partículas del menú: dependen de su interruptor y de que las animaciones estén prendidas.
   if (window.TLMusic) { window.TLMusic.configure(config.appearance.music !== false, config.appearance.musicVolume, config.appearance.musicClub !== false); window.TLMusic.setLists(config.appearance.musicLikes, config.appearance.musicHidden); window.TLMusic.setInGameMusic(config.appearance.musicInGame !== false); }
   try { paintNowLike(); } catch (e) { /* la tarjeta todavía no se armó */ }
+  try { if (state.view === 'musica') paintMusicPage(); } catch (e) { /* la página todavía no se armó */ }
   if (window.TLSfx) window.TLSfx.configure(config.appearance.uiSounds !== false, config.appearance.uiSoundStyle);
   if (typeof paintAudio === 'function' && document.getElementById('audMusic')) paintAudio();
   if (window.TLSparks) {
@@ -1903,6 +1904,7 @@ function setView(name) {
   if (name === 'replays') loadReplays();
   if (name === 'cuenta') loadAuth();
   if (name === 'club') { loadClubRank(); loadKings(); }
+  if (name === 'musica') musicPageOpen(); else musicPageClose();
   if (name === 'hostear') loadHostState();
   if (name === 'informes') loadReports();
   /*
@@ -4859,6 +4861,215 @@ async function renderMusicOwn() {
     box.append(settingRow({ label: t.name.replace(/\.[a-z0-9]+$/i, ''), control: rm }));
   }
 }
+
+/* ── Página «Música»: ahora suena, interruptores y la lista de todos los temas ─────────────
+ * Usa lo que ya existe: TLMusic (reproductor), `musicHidden` (los que no suenan), `musicLikes` (los que
+ * salen más seguido) y las canciones propias. No toca la tarjeta «Ahora suena» ni los botones de la barra. */
+const musCovers = new Map();
+let musTimer = null;
+let musFilter = 'all';
+let musQuery = '';
+let musCoverFor = '';
+const MUS_TXT = {
+  es: { eyebrow: 'Ahora suena', idle: 'Nada suena', idleSub: 'Prendé la música o elegí un tema', sw: 'Ajustes de música', list: 'Tus temas', add: 'Agregar canciones…', search: 'Buscar tema…',
+    music: 'Música del menú', musicD: 'Prende o apaga todo el sonido de la música.', club: 'Canciones del club', clubD: 'Apagalo y suenan sólo las tuyas.', game: 'Dentro de la sala', gameD: 'Sigue sonando más bajito mientras jugás.',
+    all: 'Todos', clubF: 'Del club', mine: 'Míos', fav: 'Favoritos', off: 'Desactivados', mineTag: 'Mío', clubTag: 'Club',
+    empty: 'No hay temas con ese filtro.', noteA: 'Sumá mp3, ogg, m4a, wav, flac u opus de tu PC (hasta 60 archivos). El corazón hace que un tema suene más seguido; el interruptor lo saca de la rotación.',
+    remove: 'Quitar de mi lista', play: 'Reproducir', fav1: 'Favorito', on: 'Suena', offTip: 'No suena', songs: (n, a) => `${a} de ${n} suenan` },
+  en: { eyebrow: 'Now playing', idle: 'Nothing playing', idleSub: 'Turn music on or pick a song', sw: 'Music settings', list: 'Your songs', add: 'Add songs…', search: 'Search song…',
+    music: 'Menu music', musicD: 'Turns all music sound on or off.', club: 'Club songs', clubD: 'Turn it off to hear only your own.', game: 'Inside the room', gameD: 'Keeps playing quieter while you play.',
+    all: 'All', clubF: 'Club', mine: 'Mine', fav: 'Favorites', off: 'Disabled', mineTag: 'Mine', clubTag: 'Club',
+    empty: 'No songs match this filter.', noteA: 'Add mp3, ogg, m4a, wav, flac or opus files from your PC (up to 60). The heart makes a song play more often; the switch takes it out of the rotation.',
+    remove: 'Remove from my list', play: 'Play', fav1: 'Favorite', on: 'Plays', offTip: 'Does not play', songs: (n, a) => `${a} of ${n} playing` }
+};
+const musT = () => MUS_TXT[isEn() ? 'en' : 'es'];
+function musIcon(path) { const ns = 'http://www.w3.org/2000/svg'; const s = document.createElementNS(ns, 'svg'); s.setAttribute('viewBox', '0 0 24 24'); const p = document.createElementNS(ns, 'path'); p.setAttribute('d', path); s.append(p); return s; }
+const MUS_HEART = 'M12 20s-7.5-4.4-7.5-10A4.2 4.2 0 0 1 12 7.6 4.2 4.2 0 0 1 19.5 10c0 5.6-7.5 10-7.5 10z';
+const MUS_X = 'M6.4 6.4l11.2 11.2M17.6 6.4 6.4 17.6';
+
+function musicPageOpen() {
+  paintMusicPage();
+  clearInterval(musTimer);
+  musTimer = setInterval(musicPageTick, 500);
+}
+function musicPageClose() { clearInterval(musTimer); musTimer = null; }
+function musicPageTick() {
+  const M = window.TLMusic;
+  if (!M || state.view !== 'musica' || state.stage === 'game' || document.hidden) return;
+  const t = M.time();
+  const f = $('#musBarFill');
+  if (f) f.style.transform = `scaleX(${(t.dur ? Math.min(1, t.cur / t.dur) : 0).toFixed(3)})`;
+  $('#musCur').textContent = fmtT(t.cur);
+  $('#musDur').textContent = `-${fmtT(t.dur - t.cur)}`;
+}
+
+async function musicCoverFor(t) {
+  const box = $('#musCover');
+  if (!box || !t) return;
+  const key = t.name;
+  musCoverFor = key;
+  let url = musCovers.get(key);
+  if (url === undefined) {
+    try { url = await tvm.tracks.cover(t.name, !!t.user); } catch (e) { url = null; }
+    musCovers.set(key, url || null);
+    if (musCovers.size > 40) musCovers.delete(musCovers.keys().next().value);
+  }
+  if (musCoverFor !== key) return;
+  box.style.backgroundImage = url ? `url("${url}")` : '';
+  box.classList.toggle('has-img', !!url);
+}
+
+function paintMusicPage() {
+  const M = window.TLMusic;
+  if (!M || !state.config) return;
+  const T = musT();
+  const ap = state.config.appearance || {};
+  const likes = new Set(ap.musicLikes || []);
+  const hidden = new Set(ap.musicHidden || []);
+  const now = M.now;
+  const playing = M.playing;
+
+  $('#musEyebrow').textContent = T.eyebrow;
+  $('#musTitle').textContent = now ? now.title : T.idle;
+  const ar = $('#musArtist');
+  ar.textContent = now ? (now.artist || '') : T.idleSub;
+  $('#musPlay').classList.toggle('is-playing', playing);
+  $('#musLike').classList.toggle('is-on', !!now && likes.has(now.name));
+  $('#musCover').classList.toggle('is-playing', playing);
+  const vol = typeof ap.musicVolume === 'number' ? ap.musicVolume : 0.35;
+  const vr = $('#musVol');
+  if (document.activeElement !== vr) vr.value = String(vol);
+  syncRangeFill(vr);
+  if (now && musCoverFor !== now.name) musicCoverFor(now);
+  musicPageTick();
+
+  // Interruptores
+  const sws = $('#musSws');
+  $('#musSwTitle').textContent = T.sw;
+  const defs = [
+    ['music', T.music, T.musicD, ap.music !== false],
+    ['musicClub', T.club, T.clubD, ap.musicClub !== false],
+    ['musicInGame', T.game, T.gameD, ap.musicInGame !== false]
+  ];
+  sws.replaceChildren(...defs.map(([key, label, desc, on]) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'mus__sw' + (on ? ' is-on' : '');
+    b.setAttribute('role', 'switch');
+    b.setAttribute('aria-checked', String(on));
+    const txt = document.createElement('span');
+    const bb = document.createElement('b'); bb.textContent = label;
+    const sm = document.createElement('small'); sm.textContent = desc;
+    txt.append(bb, sm);
+    const knob = document.createElement('i');
+    b.append(txt, knob);
+    b.addEventListener('click', () => patchConfig({ appearance: { [key]: !on } }));
+    return b;
+  }));
+
+  // Filtros
+  const fdefs = [['all', T.all], ['club', T.clubF], ['mine', T.mine], ['fav', T.fav], ['off', T.off]];
+  const seg = $('#musFilter');
+  if (seg.children.length !== fdefs.length) {
+    seg.replaceChildren(...fdefs.map(([k]) => { const b = document.createElement('button'); b.type = 'button'; b.dataset.f = k; b.addEventListener('click', () => { musFilter = k; paintMusicPage(); }); return b; }));
+  }
+  fdefs.forEach(([k, label], i) => { const b = seg.children[i]; b.textContent = label; b.classList.toggle('is-on', musFilter === k); });
+  $('#musSearch').placeholder = T.search;
+  $('#musAdd').textContent = T.add;
+  $('#musListTitle').textContent = T.list;
+  $('#musNote').textContent = T.noteA;
+
+  // Lista
+  const all = M.tracks;
+  const q = musQuery.trim().toLowerCase();
+  const rows = all.filter((t) => {
+    if (musFilter === 'club' && t.user) return false;
+    if (musFilter === 'mine' && !t.user) return false;
+    if (musFilter === 'fav' && !likes.has(t.name)) return false;
+    if (musFilter === 'off' && !hidden.has(t.name)) return false;
+    if (q && !(`${t.title} ${t.artist}`.toLowerCase().includes(q))) return false;
+    return true;
+  });
+  $('#musCount').textContent = T.songs(all.length, all.filter((t) => !hidden.has(t.name)).length);
+  const list = $('#musList');
+  if (!rows.length) {
+    const e = document.createElement('p'); e.className = 'mus__empty'; e.textContent = T.empty;
+    list.replaceChildren(e);
+    return;
+  }
+  list.replaceChildren(...rows.map((t, i) => {
+    const off = hidden.has(t.name);
+    const isNow = !!now && now.name === t.name;
+    const row = document.createElement('div');
+    row.className = 'mus__row' + (isNow ? ' is-now' : '') + (off ? ' is-off' : '');
+    const n = document.createElement('span'); n.className = 'mus__n';
+    if (isNow) { n.classList.add('is-eq'); n.append(document.createElement('i'), document.createElement('i'), document.createElement('i')); } else n.textContent = String(i + 1).padStart(2, '0');
+    const tx = document.createElement('span'); tx.className = 'mus__t';
+    const b = document.createElement('b'); b.textContent = t.title;
+    const sm = document.createElement('small'); sm.textContent = t.artist || (t.user ? T.mineTag : T.clubTag);
+    tx.append(b, sm);
+    const tag = document.createElement('em'); tag.className = 'mus__tag' + (t.user ? ' is-mine' : ''); tag.textContent = t.user ? T.mineTag : T.clubTag;
+    const heart = document.createElement('button'); heart.type = 'button'; heart.className = 'mus__ib mus__ib--heart' + (likes.has(t.name) ? ' is-on' : ''); heart.title = T.fav1; heart.append(musIcon(MUS_HEART));
+    heart.addEventListener('click', async (ev) => {
+      ev.stopPropagation();
+      const set = new Set((state.config.appearance.musicLikes || []));
+      if (set.has(t.name)) set.delete(t.name); else set.add(t.name);
+      await patchConfig({ appearance: { musicLikes: [...set] } });
+    });
+    const sw = document.createElement('button'); sw.type = 'button'; sw.className = 'mus__tg' + (off ? '' : ' is-on'); sw.setAttribute('role', 'switch'); sw.setAttribute('aria-checked', String(!off)); sw.title = off ? T.offTip : T.on; sw.append(document.createElement('i'));
+    sw.addEventListener('click', async (ev) => {
+      ev.stopPropagation();
+      const h = new Set((state.config.appearance.musicHidden || []));
+      let lk = (state.config.appearance.musicLikes || []);
+      if (h.has(t.name)) h.delete(t.name); else { h.add(t.name); lk = lk.filter((x) => x !== t.name); }
+      await patchConfig({ appearance: { musicHidden: [...h], musicLikes: lk } });
+    });
+    row.append(n, tx, tag, heart, sw);
+    if (t.user) {
+      const rm = document.createElement('button'); rm.type = 'button'; rm.className = 'mus__ib mus__ib--rm'; rm.title = T.remove; rm.append(musIcon(MUS_X));
+      rm.addEventListener('click', async (ev) => {
+        ev.stopPropagation();
+        try { await tvm.tracks.remove(t.name); if (window.TLMusic) await window.TLMusic.reload(); } catch (e) { toast(e.message, 'err'); }
+        paintMusicPage();
+      });
+      row.append(rm);
+    }
+    if (!off) { row.title = T.play; row.addEventListener('click', () => { if (window.TLMusic.playName(t.name)) setTimeout(paintMusicPage, 60); }); }
+    return row;
+  }));
+}
+$('#musPrev').addEventListener('click', () => window.TLMusic && window.TLMusic.prev());
+$('#musNext').addEventListener('click', () => window.TLMusic && window.TLMusic.next());
+$('#musPlay').addEventListener('click', () => { if (window.TLMusic) { window.TLMusic.toggle(); setTimeout(paintMusicPage, 80); } });
+$('#musLike').addEventListener('click', async () => {
+  const now = window.TLMusic && window.TLMusic.now;
+  if (!now) return;
+  const set = new Set((state.config.appearance.musicLikes || []));
+  if (set.has(now.name)) set.delete(now.name); else set.add(now.name);
+  await patchConfig({ appearance: { musicLikes: [...set] } });
+});
+$('#musBar').addEventListener('click', (e) => {
+  const r = e.currentTarget.getBoundingClientRect();
+  if (window.TLMusic && r.width) window.TLMusic.seek((e.clientX - r.left) / r.width);
+});
+$('#musVol').addEventListener('input', (e) => {
+  syncRangeFill(e.target);
+  if (window.TLMusic) window.TLMusic.configure(state.config.appearance.music !== false, Number(e.target.value), state.config.appearance.musicClub !== false);
+});
+$('#musVol').addEventListener('change', (e) => patchConfig({ appearance: { musicVolume: Number(e.target.value), music: true } }));
+$('#musSearch').addEventListener('input', (e) => { musQuery = e.target.value; paintMusicPage(); });
+$('#musAdd').addEventListener('click', async () => {
+  const en = isEn();
+  try {
+    const r = await tvm.tracks.add();
+    if (r && r.added) toast(en ? `${r.added} song(s) added` : `${r.added} canción(es) agregada(s)`, 'ok');
+    if (r && r.skipped) toast(en ? `${r.skipped} skipped (too big or not audio)` : `${r.skipped} no se pudieron agregar (muy pesadas o no son audio)`, 'err');
+    if (r && r.added && window.TLMusic) await window.TLMusic.reload();
+    paintMusicPage();
+  } catch (e) { toast(e.message, 'err'); }
+});
+window.addEventListener('tl:track', () => { if (state.view === 'musica') setTimeout(paintMusicPage, 40); });
+window.addEventListener('tl:musicstate', () => { if (state.view === 'musica') paintMusicPage(); });
 
 /* «Ahora suena». En el menú: si a la derecha de la lista de salas hay un hueco ancho, es una tarjeta que se queda
    mientras suena la música; si no hay lugar, es una píldora que se muestra unos segundos al cambiar de tema.
@@ -11115,6 +11326,7 @@ const NAV_DESTS = [
   { view: 'play', es: 'Salas', en: 'Rooms' },
   { view: 'replays', es: 'Replays', en: 'Replays' },
   { view: 'club', es: 'Club', en: 'Club' },
+  { view: 'musica', es: 'Música', en: 'Music' },
   { view: 'aspecto', es: 'Personalización', en: 'Personalization' },
   { view: 'ajustes', es: 'Configuración', en: 'Settings' },
   { view: 'informes', es: 'Informes', en: 'Reports', only: 'reports' },
@@ -11144,6 +11356,7 @@ function hubSub(view, en) {
     return n === null ? (en ? 'Your library' : 'Tu biblioteca') : `${n} replays`;
   }
   if (view === 'club') return typeof state.clubOnline === 'number' ? `${state.clubOnline} ${en ? 'online' : 'conectados'}` : (en ? 'Stats and roster' : 'Estadísticas y plantel');
+  if (view === 'musica') return en ? 'Songs, volume and your own tracks' : 'Temas, volumen y tus canciones';
   if (view === 'hostear') return hostSt && hostSt.running ? (en ? 'Room live' : 'Sala en el aire') : (en ? 'Interno and friendly rooms' : 'Salas de interno y amistoso');
   if (view === 'informes') return en ? 'From any replay' : 'Desde cualquier replay';
   if (view === 'aspecto') return en ? 'Theme, colours and layout' : 'Tema, colores e interfaz';

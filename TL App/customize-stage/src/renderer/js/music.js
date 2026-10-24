@@ -293,6 +293,19 @@
     /** Lugar en la lista y el tema que viene. */
     get position() { return { i: M.tracks.length ? (M.index % M.tracks.length) + 1 : 0, n: M.tracks.length }; },
     get upNext() { const n = M.tracks.length; const t = n > 1 ? M.tracks[queued()] : null; return t ? { title: t.title, artist: t.artist } : null; },
+    /** Pasa a un tema puntual (por nombre de archivo). `false` si no está entre los que suenan. */
+    playName(name) {
+      const i = M.tracks.findIndex((t) => t.name === name);
+      if (i < 0) return false;
+      if (M.index % M.tracks.length === i && this.playing) return true;
+      const here = M.tracks[M.index % M.tracks.length];
+      if (here) { M.hist.push(here.name); if (M.hist.length > 40) M.hist.shift(); }
+      M.index = i;
+      M.queued = -1;
+      if (M.userPaused) { M.userPaused = false; state(); }
+      if (M.allowed && wantPlaying()) playIndex(0);
+      return true;
+    },
     next() { step(1, false); },
     prev() { step(-1, false); },
     skip() { step(1, false); },

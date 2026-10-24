@@ -354,6 +354,9 @@
         <button class="railitem" data-view="club">
           <svg data-icon viewBox="0 0 24 24"><circle cx="9" cy="8.6" r="3.2"/><path d="M3.2 19.2c0-3.1 2.6-5 5.8-5s5.8 1.9 5.8 5"/><circle cx="17.2" cy="9.6" r="2.5"/><path d="M16.6 14.3c2.7 0 4.2 1.6 4.2 4.2"/></svg><span data-i18n="nav.club">Club</span>
         </button>
+        <button class="railitem" data-view="musica">
+          <svg data-icon viewBox="0 0 24 24"><path d="M9 17.5V6.2l10-2v11.3"/><circle cx="6.6" cy="17.6" r="2.4"/><circle cx="16.6" cy="15.6" r="2.4"/></svg><span>Música</span>
+        </button>
         <button class="railitem" data-view="aspecto">
           <svg data-icon viewBox="0 0 24 24"><path d="M12 3.8a8.2 8.2 0 1 0 0 16.4c1.1 0 1.9-.8 1.9-1.7 0-.5-.2-.9-.5-1.2a1.6 1.6 0 0 1 1.2-2.7h1.5a4 4 0 0 0 3.9-4c0-4-3.6-6.8-8-6.8z"/><circle class="ico-fill" cx="7.8" cy="11.2" r="1.05"/><circle class="ico-fill" cx="12" cy="8" r="1.05"/><circle class="ico-fill" cx="16.2" cy="11.2" r="1.05"/></svg><span data-i18n="nav.personalize">Personalización</span>
         </button>
@@ -1515,6 +1518,47 @@
           </section>
 
 
+        </div>
+      </section>
+
+      <!-- ═══════════════════════════════════════════════════════════════
+           MÚSICA: ahora suena, interruptores y la lista de temas
+           ═══════════════════════════════════════════════════════════════ -->
+      <section class="page" data-page="musica">
+        <div class="page__inner mus">
+          <header class="mus__hero">
+            <div class="mus__cover" id="musCover"><svg viewBox="0 0 24 24"><path d="M9 17.5V6.2l10-2v11.3"/><circle cx="6.6" cy="17.6" r="2.4"/><circle cx="16.6" cy="15.6" r="2.4"/></svg></div>
+            <div class="mus__info">
+              <span class="club__eyebrow" id="musEyebrow">Ahora suena</span>
+              <h1 class="mus__title" id="musTitle">—</h1>
+              <p class="mus__artist" id="musArtist"></p>
+              <div class="mus__bar" id="musBar"><i id="musBarFill"></i></div>
+              <div class="mus__times"><span id="musCur">0:00</span><span id="musDur">-0:00</span></div>
+              <div class="mus__ctl">
+                <button class="mus__btn" id="musPrev" type="button" aria-label="Anterior"><svg viewBox="0 0 24 24"><path d="M7 5.5v13M18 6v12l-8.5-6z"/></svg></button>
+                <button class="mus__btn mus__btn--main" id="musPlay" type="button" aria-label="Pausa / reproducir"><svg class="mus__ico-play" viewBox="0 0 24 24"><path d="M8 5.5v13l11-6.5z"/></svg><svg class="mus__ico-pause" viewBox="0 0 24 24"><path d="M8 5.5v13M16 5.5v13"/></svg></button>
+                <button class="mus__btn" id="musNext" type="button" aria-label="Siguiente"><svg viewBox="0 0 24 24"><path d="M17 5.5v13M6 6v12l8.5-6z"/></svg></button>
+                <button class="mus__btn mus__btn--like" id="musLike" type="button" aria-label="Favorito"><svg viewBox="0 0 24 24"><path d="M12 20s-7.5-4.4-7.5-10A4.2 4.2 0 0 1 12 7.6 4.2 4.2 0 0 1 19.5 10c0 5.6-7.5 10-7.5 10z"/></svg></button>
+                <div class="mus__vol"><svg viewBox="0 0 24 24"><path d="M4 9.6v4.8h3.4L12 18.4V5.6L7.4 9.6H4z"/><path d="M15.4 9.2a4 4 0 0 1 0 5.6"/></svg><input type="range" id="musVol" min="0" max="1" step="0.01" aria-label="Volumen" /></div>
+              </div>
+            </div>
+          </header>
+
+          <section class="csec" id="musSwitches">
+            <header class="csec__head"><h2 id="musSwTitle">Ajustes de música</h2></header>
+            <div class="mus__sws" id="musSws"></div>
+          </section>
+
+          <section class="csec">
+            <header class="csec__head"><h2 id="musListTitle">Tus temas</h2><span class="csec__tag" id="musCount">—</span></header>
+            <div class="mus__bartools">
+              <div class="seg" id="musFilter" role="tablist"></div>
+              <div class="searchbar mus__search"><svg data-icon viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.8"/><path d="M16.1 16.1 20.2 20.2"/></svg><input type="text" id="musSearch" placeholder="Buscar tema…" /></div>
+              <button class="btn btn--primary btn--sm" id="musAdd" type="button">Agregar canciones…</button>
+            </div>
+            <div class="mus__list" id="musList"></div>
+            <p class="note" id="musNote"></p>
+          </section>
         </div>
       </section>
 
