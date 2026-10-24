@@ -11,6 +11,7 @@ window.TL_NEWS = {
   title: { es: 'Qué hay de nuevo', en: "What's new" },
   items: {
     es: [
+      'Ancho de los paneles (angosto, normal o ancho) y estilo de los botones principales (plano, brillante o contorno), en Estilo → Densidad de la interfaz.',
       'Tu imagen de césped (Personalización → Cancha): cualquier imagen como piso, con el editor de zoom/posición/giro. Las líneas quedan encima y no cuesta FPS.',
       'Patrones de corte del césped: además de franjas rectas, diagonales, cuadros, círculos y rombos.',
       'Estilo de los palos: metal, oro, neón, madera, vidrio o bolita brillante.',
@@ -97,6 +98,7 @@ window.TL_NEWS = {
       'Cada clave se usa en una sola PC: si cambiás de computadora, pedile a miclo que te la libere.'
     ],
     en: [
+      'Panel width (narrow, normal or wide) and main button style (flat, glossy or outline), in Style → Interface density.',
       'Your own grass image (Customize → Pitch): any picture as the floor, with the zoom/position/rotation editor. Lines stay on top, no FPS cost.',
       'Mowing patterns: besides straight stripes, diagonal, checks, circles and diamonds.',
       'Post style: metal, gold, neon, wood, glass or shiny ball.',

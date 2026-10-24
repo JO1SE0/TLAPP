@@ -86,6 +86,10 @@ const DEFAULTS = {
     density: 'normal',
     /** Opacidad de los paneles (1 = sólidos). Más bajo deja ver el fondo, sin desenfoque. */
     glass: 1,
+    /** Ancho de los paneles: `narrow` · `normal` · `wide`. */
+    panelWidth: 'normal',
+    /** Botones principales: `normal` · `flat` · `shine` · `outline`. */
+    btnStyle: 'normal',
     // Tamaño de la interfaz: 'auto' (según el monitor) o un porcentaje fijo (60–150).
     uiScale: 'auto',
     /** Estructura de la interfaz: classic | top (barra superior) | dock (dock flotante). */

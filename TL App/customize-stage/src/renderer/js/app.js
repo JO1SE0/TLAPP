@@ -874,6 +874,8 @@ function applyConfig(config) {
   }
   if (config.appearance.density === 'compact' || config.appearance.density === 'comfy') rd.density = config.appearance.density; else delete rd.density;
   applyGlass(config.appearance.glass);
+  if (['narrow', 'wide'].includes(config.appearance.panelWidth)) rd.panelw = config.appearance.panelWidth; else delete rd.panelw;
+  if (['flat', 'shine', 'outline'].includes(config.appearance.btnStyle)) rd.btn = config.appearance.btnStyle; else delete rd.btn;
   const flag = (k, name) => { if (config.appearance[k] === false) rd[name] = 'off'; else delete rd[name]; };
   flag('crestBreath', 'crestBreath');
   flag('roomCurtain', 'roomCurtain');
@@ -11956,6 +11958,33 @@ function applyGlass(v) {
   rd.glass = 'on';
   document.documentElement.style.setProperty('--glass-a', a.toFixed(2));
 }
+/* Ancho de los paneles y estilo de los botones principales: chips simples. */
+const PANEL_WIDTHS = [['narrow', 'Angosto', 'Narrow'], ['normal', 'Normal', 'Normal'], ['wide', 'Ancho', 'Wide']];
+const BTN_STYLES = [['normal', 'Como viene', 'Default'], ['flat', 'Plano', 'Flat'], ['shine', 'Brillante', 'Glossy'], ['outline', 'Contorno', 'Outline']];
+function paintChipsInto(host, list, cur, attr) {
+  const en = isEn();
+  host.replaceChildren(...list.map((d) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'chip' + (d[0] === cur ? ' is-active' : '');
+    b.dataset[attr] = d[0];
+    b.textContent = en ? d[2] : d[1];
+    return b;
+  }));
+}
+function paintPanelLook() {
+  if (!$('#pwChips') || !state.config) return;
+  const en = isEn();
+  const ap = state.config.appearance;
+  $('#pwLabel').textContent = en ? 'Panel width' : 'Ancho de los paneles';
+  $('#btnLabel').textContent = en ? 'Button style' : 'Estilo de botones';
+  $('#btnDesc').textContent = en ? 'The main buttons (Play, Save, Enter…).' : 'Los botones principales (Jugar, Guardar, Entrar…).';
+  paintChipsInto($('#pwChips'), PANEL_WIDTHS, ap.panelWidth || 'normal', 'pw');
+  paintChipsInto($('#btnChips'), BTN_STYLES, ap.btnStyle || 'normal', 'bs');
+}
+$('#pwChips').addEventListener('click', (e) => { const b = e.target.closest('[data-pw]'); if (b) patchConfig({ appearance: { panelWidth: b.dataset.pw } }).then(paintPanelLook); });
+$('#btnChips').addEventListener('click', (e) => { const b = e.target.closest('[data-bs]'); if (b) patchConfig({ appearance: { btnStyle: b.dataset.bs } }).then(paintPanelLook); });
+
 function paintGlass() {
   const r = $('#glassRange');
   if (!r || !state.config) return;
@@ -11977,6 +12006,7 @@ function paintDensity() {
   const host = $('#denChips');
   if (!host || !state.config) return;
   paintGlass();
+  paintPanelLook();
   const en = isEn();
   $('#denTitle').textContent = en ? 'Interface density' : 'Densidad de la interfaz';
   $('#denDesc').textContent = en
