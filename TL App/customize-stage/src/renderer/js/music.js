@@ -25,7 +25,7 @@
   // Dentro de una sala la música sigue, pero más baja, para oír el juego.
   const IN_GAME_GAIN = 0.4;
   const gain = () => Math.min(1, Math.max(0, M.volume)) * (M.inGame ? IN_GAME_GAIN : 1);
-  const wantPlaying = () => M.enabled && M.allowed && !M.userPaused && M.tracks.length > 0;
+  const wantPlaying = () => M.enabled && M.allowed && !M.userPaused && M.tracks.length > 0 && !(M.inGame && M.inGameOff);
   const current = () => M.pool[M.cur];
   /** Una canción del club que empieza con «00» es la de arranque (hoy no hay ninguna): suena una sola vez, al abrir la app. */
   const isIntro = (t) => !!t && !t.user && /^\s*0+\s*[-.)]/.test(t.name || '');
@@ -45,6 +45,11 @@
       if (k >= 1) { clearInterval(id); if (done) done(); }
     }, 40);
     M.timers.set(a, id);
+  }
+
+  /** Frena y suelta el archivo: un reproductor parado no tiene por qué seguir con el mp3 abierto. */
+  function release(a) {
+    try { a.pause(); if (a !== current()) { a.removeAttribute('src'); a.load(); } } catch (e) { /* nada */ }
   }
 
   function state() {
@@ -93,7 +98,7 @@
     load(a);
     a.volume = 0;
     fade(a, gain(), Math.max(FADE_MS, crossMs || 0));
-    if (old && !old.paused) fade(old, 0, Math.max(400, crossMs || 0), () => old.pause());
+    if (old && !old.paused) fade(old, 0, Math.max(400, crossMs || 0), () => release(old));
     announce();
   }
 
@@ -231,6 +236,11 @@
       const at = now ? M.tracks.findIndex((t) => t.url === now.url) : -1;
       if (at >= 0) M.index = at;
       if (M.allowed && wantPlaying() && !(current() && !current().paused)) sync();
+    },
+    /** `false` = no suena música mientras hay una sala o partida abierta (menos trabajo para la PC). */
+    setInGameMusic(on) {
+      M.inGameOff = !on;
+      if (M.allowed && M.inGame) this.setInGame(true);
     },
     /** `true` dentro de una sala o partida: se silencia. */
     setInGame(flag) {

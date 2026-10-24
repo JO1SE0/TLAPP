@@ -112,6 +112,8 @@ const DEFAULTS = {
     music: true,
     /** Incluir las canciones del club (además de las propias). */
     musicClub: true,
+    /** Música también dentro de una sala o partida (más baja). Apagarla da menos trabajo a la PC. */
+    musicInGame: true,
     /** Sonidos suaves al pasar el mouse y apretar botones. */
     uiSounds: true,
     /** Estilo de esos sonidos: soft | modern | arcade. */

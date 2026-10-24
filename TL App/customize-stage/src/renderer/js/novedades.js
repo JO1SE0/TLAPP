@@ -11,6 +11,7 @@ window.TL_NEWS = {
   title: { es: 'Qué hay de nuevo', en: "What's new" },
   items: {
     es: [
+      'Nuevo ajuste «Música dentro de la sala» (Personalización → En partida): apagalo si tu PC va justa y la música deja de sonar mientras jugás. El «Modo PC lenta» ahora también lo apaga. Además, la música suelta el archivo del tema anterior al cambiar y el ecualizador de la barra no se anima dentro de la sala.',
       'Bienvenida del club mucho más cinematográfica y liviana: la cancha aparece en perspectiva, dos haces de luz bajan sobre el escudo, que cae con rebote y estalla en chispas, las letras de «Toda la Lecce» suben una a una, una pelota recorre la línea de abajo y cae polvo dorado. Al terminar «atravesás» el escudo con un zoom y el menú entra deslizándose. Todo va por la tarjeta gráfica (sin filtros ni blur), el menú de abajo se pausa mientras corre y el festejo de gol del club pesa menos.',
       'Menú de la sala (el lobby al entrar a un host) en estilo vidrio, igual que Configuración: panel muy redondeado, píldoras, columnas Rojo y Azul con el color de cada equipo en suave, reglas en tarjeta y un «Empezar» grande con brillo. Todo estático, sin costo de FPS.',
       'Configuración y Personalización rediseñadas en vidrio y más compactas: tarjetas redondeadas, índice flotante con píldoras, icono por sección, interruptores tipo iOS y colores de tu tema y acento. Sin desenfoques ni animaciones en bucle: no cuesta FPS.',
@@ -74,6 +75,7 @@ window.TL_NEWS = {
       'Cada clave se usa en una sola PC: si cambiás de computadora, pedile a miclo que te la libere.'
     ],
     en: [
+      'New setting "Music inside the room" (Personalization → In match): turn it off if your PC is tight and music stops while you play. "Slow PC mode" now turns it off too. Also, music releases the previous song file when it changes and the top bar equalizer does not animate inside the room.',
       'Club welcome is far more cinematic and lighter: the pitch appears in perspective, two light beams fall on the crest, which drops with a bounce and bursts into sparks, the letters of "Toda la Lecce" rise one by one, a ball rolls along the line below and golden dust falls. At the end you fly through the crest with a zoom and the menu slides in. It all runs on the GPU (no filters or blur), the menu underneath is paused while it plays, and the club goal celebration is lighter.',
       'Room menu (the lobby when you enter a host) in the same glass style as Settings: a very rounded panel, pills, Red and Blue columns in a soft team colour, a settings card and a big glowing Start button. All static, no FPS cost.',
       'Settings and Personalization redesigned in glass and more compact: rounded cards, a floating pill index, an icon per section, iOS-style switches and your theme and accent colours. No blur or looping animations: no FPS cost.',

@@ -6303,3 +6303,6 @@ html[data-roomview="board"] .rtable, html[data-roomview="map"] .rtable { overflo
 :is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel__pages::-webkit-scrollbar { width: 9px; }
 :is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel__pages::-webkit-scrollbar-thumb { border-radius: 9px; border: 2px solid transparent; background-clip: padding-box; background-color: rgb(var(--accent-rgb) / 35%); }
 :is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel__pages::-webkit-scrollbar-thumb:hover { background-color: rgb(var(--accent-rgb) / 65%); }
+
+/* Dentro de la sala la barra no anima el ecualizador: un movimiento continuo menos mientras se juega. */
+#app[data-stage="game"] .eq.is-playing i, #app[data-stage="game"] #audEq i { animation: none !important; transform: scaleY(.6); }

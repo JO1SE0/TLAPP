@@ -853,7 +853,7 @@ function applyConfig(config) {
   paintMeChip();
   paintPreview();
   // Partículas del menú: dependen de su interruptor y de que las animaciones estén prendidas.
-  if (window.TLMusic) { window.TLMusic.configure(config.appearance.music !== false, config.appearance.musicVolume, config.appearance.musicClub !== false); window.TLMusic.setLists(config.appearance.musicLikes, config.appearance.musicHidden); }
+  if (window.TLMusic) { window.TLMusic.configure(config.appearance.music !== false, config.appearance.musicVolume, config.appearance.musicClub !== false); window.TLMusic.setLists(config.appearance.musicLikes, config.appearance.musicHidden); window.TLMusic.setInGameMusic(config.appearance.musicInGame !== false); }
   try { paintNowLike(); } catch (e) { /* la tarjeta todavía no se armó */ }
   if (window.TLSfx) window.TLSfx.configure(config.appearance.uiSounds !== false, config.appearance.uiSoundStyle);
   if (typeof paintAudio === 'function' && document.getElementById('audMusic')) paintAudio();
@@ -3779,7 +3779,7 @@ function renderFpsCap() {
  * No toca la jugabilidad, el sonido ni la resolución del juego.
  */
 const LOW_END = {
-  appearance: { animations: false, sparks: false, musicGlow: false, crestBreath: false, roomCurtain: false, listStagger: false, toggleBounce: false, accentDrift: false, joinSparkle: false, goalEdge: false, pageTransition: 'off' },
+  appearance: { animations: false, sparks: false, musicGlow: false, crestBreath: false, roomCurtain: false, listStagger: false, toggleBounce: false, accentDrift: false, joinSparkle: false, goalEdge: false, musicInGame: false, pageTransition: 'off' },
   visual: { menuBg: 'none', pitchWeather: 'none' },
   pitch: { ball3d: false, goalFlash: false, goalShake: false },
   perf: { flatGraphics: true, gpuRasterization: true, zeroCopy: true, highProcessPriority: true, disableBackgroundThrottling: true }
@@ -4132,7 +4132,8 @@ const LOOK_SWITCHES = {
     { key: 'welcomeSound', label: 'Sonido de la bienvenida', description: 'Se puede apagar sin quitar la animación.' },
     { key: 'sparks', label: 'Partículas doradas', description: 'Motitas de luz flotando en el menú. Se apagan solas en la partida.' },
     { key: 'music', label: 'Música del menú', description: 'Suena en el menú de salas y se silencia al entrar a jugar. El volumen está arriba, en la barra.' },
-    { key: 'musicClub', label: 'Canciones del club en el menú', description: 'Apagalo si querés que suenen sólo las tuyas. El volumen y el apagado están arriba, en la barra.' }
+    { key: 'musicClub', label: 'Canciones del club en el menú', description: 'Apagalo si querés que suenen sólo las tuyas. El volumen y el apagado están arriba, en la barra.' },
+    { key: 'musicInGame', label: 'Música dentro de la sala', description: 'Sigue sonando más bajito mientras jugás. Apagala si la PC va justa: es un poco menos de trabajo para el procesador.' }
   ],
   en: [
     { key: 'themeHover', label: 'Hover to try themes', description: 'Hovering a theme previews it; it goes back to yours when you leave.' },
@@ -4142,7 +4143,8 @@ const LOOK_SWITCHES = {
     { key: 'welcomeSound', label: 'Welcome sound', description: 'Turn it off without removing the animation.' },
     { key: 'sparks', label: 'Golden particles', description: 'Specks of light floating in the menu. They stop on their own during a match.' },
     { key: 'music', label: 'Menu music', description: 'Plays in the room menu and is silenced when you join a game. Volume is up in the top bar.' },
-    { key: 'musicClub', label: 'Club songs in the menu', description: 'Turn it off to hear only your own. Volume and mute are up in the top bar.' }
+    { key: 'musicClub', label: 'Club songs in the menu', description: 'Turn it off to hear only your own. Volume and mute are up in the top bar.' },
+    { key: 'musicInGame', label: 'Music inside the room', description: 'Keeps playing quieter while you play. Turn it off if your PC is tight: it is a bit less work for the processor.' }
   ]
 };
 
