@@ -6470,3 +6470,38 @@ html:not([data-animations="off"]) .cap__card { animation: capIn .28s cubic-bezie
 #app[data-view="club"] .page.is-active,
 #app[data-view="informes"] .page.is-active,
 #app[data-view="hostear"] .page.is-active { width: 100%; }
+
+/* ═══ Salas (menú principal) — Vidrio. Alto de fila intacto (la lista dibuja por ventana); sin blur ni animaciones. ═══ */
+.browser__shell { max-width: 1280px; padding: 26px 36px 28px; gap: 14px; }
+.lastroom { border-radius: 18px; min-height: 46px; padding: 0 18px; border: 1px solid var(--accent-line); background: linear-gradient(110deg, rgb(var(--accent-rgb) / 16%), rgb(var(--text-rgb) / 4%) 60%); box-shadow: inset 0 1px 0 rgb(var(--text-rgb) / 8%); margin-bottom: 0; }
+.lastroom:hover { background: linear-gradient(110deg, rgb(var(--accent-rgb) / 24%), rgb(var(--text-rgb) / 6%) 60%); }
+.nickcard { border-radius: 22px; padding: 16px 22px; background: radial-gradient(90% 200% at 0% 0%, rgb(var(--accent-rgb) / 20%), transparent 65%), linear-gradient(160deg, rgb(var(--text-rgb) / 6%), rgb(var(--text-rgb) / 2%)); box-shadow: inset 0 1px 0 rgb(var(--text-rgb) / 8%); }
+.nickcard__form input { border-radius: 99px; padding-inline: 16px; }
+.nickcard__form .btn { border-radius: 99px; }
+
+.roommodes { margin: 0; }
+.roommodes__set, .roommodes__view { border-radius: 99px; padding: 4px; background: rgb(var(--text-rgb) / 5%); box-shadow: inset 0 1px 0 rgb(var(--text-rgb) / 6%); }
+.roommode { border-radius: 99px; padding: 8px 16px; }
+.roommode.is-on { box-shadow: 0 6px 16px -8px var(--accent); }
+.roomviewbtn { border-radius: 99px; width: 34px; height: 30px; }
+
+.rsearch, .filterchip, .sortselect, .rtoolbar .iconbtn { min-height: 40px; border-radius: 99px; background: rgb(var(--text-rgb) / 5%); border: 1px solid var(--line); }
+.rsearch { padding: 0 16px; }
+.filterchip { padding-inline: 14px; }
+.filterchip.is-on { border-color: var(--accent-line); background: rgb(var(--accent-rgb) / 16%); }
+.sortselect { padding-inline: 14px 8px; }
+.rtoolbar .iconbtn { width: 40px; height: 40px; }
+.rtoolbar .iconbtn:hover { border-color: var(--accent-line); }
+
+.rpanel { border-radius: 24px; border: 1px solid var(--line); background: linear-gradient(170deg, rgb(var(--text-rgb) / 5%), rgb(var(--text-rgb) / 1.5%)), var(--bg-1); box-shadow: 0 20px 50px -28px rgb(0 0 0 / 70%), inset 0 1px 0 rgb(var(--text-rgb) / 8%); }
+.rtable__head { height: 40px; background: rgb(var(--text-rgb) / 4%); border-bottom: 1px solid var(--line); padding-inline: 28px; font-size: 10px; letter-spacing: .16em; }
+.rtable { padding: 6px 0; }
+.rrow { border-bottom: 0; margin: 0 10px; padding: 0 18px; border-radius: 12px; }
+.rrow:hover { background: rgb(var(--text-rgb) / 7%); }
+.rrow.is-selected { background: linear-gradient(90deg, rgb(var(--accent-rgb) / 22%), rgb(var(--accent-rgb) / 8%)); }
+.rrow::before { left: 3px; border-radius: 3px; }
+.rrow__players { border-radius: 99px; padding: 2px 10px; }
+.rpanel__foot { padding: 12px 18px; background: rgb(var(--text-rgb) / 3.5%); border-top: 1px solid var(--line); }
+.ghostbtn { height: 36px; padding: 0 14px; border-radius: 99px; }
+.ghostbtn:hover { background: rgb(var(--text-rgb) / 8%); }
+.joinbtn { height: 40px; padding: 0 26px; border-radius: 99px; font-size: 13.5px; }
