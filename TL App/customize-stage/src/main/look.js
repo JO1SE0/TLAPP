@@ -1493,6 +1493,7 @@ const wx = {
   y: new Float32Array(WX_MAX),
   z: new Float32Array(WX_MAX),
   a: new Float32Array(WX_MAX),
+  p: new Float32Array(WX_MAX),
   kind: '',
   last: 0,
   flashAt: 0,
@@ -1744,24 +1745,37 @@ function paintWeather(ctx, kind, amount, now) {
       ctx.fillStyle = 'rgba(6,12,34,0.13)';
       ctx.fillRect(0, 0, W, H);
       ctx.setTransform(m);
-      // Dos círculos por luciérnaga (halo tenue y centro): sin imágenes, que cuestan más.
+      // Halo tenue y centro por luciérnaga, AGRUPADOS por intensidad: cuatro niveles por capa,
+      // un trazo por nivel (8 `fill` por cuadro en vez de ~100 con el estado cambiando cada vez).
+      const B = 4;
       for (let i = 0; i < total; i++) {
         const z = wx.z[i];
         wx.x[i] = wrapX(wx.x[i] + Math.cos(t * (0.3 + z * 0.4) + wx.a[i] * 6.283) * 16 * px * dt);
         wx.y[i] = wrapY(wx.y[i] + Math.sin(t * (0.4 + z * 0.3) + wx.a[i] * 9) * 14 * px * dt);
-        const pulse = 0.5 + 0.5 * Math.sin(t * (1.2 + z * 1.4) + wx.a[i] * 20);
-        const r = (2 + z * 1.6) * px;
-        ctx.globalAlpha = (0.1 + 0.25 * pulse) ;
-        ctx.fillStyle = 'rgb(200,255,110)';
-        ctx.beginPath();
-        ctx.arc(wx.x[i], wx.y[i], r * 3.2, 0, TAU);
-        ctx.fill();
-        ctx.globalAlpha = 0.35 + 0.65 * pulse;
-        ctx.fillStyle = 'rgb(255,252,190)';
-        ctx.beginPath();
-        ctx.arc(wx.x[i], wx.y[i], r, 0, TAU);
-        ctx.fill();
+        wx.p[i] = 0.5 + 0.5 * Math.sin(t * (1.2 + z * 1.4) + wx.a[i] * 20);
       }
+      for (const core of [false, true]) {
+        ctx.fillStyle = core ? 'rgb(255,252,190)' : 'rgb(200,255,110)';
+        for (let bk = 0; bk < B; bk++) {
+          const lo = bk / B;
+          const hi = (bk + 1) / B;
+          ctx.beginPath();
+          let any = false;
+          for (let i = 0; i < total; i++) {
+            const pl = wx.p[i];
+            if (pl < lo || (pl >= hi && bk < B - 1)) continue;
+            const r = (2 + wx.z[i] * 1.6) * px * (core ? 1 : 3.2);
+            ctx.moveTo(wx.x[i] + r, wx.y[i]);
+            ctx.arc(wx.x[i], wx.y[i], r, 0, TAU);
+            any = true;
+          }
+          if (!any) continue;
+          const mid = (bk + 0.5) / B;
+          ctx.globalAlpha = core ? 0.35 + 0.65 * mid : 0.1 + 0.25 * mid;
+          ctx.fill();
+        }
+      }
+      ctx.globalAlpha = 1;
     } else if (kind === 'blizzard') {
       // Ventisca: nieve rápida y de costado.
       const total = Math.round(WX_MAX * (0.4 + 0.6 * k));

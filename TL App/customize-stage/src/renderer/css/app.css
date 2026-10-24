@@ -6531,3 +6531,18 @@ html:not([data-layout="bottom"]):not([data-layout="comando"]):not([data-layout="
 .looksdemo.is-on[data-tvm-style="bar"] { border-radius: 4px; box-shadow: inset 3px 0 0 rgb(var(--tvm-b-rgb)), inset 0 0 0 1px rgb(var(--tvm-a-rgb) / 24%); }
 .looksdemo.is-on[data-tvm-style="minimal"] { background: #1a2125; box-shadow: none; }
 .looksdemo__marks { padding: 2px 7px; border-radius: 99px; background: rgb(255 255 255 / 8%); box-shadow: inset 0 0 0 1px rgb(255 255 255 / 9%); }
+
+/* ── Durante la partida el menú no gasta cuadros ──
+   Estas animaciones infinitas corrían igual debajo del juego y obligaban a la ventana principal
+   a recomponer en cada cuadro, compitiendo con la cancha. Se frenan mientras se juega. */
+#app[data-stage="game"] .profcard__glow::before,
+#app[data-stage="game"] .profcard__glow::after,
+#app[data-stage="game"] .stage__ring,
+#app[data-stage="game"] .startcard__logo,
+#app[data-stage="game"] .brand__mark,
+#app[data-stage="game"] .nowplaying::before,
+#app[data-stage="game"] .np__marq b,
+#app[data-stage="game"] .ambient,
+#app[data-stage="game"] .ambient::before,
+#app[data-stage="game"] .ambient::after,
+#app[data-stage="game"] .browser::before { animation: none !important; }

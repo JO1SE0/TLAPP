@@ -4892,6 +4892,7 @@ function paintNowExtra() {
 function paintNowTick() {
   const M = window.TLMusic;
   if (!M) return;
+  if (document.getElementById('app').dataset.stage === 'game') return; // la tarjeta no se ve en la sala
   const t = M.time();
   const bar = $('#npBar');
   if (bar) bar.style.transform = `scaleX(${(t.dur ? Math.min(1, t.cur / t.dur) : 0).toFixed(3)})`;
