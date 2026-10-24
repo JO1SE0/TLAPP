@@ -1087,6 +1087,45 @@ ${each(FIELDS, ':focus')} {
 }
 .dialog.kick-player-view .row > button[data-hook="kick"]:hover { background: ${danger} !important; }
 
+/* Vidrio: el menú de un jugador y el cuadro de echar siguen la forma de la sala
+   (esquinas grandes, brillo arriba, botones en pastilla). Todo pintura estática. */
+.game-view > [data-hook="popups"] > .dialog {
+  min-width: 260px !important;
+  padding: 16px 16px 14px !important;
+  border-radius: 22px !important;
+  border: 1px solid ${rgba(p.accent, 0.32)} !important;
+  background: radial-gradient(120% 70% at 0% 0%, ${rgba(p.accent, 0.2)}, transparent 62%), linear-gradient(165deg, ${rgba(p.text, 0.07)}, ${rgba(p.text, 0.015)}), ${p.panel} !important;
+  box-shadow: 0 28px 70px -24px rgba(0,0,0,.85), 0 1px 0 ${rgba(p.text, 0.14)} inset !important;
+}
+.game-view > [data-hook="popups"] > .dialog > h1 {
+  margin: 0 0 10px !important; padding: 0 2px 10px !important;
+  font-size: 17px !important; font-weight: 800 !important; letter-spacing: -.01em !important;
+  border-bottom: 1px solid ${rgba(p.text, 0.1)} !important;
+}
+.game-view > [data-hook="popups"] > .dialog > button {
+  margin: 4px 0 0 !important; padding: 10px 14px !important; width: 100% !important; box-sizing: border-box !important;
+  border-radius: 99px !important; font-weight: 700 !important;
+  background: ${rgba(p.text, 0.07)} !important;
+  box-shadow: 0 0 0 1px ${rgba(p.text, 0.09)} inset, 0 1px 0 ${rgba(p.text, 0.08)} inset !important;
+}
+.game-view > [data-hook="popups"] > .dialog > button:hover:not(:disabled) {
+  background: ${rgba(p.accent, 0.2)} !important;
+  box-shadow: 0 0 0 1px ${rgba(p.accent, 0.5)} inset !important;
+}
+.game-view > [data-hook="popups"] > .dialog > button[data-hook="close"] {
+  background: transparent !important; box-shadow: none !important; margin-top: 8px !important;
+}
+.game-view > [data-hook="popups"] > .dialog > .tvm-menu-sep { margin: 8px 6px 4px !important; }
+.game-view > [data-hook="popups"] > .dialog.kick-player-view { min-width: 340px !important; }
+.game-view > [data-hook="popups"] > .dialog.kick-player-view input:not([type="range"]) {
+  border-radius: 14px !important; padding: 9px 13px !important;
+}
+.game-view > [data-hook="popups"] > .dialog.kick-player-view .row { gap: 8px !important; }
+.game-view > [data-hook="popups"] > .dialog.kick-player-view .row > button,
+.game-view > [data-hook="popups"] > .dialog.kick-player-view > button[data-hook="ban-btn"] { border-radius: 99px !important; }
+.game-view > [data-hook="popups"] > .dialog.kick-player-view .tvm-switch { border-radius: 99px !important; }
+.game-view > [data-hook="popups"] > .dialog.kick-player-view .tvm-switch::after { border-radius: 50% !important; }
+
 /* ── Chat ────────────────────────────────────────────────── *
  * Una sola caja: la de HaxBall. Antes el registro tenía su propio recuadro
  * adentro de la caja del chat, o sea dos bordes y dos fondos para lo mismo.
