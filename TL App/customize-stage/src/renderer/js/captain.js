@@ -89,6 +89,7 @@
   let tab = 'plantel';
   let theme = store.get('tl_cap_theme', 'club');
   let busy = false;
+  let lastView = '';
   let lastKey = null; // { name, key }
   let msg = null;
   let timer = null;
@@ -250,6 +251,7 @@
       for (const [b, on] of [[soc, !!(m.soc || m.ext)], [host, !!m.host], [rep, !!m.rep]]) b.classList.add('cap__chip', ...(on ? ['is-on'] : []));
       const who = el('div', 'cap__who'); who.append(name, state);
       acts.append(soc, host, rep, free, nk, del);
+      if (m.online && m.room && !m.self) who.append(goBtn(m, 'cap__btn cap__btn--sm cap__go'));
       row.append(av, who, ver, acts);
       table.append(row);
     }
@@ -385,33 +387,86 @@
     paint();
   }
 
+  function goBtn(m, cls) {
+    const go = el('button', cls || 'cap__btn cap__btn--sm cap__go', 'Ir a la sala →'); go.type = 'button';
+    go.title = `Entrar a «${m.room}» (sólo lo ves vos como admin, también con los socios)`;
+    go.addEventListener('click', () => { if (window.TLGoToRoom) { window.TLGoToRoom(m); close(); } });
+    return go;
+  }
+
   function tabPerson(root) {
     const m = (data.members || []).find((x) => x.name === person);
     const back = el('button', 'cap__btn cap__btn--ghost cap__btn--sm', '← Volver al plantel'); back.type = 'button';
+    back.style.alignSelf = 'flex-start';
     back.addEventListener('click', () => { person = null; paint(); });
     root.append(back);
     if (!m) { root.append(el('p', 'cap__muted', 'Esa persona ya no está en la lista.')); return; }
-    root.append(el('h3', 'cap__h', m.name + (m.self ? ' (vos)' : '')));
     const latest = latestVersion();
-    const rows = [
-      ['Estado', m.online ? `En línea${m.room ? ` · ${m.room}` : ''}` : (m.lastSeen ? `Último acceso ${ago(m.lastSeen)} (${new Date(m.lastSeen).toLocaleString('es-AR')})` : 'Nunca entró')],
-      ['Última sala conocida', m.lastRoom || '—'],
-      ['Versión', m.version ? `v${m.version}${latest && cmp(m.version, latest) < 0 ? ' (desactualizada)' : ''}` : '—']
-    ];
+    const outdated = m.version && latest && cmp(m.version, latest) < 0;
+    const isSoc = !!(m.soc || m.ext);
+
+    // Portada
+    const hero = el('div', `cap__hero${m.online ? ' is-online' : ''}`);
+    const av = el('span', 'cap__av cap__av--xl', (m.name.trim()[0] || '?').toUpperCase());
+    av.append(el('i', `cap__dot${m.online ? ' is-on' : ''}`));
+    const info = el('div', 'cap__who');
+    const nm = el('div', 'cap__name'); nm.append(document.createTextNode(m.name));
+    const badge = (t, c) => nm.append(el('em', `cap__badge${c ? ` is-${c}` : ''}`, t));
+    if (m.self) badge('Vos', 'me'); if (m.trial) badge('Prueba', 'warn'); if (isSoc) badge('Socio', 'soc');
+    if (m.host) badge('Hostea'); if (m.rep) badge('Informes');
+    const st = el('span', 'cap__state', m.online ? (m.room ? `En línea · en «${m.room}»` : 'En línea · en el menú') : (m.lastSeen ? `Último acceso ${ago(m.lastSeen)} · ${new Date(m.lastSeen).toLocaleString('es-AR')}` : 'Nunca entró'));
+    st.style.whiteSpace = 'normal';
+    info.append(nm, st);
+    hero.append(av, info);
+    if (m.online && m.room && !m.self) hero.append(goBtn(m));
+    root.append(hero);
+
+    // Datos clave
+    const tiles = el('div', 'cap__tiles');
+    const tile = (v, label, tone, sub) => { const t = el('div', `cap__tile${tone ? ` is-${tone}` : ''}`); const b = el('b', null, v); b.style.fontSize = '20px'; t.append(b, el('span', null, label)); if (sub) t.append(el('small', null, sub)); tiles.append(t); };
+    tile(m.version ? `v${m.version}` : '—', 'Versión', outdated ? 'warn' : '', outdated ? `desactualizada (última v${latest})` : (m.version ? 'al día' : null));
     if (personData && !personData.error) {
-      rows.push(['PC registrada desde', personData.deviceSince ? new Date(personData.deviceSince).toLocaleString('es-AR') : (m.self ? 'No aplica (admin)' : 'Todavía ninguna')]);
-      rows.push(['Veces que le liberaste la PC / cambiaste la clave', String(personData.releases)]);
-      rows.push(['PCs vetadas', String(personData.banned)]);
-    } else if (personData && personData.error) rows.push(['Datos de su PC', personData.error]);
-    else rows.push(['Datos de su PC', 'Cargando…']);
+      tile(personData.deviceSince ? new Date(personData.deviceSince).toLocaleDateString('es-AR') : (m.self ? 'Admin' : 'Ninguna'), 'PC registrada desde', '', personData.deviceSince ? new Date(personData.deviceSince).toLocaleTimeString('es-AR') : null);
+      tile(String(personData.releases), 'PC liberada / clave cambiada', personData.releases > 2 ? 'warn' : '', 'veces');
+      tile(String(personData.banned), 'PCs vetadas', personData.banned ? 'warn' : '', null);
+    } else tile(personData && personData.error ? 'Error' : '…', 'Datos de su PC', '', personData && personData.error ? personData.error : 'cargando');
+    root.append(tiles);
+
+    // Detalle
+    const t = (data.trials || []).find((x) => x.name === m.name);
+    const rows = [['Última sala conocida', m.lastRoom ? `«${m.lastRoom}»` : '—']];
+    const u = ((data.doc && data.doc.users) || []).find((x) => x && x.name === m.name);
+    rows.push(['Permisos', [m.host ? 'hostear' : '', m.rep ? 'ver informes' : '', isSoc ? 'socio (no suma stats, sólo lo ves vos)' : ''].filter(Boolean).join(' · ') || 'comunes']);
+    if (t) rows.push(['Clave de prueba', !t.start ? `todavía no la usó · dura ${fmtDur(t.minutes)}` : (Date.now() >= t.end ? `venció ${ago(t.end)}` : `quedan ${fmtDur((t.end - Date.now()) / 60000)} de ${fmtDur(t.minutes)}`)]);
+    if (u && u.at) rows.push(['Agregado', when(u.at)]);
+    const sec = el('section', 'cap__sec'); sec.append(el('h3', 'cap__h', 'Detalle'));
     const table = el('div', 'cap__table');
     for (const [k, v] of rows) { const r = el('div', 'cap__row cap__row--kv'); r.append(el('span', 'cap__muted', k), el('span', null, v)); table.append(r); }
-    root.append(table);
+    sec.append(table);
+    root.append(sec);
 
-    root.append(el('h3', 'cap__h', 'Movimientos de esta persona'));
-    const mine = (data.doc.history || []).filter((h) => h.who === m.name).slice().reverse().slice(0, 15);
-    if (!mine.length) root.append(el('p', 'cap__muted', 'Sin movimientos registrados.'));
-    for (const h of mine) root.append(el('div', 'cap__hist', `${when(h.t)} — ${h.text}`));
+    // Acciones rápidas
+    if (!m.self) {
+      const q = el('section', 'cap__sec'); q.append(el('h3', 'cap__h', 'Acciones'));
+      const acts = el('div', 'cap__acts'); acts.style.justifyContent = 'flex-start';
+      const mk = (label, fn, on) => { const b = el('button', `cap__btn cap__btn--ghost cap__btn--sm${on ? ' cap__chip is-on' : ''}`, label); b.type = 'button'; b.disabled = busy; b.addEventListener('click', fn); acts.append(b); };
+      mk(isSoc ? 'Socio: sí' : 'Socio: no', async () => { if (await act({ type: 'setSocio', name: m.name, value: !isSoc })) flash(isSoc ? `${m.name} ya no es socio.` : `${m.name} quedó como socio.`); }, isSoc);
+      mk(m.rep ? 'Informes: sí' : 'Informes: no', async () => { if (await act({ type: 'setReports', name: m.name, value: !m.rep })) flash('Listo.'); }, m.rep);
+      if (!isSoc) mk(m.host ? 'Hostea: sí' : 'Hostea: no', async () => { if (await act({ type: 'setHost', name: m.name, value: !m.host })) flash('Listo.'); }, m.host);
+      mk('Liberar PC', async () => { if (await act({ type: 'resetDevice', name: m.name })) { flash(`PC de ${m.name} liberada.`); loadPerson(m.name); } });
+      mk('Clave nueva', () => newKey(m.name));
+      q.append(acts);
+      root.append(q);
+    }
+
+    // Línea de tiempo
+    const mine = (data.doc.history || []).filter((h) => h.who === m.name).slice().reverse().slice(0, 20);
+    const tl = el('section', 'cap__sec'); tl.append(el('h3', 'cap__h', `Movimientos (${mine.length})`));
+    if (!mine.length) tl.append(el('p', 'cap__muted', 'Sin movimientos registrados.'));
+    const line = el('div', 'cap__tline');
+    for (const h of mine) { const r = el('div', 'cap__hist'); r.append(el('span', 'cap__muted', when(h.t)), el('b', null, h.text)); line.append(r); }
+    tl.append(line);
+    root.append(tl);
   }
 
   function tabHistorial(root) {
@@ -538,6 +593,8 @@
     else if (tab === 'avisos') tabAvisos(body);
     else if (tab === 'historial') tabHistorial(body);
     else tabAcceso(body);
+    const vk = `${tab}|${person || ''}`;
+    if (vk !== lastView) { lastView = vk; body.scrollTop = 0; }
   }
 
   function close() {

@@ -10269,6 +10269,8 @@ async function goToClubRoom(member) {
   joinRoom(hits[0].token);
 }
 
+window.TLGoToRoom = (m) => goToClubRoom(m);
+
 function paintClubNow(list) {
   try { updateClubRooms(list); } catch (e) { /* adorno */ }
   const host = $('#clubNowList');
