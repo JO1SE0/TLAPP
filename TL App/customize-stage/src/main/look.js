@@ -509,20 +509,77 @@ function paintLight(ctx, w, h, world, bounds, mode) {
   try {
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.globalAlpha = 1;
-    if (mode === 'vignette') {
-      const g = ctx.createRadialGradient(cx, cy, diag * 0.45, cx, cy, diag * 1.15);
-      g.addColorStop(0, 'rgba(0,0,0,0)');
-      g.addColorStop(1, 'rgba(0,0,0,0.5)');
+    const dark = (r0, r1, stops) => {
+      const g = ctx.createRadialGradient(cx, cy, diag * r0, cx, cy, diag * r1);
+      for (const [o, c] of stops) g.addColorStop(o, c);
       ctx.globalCompositeOperation = 'source-over';
       ctx.fillStyle = g;
       ctx.fillRect(0, 0, w, h);
+    };
+    const flood = (px, py, rad, color) => {
+      const g = ctx.createRadialGradient(px, py, 0, px, py, rad);
+      g.addColorStop(0, color);
+      g.addColorStop(0.5, color.replace(/[\d.]+\)$/, '0.08)'));
+      g.addColorStop(1, color.replace(/[\d.]+\)$/, '0)'));
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, w, h);
+    };
+    if (mode === 'vignette') {
+      // Caída suave en varios pasos: se nota el borde oscuro sin una "pared" negra.
+      dark(0.4, 1.3, [[0, 'rgba(0,0,0,0)'], [0.4, 'rgba(0,0,0,0.12)'], [0.75, 'rgba(0,0,0,0.42)'], [1, 'rgba(0,0,0,0.62)']]);
+    } else if (mode === 'stadium') {
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.fillStyle = 'rgba(0,4,18,0.24)';
+      ctx.fillRect(0, 0, w, h);
+      ctx.globalCompositeOperation = 'screen';
+      for (const [kx, ky] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) flood(cx + kx * hw * 0.92, cy + ky * hh * 1.05, hw * 0.95, 'rgba(255,240,205,0.34)');
+      flood(cx, cy, diag * 0.6, 'rgba(255,248,230,0.10)');
+    } else if (mode === 'sunset') {
+      const g = ctx.createLinearGradient(cx - hw, cy - hh, cx + hw, cy + hh);
+      g.addColorStop(0, 'rgba(255,150,60,0.30)');
+      g.addColorStop(0.5, 'rgba(255,90,120,0.06)');
+      g.addColorStop(1, 'rgba(110,60,210,0.34)');
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, w, h);
+      dark(0.55, 1.3, [[0, 'rgba(20,0,30,0)'], [1, 'rgba(20,0,30,0.4)']]);
+    } else if (mode === 'night') {
+      ctx.globalCompositeOperation = 'multiply';
+      ctx.fillStyle = 'rgb(120,150,225)';
+      ctx.fillRect(0, 0, w, h);
+      ctx.globalCompositeOperation = 'screen';
+      flood(cx, cy, diag * 0.85, 'rgba(190,215,255,0.26)');
+      dark(0.6, 1.3, [[0, 'rgba(0,0,20,0)'], [1, 'rgba(0,0,20,0.42)']]);
+    } else if (mode === 'stripes') {
+      const n = 14;
+      const bw = (hw * 2) / n;
+      for (let i = 0; i < n; i += 1) {
+        ctx.fillStyle = i % 2 ? 'rgba(255,255,255,0.055)' : 'rgba(0,0,0,0.07)';
+        ctx.fillRect(cx - hw + i * bw, 0, bw, h);
+      }
+      dark(0.5, 1.3, [[0, 'rgba(0,0,0,0)'], [1, 'rgba(0,0,0,0.36)']]);
+    } else if (mode === 'cinema') {
+      const bar = Math.max(h * 0.12, 40);
+      for (const top of [true, false]) {
+        const g = ctx.createLinearGradient(0, top ? 0 : h, 0, top ? bar * 2.2 : h - bar * 2.2);
+        g.addColorStop(0, 'rgba(0,0,0,0.78)');
+        g.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = g;
+        ctx.fillRect(0, top ? 0 : h - bar * 2.2, w, bar * 2.2);
+      }
+      ctx.globalCompositeOperation = 'soft-light';
+      ctx.fillStyle = 'rgba(255,170,90,0.18)';
+      ctx.fillRect(0, 0, w, h);
+      dark(0.5, 1.3, [[0, 'rgba(0,0,0,0)'], [1, 'rgba(0,0,0,0.4)']]);
     } else if (mode === 'spot') {
       const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, diag * 0.9);
-      g.addColorStop(0, 'rgba(255,244,214,0.26)');
+      g.addColorStop(0, 'rgba(255,244,214,0.3)');
+      g.addColorStop(0.55, 'rgba(255,244,214,0.1)');
       g.addColorStop(1, 'rgba(255,244,214,0)');
       ctx.globalCompositeOperation = 'screen';
       ctx.fillStyle = g;
       ctx.fillRect(0, 0, w, h);
+      dark(0.7, 1.35, [[0, 'rgba(0,0,0,0)'], [1, 'rgba(0,0,0,0.3)']]);
     } else if (mode === 'corners') {
       ctx.globalCompositeOperation = 'screen';
       const rad = hw * 0.7;

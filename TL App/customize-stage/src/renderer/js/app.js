@@ -5076,7 +5076,7 @@ const ANIM_SWITCHES = {
   ]
 };
 const PAGE_TRANS = [['off', 'Sin transición', 'None'], ['fade', 'Fundido', 'Fade'], ['slide', 'Deslizar', 'Slide'], ['zoom', 'Zoom', 'Zoom']];
-const SPARK_STYLES = [['oro', 'Oro', 'Gold'], ['estrellas', 'Estrellas', 'Stars'], ['luciernagas', 'Luciérnagas', 'Fireflies'], ['nieve', 'Nieve', 'Snow'], ['confeti', 'Confeti', 'Confetti']];
+const SPARK_STYLES = [['oro', 'Oro', 'Gold'], ['estrellas', 'Estrellas', 'Stars'], ['luciernagas', 'Luciérnagas', 'Fireflies'], ['nieve', 'Nieve', 'Snow'], ['confeti', 'Confeti', 'Confetti'], ['brasas', 'Brasas', 'Embers'], ['neon', 'Neón', 'Neon'], ['petalos', 'Pétalos', 'Petals']];
 const SPARK_COUNTS = [[20, 'Pocas', 'Few'], [40, 'Normal', 'Normal'], [80, 'Muchas', 'Many']];
 
 function paintAnimations() {
@@ -9029,7 +9029,7 @@ const FONT_OPTIONS = [
 const LOOK_SECTIONS = {
   lookPitch: [
     { key: 'texture', type: 'select', label: 'look.texture', options: [['none', 'look.opt.none'], ['wood', 'look.tex.wood'], ['ice', 'look.tex.ice'], ['sand', 'look.tex.sand'], ['concrete', 'look.tex.concrete'], ['night', 'look.tex.night'], ['clay', 'look.tex.clay'], ['checker', 'look.tex.checker'], ['carbon', 'look.tex.carbon'], ['marble', 'look.tex.marble'], ['hex', 'look.tex.hex'], ['stars', 'look.tex.stars'], ['brick', 'look.tex.brick'], ['snow', 'look.tex.snow'], ['neon', 'look.tex.neon'], ['lava', 'look.tex.lava'], ['waves', 'look.tex.waves']] },
-    { key: 'pitchLight', type: 'select', label: 'look.pitchLight', desc: 'look.pitchLightHelp', options: [['none', 'look.opt.none'], ['vignette', 'look.light.vignette'], ['spot', 'look.light.spot'], ['corners', 'look.light.corners']] },
+    { key: 'pitchLight', type: 'select', label: 'look.pitchLight', desc: 'look.pitchLightHelp', options: [['none', 'look.opt.none'], ['vignette', 'look.light.vignette'], ['spot', 'look.light.spot'], ['corners', 'look.light.corners'], ['stadium', 'look.light.stadium'], ['sunset', 'look.light.sunset'], ['night', 'look.light.night'], ['stripes', 'look.light.stripes'], ['cinema', 'look.light.cinema']] },
     { key: 'ownRingColor', type: 'color', label: 'look.ownRingColor', desc: 'look.ownRingHelp' },
     { key: 'ownRingAlpha', type: 'range', label: 'look.ownRingAlpha', min: 0.05, max: 1, step: 0.01 },
     { key: 'ownRingRadius', type: 'range', label: 'look.ownRingRadius', min: 18, max: 70, step: 1, raw: true },

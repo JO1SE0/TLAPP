@@ -11,6 +11,7 @@ window.TL_NEWS = {
   title: { es: 'Qué hay de nuevo', en: "What's new" },
   items: {
     es: [
+      'Arreglé las partículas del menú que quedaban apagadas después de la bienvenida y agregué 3 estilos (Brasas, Neón, Pétalos). La lista de salas ya no pisa la tarjeta de música en pantallas anchas y la barra izquierda tiene el look vidrio. La luz de la cancha suma 5 estilos nuevos (Estadio de noche, Atardecer, Noche fría, Franjas de césped, Cine) y la viñeta y el foco son más suaves: se calculan una sola vez, no cuestan FPS.',
       'Menú de Salas en estilo vidrio: panel redondeado, filtros tipo píldora, filas suaves, cartel de «Volver a la última sala» más lindo y botón Entrar grande. La altura de las filas no cambió, así que la lista se sigue moviendo igual de fluida.',
       'Paneles de Club, Informes y Hostear rediseñados en estilo vidrio: más anchos, tarjetas redondeadas, KPIs más lindos, pestañas tipo píldora, cargador de informes en su propia tarjeta y el formulario de hostear dividido en Sala / Mapas / Opciones con un botón grande de Hostear.',
       'Panel de admin rediseñado: tarjetas de resumen (personas, conectadas, versión vieja, nunca entraron), plantel en tarjetas con avatar, punto de estado e insignias (Vos, Prueba, Socio, Hostea, Informes), botones que se prenden, ajustes de acceso en tarjetas y estética vidrio redondeada en todos los temas del panel. La ficha de cada persona ahora muestra permisos, datos de su PC, línea de tiempo y acciones rápidas, y vos (sólo el admin) tenés el botón «Ir a la sala» con cualquiera que esté conectado, socios incluidos.',
@@ -78,6 +79,7 @@ window.TL_NEWS = {
       'Cada clave se usa en una sola PC: si cambiás de computadora, pedile a miclo que te la libere.'
     ],
     en: [
+      'Fixed the menu particles that stayed off after the welcome animation, and added 3 styles (Embers, Neon, Petals). The rooms list no longer sits under the music card on wide screens, and the left bar got the glass look. Pitch light has 5 new looks (Night stadium, Sunset, Cold night, Grass stripes, Cinema) and a softer vignette/spotlight — still computed once, no FPS cost.',
       'Rooms menu in glass style: rounded panel and pill filters, soft rows, a nicer "Back to last room" banner and a big Join button. Row heights are unchanged, so scrolling the list stays just as smooth.',
       'Club, Reports and Host panels redesigned in glass style: wider, rounded cards, richer KPIs, pill tabs, a report loader with its own drop-zone card, and the host form split into Room / Maps / Options with a big Host button.',
       'Redesigned admin panel: summary tiles (people, online, old versions, never joined), roster cards with avatar, status dot and badges (You, Trial, Partner, Host, Reports), toggle chips that light up, access settings in cards and a rounded glass look in every panel theme. The person card now shows role, PC data, timeline and quick actions, and you (admin only) get a "Go to room" button for anyone online, partners included.',

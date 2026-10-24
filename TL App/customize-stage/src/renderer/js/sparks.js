@@ -65,25 +65,41 @@
     return s;
   }
 
+  function petal(color) {
+    const s = document.createElement('canvas');
+    s.width = 16; s.height = 24;
+    const c = s.getContext('2d');
+    c.fillStyle = color;
+    c.beginPath();
+    c.ellipse(8, 12, 5, 10, 0, 0, Math.PI * 2);
+    c.fill();
+    return s;
+  }
+
   /** Todos los dibujos se hacen una sola vez; por cuadro solo se copian. */
   function makeSprites(kind) {
     if (kind === 'estrellas') return [star()];
     if (kind === 'luciernagas') return [glow('rgba(235,255,170,1)', 'rgba(170,240,90,0.6)', 'rgba(120,220,60,0)')];
     if (kind === 'nieve') return [glow('rgba(255,255,255,1)', 'rgba(235,245,255,0.7)', 'rgba(220,235,255,0)')];
+    if (kind === 'brasas') return [glow('rgba(255,235,170,1)', 'rgba(255,140,40,0.75)', 'rgba(255,80,0,0)'), glow('rgba(255,210,140,1)', 'rgba(255,100,30,0.6)', 'rgba(220,50,0,0)')];
+    if (kind === 'neon') return [glow('rgba(190,255,255,1)', 'rgba(60,220,255,0.6)', 'rgba(0,160,255,0)'), glow('rgba(255,200,255,1)', 'rgba(255,70,230,0.55)', 'rgba(200,0,255,0)'), glow('rgba(215,200,255,1)', 'rgba(140,100,255,0.55)', 'rgba(90,40,255,0)')];
+    if (kind === 'petalos') return ['#ffb3c7', '#ff8fb1', '#ffd1dc'].map(petal);
     if (kind === 'confeti') return ['#f2c14e', '#e8505b', '#4ea8de', '#6fcf97', '#c77dff'].map(chip);
     return [glow('rgba(255,240,190,1)', 'rgba(240,210,130,0.55)', 'rgba(208,184,120,0)')];
   }
 
   function spawn(p, anywhere) {
-    const down = style === 'nieve' || style === 'confeti';
+    const down = style === 'nieve' || style === 'confeti' || style === 'petalos';
     p.x = Math.random() * w;
     p.y = anywhere ? Math.random() * h : (down ? -20 : h + 20);
     p.r = 2 + Math.random() * 5;
     if (style === 'nieve') { p.r = 1.5 + Math.random() * 3.5; p.vy = 14 + Math.random() * 22; }
     else if (style === 'confeti') { p.r = 3 + Math.random() * 3; p.vy = 30 + Math.random() * 40; }
+    else if (style === 'petalos') { p.r = 3 + Math.random() * 3; p.vy = 18 + Math.random() * 24; }
+    else if (style === 'brasas') { p.r = 1.5 + Math.random() * 3.5; p.vy = -(22 + Math.random() * 38); }
     else if (style === 'luciernagas') { p.vy = (Math.random() - 0.5) * 10; }
     else p.vy = -(6 + Math.random() * 14); // píxeles por segundo, hacia arriba
-    p.vx = (Math.random() - 0.5) * (style === 'luciernagas' ? 14 : 6);
+    p.vx = (Math.random() - 0.5) * (style === 'luciernagas' ? 14 : style === 'petalos' ? 24 : style === 'brasas' ? 16 : 6);
     p.ph = Math.random() * Math.PI * 2;
     p.sp = 0.6 + Math.random() * 1.2;
     p.a = 0.25 + Math.random() * 0.45;
@@ -124,17 +140,17 @@
     for (const p of parts) {
       p.y += p.vy * dt;
       p.x += (p.vx + Math.sin(t * p.sp + p.ph) * 4) * dt;
-      const off = style === 'nieve' || style === 'confeti' ? p.y > h + 20 : p.y < -20;
+      const off = style === 'nieve' || style === 'confeti' || style === 'petalos' ? p.y > h + 20 : p.y < -20;
       if (style === 'luciernagas') {
         // Vagan sin irse de la pantalla: rebotan suave en los bordes.
         if (p.y < 0 || p.y > h) p.vy = -p.vy;
         if (p.x < 0) p.x = w; else if (p.x > w) p.x = 0;
       } else if (off || p.x < -20 || p.x > w + 20) spawn(p, false);
       const sp = sprites[p.k];
-      if (style === 'confeti') {
+      if (style === 'confeti' || style === 'petalos') {
         const rot = t * p.sp * 2 + p.ph;
         const sx = Math.abs(Math.cos(rot)); // el giro en 3D se finge achicando el ancho
-        ctx.globalAlpha = 0.85;
+        ctx.globalAlpha = style === 'petalos' ? 0.7 : 0.85;
         ctx.setTransform(sx, 0, 0, 1, p.x, p.y);
         ctx.drawImage(sp, -p.r, -p.r * 1.6, p.r * 2, p.r * 3.2);
         ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -143,7 +159,7 @@
       const tw = style === 'luciernagas'
         ? Math.max(0, Math.sin(t * p.sp * 1.3 + p.ph)) // prenden y apagan
         : 0.6 + 0.4 * Math.sin(t * p.sp * 1.7 + p.ph);
-      const fade = style === 'oro' || style === 'estrellas' ? Math.min(1, Math.max(0, p.y / 120)) : 1;
+      const fade = style === 'oro' || style === 'estrellas' || style === 'brasas' || style === 'neon' ? Math.min(1, Math.max(0, p.y / 120)) : 1;
       ctx.globalAlpha = p.a * tw * fade * (style === 'nieve' ? 1.6 : 1);
       const sz = p.r * (style === 'estrellas' ? 3 : 4);
       ctx.drawImage(sp, p.x - sz / 2, p.y - sz / 2, sz, sz);
@@ -191,9 +207,11 @@
     if (panel) new MutationObserver(sync).observe(panel, { attributes: true, attributeFilter: ['hidden', 'class', 'style'] });
   }
 
+  window.addEventListener('tl:welcome-done', () => sync());
+
   window.TLSparks = {
     setStyle(kind) {
-      const k = ['oro', 'estrellas', 'luciernagas', 'nieve', 'confeti'].includes(kind) ? kind : 'oro';
+      const k = ['oro', 'estrellas', 'luciernagas', 'nieve', 'confeti', 'brasas', 'neon', 'petalos'].includes(kind) ? kind : 'oro';
       if (k === style && sprites.length) return;
       style = k;
       sprites = makeSprites(k);

@@ -9570,7 +9570,7 @@ function syncCanvasHotFlags() {
   visual.discOutline = lookfx.safeColor(cfg.discOutline);
   visual.ballOutline = lookfx.safeColor(cfg.ballOutline);
   visual.discStyle = ['sphere', 'glass', 'neon', 'metal', 'bubble', 'target', 'stripes', 'gem', 'cartoon', 'dots'].includes(cfg.discStyle) ? cfg.discStyle : 'default';
-  visual.light = ['vignette', 'spot', 'corners'].includes(cfg.pitchLight) ? cfg.pitchLight : '';
+  visual.light = ['vignette', 'spot', 'corners', 'stadium', 'sunset', 'night', 'stripes', 'cinema'].includes(cfg.pitchLight) ? cfg.pitchLight : '';
   visual.ownRingColor = lookfx.safeColor(cfg.ownRingColor);
   visual.ownRingAlpha = clampNum(cfg.ownRingAlpha, 0.02, 1, 0.3);
   visual.ownRingRadius = clampNum(cfg.ownRingRadius, 16, 80, 25);
