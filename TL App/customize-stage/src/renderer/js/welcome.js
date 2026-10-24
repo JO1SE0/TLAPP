@@ -11,7 +11,7 @@
   'use strict';
 
   /** Cuándo (en segundos) pasa cada cosa. Lo comparten la imagen (CSS) y el sonido. */
-  const T = { impact: 1.15, title: 1.3, hello: 2.2, phrase: 2.65, end: 4.9, fade: 0.7 };
+  const T = { impact: 1.15, title: 1.3, hello: 2.2, phrase: 2.65, end: 5.8, fade: 0.8 };
 
   const PHRASES_ES = [
     'Acá se juega con el corazón', 'Del barrio al mundo', 'La pasión no se negocia',
@@ -191,6 +191,17 @@
       o.connect(g); out(g, true);
       o.start(t0 + T.hello); o.stop(t0 + T.end + 0.5);
     }
+    // 6. Destellos agudos mientras caen las chispas (sube y se apaga).
+    [1975.53, 2349.32, 2637.02, 3135.96, 2637.02, 3951.07].forEach((f, i) => {
+      const at = t0 + T.hello + 0.15 + i * 0.16;
+      const o = ac.createOscillator();
+      o.type = 'sine';
+      o.frequency.value = f;
+      const g = ac.createGain();
+      env(g, at, 0.003, 0.035, 0.7);
+      o.connect(g); out(g, true);
+      o.start(at); o.stop(at + 0.9);
+    });
     return master;
   }
 
@@ -225,7 +236,7 @@
       const word = el('span', 'wl__word');
       for (const c of w) {
         const ch = el('span', 'wl__ch', c);
-        ch.style.animationDelay = `${(T.title + ci * 0.045).toFixed(3)}s`;
+        ch.style.setProperty('--d', `${(T.title + ci * 0.045).toFixed(3)}s`);
         word.append(ch);
         ci++;
       }
@@ -240,10 +251,47 @@
       sp.style.animationDelay = `${(T.phrase + i * 0.09).toFixed(3)}s`;
       phrase.append(sp);
     });
-    center.append(crestWrap, title, hello, phrase);
+    // Chispas que salen del escudo al impacto (posiciones al azar, una sola vez).
+    for (let i = 0; i < 30; i++) {
+      const sp = el('i', 'wl__spark');
+      const ang = (i / 30) * Math.PI * 2 + Math.random() * 0.4;
+      const dist = 110 + Math.random() * 210;
+      sp.style.setProperty('--x', `${(Math.cos(ang) * dist).toFixed(0)}px`);
+      sp.style.setProperty('--y', `${(Math.sin(ang) * dist).toFixed(0)}px`);
+      sp.style.setProperty('--s', (0.5 + Math.random() * 1.1).toFixed(2));
+      sp.style.animationDelay = `${(T.impact + Math.random() * 0.08).toFixed(3)}s`;
+      crestWrap.append(sp);
+    }
+    crestWrap.prepend(el('i', 'wl__halo'));
+
+    // Una pelota que recorre una línea bajo el título.
+    const track = el('div', 'wl__track');
+    track.append(el('i', 'wl__trackline'), el('i', 'wl__ball'));
+
+    center.append(crestWrap, title, track, hello, phrase);
+
+    // La cancha dibujándose en perspectiva, dos haces de luz y polvo dorado.
+    const pitch = el('div', 'wl__pitch');
+    pitch.innerHTML = '<svg viewBox="0 0 800 460" preserveAspectRatio="xMidYMid meet" aria-hidden="true">' +
+      '<g fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" pathLength="1">' +
+      '<rect pathLength="1" x="20" y="20" width="760" height="420" rx="6"/>' +
+      '<path pathLength="1" d="M400 20V440"/><circle pathLength="1" cx="400" cy="230" r="70"/>' +
+      '<path pathLength="1" d="M20 140h110v180H20M780 140H670v180h110"/>' +
+      '<path pathLength="1" d="M20 185h45v90H20M780 185h-45v90h45"/></g></svg>';
+    const dust = el('div', 'wl__dustwrap');
+    for (let i = 0; i < 26; i++) {
+      const d = el('i', 'wl__dust');
+      d.style.left = `${(Math.random() * 100).toFixed(1)}%`;
+      d.style.setProperty('--r', `${(40 + Math.random() * 45).toFixed(0)}vh`);
+      d.style.setProperty('--d', `${(2.2 + Math.random() * 1.8).toFixed(2)}s`);
+      d.style.animationDelay = `${(T.hello + Math.random() * 1.6).toFixed(2)}s`;
+      d.style.width = d.style.height = `${(2 + Math.random() * 3).toFixed(1)}px`;
+      dust.append(d);
+    }
 
     root.append(
-      el('div', 'wl__bg'), el('i', 'wl__streak'), el('i', 'wl__streak wl__streak--b'), center,
+      el('div', 'wl__bg'), pitch, el('i', 'wl__beam'), el('i', 'wl__beam wl__beam--r'), dust,
+      el('i', 'wl__streak'), el('i', 'wl__streak wl__streak--b'), center,
       el('i', 'wl__panel wl__panel--t'), el('i', 'wl__panel wl__panel--b'), el('i', 'wl__line'),
       el('i', 'wl__flash'), el('i', 'wl__bar'),
       el('div', 'wl__skip', eng ? 'Click to skip' : 'Clic para saltar')
