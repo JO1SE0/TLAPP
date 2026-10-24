@@ -1126,6 +1126,47 @@ ${each(FIELDS, ':focus')} {
 .game-view > [data-hook="popups"] > .dialog.kick-player-view .tvm-switch { border-radius: 99px !important; }
 .game-view > [data-hook="popups"] > .dialog.kick-player-view .tvm-switch::after { border-radius: 50% !important; }
 
+/* Elegir estadio: lista en vidrio, filas en pastilla y botones laterales redondeados. */
+.dialog.pick-stadium-view { min-width: 480px !important; }
+.dialog.pick-stadium-view input:not([type="range"]) {
+  border-radius: 99px !important; padding: 9px 16px !important;
+  background: ${rgba(p.text, 0.06)} !important;
+  box-shadow: 0 0 0 1px ${rgba(p.text, 0.1)} inset !important;
+}
+.dialog.pick-stadium-view input:focus { box-shadow: 0 0 0 1px ${p.accent} inset !important; }
+.dialog.pick-stadium-view > .splitter { gap: 12px !important; }
+.dialog.pick-stadium-view > .splitter > .list {
+  padding: 6px !important; border-radius: 16px !important;
+  background: ${rgba(p.bg, 0.45)} !important;
+  box-shadow: 0 0 0 1px ${rgba(p.text, 0.08)} inset !important;
+}
+.dialog.pick-stadium-view > .splitter > .list > * {
+  border-radius: 10px !important; padding: 3px 10px !important;
+}
+.dialog.pick-stadium-view > .splitter > .list > *:hover { background: ${rgba(p.text, 0.08)} !important; }
+.dialog.pick-stadium-view > .splitter > .list > .selected,
+.dialog.pick-stadium-view > .splitter > .list > [class*="select"] {
+  background: linear-gradient(90deg, ${rgba(p.accent, 0.3)}, ${rgba(p.accent, 0.1)}) !important;
+  box-shadow: 0 0 0 1px ${rgba(p.accent, 0.45)} inset !important;
+}
+.dialog.pick-stadium-view > .splitter > .buttons > button,
+.dialog.pick-stadium-view > .splitter > .buttons > .file-btn > label,
+.dialog.pick-stadium-view > button {
+  border-radius: 99px !important; padding: 7px 14px !important; font-weight: 700 !important;
+  background: ${rgba(p.text, 0.07)} !important;
+  box-shadow: 0 0 0 1px ${rgba(p.text, 0.09)} inset, 0 1px 0 ${rgba(p.text, 0.08)} inset !important;
+}
+.dialog.pick-stadium-view > .splitter > .buttons > button:hover:not(:disabled),
+.dialog.pick-stadium-view > .splitter > .buttons > .file-btn > label:hover {
+  background: ${rgba(p.accent, 0.22)} !important;
+  box-shadow: 0 0 0 1px ${rgba(p.accent, 0.5)} inset !important;
+}
+.dialog.pick-stadium-view > .splitter > .buttons > button:first-child {
+  background: linear-gradient(135deg, ${p.accent}, ${p.duo ? p.accent2 : lighten(p.accent, 0.16)}) !important;
+  color: ${readableOn(p.accent)} !important;
+}
+.dialog.pick-stadium-view > .splitter > .buttons > button:disabled { opacity: .45 !important; }
+
 /* ── Chat ────────────────────────────────────────────────── *
  * Una sola caja: la de HaxBall. Antes el registro tenía su propio recuadro
  * adentro de la caja del chat, o sea dos bordes y dos fondos para lo mismo.
