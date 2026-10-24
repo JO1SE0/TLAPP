@@ -563,6 +563,7 @@ const STRINGS = {
     'vip.volume': 'Volumen',
     'vip.choose': 'Elegir…',
     'vip.clear': 'Quitar',
+    'crop.adjust': 'Ajustar',
 
     'keys.title': 'Controles y teclas',
     'keys.help': 'Más de una tecla por acción: tocá «+» y apretá la que quieras.',
@@ -830,7 +831,7 @@ const STRINGS = {
     'toast.cancelled': 'Se canceló la conexión',
     'toast.badLink': 'Ese link no parece de una sala de HaxBall',
     'toast.exported': 'Configuración exportada',
-    'toast.imported': 'Configuración importada',
+    'toast.imported': 'Configuración importada (lo de gráficos se aplica al reiniciar)',
     'toast.reset': 'Configuración restablecida',
     'toast.renamed': 'Replay renombrado',
     'toast.playing': 'Reproduciendo {name}',
@@ -1386,6 +1387,7 @@ const STRINGS = {
     'vip.volume': 'Volume',
     'vip.choose': 'Choose…',
     'vip.clear': 'Remove',
+    'crop.adjust': 'Adjust',
 
     'keys.title': 'Controls and keys',
     'keys.help': 'More than one key per action: hit “+” and press the one you want.',
@@ -1647,7 +1649,7 @@ const STRINGS = {
     'toast.cancelled': 'Connection cancelled',
     'toast.badLink': "That link doesn't look like a HaxBall room",
     'toast.exported': 'Config exported',
-    'toast.imported': 'Config imported',
+    'toast.imported': 'Config imported (graphics apply after a restart)',
     'toast.reset': 'Settings reset',
     'toast.renamed': 'Replay renamed',
     'toast.playing': 'Playing {name}',

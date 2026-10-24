@@ -2492,6 +2492,22 @@ handle('cfg:set', (_e, patch) => {
 
 handle('cfg:reset', () => broadcastConfig(store.reset()));
 
+/*
+ * Lo que viaja en «Exportar config»: todo lo portable (temas, interfaz, juego, teclas,
+ * chat, cancha…) más gráficos (perf), ficha/pelota/líneas (visual) y los looks
+ * guardados. No viajan canciones, imágenes/sonidos de la ficha (son archivos de esta
+ * PC), identidades ni clave del club.
+ */
+const EXPORT_EXTRA = ['perf', 'visual', 'looks'];
+function exportableConfig(cfg) {
+  const out = preferences.portable(cfg || {});
+  for (const key of EXPORT_EXTRA) {
+    const v = cfg && cfg[key];
+    if (v && typeof v === 'object' && !Array.isArray(v)) out[key] = preferences.safe(v);
+  }
+  return out;
+}
+
 handle('cfg:export', async () => {
   const res = await dialog.showSaveDialog(mainWindow, {
     title: 'Exportar configuración',
@@ -2501,7 +2517,7 @@ handle('cfg:export', async () => {
   if (res.canceled || !res.filePath) return { saved: false };
   // La config incluye las identidades de HaxBall guardadas: son credenciales,
   // así que no viajan en un archivo que el usuario va a compartir.
-  const rest = preferences.portable(store.get());
+  const rest = exportableConfig(store.get());
   fs.writeFileSync(res.filePath, JSON.stringify(rest, null, 2), 'utf8');
   return { saved: true, path: res.filePath };
 });
@@ -2514,9 +2530,10 @@ handle('cfg:import', async () => {
   });
   if (res.canceled || !res.filePaths[0]) return { imported: false };
   if (fs.statSync(res.filePaths[0]).size > 1024 * 1024) throw new Error('La configuración supera 1 MB');
-  const incoming = preferences.portable(JSON.parse(fs.readFileSync(res.filePaths[0], 'utf8')));
+  const incoming = exportableConfig(JSON.parse(fs.readFileSync(res.filePaths[0], 'utf8')));
   // Importar ajustes no tiene por qué borrar las identidades guardadas.
   const current = store.get();
+  for (const key of EXPORT_EXTRA) if (incoming[key]) incoming[key] = { ...current[key], ...incoming[key] };
   const next = store.replace({ ...current, ...incoming,
     general: { ...current.general, ...incoming.general },
     discord: { ...current.discord, ...incoming.discord },

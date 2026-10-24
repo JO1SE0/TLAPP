@@ -11,6 +11,8 @@ window.TL_NEWS = {
   title: { es: 'Qué hay de nuevo', en: "What's new" },
   items: {
     es: [
+      'Ajustar imagen de la ficha y de la pelota: zoom, posición, giro y espejo con un editor propio (arrastrá, rueda = zoom, Shift + rueda = girar) y vista previa en la cancha. Se abre solo al elegir una imagen nueva.',
+      'Exportar config ahora también lleva gráficos, tamaño de ficha y pelota, líneas, estilos de la cancha y tus looks guardados (sin canciones ni imágenes).',
       'Nueva página «Música» en el menú de la izquierda: reproductor con portada, barra, volumen, ♥ y interruptores; lista de todos los temas para activarlos/desactivarlos, marcar favoritos y agregar los tuyos.',
       'Barra superior en vidrio: pestañas y link de sala en pastilla, «Última sala», chip del club y audio con el mismo estilo del resto del cliente.',
       'FPS: tu ficha con estilo (esfera, vidrio, metal) se dibuja ~30 % más liviano, las estadísticas por jugador ya no crean basura en cada cuadro (se nota con salas llenas), y el festejo de gol del club ya no tiene animaciones que recalculen el diseño en cada cuadro, usa menos piezas y queda precargado desde que entrás a la sala (el primer gol ya no tironea).',
@@ -90,6 +92,8 @@ window.TL_NEWS = {
       'Cada clave se usa en una sola PC: si cambiás de computadora, pedile a miclo que te la libere.'
     ],
     en: [
+      'Adjust the disc and ball image: zoom, position, rotation and mirror in its own editor (drag, wheel = zoom, Shift + wheel = rotate) with a pitch preview. Opens by itself when you pick a new image.',
+      'Export config now also carries graphics, disc/ball size, lines, pitch styles and your saved looks (no songs or images).',
       'New «Music» page in the left rail: player with cover, progress, volume, ♥ and switches; a list of every track to enable/disable, favorite and add your own.',
       'Top bar in glass style: pill tabs and room link, “Last room”, club chip and audio matching the rest of the client.',
       'FPS: your styled disc (sphere, glass, metal) draws ~30% lighter, per-player stats no longer create garbage every frame (noticeable in full rooms), and the club goal celebration no longer runs layout-heavy animations, uses fewer pieces and is preloaded when you enter the room (no hitch on the first goal).',

@@ -270,6 +270,9 @@ const DEFAULTS = {
      * La imagen es de todos; que se MUEVA (un GIF) es lo que pide el rol.
      */
     ballImage: '',
+    /** Zoom/posición/giro de cada imagen (editor «Ajustar imagen»). `on:false` = como siempre. */
+    avatarCrop: { on: false, z: 1, x: 0, y: 0, r: 0, fx: false },
+    ballCrop: { on: false, z: 1, x: 0, y: 0, r: 0, fx: false },
     /** Sonido de gol propio. Idem: archivo copiado a userData. */
     goalSound: '',
     goalVolume: 0.7,

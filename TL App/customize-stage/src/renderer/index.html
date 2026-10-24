@@ -660,6 +660,69 @@
         </div>
       </div>
 
+      <!-- ═══ Ajustar imagen (ficha / pelota): zoom, posición, giro y espejo ═══ -->
+      <div class="modal crop" id="cropModal" hidden>
+        <div class="modal__card crop__card">
+          <header class="modal__head">
+            <div class="crop__head">
+              <span class="crop__eyebrow" id="cropEyebrow">Ajustar imagen</span>
+              <h2 id="cropTitle">Tu ficha</h2>
+            </div>
+            <button class="iconbtn" id="cropClose" aria-label="✕">
+              <svg data-icon viewBox="0 0 24 24"><path d="M6.4 6.4l11.2 11.2M17.6 6.4 6.4 17.6"/></svg>
+            </button>
+          </header>
+          <div class="crop__body">
+            <div class="crop__stagewrap">
+              <canvas class="crop__stage" id="cropStage" width="760" height="760" tabindex="0"></canvas>
+              <div class="crop__hud">
+                <span id="cropHudZoom">100%</span><i></i><span id="cropHudRot">0°</span>
+              </div>
+              <p class="crop__tip" id="cropTip">Arrastrá para mover · rueda = zoom · Shift + rueda = girar · doble clic = centrar</p>
+            </div>
+            <div class="crop__side">
+              <div class="crop__prev">
+                <span class="crop__label" id="cropPrevLabel">Así se ve en la cancha</span>
+                <div class="crop__pitch">
+                  <canvas id="cropPrevBig" width="192" height="192"></canvas>
+                  <canvas id="cropPrevMid" width="112" height="112"></canvas>
+                  <canvas id="cropPrevReal" width="64" height="64"></canvas>
+                </div>
+              </div>
+              <div class="crop__ctl">
+                <div class="crop__line">
+                  <span class="crop__label" id="cropZoomLabel">Zoom</span>
+                  <div class="crop__slider">
+                    <button type="button" class="crop__mini" id="cropZoomOut" aria-label="-"><svg viewBox="0 0 24 24"><path d="M6 12h12"/></svg></button>
+                    <input type="range" id="cropZoom" min="0" max="1000" step="1" />
+                    <button type="button" class="crop__mini" id="cropZoomIn" aria-label="+"><svg viewBox="0 0 24 24"><path d="M12 6v12M6 12h12"/></svg></button>
+                  </div>
+                </div>
+                <div class="crop__line">
+                  <span class="crop__label" id="cropRotLabel">Giro</span>
+                  <div class="crop__slider">
+                    <button type="button" class="crop__mini" id="cropRotL" aria-label="-90"><svg viewBox="0 0 24 24"><path d="M4.5 9.5A8 8 0 1 1 6 16.5M4.5 4.5v5h5"/></svg></button>
+                    <input type="range" id="cropRot" min="-180" max="180" step="1" />
+                    <button type="button" class="crop__mini" id="cropRotR" aria-label="+90"><svg viewBox="0 0 24 24"><path d="M19.5 9.5A8 8 0 1 0 18 16.5M19.5 4.5v5h-5"/></svg></button>
+                  </div>
+                </div>
+                <div class="crop__chips">
+                  <button type="button" class="crop__chip" id="cropFill">Llenar</button>
+                  <button type="button" class="crop__chip" id="cropFit">Encajar entera</button>
+                  <button type="button" class="crop__chip" id="cropCenter">Centrar</button>
+                  <button type="button" class="crop__chip" id="cropFlip">Espejo</button>
+                </div>
+              </div>
+              <div class="crop__actions">
+                <button type="button" class="btn btn--ghost" id="cropReset">Como estaba</button>
+                <button type="button" class="btn btn--ghost" id="cropCancel">Cancelar</button>
+                <button type="button" class="btn btn--primary" id="cropSave">Guardar</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- ═══ Editor de temas ═══ -->
       <div class="modal" id="themeModal" hidden>
         <div class="modal__card">
@@ -1244,6 +1307,7 @@
                 <div class="row__ctl assetrow">
                   <span class="assetrow__preview" id="vipAvatarPreview"></span>
                   <button class="btn btn--ghost btn--sm" id="vipPickAvatar" data-i18n="vip.choose"><svg data-icon viewBox="0 0 24 24"><path d="M3.6 7.4A1.9 1.9 0 0 1 5.5 5.5h3.2l1.9 2.4h7.9a1.9 1.9 0 0 1 1.9 1.9v7.3a1.9 1.9 0 0 1-1.9 1.9H5.5a1.9 1.9 0 0 1-1.9-1.9z"/></svg>Elegir…</button>
+                  <button class="btn btn--ghost btn--sm" id="vipCropAvatar" data-i18n="crop.adjust" hidden><svg data-icon viewBox="0 0 24 24"><path d="M6 2.5v15.5h15.5M2.5 6h15.5v15.5"/></svg>Ajustar</button>
                   <button class="btn btn--ghost btn--sm" id="vipClearAvatar" data-i18n="vip.clear"><svg data-icon viewBox="0 0 24 24"><path d="M6.4 6.4l11.2 11.2M17.6 6.4 6.4 17.6"/></svg>Quitar</button>
                 </div>
               </div>
@@ -1288,6 +1352,7 @@
                 <div class="row__ctl assetrow">
                   <span class="assetrow__preview" id="vipBallPreview"></span>
                   <button class="btn btn--ghost btn--sm" id="vipPickBall" data-i18n="vip.choose"><svg data-icon viewBox="0 0 24 24"><path d="M3.6 7.4A1.9 1.9 0 0 1 5.5 5.5h3.2l1.9 2.4h7.9a1.9 1.9 0 0 1 1.9 1.9v7.3a1.9 1.9 0 0 1-1.9 1.9H5.5a1.9 1.9 0 0 1-1.9-1.9z"/></svg>Elegir…</button>
+                  <button class="btn btn--ghost btn--sm" id="vipCropBall" data-i18n="crop.adjust" hidden><svg data-icon viewBox="0 0 24 24"><path d="M6 2.5v15.5h15.5M2.5 6h15.5v15.5"/></svg>Ajustar</button>
                   <button class="btn btn--ghost btn--sm" id="vipClearBall" data-i18n="vip.clear"><svg data-icon viewBox="0 0 24 24"><path d="M6.4 6.4l11.2 11.2M17.6 6.4 6.4 17.6"/></svg>Quitar</button>
                 </div>
               </div>

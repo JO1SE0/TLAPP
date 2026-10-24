@@ -5522,10 +5522,18 @@ function renderAvatarImage() {
   const file = (state.config.vip || {}).avatarImage || '';
   const face = $('#vipAvatarPreview');
   face.replaceChildren();
+  $('#vipCropAvatar').hidden = !file;
   if (file) {
+    const c = (state.config.vip || {}).avatarCrop;
     const img = document.createElement('img');
     img.src = fileUrl(file);
-    face.append(img);
+    if (c && c.on) {
+      // Con ajuste: la miniatura muestra el recorte, no la imagen entera.
+      const cv = document.createElement('canvas');
+      cv.width = 96; cv.height = 96;
+      img.onload = () => { try { drawAsset(cv.getContext('2d'), img, 0, 0, 96, c); } catch (e) { /* sin vista */ } };
+      face.append(cv);
+    } else face.append(img);
   } else {
     face.textContent = '—';
   }
@@ -5568,10 +5576,18 @@ function renderBallImage() {
   const file = (state.config.vip || {}).ballImage || '';
   const face = $('#vipBallPreview');
   face.replaceChildren();
+  $('#vipCropBall').hidden = !file;
   if (file) {
+    const c = (state.config.vip || {}).ballCrop;
     const img = document.createElement('img');
     img.src = fileUrl(file);
-    face.append(img);
+    if (c && c.on) {
+      // Con ajuste: la miniatura muestra el recorte, no la imagen entera.
+      const cv = document.createElement('canvas');
+      cv.width = 96; cv.height = 96;
+      img.onload = () => { try { drawAsset(cv.getContext('2d'), img, 0, 0, 96, c); } catch (e) { /* sin vista */ } };
+      face.append(cv);
+    } else face.append(img);
   } else {
     face.textContent = '—';
   }
@@ -6072,21 +6088,295 @@ function fileUrl(filePath) {
 // La imagen del avatar ya no vive en la tarjeta VIP: lo que se repinta es la
 // tarjeta «Tu avatar», que se ve con rol y sin él.
 $('#vipPickAvatar').addEventListener('click', async () => {
+  const before = (state.config.vip || {}).avatarImage;
   const next = await guard(tvm.vip.pickAvatar(), 'Error');
-  if (next) { state.config.vip = next; renderAvatarImage(); }
+  if (next) {
+    state.config.vip = next;
+    renderAvatarImage();
+    // Imagen nueva: arranca sin ajuste y se abre el editor para acomodarla.
+    if (next.avatarImage && next.avatarImage !== before) { crop.kind = 'avatar'; await saveCrop({ ...CROP_DEF, on: false }); openCrop('avatar'); }
+  }
 });
 $('#vipClearAvatar').addEventListener('click', async () => {
   const next = await guard(tvm.vip.clearAsset('avatar'), 'Error');
   if (next) { state.config.vip = next; renderAvatarImage(); }
 });
 $('#vipPickBall').addEventListener('click', async () => {
+  const before = (state.config.vip || {}).ballImage;
   const next = await guard(tvm.vip.pickBall(), 'Error');
-  if (next) { state.config.vip = next; renderBallImage(); }
+  if (next) {
+    state.config.vip = next;
+    renderBallImage();
+    if (next.ballImage && next.ballImage !== before) { crop.kind = 'ball'; await saveCrop({ ...CROP_DEF, on: false }); openCrop('ball'); }
+  }
 });
 $('#vipClearBall').addEventListener('click', async () => {
   const next = await guard(tvm.vip.clearAsset('ball'), 'Error');
   if (next) { state.config.vip = next; renderBallImage(); }
 });
+
+/* ══ Ajustar imagen (ficha / pelota) ═══════════════════════════════════════
+   Zoom, posición, giro y espejo. Se guarda en vip.avatarCrop / vip.ballCrop y el
+   juego arma el recorte una sola vez (ver `paintCropped` en game-preload.js):
+   las cuentas de acá tienen que ser exactamente las mismas. */
+const CROP_DEF = { on: true, z: 1, x: 0, y: 0, r: 0, fx: false };
+const CROP_ZMIN = 0.3;
+const CROP_ZMAX = 6;
+const crop = { kind: 'avatar', img: null, c: { ...CROP_DEF }, orig: null, drag: null, snap: false, raf: 0 };
+const cropKeyOf = (kind) => (kind === 'ball' ? 'ballCrop' : 'avatarCrop');
+
+function drawCropped(ctx, img, dx, dy, S, c) {
+  const sw = img.naturalWidth || img.width;
+  const sh = img.naturalHeight || img.height;
+  if (!sw || !sh) return;
+  ctx.save();
+  ctx.translate(dx + S / 2, dy + S / 2);
+  ctx.rotate(((+c.r || 0) * Math.PI) / 180);
+  const k = (Math.min(8, Math.max(0.2, +c.z || 1)) * S) / Math.min(sw, sh);
+  ctx.scale(c.fx ? -k : k, k);
+  ctx.translate(-(sw / 2 + ((+c.x || 0) * sw) / 2), -(sh / 2 + ((+c.y || 0) * sh) / 2));
+  ctx.drawImage(img, 0, 0, sw, sh);
+  ctx.restore();
+}
+/** Vista sin ajuste = como dibujaba siempre el juego: la imagen estirada al cuadrado. */
+function drawAsset(ctx, img, dx, dy, S, c) {
+  if (c && c.on) drawCropped(ctx, img, dx, dy, S, c);
+  else ctx.drawImage(img, dx, dy, S, S);
+}
+
+const zToSlider = (z) => Math.round((Math.log(z / CROP_ZMIN) / Math.log(CROP_ZMAX / CROP_ZMIN)) * 1000);
+const sliderToZ = (v) => CROP_ZMIN * Math.pow(CROP_ZMAX / CROP_ZMIN, v / 1000);
+
+function cropGeom() {
+  const cv = $('#cropStage');
+  const W = cv.width;
+  const S = Math.round(W * 0.72);
+  return { cv, W, S, d: (W - S) / 2 };
+}
+
+function cropPaint() {
+  crop.raf = 0;
+  const { cv, W, S, d } = cropGeom();
+  const ctx = cv.getContext('2d');
+  ctx.clearRect(0, 0, W, W);
+  // Damero suave para ver lo transparente.
+  const cell = 38;
+  for (let yy = 0; yy < W; yy += cell) for (let xx = 0; xx < W; xx += cell) {
+    ctx.fillStyle = ((xx + yy) / cell) % 2 ? 'rgba(255,255,255,0.035)' : 'rgba(255,255,255,0.065)';
+    ctx.fillRect(xx, yy, cell, cell);
+  }
+  if (crop.img) {
+    // Lo que queda afuera también se ve, más apagado: así se entiende qué se corta.
+    ctx.save(); ctx.globalAlpha = 0.32; drawCropped(ctx, crop.img, d, d, S, crop.c); ctx.restore();
+    ctx.save(); ctx.beginPath(); ctx.arc(W / 2, W / 2, S / 2, 0, Math.PI * 2); ctx.clip();
+    drawCropped(ctx, crop.img, d, d, S, crop.c);
+    if (crop.kind === 'ball') {
+      // Brillo de esfera, como la pelota 3D.
+      const g = ctx.createRadialGradient(W / 2 - S * 0.18, W / 2 - S * 0.2, S * 0.04, W / 2, W / 2, S / 2);
+      g.addColorStop(0, 'rgba(255,255,255,0.22)'); g.addColorStop(0.55, 'rgba(255,255,255,0)'); g.addColorStop(1, 'rgba(0,0,0,0.28)');
+      ctx.fillStyle = g; ctx.fillRect(d, d, S, S);
+    }
+    if (crop.drag) {
+      ctx.strokeStyle = 'rgba(255,255,255,0.22)'; ctx.lineWidth = 2;
+      for (const f of [1 / 3, 2 / 3]) {
+        ctx.beginPath(); ctx.moveTo(d + S * f, d); ctx.lineTo(d + S * f, d + S); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(d, d + S * f); ctx.lineTo(d + S, d + S * f); ctx.stroke();
+      }
+    }
+    ctx.restore();
+  }
+  const accent = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#e0b04a';
+  ctx.save();
+  ctx.lineWidth = 5; ctx.strokeStyle = accent;
+  ctx.shadowColor = accent; ctx.shadowBlur = crop.snap ? 34 : 18;
+  ctx.beginPath(); ctx.arc(W / 2, W / 2, S / 2, 0, Math.PI * 2); ctx.stroke();
+  ctx.restore();
+  if (crop.snap) {
+    ctx.save(); ctx.strokeStyle = accent; ctx.lineWidth = 3; ctx.globalAlpha = 0.9;
+    ctx.beginPath(); ctx.moveTo(W / 2 - 22, W / 2); ctx.lineTo(W / 2 + 22, W / 2); ctx.moveTo(W / 2, W / 2 - 22); ctx.lineTo(W / 2, W / 2 + 22); ctx.stroke();
+    ctx.restore();
+  }
+  cropPaintPreviews();
+  $('#cropHudZoom').textContent = `${Math.round(crop.c.z * 100)}%`;
+  $('#cropHudRot').textContent = `${Math.round(crop.c.r)}°`;
+  const zr = $('#cropZoom');
+  if (document.activeElement !== zr) zr.value = String(zToSlider(crop.c.z));
+  const rr = $('#cropRot');
+  if (document.activeElement !== rr) rr.value = String(Math.round(crop.c.r));
+  syncRangeFill(zr); syncRangeFill(rr);
+  $('#cropFlip').classList.toggle('is-on', !!crop.c.fx);
+}
+const cropQueue = () => { if (!crop.raf) crop.raf = requestAnimationFrame(cropPaint); };
+
+function cropPaintPreviews() {
+  const ball = crop.kind === 'ball';
+  for (const [id, frac] of [['#cropPrevBig', 0.78], ['#cropPrevMid', 0.74], ['#cropPrevReal', ball ? 0.34 : 0.5]]) {
+    const cv = $(id);
+    const ctx = cv.getContext('2d');
+    const W = cv.width;
+    ctx.clearRect(0, 0, W, W);
+    const D = Math.round(W * frac);
+    const o = (W - D) / 2;
+    const border = Math.max(2, Math.round(D * (ball ? 0.08 : 0.1)));
+    // Disco: borde del equipo (rojo) o negro para la pelota, como HaxBall.
+    ctx.beginPath(); ctx.arc(W / 2, W / 2, D / 2, 0, Math.PI * 2);
+    ctx.fillStyle = ball ? '#fff' : '#e56e56'; ctx.fill();
+    if (crop.img) {
+      ctx.save(); ctx.beginPath(); ctx.arc(W / 2, W / 2, D / 2 - border / 2, 0, Math.PI * 2); ctx.clip();
+      drawCropped(ctx, crop.img, o, o, D, crop.c);
+      ctx.restore();
+    }
+    ctx.lineWidth = border; ctx.strokeStyle = '#000';
+    ctx.beginPath(); ctx.arc(W / 2, W / 2, D / 2 - border / 2, 0, Math.PI * 2); ctx.stroke();
+  }
+}
+
+/** Punto de pantalla (px del canvas) → cuánto mover el centro de la imagen. */
+function cropPanBy(dxs, dys) {
+  const { S } = cropGeom();
+  const img = crop.img;
+  if (!img) return;
+  const sw = img.naturalWidth || img.width;
+  const sh = img.naturalHeight || img.height;
+  const k = (crop.c.z * S) / Math.min(sw, sh);
+  const a = (-crop.c.r * Math.PI) / 180;
+  let ux = (dxs * Math.cos(a) - dys * Math.sin(a)) / k;
+  const uy = (dxs * Math.sin(a) + dys * Math.cos(a)) / k;
+  if (crop.c.fx) ux = -ux;
+  crop.c.x -= ux / (sw / 2);
+  crop.c.y -= uy / (sh / 2);
+  crop.c.x = Math.max(-2, Math.min(2, crop.c.x));
+  crop.c.y = Math.max(-2, Math.min(2, crop.c.y));
+}
+/** Zoom manteniendo quieto el punto que está bajo el mouse. */
+function cropZoomAt(z, mx, my) {
+  z = Math.max(CROP_ZMIN, Math.min(CROP_ZMAX, z));
+  const { W } = cropGeom();
+  const cx = mx == null ? W / 2 : mx;
+  const cy = my == null ? W / 2 : my;
+  const f = 1 - crop.c.z / z;
+  // El punto bajo el cursor tiene que seguir ahí: se corre el centro lo que haga falta.
+  cropPanBy(-(cx - W / 2) * f, -(cy - W / 2) * f);
+  crop.c.z = z;
+}
+function cropSnap() {
+  crop.snap = Math.abs(crop.c.x) < 0.025 && Math.abs(crop.c.y) < 0.025;
+  if (crop.snap) { crop.c.x = 0; crop.c.y = 0; }
+}
+
+function openCrop(kind) {
+  const file = (state.config.vip || {})[kind === 'ball' ? 'ballImage' : 'avatarImage'] || '';
+  if (!file) return;
+  const en = isEn();
+  crop.kind = kind;
+  const saved = (state.config.vip || {})[cropKeyOf(kind)];
+  crop.orig = saved ? { ...saved } : { ...CROP_DEF, on: false };
+  crop.c = saved && saved.on ? { ...CROP_DEF, ...saved } : { ...CROP_DEF };
+  crop.img = null;
+  crop.snap = false;
+  $('#cropEyebrow').textContent = en ? 'Adjust image' : 'Ajustar imagen';
+  $('#cropTitle').textContent = kind === 'ball' ? (en ? 'Your ball' : 'Tu pelota') : (en ? 'Your disc' : 'Tu ficha');
+  $('#cropTip').textContent = en ? 'Drag to move · wheel = zoom · Shift + wheel = rotate · double click = center'
+    : 'Arrastrá para mover · rueda = zoom · Shift + rueda = girar · doble clic = centrar';
+  $('#cropPrevLabel').textContent = en ? 'How it looks on the pitch' : 'Así se ve en la cancha';
+  $('#cropZoomLabel').textContent = 'Zoom';
+  $('#cropRotLabel').textContent = en ? 'Rotation' : 'Giro';
+  $('#cropFill').textContent = en ? 'Fill' : 'Llenar';
+  $('#cropFit').textContent = en ? 'Fit whole' : 'Encajar entera';
+  $('#cropCenter').textContent = en ? 'Center' : 'Centrar';
+  $('#cropFlip').textContent = en ? 'Mirror' : 'Espejo';
+  $('#cropReset').textContent = en ? 'Original' : 'Como estaba';
+  $('#cropCancel').textContent = en ? 'Cancel' : 'Cancelar';
+  $('#cropSave').textContent = en ? 'Save' : 'Guardar';
+  $('#cropModal').hidden = false;
+  const img = new Image();
+  img.onload = () => { if (crop.kind === kind) { crop.img = img; cropQueue(); } };
+  img.onerror = () => toast(en ? 'Could not open the image' : 'No se pudo abrir la imagen', 'err');
+  img.src = fileUrl(file);
+  cropQueue();
+  setTimeout(() => $('#cropStage').focus(), 30);
+}
+function closeCrop() { $('#cropModal').hidden = true; crop.img = null; crop.drag = null; }
+
+async function saveCrop(value) {
+  const key = cropKeyOf(crop.kind);
+  const c = value || crop.c;
+  const clean = { on: !!c.on, z: +(+c.z).toFixed(4), x: +(+c.x).toFixed(4), y: +(+c.y).toFixed(4), r: Math.round(+c.r || 0), fx: !!c.fx };
+  await patchConfig({ vip: { [key]: clean } });
+  if (crop.kind === 'ball') renderBallImage(); else renderAvatarImage();
+}
+
+(() => {
+  const cv = $('#cropStage');
+  const toCanvas = (e) => { const r = cv.getBoundingClientRect(); return { x: ((e.clientX - r.left) / r.width) * cv.width, y: ((e.clientY - r.top) / r.height) * cv.height, k: cv.width / r.width }; };
+  cv.addEventListener('pointerdown', (e) => {
+    if (e.button !== 0) return;
+    cv.setPointerCapture(e.pointerId);
+    crop.drag = toCanvas(e);
+    cv.classList.add('is-dragging');
+    cropQueue();
+  });
+  cv.addEventListener('pointermove', (e) => {
+    if (!crop.drag) return;
+    const p = toCanvas(e);
+    cropPanBy(p.x - crop.drag.x, p.y - crop.drag.y);
+    crop.drag = p;
+    cropSnap();
+    cropQueue();
+  });
+  const end = () => { crop.drag = null; cv.classList.remove('is-dragging'); cropQueue(); };
+  cv.addEventListener('pointerup', end);
+  cv.addEventListener('pointercancel', end);
+  cv.addEventListener('dblclick', () => { crop.c.x = 0; crop.c.y = 0; crop.snap = true; cropQueue(); });
+  cv.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    if (e.shiftKey || e.altKey) {
+      let r = crop.c.r + (e.deltaY > 0 ? 3 : -3);
+      if (r > 180) r -= 360; if (r < -180) r += 360;
+      // Se pega a los ángulos rectos.
+      for (const q of [-180, -90, 0, 90, 180]) if (Math.abs(r - q) < 2) r = q;
+      crop.c.r = r;
+    } else {
+      const p = toCanvas(e);
+      cropZoomAt(crop.c.z * Math.pow(1.0015, -e.deltaY), p.x, p.y);
+    }
+    cropSnap();
+    cropQueue();
+  }, { passive: false });
+  cv.addEventListener('keydown', (e) => {
+    const step = e.shiftKey ? 40 : 8;
+    const m = { ArrowLeft: [step, 0], ArrowRight: [-step, 0], ArrowUp: [0, step], ArrowDown: [0, -step] }[e.key];
+    if (m) { e.preventDefault(); cropPanBy(-m[0], -m[1]); cropSnap(); cropQueue(); }
+    else if (e.key === '+' || e.key === '=') { cropZoomAt(crop.c.z * 1.1); cropQueue(); }
+    else if (e.key === '-') { cropZoomAt(crop.c.z / 1.1); cropQueue(); }
+    else if (e.key === 'Enter') { e.preventDefault(); $('#cropSave').click(); }
+  });
+  $('#cropZoom').addEventListener('input', (e) => { cropZoomAt(sliderToZ(+e.target.value)); syncRangeFill(e.target); cropQueue(); });
+  $('#cropRot').addEventListener('input', (e) => { let r = +e.target.value; for (const q of [-180, -90, 0, 90, 180]) if (Math.abs(r - q) < 3) r = q; crop.c.r = r; syncRangeFill(e.target); cropQueue(); });
+  $('#cropZoomIn').addEventListener('click', () => { cropZoomAt(crop.c.z * 1.15); cropQueue(); });
+  $('#cropZoomOut').addEventListener('click', () => { cropZoomAt(crop.c.z / 1.15); cropQueue(); });
+  const rot = (d) => { let r = Math.round((crop.c.r + d) / 90) * 90; if (r > 180) r -= 360; if (r < -180) r += 360; crop.c.r = r; cropQueue(); };
+  $('#cropRotL').addEventListener('click', () => rot(-90));
+  $('#cropRotR').addEventListener('click', () => rot(90));
+  $('#cropFill').addEventListener('click', () => { crop.c.z = 1; crop.c.x = 0; crop.c.y = 0; crop.snap = true; cropQueue(); });
+  $('#cropFit').addEventListener('click', () => {
+    const img = crop.img; if (!img) return;
+    const sw = img.naturalWidth || img.width; const sh = img.naturalHeight || img.height;
+    // Entera adentro del círculo: la diagonal tiene que entrar en el diámetro.
+    crop.c.z = Math.max(CROP_ZMIN, Math.min(sw, sh) / Math.hypot(sw, sh));
+    crop.c.x = 0; crop.c.y = 0; crop.snap = true; cropQueue();
+  });
+  $('#cropCenter').addEventListener('click', () => { crop.c.x = 0; crop.c.y = 0; crop.snap = true; cropQueue(); });
+  $('#cropFlip').addEventListener('click', () => { crop.c.fx = !crop.c.fx; cropQueue(); });
+  $('#cropReset').addEventListener('click', async () => { await saveCrop({ ...CROP_DEF, on: false }); closeCrop(); });
+  $('#cropCancel').addEventListener('click', closeCrop);
+  $('#cropClose').addEventListener('click', closeCrop);
+  $('#cropSave').addEventListener('click', async () => { await saveCrop({ ...crop.c, on: true }); closeCrop(); toast(isEn() ? 'Image adjusted' : 'Imagen ajustada', 'ok'); });
+  $('#cropModal').addEventListener('click', (e) => { if (e.target === $('#cropModal')) closeCrop(); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('#cropModal').hidden) { e.preventDefault(); closeCrop(); } });
+})();
+$('#vipCropAvatar').addEventListener('click', () => openCrop('avatar'));
+$('#vipCropBall').addEventListener('click', () => openCrop('ball'));
 // No hace falta recargar el juego: el bundle parcheado pregunta por el sonido
 // propio cada vez que va a reproducir, así que el cambio se nota en el gol
 // siguiente. Ver `patchSounds` en `game-patch.js`.

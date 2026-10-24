@@ -5101,6 +5101,8 @@ function reportRoomInfo(kind) {
  * es lo único que HaxBall transmite.
  */
 let avatarImage = null;
+/** La imagen tal cual se cargó; `avatarImage` es ésta ya recortada (zoom/posición/giro). */
+let avatarRaw = null;
 let avatarImageSrc = '';
 const hookedWindows = new WeakSet();
 
@@ -5119,6 +5121,45 @@ const hookedWindows = new WeakSet();
  * aspecto de la pelota, así que esto lo ve únicamente quien lo puso.
  */
 let ballImage = null;
+let ballRaw = null;
+
+/*
+ * Zoom, posición y giro de la imagen propia (editor «Ajustar imagen» de la app).
+ * Se aplica UNA vez, al cargar o al cambiar el ajuste: se arma un canvas cuadrado
+ * ya recortado y el juego dibuja ése. En la partida no cuesta nada extra.
+ * `x`/`y`: corrimiento del centro, en mitades del ancho/alto de la imagen.
+ */
+function cropOf(kind) {
+  const c = (state.config.vip || {})[kind === 'ball' ? 'ballCrop' : 'avatarCrop'];
+  return c && c.on ? c : null;
+}
+const cropKey = (c) => (c ? [c.z, c.x, c.y, c.r, c.fx ? 1 : 0].join(',') : '');
+function paintCropped(ctx, src, sw, sh, dx, dy, S, c) {
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(dx, dy, S, S);
+  ctx.clip();
+  ctx.translate(dx + S / 2, dy + S / 2);
+  ctx.rotate(((+c.r || 0) * Math.PI) / 180);
+  const k = (Math.min(8, Math.max(0.2, +c.z || 1)) * S) / Math.min(sw, sh);
+  ctx.scale(c.fx ? -k : k, k);
+  ctx.translate(-(sw / 2 + ((+c.x || 0) * sw) / 2), -(sh / 2 + ((+c.y || 0) * sh) / 2));
+  ctx.drawImage(src, 0, 0, sw, sh);
+  ctx.restore();
+}
+function cropped(img, kind, S) {
+  const c = cropOf(kind);
+  if (!img || !c) return img;
+  try {
+    const cv = img.ownerDocument ? img.ownerDocument.createElement('canvas') : document.createElement('canvas');
+    cv.width = S; cv.height = S;
+    paintCropped(cv.getContext('2d'), img, img.naturalWidth || img.width, img.naturalHeight || img.height, 0, 0, S, c);
+    return cv;
+  } catch (err) {
+    log('error', `no se pudo ajustar la imagen: ${err.message}`, 'vip');
+    return img;
+  }
+}
 let ballImageSrc = '';
 
 /**
@@ -5353,6 +5394,7 @@ function loadAvatarImage(view) {
   const file = (state.config.vip && state.config.vip.avatarImage) || '';
   if (!file) {
     avatarImage = null;
+    avatarRaw = null;
     avatarImageSrc = '';
     stopGifAvatar();
     return;
@@ -5372,7 +5414,8 @@ function loadAvatarImage(view) {
   img.crossOrigin = 'anonymous';
   img.onload = () => {
     if (avatarImageSrc !== file) return;
-    avatarImage = img;
+    avatarRaw = img;
+    avatarImage = cropped(img, 'avatar', 128);
     refreshAvatarTexture();
   };
   img.onerror = () => {
@@ -5403,6 +5446,7 @@ function loadBallImage(view) {
   const file = (state.config.vip && state.config.vip.ballImage) || '';
   if (!file) {
     ballImage = null;
+    ballRaw = null;
     ballImageSrc = '';
     stopBallGif();
     return;
@@ -5418,7 +5462,7 @@ function loadBallImage(view) {
   ballImage = null;
   const img = new view.Image();
   img.crossOrigin = 'anonymous';
-  img.onload = () => { if (ballImageSrc === file) ballImage = img; };
+  img.onload = () => { if (ballImageSrc === file) { ballRaw = img; ballImage = cropped(img, 'ball', 256); } };
   img.onerror = () => {
     if (ballImageSrc !== file) return;
     ballImage = null;
@@ -5467,6 +5511,7 @@ function buildBallFrames() {
 
   forgetBallFrames();
 
+  const corte = cropOf('ball');
   const delays = [];
   let sheet = null;
   let sheetCtx = null;
@@ -5491,7 +5536,8 @@ function buildBallFrames() {
     datos.data.set(rgba);
     tmpCtx.putImageData(datos, 0, 0);
     sheetCtx.clearRect(indice * BALL_PX, 0, BALL_PX, BALL_PX);
-    sheetCtx.drawImage(tmp, 0, 0, ancho, alto, indice * BALL_PX, 0, BALL_PX, BALL_PX);
+    if (corte) paintCropped(sheetCtx, tmp, ancho, alto, indice * BALL_PX, 0, BALL_PX, corte);
+    else sheetCtx.drawImage(tmp, 0, 0, ancho, alto, indice * BALL_PX, 0, BALL_PX, BALL_PX);
     delays.push(retardo);
   };
 
@@ -5666,6 +5712,7 @@ function buildGifFrames() {
   gifPatterns = null;
   gifIndex = 0;
 
+  const corte = cropOf('avatar');
   const delays = [];
   let sheet = null;
   let sheetCtx = null;
@@ -5693,7 +5740,8 @@ function buildGifFrames() {
     datos.data.set(rgba);
     tmpCtx.putImageData(datos, 0, 0);
     sheetCtx.clearRect(indice * 64, 0, 64, 64);
-    sheetCtx.drawImage(tmp, 0, 0, ancho, alto, indice * 64, 0, 64, 64);
+    if (corte) paintCropped(sheetCtx, tmp, ancho, alto, indice * 64, 0, 64, corte);
+    else sheetCtx.drawImage(tmp, 0, 0, ancho, alto, indice * 64, 0, 64, 64);
     delays.push(retardo);
   };
 
@@ -12085,6 +12133,8 @@ function boot() {
   ipcRenderer.on('game:config', (_e, config) => {
     const beforeAvatar = JSON.stringify(state.config.avatar || {});
     const beforeImage = (state.config.vip || {}).avatarImage;
+    const beforeCropA = cropKey(cropOf('avatar'));
+    const beforeCropB = cropKey(cropOf('ball'));
     /*
      * El color de la cancha vive DENTRO del cache del estadio, así que cambiarlo
      * no se ve hasta que el cache se rehace — y el cache está justamente hecho
@@ -12125,6 +12175,16 @@ function boot() {
        * cadenas adentro de `loadBallImage`, que corta solo si no cambió nada.
        */
       safe(loadBallImage, doc.defaultView);
+      // Cambió el zoom/posición/giro: se rehace el recorte (y los cuadros del GIF).
+      if (cropKey(cropOf('avatar')) !== beforeCropA && (config.vip || {}).avatarImage === beforeImage) {
+        if (avatarRaw) avatarImage = cropped(avatarRaw, 'avatar', 128);
+        if (gifBytes) safe(buildGifFrames);
+        safe(refreshAvatarTexture);
+      }
+      if (cropKey(cropOf('ball')) !== beforeCropB) {
+        if (ballRaw) ballImage = cropped(ballRaw, 'ball', 256);
+        if (ballGifBytes) safe(buildBallFrames);
+      }
       if (pitchSkinPrint() !== beforeSkin) safe(flushStadiumCache, doc.defaultView);
       // Silenciar a alguien tiene que llevarse también lo que ya había dicho:
       // si no, queda su última frase en pantalla justo después de silenciarlo.
