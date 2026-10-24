@@ -8784,7 +8784,13 @@ async function reconcileTabs() {
     reconciling = false;
   }
 }
-setInterval(reconcileTabs, 1000);
+/* Jugando no hace falta el respaldo cada segundo: una vez cada cinco alcanza (cada consulta es un viaje al proceso principal). */
+let reconcileTick = 0;
+setInterval(() => {
+  if (state.stage === 'game' && (++reconcileTick % 5)) return;
+  reconcileTick = 0;
+  reconcileTabs();
+}, 1000);
 
 const SETTLED = new Set(['roomlist', 'room', 'game', 'disconnected', 'dialog', 'password', 'replay']);
 
