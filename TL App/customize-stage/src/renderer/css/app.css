@@ -6306,3 +6306,70 @@ html[data-roomview="board"] .rtable, html[data-roomview="map"] .rtable { overflo
 
 /* Dentro de la sala la barra no anima el ecualizador: un movimiento continuo menos mientras se juega. */
 #app[data-stage="game"] .eq.is-playing i, #app[data-stage="game"] #audEq i { animation: none !important; transform: scaleY(.6); }
+
+/* ── Panel del admin · Vidrio (pintura estática: sin blur ni animaciones infinitas) ── */
+.cap__card { width: min(1040px, 95vw); height: min(780px, 90vh); border-radius: 24px; border-color: var(--c-line);
+  background: var(--c-bg); box-shadow: 0 30px 90px rgb(0 0 0 / 55%), inset 0 1px 0 rgb(255 255 255 / 7%); }
+.cap__card::before { content: ""; position: absolute; inset: 0; pointer-events: none; border-radius: inherit; background: radial-gradient(520px 260px at 0% 0%, rgb(128 128 128 / 14%), transparent 70%), radial-gradient(420px 240px at 100% 100%, rgb(128 128 128 / 10%), transparent 70%); }
+.cap__card > * { position: relative; }
+html:not([data-animations="off"]) .cap__card { animation: capIn .28s cubic-bezier(.2, .8, .2, 1); }
+@keyframes capIn { from { opacity: 0; transform: translateY(14px) scale(.98); } to { opacity: 1; transform: none; } }
+.cap__head { padding: 20px 26px 10px; }
+.cap__ttl { display: flex; align-items: center; gap: 14px; }
+.cap__logo { width: 42px; height: 42px; display: grid; place-items: center; border-radius: 13px; font-size: 20px; color: var(--c-btn-ink); background: linear-gradient(145deg, var(--c-btn-a), var(--c-btn-b)); box-shadow: 0 6px 18px rgb(0 0 0 / 30%), inset 0 1px 0 rgb(255 255 255 / 40%); }
+.cap__head h2 { font-size: 19px; letter-spacing: .06em; }
+.cap__ttl small { display: block; margin-top: 2px; font-size: 12px; color: var(--c-dim); }
+.cap__x { border-radius: 10px; width: 34px; height: 34px; border: 1px solid var(--c-line); }
+.cap__tabs { gap: 6px; padding: 8px 26px 12px; border-bottom: 0; }
+.cap__tab { padding: 8px 18px; border: 1px solid transparent; border-radius: 999px; font-size: 13px; transition: background .15s, color .15s; }
+.cap__tab:hover { background: rgb(128 128 128 / 14%); }
+.cap__tab.is-on { color: var(--c-btn-ink); border-color: transparent; background: linear-gradient(180deg, var(--c-btn-a), var(--c-btn-b)); box-shadow: 0 4px 14px rgb(0 0 0 / 28%); }
+.cap__body { padding: 6px 26px 26px; gap: 14px; border-top: 1px solid var(--c-line); padding-top: 18px; }
+
+.cap__tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+.cap__tile { display: flex; flex-direction: column; gap: 2px; padding: 14px 16px; border-radius: 16px; border: 1px solid var(--c-line); background: linear-gradient(160deg, rgb(128 128 128 / 14%), rgb(128 128 128 / 5%)); }
+.cap__tile b { font-size: 30px; line-height: 1.05; font-weight: 800; color: var(--c-accent-hi); }
+.cap__tile span { font-size: 12px; color: var(--c-dim); letter-spacing: .04em; }
+.cap__tile small { font-size: 11px; color: var(--c-dim); }
+.cap__tile.is-good b { color: var(--c-good); }
+.cap__tile.is-warn b { color: var(--c-warn); }
+
+.cap__table--cards { border: 0; border-radius: 0; gap: 8px; overflow: visible; }
+.cap__mem { grid-template-columns: 44px minmax(150px, 1fr) 70px auto; gap: 14px; padding: 12px 14px; border: 1px solid var(--c-line); border-radius: 16px; background: rgb(128 128 128 / 7%); }
+.cap__mem:first-child { border-top: 1px solid var(--c-line); }
+.cap__mem:hover { background: rgb(128 128 128 / 13%); border-color: var(--c-accent); }
+.cap__mem.is-online { background: linear-gradient(90deg, rgb(74 222 128 / 9%), rgb(128 128 128 / 6%) 40%); }
+.cap__av { position: relative; width: 42px; height: 42px; display: grid; place-items: center; border-radius: 14px; font-weight: 800; font-size: 17px; color: var(--c-btn-ink); background: linear-gradient(145deg, var(--c-btn-a), var(--c-btn-b)); }
+.cap__av .cap__dot { position: absolute; right: -3px; bottom: -3px; width: 12px; height: 12px; border: 2px solid var(--c-bg); }
+.cap__who { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.cap__name { flex-wrap: wrap; gap: 6px; font-size: 15px; }
+.cap__state { font-size: 12px; }
+.cap__badge { font-style: normal; padding: 1px 8px; border-radius: 999px; font-size: 10.5px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; border: 1px solid var(--c-line); color: var(--c-dim); }
+.cap__badge.is-me { color: var(--c-btn-ink); background: var(--c-accent); border-color: transparent; }
+.cap__badge.is-warn { color: var(--c-warn); border-color: var(--c-warn); }
+.cap__badge.is-soc { color: var(--c-accent-hi); border-color: var(--c-accent); }
+.cap__ver { justify-self: center; padding: 3px 10px; border-radius: 999px; font-size: 12px; background: rgb(128 128 128 / 14%); }
+.cap__ver.is-old { background: rgb(255 184 107 / 16%); }
+.cap__acts { max-width: 400px; }
+.cap__chip.is-on { background: rgb(128 128 128 / 20%); border-color: var(--c-accent); color: var(--c-accent-hi); }
+
+.cap__btn { border-radius: 11px; transition: transform .12s, filter .12s; }
+.cap__btn:not(:disabled):hover { filter: brightness(1.08); transform: translateY(-1px); }
+.cap__btn--ghost { background: rgb(128 128 128 / 8%); }
+.cap__btn--ghost:not(:disabled):hover { border-color: var(--c-accent); }
+.cap__input { border-radius: 11px; padding: 10px 14px; background: var(--c-field); }
+.cap__input:focus { box-shadow: 0 0 0 3px rgb(128 128 128 / 22%); }
+.cap__h { margin: 14px 0 0; font-size: 12px; }
+.cap__sec { display: flex; flex-direction: column; gap: 10px; padding: 16px 18px; border: 1px solid var(--c-line); border-radius: 18px; background: linear-gradient(160deg, rgb(128 128 128 / 11%), rgb(128 128 128 / 4%)); }
+.cap__sec > .cap__h { margin: 0; font-size: 13px; }
+.cap__sec > .cap__btn { align-self: flex-start; }
+.cap__notice, .cap__alert, .cap__brief, .cap__key { border-radius: 16px; }
+.cap__notice { background: rgb(128 128 128 / 7%); align-items: center; }
+.cap__brief { background: linear-gradient(160deg, rgb(128 128 128 / 14%), rgb(128 128 128 / 5%)); }
+.cap__hist { border: 1px solid var(--c-line); border-radius: 12px; margin-bottom: 6px; padding: 9px 12px; background: rgb(128 128 128 / 6%); }
+.cap__mcard { border-radius: 20px; padding: 22px; }
+.cap__row--kv { border: 0; border-top: 1px solid var(--c-line); }
+@media (max-width: 900px) { .cap__tiles { grid-template-columns: repeat(2, 1fr); } .cap__mem { grid-template-columns: 44px 1fr auto; } .cap__acts { grid-column: 1 / -1; justify-content: flex-start; } }
+.cap__ver { white-space: nowrap; }
+.cap__tile { padding: 12px 16px; }
+.cap__tile b { font-size: 26px; }

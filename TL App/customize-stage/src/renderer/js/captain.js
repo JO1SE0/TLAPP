@@ -192,16 +192,27 @@
       att.append(clr);
       root.append(att);
     }
-    root.append(el('p', 'cap__sum', `${members.length} personas · ${online} conectadas · ${old} con versión vieja${latest ? ` (última vista: v${latest})` : ''}`));
+    const tiles = el('div', 'cap__tiles');
+    const tile = (n, label, tone, sub) => { const t = el('div', `cap__tile${tone ? ` is-${tone}` : ''}`); t.append(el('b', null, String(n)), el('span', null, label)); if (sub) t.append(el('small', null, sub)); tiles.append(t); };
+    tile(members.length, 'Personas', '', null);
+    tile(online, 'Conectadas ahora', online ? 'good' : '', null);
+    tile(old, 'Versión vieja', old ? 'warn' : '', latest ? `última: v${latest}` : null);
+    tile(members.filter((m) => !m.lastSeen && !m.self).length, 'Nunca entraron', '', null);
+    root.append(tiles);
 
-    const table = el('div', 'cap__table');
-    const head = el('div', 'cap__row cap__row--head');
-    for (const t of ['Nombre', 'Estado', 'Versión', '']) head.append(el('span', null, t));
-    table.append(head);
+    const table = el('div', 'cap__table cap__table--cards');
     for (const m of members) {
-      const row = el('div', 'cap__row');
+      const row = el('div', `cap__row cap__mem${m.online ? ' is-online' : ''}`);
+      const av = el('span', 'cap__av', (m.name.trim()[0] || '?').toUpperCase());
+      av.append(el('i', `cap__dot${m.online ? ' is-on' : ''}`));
       const name = el('span', 'cap__name');
-      name.append(el('i', `cap__dot${m.online ? ' is-on' : ''}`), document.createTextNode(m.name + (m.self ? ' (vos)' : '') + (m.trial ? ' · PRUEBA' : '')));
+      name.append(document.createTextNode(m.name));
+      const badge = (t, c) => name.append(el('em', `cap__badge${c ? ` is-${c}` : ''}`, t));
+      if (m.self) badge('Vos', 'me');
+      if (m.trial) badge('Prueba', 'warn');
+      if (m.soc || m.ext) badge('Socio', 'soc');
+      if (m.host) badge('Hostea', '');
+      if (m.rep) badge('Informes', '');
       name.classList.add('is-link');
       name.title = 'Ver la ficha';
       name.addEventListener('click', () => { person = m.name; personData = null; paint(); loadPerson(m.name); });
@@ -236,8 +247,10 @@
       soc.type = 'button'; soc.disabled = m.self || busy;
       soc.title = 'Socio: queda aparte del equipo. Nadie lo ve con la insignia ni el recuadro dorado (él sí ve los de los demás y se ve a sí mismo con su recuadro, sin el logo). No suma stats, no se ve conectado y no ve conectados ni el panel Club. Sólo lo ves vos.';
       soc.addEventListener('click', async () => { if (await act({ type: 'setSocio', name: m.name, value: !(m.soc || m.ext) })) flash((m.soc || m.ext) ? `${m.name} ya no es socio.` : `${m.name} quedó catalogado como socio.`); });
+      for (const [b, on] of [[soc, !!(m.soc || m.ext)], [host, !!m.host], [rep, !!m.rep]]) b.classList.add('cap__chip', ...(on ? ['is-on'] : []));
+      const who = el('div', 'cap__who'); who.append(name, state);
       acts.append(soc, host, rep, free, nk, del);
-      row.append(name, state, ver, acts);
+      row.append(av, who, ver, acts);
       table.append(row);
     }
     root.append(table);
@@ -456,9 +469,11 @@
     }
   }
 
-  function tabAcceso(root) {
+  function tabAcceso(page) {
     const doc = data.doc;
-    root.append(el('h3', 'cap__h', 'Lista de acceso'));
+    let root = page;
+    const sec = (title, icon) => { root = el('section', 'cap__sec'); root.append(el('h3', 'cap__h', `${icon}  ${title}`)); page.append(root); };
+    sec('Lista de acceso', '🔐');
     root.append(el('p', 'cap__muted', doc.enabled ? 'ACTIVA: hace falta clave para usar la app.' : 'PAUSADA: entra cualquiera, sin clave.'));
     const tog = el('button', 'cap__btn', doc.enabled ? 'Pausar la lista (abrir a todos)' : 'Activar la lista (exigir clave)');
     tog.type = 'button'; tog.disabled = busy;
@@ -468,7 +483,7 @@
     });
     root.append(tog);
 
-    root.append(el('h3', 'cap__h', 'Actualización obligatoria'));
+    sec('Actualización obligatoria', '⬆');
     root.append(el('p', 'cap__muted', doc.forceUpdate === true
       ? 'ACTIVA: cuando publicás una versión nueva, a todos (menos a vos) les sale un cartel al abrir la app y no pueden usarla hasta actualizar.'
       : 'APAGADA: nadie queda obligado a actualizar (salvo que pongas una versión mínima). Cuando esté activa, el cartel solo sale al abrir la app.'));
@@ -480,7 +495,7 @@
     });
     root.append(force);
 
-    root.append(el('h3', 'cap__h', 'Versión mínima'));
+    sec('Versión mínima', '🏷');
     const latest = latestVersion();
     root.append(el('p', 'cap__muted', `Quien tenga una versión más vieja queda bloqueado hasta actualizar (vos no). Tu versión: v${data.version}${latest ? ` · la más nueva en el plantel: v${latest}` : ''}. ${doc.minVersion ? `Ahora exige: v${doc.minVersion}.` : 'Ahora no se exige ninguna.'}`));
     const form = el('form', 'cap__form');
@@ -540,7 +555,11 @@
     box.dataset.theme = theme;
     const card = el('div', 'cap__card');
     const head = el('div', 'cap__head');
-    head.append(el('h2', null, 'Panel del admin'));
+    const ttl = el('div', 'cap__ttl');
+    ttl.append(el('span', 'cap__logo', '★'));
+    const tt = el('div'); tt.append(el('h2', null, 'Panel del admin'), el('small', null, 'Toda la Lecce · control del plantel'));
+    ttl.append(tt);
+    head.append(ttl);
     const tools = el('div', 'cap__tools');
     const undo = el('button', 'cap__btn cap__btn--ghost cap__btn--sm cap__undo', '↩ Deshacer'); undo.type = 'button'; undo.hidden = true;
     undo.addEventListener('click', async () => {
