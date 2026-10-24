@@ -6615,13 +6615,11 @@ html[lang="en"] .page[data-page="club"] .pod.is-self .pod__name::after { content
     radial-gradient(60% 50% at 50% 46%, rgb(var(--accent-rgb, 123 63 228) / 24%), transparent 70%),
     radial-gradient(120% 80% at 50% 120%, rgb(var(--accent-rgb, 123 63 228) / 12%), transparent 70%);
 }
-/* Cancha dibujada de fondo: círculo central, línea de mitad y franjas de pasto, difuminada hacia los bordes. */
+/* Fondo sin franjas: sólo dos anillos tenues y un resplandor. */
 .splash::before, .startscreen::before {
   content: ""; position: absolute; inset: 0; pointer-events: none;
   background:
-    linear-gradient(90deg, transparent calc(50% - .5px), var(--pitch-line) calc(50% - .5px) calc(50% + .5px), transparent calc(50% + .5px)),
-    repeating-radial-gradient(circle at 50% 46%, transparent 0 139px, var(--pitch-line) 139px 141px, transparent 141px 270px, var(--pitch-line) 270px 271px, transparent 271px 2000px),
-    repeating-linear-gradient(90deg, rgb(var(--text-rgb, 255 255 255) / 2.2%) 0 110px, transparent 110px 220px);
+    repeating-radial-gradient(circle at 50% 46%, transparent 0 139px, var(--pitch-line) 139px 141px, transparent 141px 270px, var(--pitch-line) 270px 271px, transparent 271px 2000px);
   -webkit-mask-image: radial-gradient(70% 70% at 50% 46%, #000 20%, transparent 78%);
   mask-image: radial-gradient(70% 70% at 50% 46%, #000 20%, transparent 78%);
 }
