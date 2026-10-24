@@ -90,6 +90,12 @@ const DEFAULTS = {
     panelWidth: 'normal',
     /** Botones principales: `normal` · `flat` · `shine` · `outline`. */
     btnStyle: 'normal',
+    /** Interruptores: `normal` · `square` · `check` · `thin`. */
+    switchStyle: 'normal',
+    /** Al pasar el mouse por tarjetas y filas: `normal` · `lift` · `glow` · `scale` · `none`. */
+    hoverFx: 'normal',
+    /** Tarjeta de perfil del menú: `normal` · `compact` · `carnet` · `minimal`. */
+    profCard: 'normal',
     // Tamaño de la interfaz: 'auto' (según el monitor) o un porcentaje fijo (60–150).
     uiScale: 'auto',
     /** Estructura de la interfaz: classic | top (barra superior) | dock (dock flotante). */

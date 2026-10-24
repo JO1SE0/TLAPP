@@ -6895,3 +6895,57 @@ html[data-btn="shine"] :is(.btn--primary, .mus__btn--main) {
 }
 html[data-btn="outline"] :is(.btn--primary, .mus__btn--main) { background: rgb(var(--accent-rgb) / 10%) !important; color: var(--accent-text) !important; box-shadow: inset 0 0 0 1.5px var(--accent) !important; }
 html[data-btn="outline"] :is(.btn--primary, .mus__btn--main):hover { background: rgb(var(--accent-rgb) / 20%) !important; }
+
+/* ═══ Interruptores (appearance.switchStyle) ═══ */
+html[data-sw="square"] :is(.switch, .mus__sw i, .mus__tg i) { border-radius: 7px !important; }
+html[data-sw="square"] :is(.switch, .mus__sw i, .mus__tg i)::after { border-radius: 5px !important; }
+html[data-sw="check"] :is(.switch, .mus__sw i, .mus__tg i)::after { content: "" !important; display: grid; place-items: center; font: 900 12px/1 system-ui, sans-serif; color: var(--accent); }
+html[data-sw="check"] :is(.switch.is-on, .mus__sw.is-on i, .mus__tg.is-on i)::after { content: "✓" !important; }
+html[data-sw="thin"] #app :is(.switch, .mus__sw i, .mus__tg i) { width: 42px !important; height: 12px !important; border: 0 !important; overflow: visible; margin: 6px 0; box-shadow: inset 0 1px 2px rgb(0 0 0 / 40%) !important; }
+html[data-sw="thin"] #app :is(.switch, .mus__sw i, .mus__tg i)::after { top: -5px !important; left: -2px !important; width: 22px !important; height: 22px !important; background: #fff !important; box-shadow: 0 2px 6px rgb(0 0 0 / 45%) !important; }
+html[data-sw="thin"] #app :is(.switch.is-on, .mus__sw.is-on i, .mus__tg.is-on i)::after { transform: translateX(24px) !important; box-shadow: 0 0 0 3px rgb(var(--accent-rgb) / 35%), 0 2px 6px rgb(0 0 0 / 45%) !important; }
+
+/* ═══ Al pasar el mouse (appearance.hoverFx) ═══
+   Sólo transform y sombra, y sólo en el menú: en la partida no hay nada de esto. */
+html[data-hover] :is(.rrow, .replay, .mus__row, .mus__sw, .themecard, .laycard, .kpi, .startcard, .csec) { transition: transform .18s var(--ease), box-shadow .18s var(--ease); }
+html[data-animations="off"][data-hover] :is(.rrow, .replay, .mus__row, .mus__sw, .themecard, .laycard, .kpi, .startcard, .csec) { transition: none; }
+html[data-hover="lift"] :is(.rrow, .replay, .mus__row, .mus__sw, .themecard, .laycard, .kpi, .startcard, .csec):hover { transform: translateY(-3px) !important; box-shadow: 0 16px 28px -16px rgb(0 0 0 / 85%) !important; }
+html[data-hover="glow"] :is(.rrow, .replay, .mus__row, .mus__sw, .themecard, .laycard, .kpi, .startcard, .csec):hover { box-shadow: 0 0 0 1px var(--accent), 0 0 24px -6px rgb(var(--accent-rgb) / 70%) !important; }
+html[data-hover="scale"] :is(.rrow, .replay, .mus__row, .mus__sw, .themecard, .laycard, .kpi, .startcard, .csec):hover { transform: scale(1.02) !important; }
+html[data-hover="none"] :is(.rrow, .replay, .mus__row, .mus__sw, .themecard, .laycard, .kpi, .startcard, .csec, .profcard):hover { transform: none !important; }
+
+/* ═══ Tarjeta de perfil (appearance.profCard) — sólo con el menú a la izquierda/derecha ═══ */
+html[data-pc]:not([data-layout="dock"]):not([data-layout="island"]):not([data-layout="mini"]):not([data-layout="top"]):not([data-layout="bottom"]) .profcard { transition: transform .2s var(--ease), box-shadow .2s; }
+/* Compacta: una fila, foto a la izquierda. */
+html[data-pc="compact"]:not([data-layout="dock"]):not([data-layout="island"]):not([data-layout="mini"]):not([data-layout="top"]):not([data-layout="bottom"]) .profcard {
+  flex-direction: row; align-items: center; text-align: left; gap: 10px; padding: 10px 12px;
+  background: linear-gradient(135deg, rgb(var(--accent-rgb) / 16%), rgb(var(--accent-rgb) / 3%)), var(--panel);
+}
+html[data-pc="compact"] .profcard .profcard__stats, html[data-pc="compact"] .profcard .profcard__glow { display: none; }
+html[data-pc="compact"] .profcard .profcard__ring { width: 46px; height: 46px; flex: none; }
+html[data-pc="compact"] .profcard .profcard__ring::before { inset: 2.5px; }
+html[data-pc="compact"] .profcard .profcard__av { width: 38px; height: 38px; font-size: 15px; }
+html[data-pc="compact"] .profcard .profcard__badge { min-width: 17px; height: 17px; font-size: 9px; right: -4px; bottom: -3px; padding: 0 3px; }
+html[data-pc="compact"] .profcard .profcard__info { align-items: flex-start; }
+html[data-pc="compact"] .profcard .profcard__name { font-size: 12px; letter-spacing: .01em; }
+/* Carnet: franja de arriba con el nombre del club, foto cuadrada y código de barras abajo. */
+html[data-pc="carnet"]:not([data-layout="dock"]):not([data-layout="island"]):not([data-layout="mini"]):not([data-layout="top"]):not([data-layout="bottom"]) .profcard {
+  padding: 34px 12px 26px; border-radius: 14px;
+  background:
+    linear-gradient(90deg, var(--accent), var(--accent-2, var(--accent))) top / 100% 24px no-repeat,
+    repeating-linear-gradient(90deg, rgb(var(--text-rgb) / 30%) 0 2px, transparent 2px 4px, rgb(var(--text-rgb) / 30%) 4px 5px, transparent 5px 8px) bottom 8px center / 70% 10px no-repeat,
+    linear-gradient(170deg, rgb(var(--accent-rgb) / 10%), transparent 60%), var(--panel);
+  box-shadow: 0 12px 26px -14px rgb(0 0 0 / 85%), inset 0 0 0 1px rgb(var(--accent-rgb) / 30%);
+}
+html[data-pc="carnet"] .profcard::before {
+  content: "SOCIO · TL"; position: absolute; top: 0; left: 0; right: 0; height: 24px; z-index: 2; white-space: nowrap;
+  display: grid; place-items: center; font: 800 9px/1 var(--font-display); letter-spacing: .22em; color: var(--accent-text-on);
+}
+html[data-pc="carnet"] .profcard .profcard__glow { display: none; }
+html[data-pc="carnet"] .profcard .profcard__ring { border-radius: 14px; background: conic-gradient(var(--accent) calc(var(--p) * 1%), rgb(255 255 255 / 10%) 0); }
+html[data-pc="carnet"] .profcard .profcard__ring::before { border-radius: 11px; }
+html[data-pc="carnet"] .profcard .profcard__av { border-radius: 10px; }
+/* Mínima: sin caja, sólo foto y nombre. */
+html[data-pc="minimal"]:not([data-layout="dock"]):not([data-layout="island"]):not([data-layout="mini"]):not([data-layout="top"]):not([data-layout="bottom"]) .profcard { background: none; box-shadow: none; padding: 8px 10px; }
+html[data-pc="minimal"] .profcard .profcard__glow, html[data-pc="minimal"] .profcard .profcard__stats, html[data-pc="minimal"] .profcard .profcard__bar { display: none; }
+html[data-pc="minimal"] .profcard:hover { box-shadow: none; }

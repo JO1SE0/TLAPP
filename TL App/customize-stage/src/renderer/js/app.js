@@ -876,6 +876,9 @@ function applyConfig(config) {
   applyGlass(config.appearance.glass);
   if (['narrow', 'wide'].includes(config.appearance.panelWidth)) rd.panelw = config.appearance.panelWidth; else delete rd.panelw;
   if (['flat', 'shine', 'outline'].includes(config.appearance.btnStyle)) rd.btn = config.appearance.btnStyle; else delete rd.btn;
+  if (['square', 'check', 'thin'].includes(config.appearance.switchStyle)) rd.sw = config.appearance.switchStyle; else delete rd.sw;
+  if (['lift', 'glow', 'scale', 'none'].includes(config.appearance.hoverFx)) rd.hover = config.appearance.hoverFx; else delete rd.hover;
+  if (['compact', 'carnet', 'minimal'].includes(config.appearance.profCard)) rd.pc = config.appearance.profCard; else delete rd.pc;
   const flag = (k, name) => { if (config.appearance[k] === false) rd[name] = 'off'; else delete rd[name]; };
   flag('crestBreath', 'crestBreath');
   flag('roomCurtain', 'roomCurtain');
@@ -11961,6 +11964,9 @@ function applyGlass(v) {
 /* Ancho de los paneles y estilo de los botones principales: chips simples. */
 const PANEL_WIDTHS = [['narrow', 'Angosto', 'Narrow'], ['normal', 'Normal', 'Normal'], ['wide', 'Ancho', 'Wide']];
 const BTN_STYLES = [['normal', 'Como viene', 'Default'], ['flat', 'Plano', 'Flat'], ['shine', 'Brillante', 'Glossy'], ['outline', 'Contorno', 'Outline']];
+const SW_STYLES = [['normal', 'Como viene', 'Default'], ['square', 'Cuadrados', 'Square'], ['check', 'Con tilde', 'With tick'], ['thin', 'Finitos', 'Thin']];
+const HOVER_FX = [['normal', 'Como viene', 'Default'], ['lift', 'Se elevan', 'Lift'], ['glow', 'Brillan', 'Glow'], ['scale', 'Crecen', 'Grow'], ['none', 'Nada', 'None']];
+const PROF_CARDS = [['normal', 'Como viene', 'Default'], ['compact', 'Compacta', 'Compact'], ['carnet', 'Carnet', 'ID card'], ['minimal', 'Mínima', 'Minimal']];
 function paintChipsInto(host, list, cur, attr) {
   const en = isEn();
   host.replaceChildren(...list.map((d) => {
@@ -11981,7 +11987,18 @@ function paintPanelLook() {
   $('#btnDesc').textContent = en ? 'The main buttons (Play, Save, Enter…).' : 'Los botones principales (Jugar, Guardar, Entrar…).';
   paintChipsInto($('#pwChips'), PANEL_WIDTHS, ap.panelWidth || 'normal', 'pw');
   paintChipsInto($('#btnChips'), BTN_STYLES, ap.btnStyle || 'normal', 'bs');
+  $('#swLabel').textContent = en ? 'Switches' : 'Interruptores';
+  $('#hovLabel').textContent = en ? 'On mouse hover' : 'Al pasar el mouse';
+  $('#hovDesc').textContent = en ? 'Rooms, replays, songs, themes and cards.' : 'Salas, replays, temas de música, temas y tarjetas.';
+  $('#pcLabel').textContent = en ? 'Profile card' : 'Tarjeta de perfil';
+  $('#pcDesc').textContent = en ? 'Your card in the side menu.' : 'Tu tarjeta del menú lateral.';
+  paintChipsInto($('#swChips'), SW_STYLES, ap.switchStyle || 'normal', 'sws');
+  paintChipsInto($('#hovChips'), HOVER_FX, ap.hoverFx || 'normal', 'hov');
+  paintChipsInto($('#pcChips'), PROF_CARDS, ap.profCard || 'normal', 'pcs');
 }
+$('#swChips').addEventListener('click', (e) => { const b = e.target.closest('[data-sws]'); if (b) patchConfig({ appearance: { switchStyle: b.dataset.sws } }).then(paintPanelLook); });
+$('#hovChips').addEventListener('click', (e) => { const b = e.target.closest('[data-hov]'); if (b) patchConfig({ appearance: { hoverFx: b.dataset.hov } }).then(paintPanelLook); });
+$('#pcChips').addEventListener('click', (e) => { const b = e.target.closest('[data-pcs]'); if (b) patchConfig({ appearance: { profCard: b.dataset.pcs } }).then(paintPanelLook); });
 $('#pwChips').addEventListener('click', (e) => { const b = e.target.closest('[data-pw]'); if (b) patchConfig({ appearance: { panelWidth: b.dataset.pw } }).then(paintPanelLook); });
 $('#btnChips').addEventListener('click', (e) => { const b = e.target.closest('[data-bs]'); if (b) patchConfig({ appearance: { btnStyle: b.dataset.bs } }).then(paintPanelLook); });
 

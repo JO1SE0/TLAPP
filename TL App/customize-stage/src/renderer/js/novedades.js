@@ -11,6 +11,7 @@ window.TL_NEWS = {
   title: { es: 'Qué hay de nuevo', en: "What's new" },
   items: {
     es: [
+      'Más estilo en Estilo → Densidad de la interfaz: interruptores (cuadrados, con tilde o finitos), efecto al pasar el mouse (se elevan, brillan o crecen) y tarjeta de perfil (compacta, carnet o mínima).',
       'Ancho de los paneles (angosto, normal o ancho) y estilo de los botones principales (plano, brillante o contorno), en Estilo → Densidad de la interfaz.',
       'Tu imagen de césped (Personalización → Cancha): cualquier imagen como piso, con el editor de zoom/posición/giro. Las líneas quedan encima y no cuesta FPS.',
       'Patrones de corte del césped: además de franjas rectas, diagonales, cuadros, círculos y rombos.',
@@ -98,6 +99,7 @@ window.TL_NEWS = {
       'Cada clave se usa en una sola PC: si cambiás de computadora, pedile a miclo que te la libere.'
     ],
     en: [
+      'More style in Style → Interface density: switches (square, with tick or thin), hover effect (lift, glow or grow) and profile card (compact, ID card or minimal).',
       'Panel width (narrow, normal or wide) and main button style (flat, glossy or outline), in Style → Interface density.',
       'Your own grass image (Customize → Pitch): any picture as the floor, with the zoom/position/rotation editor. Lines stay on top, no FPS cost.',
       'Mowing patterns: besides straight stripes, diagonal, checks, circles and diamonds.',
