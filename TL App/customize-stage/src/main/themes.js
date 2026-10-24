@@ -1511,47 +1511,32 @@ ${scoreboardCss(p, options.scoreboard)}
 .connecting-view-log p { color: ${p.dim} !important; font-size: 12px !important; }
 .spinner > div { background: ${p.accent} !important; }
 
-/* Entrar a una sala (conectando, captcha, desconexión): sin tarjeta. Los textos y el botón flotan
-   sobre la misma cancha de la pantalla de carga. Fondo estático. */
-.connecting-view, .disconnected-view, .simple-dialog-view {
-  background-color: ${p.bg} !important;
-  background-image:
-    linear-gradient(90deg, transparent calc(50% - .5px), ${rgba(p.text, 0.07)} calc(50% - .5px) calc(50% + .5px), transparent calc(50% + .5px)),
-    repeating-radial-gradient(circle at 50% 50%, transparent 0 139px, ${rgba(p.text, 0.07)} 139px 141px, transparent 141px 270px, ${rgba(p.text, 0.07)} 270px 271px, transparent 271px 2000px),
-    repeating-linear-gradient(90deg, ${rgba(p.text, 0.022)} 0 110px, transparent 110px 220px),
-    radial-gradient(60% 50% at 50% 50%, ${rgba(p.accent, 0.22)}, transparent 70%) !important;
-}
-.connecting-view > .dialog, .disconnected-view > .dialog, .simple-dialog-view > .dialog {
-  min-width: 0 !important; width: min(520px, 90vw) !important;
-  padding: 0 !important; border: 0 !important; border-radius: 0 !important;
-  background: none !important; box-shadow: none !important;
-  display: flex !important; flex-direction: column !important; align-items: center !important; gap: 14px; text-align: center;
+/* Entrar a una sala, captcha y crear sala: el fondo de siempre, con los recuadros en estilo iOS
+   (esquinas grandes, tarjeta limpia, botones redondeados). Pintura estática. */
+.connecting-view > .dialog, .disconnected-view > .dialog, .simple-dialog-view > .dialog,
+.view-wrapper > div > .dialog {
+  padding: 22px 24px 20px !important;
+  border-radius: 22px !important;
+  border: 1px solid ${rgba(p.text, 0.1)} !important;
+  background: linear-gradient(180deg, ${rgba(p.text, 0.06)}, ${rgba(p.text, 0.02)}), ${p.panel} !important;
+  box-shadow: 0 24px 60px -24px rgba(0,0,0,.75), 0 1px 0 ${rgba(p.text, 0.12)} inset !important;
 }
 .connecting-view > .dialog > h1, .disconnected-view > .dialog > h1, .simple-dialog-view > .dialog > h1 {
-  font-size: 34px !important; font-weight: 900 !important; letter-spacing: .02em !important; text-transform: uppercase;
-  border: 0 !important; margin: 0 !important; padding: 0 !important;
-  background: linear-gradient(180deg, ${p.text} 30%, ${lighten(p.accent, 0.25)}); -webkit-background-clip: text; background-clip: text; color: transparent !important;
-  filter: drop-shadow(0 4px 14px rgba(0,0,0,.55));
+  margin-bottom: 12px !important;
 }
-.connecting-view > .dialog > h1::before, .disconnected-view > .dialog > h1::before, .simple-dialog-view > .dialog > h1::before { display: none !important; }
-.connecting-view-log { margin: 0 !important; padding: 0 !important; background: none !important; box-shadow: none !important; text-align: center; }
-.connecting-view-log p { margin: 3px 0 !important; font-size: 12.5px !important; font-weight: 700 !important; letter-spacing: .14em; text-transform: uppercase; color: ${p.faint} !important; }
-.connecting-view-log p:last-child { color: ${p.dim} !important; }
-.spinner { margin: 6px auto !important; filter: drop-shadow(0 0 10px ${rgba(p.accent, 0.7)}); transform: scale(1.5); }
-.connecting-view > .dialog button, .disconnected-view > .dialog button, .simple-dialog-view > .dialog button {
-  min-width: 150px; margin-top: 10px !important; padding: 12px 28px !important; border-radius: 99px !important; font-weight: 800 !important; letter-spacing: .04em;
-  background: ${rgba(p.text, 0.07)} !important;
-  box-shadow: 0 0 0 1px ${rgba(p.text, 0.14)} inset, 0 1px 0 ${rgba(p.text, 0.1)} inset !important;
+.spinner { margin: 8px auto !important; }
+.connecting-view > .dialog button, .disconnected-view > .dialog button, .simple-dialog-view > .dialog button,
+.view-wrapper > div > .dialog button {
+  padding: 10px 20px !important; border-radius: 14px !important; font-weight: 700 !important;
+  background: ${rgba(p.text, 0.09)} !important;
+  box-shadow: none !important;
 }
-.connecting-view > .dialog button:hover:not(:disabled), .disconnected-view > .dialog button:hover:not(:disabled), .simple-dialog-view > .dialog button:hover:not(:disabled) {
-  background: ${rgba(p.accent, 0.24)} !important; box-shadow: 0 0 0 1px ${rgba(p.accent, 0.6)} inset !important;
+.connecting-view > .dialog button:hover:not(:disabled), .disconnected-view > .dialog button:hover:not(:disabled), .simple-dialog-view > .dialog button:hover:not(:disabled),
+.view-wrapper > div > .dialog button:hover:not(:disabled) {
+  background: ${rgba(p.accent, 0.26)} !important;
 }
-/* Contraseña, apodo y demás formularios sí llevan tarjeta de vidrio. */
-.view-wrapper > div:not(.connecting-view):not(.disconnected-view):not(.simple-dialog-view) > .dialog {
-  padding: 26px 30px 22px !important; border-radius: 28px !important;
-  border: 1px solid ${rgba(p.accent, 0.34)} !important;
-  background: radial-gradient(110% 60% at 50% 0%, ${rgba(p.accent, 0.22)}, transparent 70%), linear-gradient(168deg, ${rgba(p.text, 0.07)}, ${rgba(p.text, 0.015)}), ${p.panel} !important;
-  box-shadow: 0 40px 90px -36px rgba(0,0,0,.95), 0 1px 0 ${rgba(p.text, 0.14)} inset !important;
+.view-wrapper > div > .dialog input:not([type="range"]), .view-wrapper > div > .dialog select {
+  border-radius: 12px !important; padding: 9px 12px !important;
 }
 /* El captcha de Google queda dentro de una tarjeta clara: se le da su marco redondeado. */
 .view-wrapper .dialog iframe, .view-wrapper .dialog .g-recaptcha { border-radius: 14px !important; overflow: hidden; }
