@@ -2915,9 +2915,11 @@ function myCosmetics() {
   // el cliente del otro y no tiene por qué confiar en lo que le mandan.
   const out = {
     gradient: looks.gradient || null,
-    font: looks.font && looks.font !== 'default' ? looks.font : null
+    font: looks.font && looks.font !== 'default' ? looks.font : null,
+    style: looks.style && looks.style !== 'glass' ? looks.style : null,
+    icon: looks.icon || null
   };
-  return out.gradient || out.font ? out : null;
+  return out.gradient || out.font || out.style || out.icon ? out : null;
 }
 
 /* Plantel en vivo: quién del club tiene la app abierta y dónde. */
@@ -3077,6 +3079,7 @@ handle('admin:do', async (_e, action) => {
 
 let lastPresenceError = '';
 let lastPresenceOk = '';
+let lastLooksIssue = '';
 
 async function beatPresence() {
   const cfg = store.get();
@@ -3108,6 +3111,11 @@ async function beatPresence() {
   }
   lastPresenceError = '';
   {
+    const lp = presence.looksProblem();
+    if (lp && lp !== lastLooksIssue) {
+      lastLooksIssue = lp;
+      try { const f = crashLogPath(); if (f) fs.appendFileSync(f, `[${new Date().toISOString()}] presencia (aspecto): ${lp}\n`, 'utf8'); } catch { /* nada */ }
+    }
     const n = res.peers.filter((p) => !p.self).length;
     const sig = `${roomInfo.room}|${n}`;
     if (sig !== lastPresenceOk) {

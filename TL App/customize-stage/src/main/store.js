@@ -290,7 +290,11 @@ const DEFAULTS = {
     cosmetics: {
       /** Id de uno de los degradados de la lista, o vacío. */
       gradient: '',
-      font: 'default'
+      font: 'default',
+      /** Forma de la fila: glass | solid | outline | neon | bar | minimal. */
+      style: 'glass',
+      /** Un emoji de una lista cerrada que va delante de tu nombre, o vacío. */
+      icon: ''
     },
     /**
      * El cartel de teclas sobre la cancha.

@@ -150,12 +150,19 @@ const DANGER = '#f0525f';
  * @param {{a:string,b:string,text:string}} look
  * @param {{light?:boolean}} [opts]
  */
+function triplet(hex) {
+  const c = parse(hex);
+  return c ? `${c[0]} ${c[1]} ${c[2]}` : '255 255 255';
+}
+
 function peerLook(look, opts = {}) {
   const light = !!opts.light;
   return {
+    '--tvm-a-rgb': triplet(look.a),
+    '--tvm-b-rgb': triplet(look.b),
     '--tvm-vip-bg': `linear-gradient(90deg, ${rgba(look.a, light ? 0.3 : 0.26)} 0%, ${rgba(look.b, light ? 0.14 : 0.12)} 42%, ${rgba(look.b, 0)} 78%)`,
     '--tvm-vip-bg-hi': `linear-gradient(90deg, ${rgba(look.a, light ? 0.42 : 0.38)} 0%, ${rgba(look.b, light ? 0.22 : 0.2)} 50%, ${rgba(look.b, 0.04)} 92%)`,
-    '--tvm-vip-edge': `inset 3px 0 0 ${look.b}, inset 0 0 0 1px ${rgba(look.a, light ? 0.4 : 0.22)}`,
+    '--tvm-vip-edge': `inset 0 0 0 1px ${rgba(look.a, light ? 0.45 : 0.3)}, inset 0 1px 0 rgba(255, 255, 255, ${light ? 0.5 : 0.1})`,
     '--tvm-vip-name': light
       ? `linear-gradient(90deg, ${mix(look.b, '#000000', 0.25)}, ${mix(look.b, '#000000', 0.5)})`
       : `linear-gradient(90deg, ${look.text}, ${look.a})`
@@ -396,7 +403,12 @@ function css(p, opts = {}) {
   align-items: center;
   gap: 5px;
   margin: 0 8px 0 6px;
+  padding: 2px 7px;
+  border-radius: 99px;
+  background: ${rgba(p.text, light ? 0.07 : 0.08)};
+  box-shadow: inset 0 0 0 1px ${rgba(p.text, light ? 0.1 : 0.09)};
 }
+.player-list-item .tvm-marks:empty { display: none; }
 .player-list-item .tvm-mark { flex: none; display: block; width: 16px; height: 16px; }
 .player-list-item .tvm-mark[hidden] { display: none; }
 /* El escudo del club ya incluye un borde dorado. La sombra corta lo despega
@@ -418,16 +430,15 @@ function css(p, opts = {}) {
   filter: drop-shadow(0 1px 1px rgba(0, 0, 0, .45));
 }
 
-/* ── La fila de un VIP ─────────────────────────────────────────
-   Los colores llegan por variables desde la fila (ver peerLook): acá va la
-   forma. La especificidad es alta y lleva !important porque los temas pintan
-   el hover de todas las filas con un fondo !important, que se comía el aura
-   justo cuando uno pasaba el mouse. */
+/* ── La fila personalizada / del club — estilo Vidrio, igual que el lobby ──
+   Los colores llegan por variables desde la fila (ver applyPeerLook): acá va
+   la forma. Va con !important porque los temas pintan el hover de todas las
+   filas con un fondo !important. Sin animaciones: es una sala, no un escenario. */
 .room-view .player-list-item.tvm-peer-row,
 .player-list-item.tvm-peer-row {
   overflow: hidden;
-  border-radius: 4px !important;
-  padding-left: 9px !important;
+  border-radius: 12px !important;
+  padding-left: 10px !important;
   background: var(--tvm-vip-bg) !important;
   box-shadow: var(--tvm-vip-edge) !important;
 }
@@ -446,20 +457,41 @@ function css(p, opts = {}) {
   -webkit-text-fill-color: transparent;
   text-shadow: none !important;
 }
-${animations ? `/* Un reflejo que cruza la fila cada tanto. Sólo transform: lo mueve el
-   compositor, y la sala ni siquiera está a la vista mientras se juega. */
-.player-list-item.tvm-peer-row::after {
-  content: "";
-  position: absolute; top: 0; bottom: 0; left: 0; width: 60%;
-  background: linear-gradient(100deg, rgba(255, 255, 255, 0) 20%, rgba(255, 255, 255, ${light ? 0.35 : 0.1}) 50%, rgba(255, 255, 255, 0) 80%);
-  transform: translateX(-120%);
-  animation: tvmVipSheen 7s ease-in-out infinite;
-  pointer-events: none;
+/* Ícono elegido por la persona, delante de la bandera. */
+.player-list-item.tvm-peer-row[data-tvm-icon]::before {
+  content: attr(data-tvm-icon);
+  flex: none;
+  margin-right: 6px;
+  font-size: 13px;
+  line-height: 1;
 }
-@keyframes tvmVipSheen {
-  0%, 70% { transform: translateX(-120%); }
-  90%, 100% { transform: translateX(220%); }
-}` : ''}
+/* Formas de la fila (las elige cada uno en Personalización). */
+.room-view .player-list-item.tvm-peer-row[data-tvm-style="solid"] {
+  background: linear-gradient(90deg, rgb(var(--tvm-a-rgb) / 52%), rgb(var(--tvm-b-rgb) / 38%)) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .2) !important;
+}
+.room-view .player-list-item.tvm-peer-row[data-tvm-style="outline"] {
+  background: rgb(var(--tvm-a-rgb) / 5%) !important;
+  box-shadow: inset 0 0 0 1.5px rgb(var(--tvm-b-rgb) / 85%) !important;
+}
+.room-view .player-list-item.tvm-peer-row[data-tvm-style="neon"] {
+  background: rgb(var(--tvm-b-rgb) / 10%) !important;
+  box-shadow: inset 0 0 0 1px rgb(var(--tvm-a-rgb) / 90%), 0 0 10px rgb(var(--tvm-b-rgb) / 55%) !important;
+  overflow: visible;
+}
+.room-view .player-list-item.tvm-peer-row[data-tvm-style="bar"] {
+  border-radius: 4px !important;
+  box-shadow: inset 3px 0 0 rgb(var(--tvm-b-rgb)), inset 0 0 0 1px rgb(var(--tvm-a-rgb) / 24%) !important;
+}
+.room-view .player-list-item.tvm-peer-row[data-tvm-style="minimal"] {
+  background: transparent !important;
+  box-shadow: none !important;
+}
+.room-view .player-list-item.tvm-peer-row[data-tvm-style="minimal"]:hover { background: rgb(var(--tvm-a-rgb) / 12%) !important; }
+.room-view .player-list-item.tvm-peer-row[data-tvm-style="solid"]:hover,
+.room-view .player-list-item.tvm-peer-row[data-tvm-style="outline"]:hover,
+.room-view .player-list-item.tvm-peer-row[data-tvm-style="neon"]:hover,
+.room-view .player-list-item.tvm-peer-row[data-tvm-style="bar"]:hover { filter: brightness(1.12); }
 `;
 }
 

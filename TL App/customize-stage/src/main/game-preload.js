@@ -4752,7 +4752,10 @@ function auraStyle(look) {
 }
 
 /** Las variables que puede dejar puestas `applyPeerLook`, para poder sacarlas. */
-const PEER_LOOK_VARS = ['--tvm-vip-bg', '--tvm-vip-bg-hi', '--tvm-vip-edge', '--tvm-vip-name'];
+const PEER_LOOK_VARS = ['--tvm-vip-bg', '--tvm-vip-bg-hi', '--tvm-vip-edge', '--tvm-vip-name', '--tvm-a-rgb', '--tvm-b-rgb'];
+/** Listas cerradas de lo que se puede elegir para la fila (se validan igual en presence.js). */
+const PEER_STYLES = new Set(['glass', 'solid', 'outline', 'neon', 'bar', 'minimal']);
+const PEER_ICONS = new Set(['⚡', '🔥', '👑', '⭐', '🎯', '🧤', '🐐', '🦁', '🐺', '🚀', '💀', '🍀']);
 
 let selfClub = null;
 
@@ -4858,7 +4861,6 @@ function paintPeers(doc) {
       continue;
     }
 
-    marks.vip.hidden = !peer.vip;
     // Un socio se ve con su recuadro, pero sin el logo de TL.
     marks.logo.hidden = !!peer.noLogo;
     marks.logo.style.display = peer.noLogo ? 'none' : '';
@@ -4879,6 +4881,8 @@ function paintPeers(doc) {
      * sentido que lo trajera.
      */
     marks.friend.hidden = !peer.friend;
+    const box = row.querySelector('.tvm-marks');
+    if (box) box.style.display = (marks.logo.hidden && marks.friend.hidden) ? 'none' : '';
     applyPeerLook(row, name, peer.cosmetics);
   }
 }
@@ -4923,9 +4927,10 @@ function ensureMarks(doc, row, wanted) {
    * solo si el PNG no cargó (ver `logoMark`), y colgarse de un elemento que
    * puede no estar en el árbol dejaría la marca de amigo sin dibujar.
    */
-  if (!vip) box.append(vip = vipMark(doc));
-  if (!friend) box.insertBefore(friend = friendMark(doc), vip);
-  return { logo, vip, friend };
+  // El diamante del VIP de la app vieja ya no existe: se limpia si quedó de antes.
+  if (vip) vip.remove();
+  if (!friend) box.append(friend = friendMark(doc));
+  return { logo, friend };
 }
 
 /** El escudo del club, servido por el proceso principal (la página es https). */
@@ -5015,6 +5020,10 @@ function applyPeerLook(row, name, looks) {
   }
   // Lo que ponía la receta anterior en línea. Se limpia por si la fila viene
   // de una pasada de antes de la actualización.
+  const style = look && looks.style && PEER_STYLES.has(looks.style) && looks.style !== 'glass' ? looks.style : '';
+  const icon = look && looks.icon && PEER_ICONS.has(looks.icon) ? looks.icon : '';
+  if (style) row.dataset.tvmStyle = style; else delete row.dataset.tvmStyle;
+  if (icon) row.dataset.tvmIcon = icon; else delete row.dataset.tvmIcon;
   row.style.backgroundImage = '';
   row.style.boxShadow = '';
   row.style.color = look ? look.text : '';

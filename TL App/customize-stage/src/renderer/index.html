@@ -1380,9 +1380,6 @@
                     <span class="looksdemo__name" id="vipLookName">TuNombre</span>
                     <span class="looksdemo__marks">
                       <img class="looksdemo__logo" src="../../assets/toda-la-lecce.png" alt="" />
-                      <!-- El mismo dibujo que inyecta el juego (VIP_GEM_SVG en room-ui.js):
-                           si se cambia acá, hay que cambiarlo allá. -->
-                      <svg class="looksdemo__gem" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4 2 9h7.5z" fill="#95e6fc"/><path d="M7 4h10l-2.5 5h-5z" fill="#dcfaff"/><path d="M17 4l5 5h-7.5z" fill="#62ccf2"/><path d="M2 9h7.5L12 21z" fill="#3dbdf3"/><path d="M9.5 9h5L12 21z" fill="#1c9fd9"/><path d="M14.5 9H22L12 21z" fill="#0a7fb9"/><path d="M7 4h10l5 5-10 12L2 9z" fill="none" stroke="#062a3e" stroke-width="1.4" stroke-linejoin="round"/></svg>
                     </span>
                     <span class="looksdemo__ping">12</span>
                   </div>
@@ -1401,6 +1398,31 @@
                     <option value="impact">Impact</option>
                   </select>
                   <button class="btn btn--ghost btn--sm" id="vipLookClear" data-i18n="vip.clear"><svg data-icon viewBox="0 0 24 24"><path d="M6.4 6.4l11.2 11.2M17.6 6.4 6.4 17.6"/></svg>Quitar</button>
+                </div>
+              </div>
+              <div class="row">
+                <div class="row__text"><span class="row__label">Forma de la fila</span></div>
+                <div class="row__ctl">
+                  <select id="vipLookStyle">
+                    <option value="glass">Vidrio (como el lobby)</option>
+                    <option value="solid">Sólida</option>
+                    <option value="outline">Contorno</option>
+                    <option value="neon">Neón</option>
+                    <option value="bar">Barra lateral</option>
+                    <option value="minimal">Mínima</option>
+                  </select>
+                </div>
+              </div>
+              <div class="row">
+                <div class="row__text"><span class="row__label">Ícono delante del nombre</span></div>
+                <div class="row__ctl">
+                  <select id="vipLookIcon">
+                    <option value="">Sin ícono</option>
+                    <option value="⚡">⚡ Rayo</option><option value="🔥">🔥 Fuego</option><option value="👑">👑 Corona</option>
+                    <option value="⭐">⭐ Estrella</option><option value="🎯">🎯 Diana</option><option value="🧤">🧤 Guantes</option>
+                    <option value="🐐">🐐 Cabra</option><option value="🦁">🦁 León</option><option value="🐺">🐺 Lobo</option>
+                    <option value="🚀">🚀 Cohete</option><option value="💀">💀 Calavera</option><option value="🍀">🍀 Trébol</option>
+                  </select>
                 </div>
               </div>
             </div>
@@ -1943,7 +1965,6 @@
             <span class="looksdemo__name" id="profileLookName">TuNombre</span>
             <span class="looksdemo__marks">
               <img class="looksdemo__logo" src="../../assets/toda-la-lecce.png" alt="" />
-              <svg class="looksdemo__gem" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4 2 9h7.5z" fill="#95e6fc"/><path d="M7 4h10l-2.5 5h-5z" fill="#dcfaff"/><path d="M17 4l5 5h-7.5z" fill="#62ccf2"/><path d="M2 9h7.5L12 21z" fill="#3dbdf3"/><path d="M9.5 9h5L12 21z" fill="#1c9fd9"/><path d="M14.5 9H22L12 21z" fill="#0a7fb9"/><path d="M7 4h10l5 5-10 12L2 9z" fill="none" stroke="#062a3e" stroke-width="1.4" stroke-linejoin="round"/></svg>
             </span>
             <span class="looksdemo__ping">12</span>
           </div>

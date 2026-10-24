@@ -28,6 +28,8 @@ let why = '';
 const seen = new Map(); // `${fp}|${pid}` → { t, at }
 let lastFp = null;
 let noLooks = false;
+let noLooksUntil = 0;
+let looksIssue = '';
 let me = null; // { key, id } para no derivar de nuevo en cada latido
 
 /** La dirección sólo vale si es https y de Firebase: viene de un archivo público. */
@@ -72,6 +74,13 @@ const signedText = (fp, nick, t) => `${fp}|${nick}|${t}`;
 const GRADIENTS = new Set(['violeta', 'oceano', 'esmeralda', 'fuego', 'rubi', 'rosa', 'oro', 'medianoche']);
 const FONTS = new Set(['outfit', 'mono', 'serif', 'round', 'impact']);
 const looksText = (fp, nick, t, g, f) => `${fp}|${nick}|${t}|${g}|${f}`;
+/* Forma de la fila y ícono: otra firma aparte (`xs`) para no romper a las versiones que sólo conocen `cs`. */
+const STYLES = new Set(['glass', 'solid', 'outline', 'neon', 'bar', 'minimal']);
+const ICONS = new Set(['⚡', '🔥', '👑', '⭐', '🎯', '🧤', '🐐', '🦁', '🐺', '🚀', '💀', '🍀']);
+const looksText2 = (fp, nick, t, y, i) => `looks2|${fp}|${nick}|${t}|${y}|${i}`;
+function cleanLooks2(c) {
+  return { y: c && STYLES.has(c.y) && c.y !== 'glass' ? c.y : '', i: c && ICONS.has(c.i) ? c.i : '' };
+}
 function cleanLooks(c) {
   const g = c && GRADIENTS.has(c.g) ? c.g : '';
   const f = c && FONTS.has(c.f) ? c.f : '';
@@ -110,20 +119,28 @@ async function beat(ctx) {
   const t = Date.now();
   const nick = String(ctx.nick).slice(0, 40);
   const mine = cleanLooks({ g: ctx.cosmetics && ctx.cosmetics.gradient, f: ctx.cosmetics && ctx.cosmetics.font });
+  const mine2 = cleanLooks2({ y: ctx.cosmetics && ctx.cosmetics.style, i: ctx.cosmetics && ctx.cosmetics.icon });
   if (iAmSocio) {
     call(`${base}/rooms/${ctx.fp}/${id.pid}.json`, 'DELETE').catch(() => {});
   } else {
     const slot = { n: nick, t, s: id.sign(signedText(ctx.fp, nick, t)) };
-    const withLooks = !noLooks && (mine.g || mine.f);
-    if (withLooks) { slot.c = mine; slot.cs = id.sign(looksText(ctx.fp, nick, t, mine.g, mine.f)); }
+    if (noLooks && Date.now() > noLooksUntil) noLooks = false; // se vuelve a probar cada tanto
+    const withLooks = !noLooks && (mine.g || mine.f || mine2.y || mine2.i);
+    if (withLooks) {
+      slot.c = mine; slot.cs = id.sign(looksText(ctx.fp, nick, t, mine.g, mine.f));
+      if (mine2.y || mine2.i) { slot.x = mine2; slot.xs = id.sign(looksText2(ctx.fp, nick, t, mine2.y, mine2.i)); }
+    }
     try {
       await call(`${base}/rooms/${ctx.fp}/${id.pid}.json`, 'PUT', slot);
+      if (withLooks) looksIssue = '';
     } catch (err) {
-      // Si las reglas de la base no dejan campos extra, se vuelve al casillero de
-      // siempre (sin aspecto) y no se insiste: la insignia es lo importante.
       if (!withLooks) throw err;
-      noLooks = true;
+      // Primero se prueba el casillero simple. Si TAMBIÉN falla, fue la red (no las reglas) y se reintenta
+      // en el próximo latido con el aspecto; sólo si el simple pasa se concluye que la base rechaza los campos extra.
       await call(`${base}/rooms/${ctx.fp}/${id.pid}.json`, 'PUT', { n: nick, t, s: slot.s });
+      noLooks = true;
+      noLooksUntil = Date.now() + 10 * 60000;
+      looksIssue = `la base rechazó el aspecto de la fila (${String(err && err.message).slice(0, 80)}): los demás no lo van a ver hasta que las reglas permitan los campos c, cs, x y xs`;
     }
   }
   const room = (await call(`${base}/rooms/${ctx.fp}.json`, 'GET')) || {};
@@ -155,6 +172,12 @@ async function beat(ctx) {
       const c = cleanLooks(entry.c);
       if (identity.verify(member.pub, looksText(ctx.fp, entry.n, entry.t, c.g, c.f), entry.cs)) {
         look = { gradient: c.g || 'oro', font: c.f || null };
+        if (entry.x && typeof entry.x === 'object' && typeof entry.xs === 'string') {
+          const c2 = cleanLooks2(entry.x);
+          if (identity.verify(member.pub, looksText2(ctx.fp, entry.n, entry.t, c2.y, c2.i), entry.xs)) {
+            look.style = c2.y || null; look.icon = c2.i || null;
+          }
+        }
       }
     }
     peers.push({ nick: entry.n, name: member.name, vip: false, cosmetics: look });
@@ -168,6 +191,9 @@ async function beat(ctx) {
   else if (!(selfEntry && selfEntry.trial)) peers.push({ nick, self: true, name: ctx.selfName || '', vip: false, cosmetics: { gradient: 'oro' } });
   return { everyMs: EVERY_MS, peers };
 }
+
+/** Por qué el aspecto no viaja (vacío = todo bien). */
+const looksProblem = () => looksIssue;
 
 /** Al cerrar la app: retira el casillero de la sala actual (si falla, vence solo). */
 function leave(ctx) {
@@ -319,4 +345,4 @@ async function readStats(ctx) {
   return out;
 }
 
-module.exports = { putStats, readStats, call, online, leaveOnline, why: () => why, leave, beat, cleanUrl, signedText, EVERY_MS, ALIVE_MS };
+module.exports = { looksProblem, putStats, readStats, call, online, leaveOnline, why: () => why, leave, beat, cleanUrl, signedText, EVERY_MS, ALIVE_MS };

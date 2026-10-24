@@ -5548,6 +5548,11 @@ const LOOK_GRADIENTS = {
   medianoche: { label: 'Medianoche', a: '#94a3b8', b: '#475569', text: '#dbe3ec' }
 };
 
+function rgbTriplet(hex) {
+  const n = parseInt(String(hex).slice(1), 16);
+  return `${(n >> 16) & 255} ${(n >> 8) & 255} ${n & 255}`;
+}
+
 /** '#rrggbb' → 'rgba(r, g, b, alpha)'. */
 function rgbaOf(hex, alpha) {
   const n = parseInt(String(hex).slice(1), 16);
@@ -5566,8 +5571,10 @@ function auraOf(look) {
   return {
     '--tvm-vip-bg': `linear-gradient(90deg, ${rgbaOf(look.a, 0.26)} 0%, ${rgbaOf(look.b, 0.12)} 42%, ${rgbaOf(look.b, 0)} 78%)`,
     '--tvm-vip-bg-hi': `linear-gradient(90deg, ${rgbaOf(look.a, 0.38)} 0%, ${rgbaOf(look.b, 0.2)} 50%, ${rgbaOf(look.b, 0.04)} 92%)`,
-    '--tvm-vip-edge': `inset 3px 0 0 ${look.b}, inset 0 0 0 1px ${rgbaOf(look.a, 0.22)}`,
-    '--tvm-vip-name': `linear-gradient(90deg, ${look.text}, ${look.a})`
+    '--tvm-vip-edge': `inset 0 0 0 1px ${rgbaOf(look.a, 0.3)}, inset 0 1px 0 rgba(255, 255, 255, 0.1)`,
+    '--tvm-vip-name': `linear-gradient(90deg, ${look.text}, ${look.a})`,
+    '--tvm-a-rgb': rgbTriplet(look.a),
+    '--tvm-b-rgb': rgbTriplet(look.b)
   };
 }
 
@@ -5588,7 +5595,7 @@ function looksOf() {
  */
 const VIP_LOOK_IDS = {
   demo: '#vipLookPreview', name: '#vipLookName',
-  font: '#vipLookFont', gradients: '#vipGradients'
+  font: '#vipLookFont', gradients: '#vipGradients', style: '#vipLookStyle', icon: '#vipLookIcon'
 };
 const PROFILE_LOOK_IDS = {
   demo: '#profileLookPreview', name: '#profileLookName',
@@ -5608,12 +5615,16 @@ function paintLooks(ids, looks, { editable = true, name } = {}) {
   const look = LOOK_GRADIENTS[looks.gradient];
   const aura = look ? auraOf(look) : null;
   const demo = $(ids.demo);
-  for (const key of ['--tvm-vip-bg', '--tvm-vip-bg-hi', '--tvm-vip-edge', '--tvm-vip-name']) {
+  for (const key of ['--tvm-vip-bg', '--tvm-vip-bg-hi', '--tvm-vip-edge', '--tvm-vip-name', '--tvm-a-rgb', '--tvm-b-rgb']) {
     if (aura) demo.style.setProperty(key, aura[key]);
     else demo.style.removeProperty(key);
   }
   demo.style.color = look ? look.text : '';
   demo.classList.toggle('is-on', !!look);
+  if (looks.style && looks.style !== 'glass') demo.dataset.tvmStyle = looks.style; else delete demo.dataset.tvmStyle;
+  if (looks.icon) demo.dataset.tvmIcon = looks.icon; else delete demo.dataset.tvmIcon;
+  if (ids.style && $(ids.style)) $(ids.style).value = looks.style || 'glass';
+  if (ids.icon && $(ids.icon)) $(ids.icon).value = looks.icon || '';
   $(ids.name).textContent = name;
   $(ids.name).style.fontFamily = LOOK_FONTS[looks.font] || '';
 
@@ -5665,7 +5676,9 @@ async function saveLooks(patch) {
 }
 
 $('#vipLookFont').addEventListener('change', (e) => saveLooks({ font: e.target.value }));
-$('#vipLookClear').addEventListener('click', () => saveLooks({ gradient: '', font: 'default' }));
+$('#vipLookStyle').addEventListener('change', (e) => saveLooks({ style: e.target.value }));
+$('#vipLookIcon').addEventListener('change', (e) => saveLooks({ icon: e.target.value }));
+$('#vipLookClear').addEventListener('click', () => saveLooks({ gradient: '', font: 'default', style: 'glass', icon: '' }));
 
 function renderVipAssets() {
   const vipCfg = state.config.vip || {};
@@ -6848,18 +6861,8 @@ function statusDot(online) {
  * escaso al lado del nombre.
  */
 function vipGem() {
-  const gem = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-  gem.setAttribute('viewBox', '0 0 24 24');
-  gem.setAttribute('class', 'friend__gem');
-  gem.innerHTML =
-    '<path d="M7 4 2 9h7.5z" fill="#95e6fc"/><path d="M7 4h10l-2.5 5h-5z" fill="#dcfaff"/>' +
-    '<path d="M17 4l5 5h-7.5z" fill="#62ccf2"/><path d="M2 9h7.5L12 21z" fill="#3dbdf3"/>' +
-    '<path d="M9.5 9h5L12 21z" fill="#1c9fd9"/><path d="M14.5 9H22L12 21z" fill="#0a7fb9"/>' +
-    '<path d="M7 4h10l5 5-10 12L2 9z" fill="none" stroke="#062a3e" stroke-width="1.4" stroke-linejoin="round"/>';
-  const title = document.createElementNS('http://www.w3.org/2000/svg', 'title');
-  title.textContent = 'VIP';
-  gem.prepend(title);
-  return gem;
+  // La app ya no tiene VIP: no se dibuja ningún diamante.
+  return document.createTextNode('');
 }
 
 /*
