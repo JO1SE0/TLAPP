@@ -689,10 +689,6 @@ function applyClientStyles(doc) {
   style.textContent = `
     ${hudCss}
     ${fullBarCss}
-    /* El chat se desplaza en su propia capa: con el fondo transparente Chromium
-       no lo podía mover por GPU y repintaba cada mensaje (con sus sombras) en
-       cada paso de la rueda. */
-    .chatbox-view .chatbox-view-contents > .log { will-change: transform; }
     .tvm-link {
       color: ${p.blue} !important;
       text-decoration: underline;

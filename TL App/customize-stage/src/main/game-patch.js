@@ -355,8 +355,6 @@ var c0x = 0, c0y = 0, c1x = 0, c1y = 0, cZoom = 1;
 /* Tamaño y zoom del cuadro anterior: para detectar ráfagas de cambios. */
 var frameW = 0, frameH = 0, frameZoom = 0, lastSizeChange = -1e9;
 var BURST_MS = 160;
-/* Presupuesto del cache que cubre la cancha entera: lado y píxeles máximos. */
-var MAX_SIDE = 6144, MAX_PX = 10e6;
 var flush = false, broken = false;
 
 /* Estadística, leíble desde afuera con window.__tvmStadiumStats. */
@@ -559,20 +557,13 @@ window.__tvmStadium = function (self, cvKey, camKey, zoom, topPad, botPad, lineW
         if (!ctx) { broken = true; draw(self, stadium); return; }
       }
 
-      /* Qué cubre el cache. Si entra en el presupuesto, la cancha ENTERA más lo
-         que se ve: así mover la cámara no lo invalida nunca. Si no entra (mapa
-         gigante con mucho zoom), lo que se ve más un margen generoso. */
-      var m = Math.max(PAD, 0.25 * Math.max(vw, vh)) / zoom;
+      /* Qué cubre el cache: lo que se ve más PAD píxeles de cada lado, del mismo
+         tamaño que en la v1.0.57. Se probó cubrir la cancha entera para no
+         rearmar nunca al mover la cámara, pero eso deja en la placa una textura
+         de hasta 10 MP que se copia en CADA cuadro y bajó los FPS (700 → 400
+         medidos por Jefe en «Equilibrado»). Rearmar cada tanto es más barato. */
+      var m = PAD / zoom;
       var r0x = vx0 - m, r1x = vx1 + m, r0y = vy0 - m, r1y = vy1 + m;
-      var box = null;
-      if (window.__tvmFieldBox) { try { box = window.__tvmFieldBox(stadium); } catch (e7) { box = null; } }
-      if (box && box.halfW > 0 && box.halfH > 0) {
-        var hx = Math.max(cx, vw - cx) / zoom + m, hy = Math.max(cy, vh - cy) / zoom + m;
-        var f0x = Math.min(r0x, -box.halfW - hx), f1x = Math.max(r1x, box.halfW + hx);
-        var f0y = Math.min(r0y, -box.halfH - hy), f1y = Math.max(r1y, box.halfH + hy);
-        var fw = (f1x - f0x) * zoom, fh = (f1y - f0y) * zoom;
-        if (fw <= MAX_SIDE && fh <= MAX_SIDE && fw * fh <= MAX_PX) { r0x = f0x; r1x = f1x; r0y = f0y; r1y = f1y; }
-      }
       /* Alineado al píxel con la cámara de ahora: recién armado, se copia sin
          remuestrear (nítido). */
       r0x = ex - Math.ceil((ex - r0x) * zoom) / zoom;
@@ -1695,8 +1686,11 @@ const KEEP = 4;
  *     confirmada y no sobre la copia extrapolada que se dibuja (ver SOUND_SITE).
  * 23: `__tvmRoomLink` publica el código de la sala al entrar o al hostear, así
  *     los clientes se reconocen aunque hayan entrado desde la lista de salas.
+ * 24-26: camisetas de los equipos y cache de la cancha nuevo.
+ * 27: el cache de la cancha vuelve al tamaño de la pantalla + margen (el de la
+ *     cancha entera bajaba los FPS).
  */
-const PATCH_VERSION = 26;
+const PATCH_VERSION = 27;
 
 /** El idioma es parte de la clave: el mismo bundle parchea distinto en cada uno. */
 function keyOf(url, lang) {
