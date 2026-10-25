@@ -11,6 +11,7 @@ window.TL_NEWS = {
   title: { es: 'Qué hay de nuevo', en: "What's new" },
   items: {
     es: [
+      'Menos trabajo por cuadro: los efectos del gol ya no quedan como una capa invisible de pantalla entera encima de la cancha después del festejo.',
       'FPS: el cache de la cancha vuelve al tamaño de la pantalla (el de la cancha entera bajaba los FPS) y el chat deja de ir en capa aparte.',
       'Optimización: la cancha guardada ya no se rearma al mover la cámara ni al arrastrar, ocultar o mostrar el chat, F11 o el zoom (menos tirones y FPS más parejos).',
       'Optimización: el techo de FPS ahora se cumple exacto (antes 144 daba ~54 reales) y con cuadros parejos, también en notebooks con batería.',
@@ -112,6 +113,7 @@ window.TL_NEWS = {
       'Cada clave se usa en una sola PC: si cambiás de computadora, pedile a miclo que te la libere.'
     ],
     en: [
+      'Less work per frame: goal effects no longer stay as an invisible full-screen layer over the pitch after the celebration.',
       'FPS: the pitch cache is back to screen size (the whole-pitch one lowered FPS) and the chat no longer uses its own layer.',
       'Optimization: the cached pitch is no longer rebuilt when the camera moves or when you drag/hide/show the chat, press F11 or zoom (fewer hitches, steadier FPS).',
       'Optimization: the FPS cap is now exact (144 used to give ~54) with even frame times, also on laptops on battery.',

@@ -8466,6 +8466,10 @@ function ensurePitchFxStyle(doc) {
       contain: layout style paint;
     }
     #tvm-goal-flash.is-on { opacity: 1; }
+    /* Fuera del gol no existe para el compositor: una capa transparente de
+       pantalla entera encima del canvas le impide al navegador mandar la cancha
+       derecho a la pantalla, y eso suma un paso de composición en cada cuadro. */
+    #tvm-goal-flash:not(.is-on), #tvm-goal-edge:not(.is-on) { display: none; }
     #tvm-goal-flash > * { position: absolute; left: 50%; top: 50%; opacity: 0; }
     @keyframes tvmGoalVeil {
       0%   { opacity: 0; }
@@ -8594,6 +8598,9 @@ function goalEdgeFx(doc) {
   const color = fresh && lastGoal.team === 'Red' ? '#e56e56' : fresh && lastGoal.team === 'Blue' ? '#5689e5' : '#d0b878';
   el.style.setProperty('--tvm-edge', color);
   restartFx(el, 'is-on');
+  // Al terminar se saca la clase: así vuelve a display:none y no queda una capa
+  // transparente de pantalla entera encima de la cancha hasta el próximo gol.
+  el.addEventListener('animationend', () => el.classList.remove('is-on'), { once: true });
 }
 
 /*
