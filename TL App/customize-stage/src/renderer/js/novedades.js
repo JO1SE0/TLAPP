@@ -11,6 +11,10 @@ window.TL_NEWS = {
   title: { es: 'Qué hay de nuevo', en: "What's new" },
   items: {
     es: [
+      'La tapa de la página Música late con los golpes del tema (se apaga en Ajustes de música → Tapa que late).',
+      'Fondo con profundidad: el fondo del menú se corre un poquito con el mouse.',
+      'Brillo que recorre los botones principales al pasar el mouse.',
+      'Tu tarjeta de perfil se da vuelta al tocarla: atrás, racha, goles y asistencias por partido, en contra y horas jugadas. «Ver perfil» abre el perfil.',
       'Inclinación 3D: el escudo del Club se inclina siguiendo el mouse (con sombra y luz que se mueven), y el podio, los temas y tu tarjeta de perfil también. Se apaga en Estilo → Densidad de la interfaz.',
       'Relieve de la cancha (Personalización → Cancha): hundida o elevada, con profundidad regulable. Se dibuja una vez con la cancha, sin costo de FPS.',
       'Más opciones en Estilo → Densidad de la interfaz: avisos (píldora, tarjeta o barra arriba), plantel del menú (dorado, color del tema, con brillo o escondido), encabezados de página (con escudo o lisos) y menús desplegables de vidrio.',
@@ -102,6 +106,10 @@ window.TL_NEWS = {
       'Cada clave se usa en una sola PC: si cambiás de computadora, pedile a miclo que te la libere.'
     ],
     en: [
+      'The Music page cover pulses with the beat (turn off in Music settings → Beating cover).',
+      'Background depth: the menu background shifts a little with the mouse.',
+      'A shine sweeps across the main buttons on hover.',
+      'Your profile card flips when clicked: streak, goals and assists per match, own goals and hours played on the back. «View profile» opens your profile.',
       '3D tilt: the Club crest leans towards the mouse (with moving shadow and light), and so do the podium, themes and your profile card. Turn it off in Style → Interface density.',
       'Pitch relief (Customize → Pitch): sunken or raised, adjustable depth. Drawn once with the pitch, no FPS cost.',
       'More in Style → Interface density: notices (pill, card or top bar), side menu roster (gold, theme colour, glowing or hidden), page headers (with crest or plain) and glass dropdown menus.',

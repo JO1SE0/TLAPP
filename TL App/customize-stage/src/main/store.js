@@ -106,6 +106,10 @@ const DEFAULTS = {
     dropdowns: 'system',
     /** Escudo del Club y tarjetas que se inclinan siguiendo el mouse (sólo en el menú). */
     tilt: true,
+    /** El fondo del menú se corre un poco con el mouse (profundidad). */
+    parallax: true,
+    /** La tapa de la página Música late con los golpes del tema. */
+    musicPulse: true,
     // Tamaño de la interfaz: 'auto' (según el monitor) o un porcentaje fijo (60–150).
     uiScale: 'auto',
     /** Estructura de la interfaz: classic | top (barra superior) | dock (dock flotante). */

@@ -2307,6 +2307,16 @@ handle('tracks:cover', async (_e, name, user) => {
   return musicMeta.readCover(file);
 });
 
+/** Los bytes de una canción, para analizar el ritmo (la tapa que late). No toca la reproducción. */
+handle('tracks:bytes', async (_e, name, user) => {
+  const clean = path.basename(String(name || ''));
+  if (!clean || !MUSIC_EXT.test(clean)) return null;
+  const file = user ? path.join(userMusicDir(), clean) : path.join(ROOT, 'assets', 'music', clean);
+  const st = await fs.promises.stat(file).catch(() => null);
+  if (!st || !st.isFile() || st.size > MUSIC_MAX_BYTES) return null;
+  return fs.promises.readFile(file);
+});
+
 handle('tracks:add', async () => {
   const res = await dialog.showOpenDialog(mainWindow, {
     title: 'Elegí tus canciones',

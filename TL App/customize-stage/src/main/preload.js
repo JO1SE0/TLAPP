@@ -148,6 +148,7 @@ contextBridge.exposeInMainWorld('tvm', {
   tracks: {
     list: () => call('tracks:list'),
     cover: (name, user) => call('tracks:cover', name, !!user),
+    bytes: (name, user) => call('tracks:bytes', name, !!user),
     add: () => call('tracks:add'),
     remove: (name) => call('tracks:remove', name)
   },

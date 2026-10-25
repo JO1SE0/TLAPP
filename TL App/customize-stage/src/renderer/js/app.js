@@ -884,6 +884,7 @@ function applyConfig(config) {
   if (['crest', 'flat'].includes(config.appearance.heroStyle)) rd.hero = config.appearance.heroStyle; else delete rd.hero;
   if (config.appearance.dropdowns === 'glass') rd.dd = 'glass'; else { delete rd.dd; closeGlassSelect(); }
   if (config.appearance.tilt !== false) rd.tilt = 'on'; else delete rd.tilt;
+  if (config.appearance.parallax !== false) rd.par = 'on'; else { delete rd.par; parallaxReset(); }
   const flag = (k, name) => { if (config.appearance[k] === false) rd[name] = 'off'; else delete rd[name]; };
   flag('crestBreath', 'crestBreath');
   flag('roomCurtain', 'roomCurtain');
@@ -2083,8 +2084,16 @@ function paintProfCard() {
   $('#pcM').textContent = String(lv.matches || 0);
   $('#pcG').textContent = String(lv.goals || 0);
   $('#pcA').textContent = String(lv.assists || 0);
+  if (card.classList.contains('is-back')) paintProfBack();
 }
-if ($('#profCard')) $('#profCard').addEventListener('click', () => openProfile());
+if ($('#profCard')) $('#profCard').addEventListener('click', (e) => {
+  const card = $('#profCard');
+  // Con el menú compacto (dock, isla, arriba, abajo) no hay lugar para el dorso: abre directo.
+  const lay = document.documentElement.dataset.layout;
+  if (['dock', 'island', 'mini', 'top', 'bottom'].includes(lay)) { openProfile(); return; }
+  if (card.classList.contains('is-back') && e.target.closest('[data-open]')) { flipProfCard(); openProfile(); return; }
+  flipProfCard();
+});
 
 function paintMeMenu() {
   const profile = vipProfile();
@@ -4984,12 +4993,97 @@ function musIcon(path) { const ns = 'http://www.w3.org/2000/svg'; const s = docu
 const MUS_HEART = 'M12 20s-7.5-4.4-7.5-10A4.2 4.2 0 0 1 12 7.6 4.2 4.2 0 0 1 19.5 10c0 5.6-7.5 10-7.5 10z';
 const MUS_X = 'M6.4 6.4l11.2 11.2M17.6 6.4 6.4 17.6';
 
+/* ── La tapa que late ────────────────────────────────────────────────────────
+   No se toca el audio que suena: se lee el MISMO archivo aparte (una vez por
+   tema), se decodifica y se saca la energía de los graves cada ~23 ms. Después,
+   con el segundo que va sonando, se busca cuánto golpea y la tapa se agranda un
+   pelito. Sólo con la página Música abierta y sonando. */
+const pulse = { name: '', env: null, hop: 0, loading: '', raf: 0, v: 0, cache: new Map() };
+async function pulseLoad(t) {
+  if (!t || pulse.loading === t.name) return;
+  const hit = pulse.cache.get(t.name);
+  if (hit) { pulse.name = t.name; pulse.env = hit.env; pulse.hop = hit.hop; return; }
+  pulse.loading = t.name;
+  try {
+    const bytes = await tvm.tracks.bytes(t.name, !!t.user);
+    if (!bytes || bytes.byteLength > 30 * 1024 * 1024) return;
+    const ab = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
+    const ac = new OfflineAudioContext(1, 2, 44100);
+    const buf = await ac.decodeAudioData(ab);
+    const sr = buf.sampleRate;
+    const a = buf.getChannelData(0);
+    const b = buf.numberOfChannels > 1 ? buf.getChannelData(1) : null;
+    const HOP = 1024;
+    const n = Math.floor(a.length / HOP);
+    const raw = new Float32Array(n);
+    const k = 1 - Math.exp((-2 * Math.PI * 140) / sr);
+    let y = 0;
+    for (let i = 0; i < n; i++) {
+      let acc = 0;
+      for (let j = i * HOP, e = j + HOP; j < e; j++) { const x = b ? (a[j] + b[j]) * 0.5 : a[j]; y += k * (x - y); acc += y * y; }
+      raw[i] = Math.sqrt(acc / HOP);
+    }
+    const sorted = Float32Array.from(raw).sort();
+    const top = sorted[Math.floor(sorted.length * 0.96)] || 1;
+    const env = new Float32Array(n);
+    let avg = 0;
+    for (let i = 0; i < n; i++) {
+      const v = Math.min(1, raw[i] / top);
+      avg += (v - avg) * 0.08;
+      // Lo que importa es el GOLPE: cuánto sube sobre lo que venía sonando.
+      env[i] = Math.min(1, 0.3 * v + 2.4 * Math.max(0, v - avg));
+    }
+    const entry = { env, hop: HOP / sr };
+    pulse.cache.set(t.name, entry);
+    if (pulse.cache.size > 8) pulse.cache.delete(pulse.cache.keys().next().value);
+    const now = window.TLMusic && window.TLMusic.now;
+    if (now && now.name === t.name) { pulse.name = t.name; pulse.env = env; pulse.hop = entry.hop; pulseStart(); }
+  } catch (e) {
+    /* un archivo que no se puede decodificar: la tapa queda quieta */
+  } finally {
+    if (pulse.loading === t.name) pulse.loading = '';
+  }
+}
+function pulseStop() {
+  if (pulse.raf) cancelAnimationFrame(pulse.raf);
+  pulse.raf = 0; pulse.v = 0;
+  const c = $('#musCover');
+  if (c) { c.style.transform = ''; c.style.removeProperty('--pulse'); }
+}
+function pulseWanted() {
+  const M = window.TLMusic;
+  return !!(M && M.playing && state.view === 'musica' && state.stage !== 'game' && !document.hidden
+    && state.config && state.config.appearance.musicPulse !== false && document.documentElement.dataset.animations !== 'off');
+}
+function pulseStart() {
+  const M = window.TLMusic;
+  const now = M && M.now;
+  if (!pulseWanted() || !now) { pulseStop(); return; }
+  if (pulse.name !== now.name) { pulse.env = null; pulse.name = now.name; pulseLoad(now); }
+  if (!pulse.env || pulse.raf) return;
+  const tick = () => {
+    if (!pulseWanted() || !pulse.env) { pulseStop(); return; }
+    const t = window.TLMusic.time();
+    const i = Math.floor(t.cur / pulse.hop);
+    const target = pulse.env[Math.min(pulse.env.length - 1, Math.max(0, i))] || 0;
+    pulse.v = target > pulse.v ? target : pulse.v * 0.86;
+    const c = $('#musCover');
+    if (c) { c.style.transform = `scale(${(1 + pulse.v * 0.075).toFixed(4)})`; c.style.setProperty('--pulse', pulse.v.toFixed(3)); }
+    pulse.raf = requestAnimationFrame(tick);
+  };
+  pulse.raf = requestAnimationFrame(tick);
+}
+window.addEventListener('tl:track', () => setTimeout(pulseStart, 60));
+window.addEventListener('tl:musicstate', () => setTimeout(pulseStart, 30));
+document.addEventListener('visibilitychange', () => setTimeout(pulseStart, 30));
+
 function musicPageOpen() {
   paintMusicPage();
+  setTimeout(pulseStart, 50);
   clearInterval(musTimer);
   musTimer = setInterval(musicPageTick, 500);
 }
-function musicPageClose() { clearInterval(musTimer); musTimer = null; }
+function musicPageClose() { clearInterval(musTimer); musTimer = null; pulseStop(); }
 function musicPageTick() {
   const M = window.TLMusic;
   if (!M || state.view !== 'musica' || state.stage === 'game' || document.hidden) return;
@@ -5046,7 +5140,8 @@ function paintMusicPage() {
   const defs = [
     ['music', T.music, T.musicD, ap.music !== false],
     ['musicClub', T.club, T.clubD, ap.musicClub !== false],
-    ['musicInGame', T.game, T.gameD, ap.musicInGame !== false]
+    ['musicInGame', T.game, T.gameD, ap.musicInGame !== false],
+    ['musicPulse', isEn() ? 'Beating cover' : 'Tapa que late', isEn() ? 'The cover pulses with the song.' : 'La tapa se mueve con los golpes del tema.', ap.musicPulse !== false]
   ];
   sws.replaceChildren(...defs.map(([key, label, desc, on]) => {
     const b = document.createElement('button');
@@ -12036,6 +12131,82 @@ function paintPanelLook() {
   $('#tiltLabel').textContent = en ? '3D tilt' : 'Inclinación 3D';
   $('#tiltDesc').textContent = en ? 'The Club crest, the podium, themes and your profile card lean towards the mouse.' : 'El escudo del Club, el podio, los temas y tu tarjeta de perfil se inclinan hacia el mouse.';
   paintChipsInto($('#tiltChips'), [['on', 'Sí', 'On'], ['off', 'No', 'Off']], ap.tilt === false ? 'off' : 'on', 'tlt');
+  $('#parLabel').textContent = en ? 'Background depth' : 'Fondo con profundidad';
+  $('#parDesc').textContent = en ? 'The menu background shifts a little with the mouse.' : 'El fondo del menú se corre un poquito con el mouse.';
+  paintChipsInto($('#parChips'), [['on', 'Sí', 'On'], ['off', 'No', 'Off']], ap.parallax === false ? 'off' : 'on', 'par');
+}
+$('#parChips').addEventListener('click', (e) => { const b = e.target.closest('[data-par]'); if (b) patchConfig({ appearance: { parallax: b.dataset.par === 'on' } }).then(paintPanelLook); });
+
+/* ── Fondo con profundidad ───────────────────────────────────────────────────
+   Una capa con el mismo fondo de la lista de salas, un poco más grande, que se
+   corre con el mouse. Sólo `transform` (la compone la placa), un rAF por movimiento. */
+const parLayer = (() => {
+  const b = $('#browser');
+  if (!b) return null;
+  const l = document.createElement('div');
+  l.className = 'bgpar';
+  l.setAttribute('aria-hidden', 'true');
+  b.prepend(l);
+  return l;
+})();
+const par = { raf: 0, x: 0.5, y: 0.5 };
+function parallaxReset() { if (parLayer) parLayer.style.transform = ''; }
+document.addEventListener('pointermove', (e) => {
+  const d = document.documentElement.dataset;
+  if (!parLayer || d.par !== 'on' || d.animations === 'off' || state.stage === 'game' || state.view !== 'play') return;
+  par.x = e.clientX / Math.max(1, window.innerWidth);
+  par.y = e.clientY / Math.max(1, window.innerHeight);
+  if (par.raf) return;
+  par.raf = requestAnimationFrame(() => {
+    par.raf = 0;
+    parLayer.style.transform = `translate3d(${((0.5 - par.x) * 28).toFixed(1)}px, ${((0.5 - par.y) * 18).toFixed(1)}px, 0)`;
+  });
+}, { passive: true });
+
+/* ── Tarjeta de perfil que se da vuelta ──────────────────────────────────────
+   Un clic la gira y atrás muestra más números; «Ver perfil» abre lo de siempre.
+   Se gira en dos mitades (0→90°, se cambia la cara, 90→0°): no necesita 3D real,
+   que con el `overflow: hidden` de la tarjeta no funcionaría. */
+function paintProfBack() {
+  const card = $('#profCard');
+  if (!card || !state.config) return;
+  let back = card.querySelector('.profcard__back');
+  if (!back) { back = document.createElement('span'); back.className = 'profcard__back'; card.append(back); }
+  const en = isEn();
+  const st = state.config.stats || {};
+  const m = Math.max(0, st.matches || 0);
+  const per = (v) => (m ? (v / m).toFixed(2) : '—');
+  const hours = Math.floor((st.secondsPlayed || 0) / 3600);
+  const mins = Math.floor(((st.secondsPlayed || 0) % 3600) / 60);
+  const rows = [
+    [en ? 'Streak' : 'Racha', `${st.streak || 0} ${en ? 'days' : 'días'}`],
+    [en ? 'Best streak' : 'Mejor racha', `${st.bestStreak || 0} ${en ? 'days' : 'días'}`],
+    [en ? 'Goals / match' : 'Goles x partido', per(st.goals || 0)],
+    [en ? 'Assists / match' : 'Asist. x partido', per(st.assists || 0)],
+    [en ? 'Own goals' : 'En contra', String(st.ownGoals || 0)],
+    [en ? 'Played' : 'Jugado', `${hours} h ${mins} m`]
+  ];
+  const title = document.createElement('b'); title.className = 'profcard__btitle'; title.textContent = en ? 'Your numbers' : 'Tus números';
+  const list = document.createElement('span'); list.className = 'profcard__blist';
+  for (const [k, v] of rows) { const r = document.createElement('span'); const a = document.createElement('em'); a.textContent = k; const b = document.createElement('i'); b.textContent = v; r.append(a, b); list.append(r); }
+  const open = document.createElement('span'); open.className = 'profcard__bopen'; open.dataset.open = '1'; open.textContent = en ? 'View profile' : 'Ver perfil';
+  back.replaceChildren(title, list, open);
+}
+function flipProfCard() {
+  const card = $('#profCard');
+  if (!card || card.classList.contains('is-flipping')) return;
+  const toBack = !card.classList.contains('is-back');
+  if (toBack) paintProfBack();
+  if (tiltNow.target === card) tiltRelease();
+  card.classList.remove('is-tilt', 'is-tilt-out');
+  if (document.documentElement.dataset.animations === 'off') { card.classList.toggle('is-back', toBack); return; }
+  card.classList.add('is-flipping');
+  setTimeout(() => {
+    card.classList.toggle('is-back', toBack);
+    card.classList.remove('is-flipping');
+    card.classList.add('is-flipping-in');
+    setTimeout(() => card.classList.remove('is-flipping-in'), 170);
+  }, 150);
 }
 $('#tiltChips').addEventListener('click', (e) => { const b = e.target.closest('[data-tlt]'); if (b) patchConfig({ appearance: { tilt: b.dataset.tlt === 'on' } }).then(paintPanelLook); });
 
@@ -12071,7 +12242,7 @@ document.addEventListener('pointermove', (e) => {
   for (const c of TILTS) { const el = e.target.closest && e.target.closest(c.sel); if (el) { hit = el; cfg = c; break; } }
   if (!hit) { if (tiltNow.target) tiltRelease(); return; }
   const target = cfg.target ? hit.querySelector(cfg.target) : hit;
-  if (!target) return;
+  if (!target || target.classList.contains('is-flipping') || target.classList.contains('is-flipping-in')) return;
   if (tiltNow.target !== target) {
     if (tiltNow.target) tiltRelease();
     tiltNow.el = hit; tiltNow.target = target; tiltNow.max = cfg.max;
