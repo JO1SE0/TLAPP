@@ -12086,17 +12086,19 @@ function applyGlass(v) {
   rd.glass = 'on';
   document.documentElement.style.setProperty('--glass-a', a.toFixed(2));
 }
-/* Diseño "Refinado": dos hojas que sólo se cargan cuando se elige (media="not all" las deja dormidas). */
+/* Diseños "Refinado" e "iOS": hojas que sólo se cargan cuando se eligen (media="not all" las deja dormidas).
+   El iOS se apoya en las dos del Refinado y le suma la suya. */
 function applyDesign(v) {
-  const on = v === 'refined';
+  const d = v === 'refined' || v === 'ios' ? v : null;
   const rd = document.documentElement.dataset;
-  if (on) rd.design = 'refined'; else delete rd.design;
-  for (const id of ['cssRefinedGen', 'cssRefined']) {
+  if (d) rd.design = d; else delete rd.design;
+  const on = { cssRefinedGen: !!d, cssRefined: !!d, cssIos: d === 'ios' };
+  for (const id of Object.keys(on)) {
     const l = document.getElementById(id);
-    if (l) l.media = on ? 'all' : 'not all';
+    if (l) l.media = on[id] ? 'all' : 'not all';
   }
 }
-const DESIGNS = [['classic', 'Clásico', 'Classic'], ['refined', 'Refinado', 'Refined']];
+const DESIGNS = [['classic', 'Clásico', 'Classic'], ['refined', 'Refinado', 'Refined'], ['ios', 'iOS', 'iOS']];
 /* Ancho de los paneles y estilo de los botones principales: chips simples. */
 const PANEL_WIDTHS = [['narrow', 'Angosto', 'Narrow'], ['normal', 'Normal', 'Normal'], ['wide', 'Ancho', 'Wide']];
 const BTN_STYLES = [['normal', 'Como viene', 'Default'], ['flat', 'Plano', 'Flat'], ['shine', 'Brillante', 'Glossy'], ['outline', 'Contorno', 'Outline']];
@@ -12127,9 +12129,9 @@ function paintPanelLook() {
   $('#btnDesc').textContent = en ? 'The main buttons (Play, Save, Enter…).' : 'Los botones principales (Jugar, Guardar, Entrar…).';
   $('#designLabel').textContent = en ? 'Design' : 'Diseño';
   $('#designDesc').textContent = en
-    ? 'Refined: one type scale with 11 px minimum, even corners, bigger click areas, visible keyboard focus and gold kept for the main action.'
-    : 'Refinado: una sola escala de letra (mínimo 11 px), esquinas parejas, zonas de click más grandes, foco visible con teclado y el dorado sólo para la acción principal.';
-  paintChipsInto($('#designChips'), DESIGNS, ap.design === 'refined' ? 'refined' : 'classic', 'dsg');
+    ? 'Refined: one type scale with 11 px minimum, even corners, bigger click areas, visible keyboard focus and gold kept for the main action. iOS: the same plus iPhone-style grouped lists, switches, segmented controls and pill buttons, in your theme colours.'
+    : 'Refinado: una sola escala de letra (mínimo 11 px), esquinas parejas, zonas de click más grandes, foco visible con teclado y el dorado sólo para la acción principal. iOS: lo mismo más listas agrupadas, interruptores, selectores y botones cápsula como en el iPhone, con los colores de tu tema.';
+  paintChipsInto($('#designChips'), DESIGNS, ap.design === 'refined' || ap.design === 'ios' ? ap.design : 'classic', 'dsg');
   paintChipsInto($('#pwChips'), PANEL_WIDTHS, ap.panelWidth || 'normal', 'pw');
   paintChipsInto($('#btnChips'), BTN_STYLES, ap.btnStyle || 'normal', 'bs');
   $('#swLabel').textContent = en ? 'Switches' : 'Interruptores';

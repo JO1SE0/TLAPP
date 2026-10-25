@@ -84,7 +84,7 @@ const DEFAULTS = {
     themeHover: false,
     /** Densidad de los menús: compact | normal | comfy. Sólo espaciado, no toca el juego. */
     density: 'normal',
-    /** Diseño de la interfaz: `classic` (como viene) · `refined` (escala de letra y radios fija, letra mínima de 11 px, zonas de click amplias y foco visible). */
+    /** Diseño de la interfaz: `classic` (como viene) · `refined` (escala de letra y radios fija, letra mínima de 11 px, zonas de click amplias y foco visible) · `ios` (lo de refined más la forma de iOS). */
     design: 'classic',
     /** Opacidad de los paneles (1 = sólidos). Más bajo deja ver el fondo, sin desenfoque. */
     glass: 1,
