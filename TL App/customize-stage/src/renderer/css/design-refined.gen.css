@@ -1,0 +1,892 @@
+/* GENERADO por tools/build-refined-css.js — no editar a mano. */
+
+/* ── theme.css ── */
+:root[data-design="refined"] { --radius: 14px; --radius-sm: 10px; --fs-2xs: 11px; --fs-xs: 12px; --fs-sm: 13px; --fs-md: 14px; --fs-lg: 16px; --fs-xl: 22px; --r-ctl: 10px; --r-surface: 14px; }
+html[data-design="refined"] body { font-size: 14px; }
+html[data-design="refined"] button,
+html[data-design="refined"] input,
+html[data-design="refined"] select { font: inherit; }
+html[data-design="refined"] ::-webkit-scrollbar-thumb { border-radius: 99px; }
+html[data-design="refined"] .blob { border-radius: 50%; }
+
+/* ── app.css ── */
+html[data-design="refined"] .gametab { border-radius: 10px; font-size: 12px; font-weight: 500; }
+html[data-design="refined"] .gametab__dot { border-radius: 50%; }
+html[data-design="refined"] .gametab__x { border-radius: 6px; }
+html[data-design="refined"] .gametabs__add { border-radius: 6px; }
+html[data-design="refined"] .brand__mark { border-radius: 10px; }
+html[data-design="refined"] .brand__name { font-size: 14px; font-weight: 700; }
+html[data-design="refined"] .railitem { border-radius: 10px; font-size: 11px; font-weight: 600; }
+html[data-design="refined"] .railedge i { border-radius: 0 3px 3px 0; }
+html[data-design="refined"] .friendsbtn { border-radius: 10px; font-size: 13px; font-weight: 500; }
+html[data-design="refined"] .friendsbtn__on { font-size: 12px; }
+html[data-design="refined"] .friendsbtn__on i { border-radius: 50%; }
+html[data-design="refined"] .friendsbtn .iconbtn__dot { border-radius: 50%; }
+html[data-design="refined"] .mechip { border-radius: 10px; }
+html[data-design="refined"] .mechip__av { font-size: 11px; }
+html[data-design="refined"] .mechip__n { font-size: 13px; font-weight: 500; }
+html[data-design="refined"] .memenu { border-radius: 14px; }
+html[data-design="refined"] .memenu__av { font-size: 18px; }
+html[data-design="refined"] .memenu__id b { font-size: 16px; font-weight: 700; }
+html[data-design="refined"] .memenu__state { font-size: 12px; }
+html[data-design="refined"] .memenu__state .ok { font-weight: 500; }
+html[data-design="refined"] .memenu__state .ok i { border-radius: 50%; }
+html[data-design="refined"] .memenu__c b { font-size: 16px; font-weight: 700; }
+html[data-design="refined"] .memenu__c span { font-size: 11px; }
+html[data-design="refined"] .memenu__i { border-radius: 10px; font-size: 13px; }
+html[data-design="refined"] .memenu__i small { font-size: 11px; }
+html[data-design="refined"] .iconbtn { border-radius: 10px; }
+html[data-design="refined"] .iconbtn--sm { border-radius: 6px; }
+html[data-design="refined"] .stage__loading p { font-size: 14px; }
+html[data-design="refined"] .verifyhost { border-radius: 14px; }
+html[data-design="refined"] .stage__ring { border-radius: 50%; }
+html[data-design="refined"] .stage__error h2 { font-size: 22px; }
+html[data-design="refined"] .stage__error p { font-size: 13px; }
+html[data-design="refined"] .linkbar { border-radius: 10px; }
+html[data-design="refined"] .linkbar input[type="text"] { border-radius: 0; font-size: 12px; }
+html[data-design="refined"] .linkbar__go { border-radius: 6px; }
+html[data-design="refined"] .panel__card { border-radius: 18px; }
+html[data-design="refined"] .panel__close { border-radius: 10px; }
+html[data-design="refined"] .pnav__search { border-radius: var(--r-ctl); }
+html[data-design="refined"] .pnav__search input[type="text"] { border-radius: 0; font: inherit; font-size: var(--fs-sm); }
+html[data-design="refined"] .pnav__clear { border-radius: 50%; }
+html[data-design="refined"] .pnav__i { border-radius: var(--r-ctl); font-size: var(--fs-sm); font-weight: 500; }
+html[data-design="refined"] .pnav__i.is-on { font-weight: 600; }
+html[data-design="refined"] .pnav__n { font-size: var(--fs-2xs); }
+html[data-design="refined"] .pnav__group { font-size: var(--fs-2xs); font-weight: 700; }
+html[data-design="refined"] .pagehead h1 { font-size: var(--fs-xl); font-weight: 700; }
+html[data-design="refined"] .pagehead p { font-size: var(--fs-sm); }
+html[data-design="refined"] .eyebrow { font-size: var(--fs-2xs); font-weight: 700; }
+html[data-design="refined"] .sec__title { font-size: var(--fs-lg); font-weight: 700; }
+html[data-design="refined"] .sec__desc { font-size: var(--fs-xs); }
+html[data-design="refined"] .sec--feature { border-radius: var(--r-surface); }
+html[data-design="refined"] .tray { border-radius: var(--r-surface); }
+html[data-design="refined"] .row { border-radius: var(--r-ctl); }
+html[data-design="refined"] .row__label { font-size: var(--fs-md); font-weight: 600; }
+html[data-design="refined"] .row__desc { font-size: var(--fs-xs); }
+html[data-design="refined"] .row__val { font-size: var(--fs-sm); }
+html[data-design="refined"] .hint { border-radius: 50%; font-size: var(--fs-2xs); font-weight: 800; }
+html[data-design="refined"] .hinttip { border-radius: var(--r-ctl); font-size: var(--fs-xs); }
+html[data-design="refined"] .presetbtn { border-radius: var(--r-ctl); }
+html[data-design="refined"] .presetbtn b { font-size: var(--fs-md); font-weight: 700; }
+html[data-design="refined"] .presetbtn small { font-size: var(--fs-xs); }
+html[data-design="refined"] .adv > summary { border-radius: var(--r-ctl); font-size: var(--fs-sm); font-weight: 600; }
+html[data-design="refined"] .adv .row__label { font-size: var(--fs-sm); }
+html[data-design="refined"] .tag { border-radius: 99px; font-size: var(--fs-2xs); font-weight: 700; }
+html[data-design="refined"] .field > label { font-size: var(--fs-sm); }
+html[data-design="refined"] .note { font-size: var(--fs-xs); }
+html[data-design="refined"] input[type="text"],
+html[data-design="refined"] input[type="number"],
+html[data-design="refined"] select { border-radius: 10px; }
+html[data-design="refined"] input[type="range"] { border-radius: 99px; }
+html[data-design="refined"] input[type="range"]::-webkit-slider-thumb { border-radius: 50%; }
+html[data-design="refined"] .flagrow__flag { border-radius: 2px; }
+html[data-design="refined"] .flagrow__flag--text { font-size: 11px; font-weight: 700; }
+html[data-design="refined"] .vipsec.is-on { border-radius: var(--r-surface); }
+html[data-design="refined"] .vipmark { border-radius: 6px; font-size: 11px; font-weight: 800; }
+html[data-design="refined"] .viplocked li { font-size: 13px; border-radius: 10px; }
+html[data-design="refined"] .viplocked li::before { font-size: 11px; }
+html[data-design="refined"] .assetrow__preview { border-radius: 10px; font-size: 12px; }
+html[data-design="refined"] .assetrow__name { font-size: 12px; }
+html[data-design="refined"] .themecard__vip { border-radius: 99px; font-size: 11px; font-weight: 800; }
+html[data-design="refined"] .keyrow { border-radius: var(--radius-sm); }
+html[data-design="refined"] .keyrow__name { font-size: 13px; font-weight: 600; }
+html[data-design="refined"] .keychip { border-radius: 6px; font-size: 12px; font-weight: 600; }
+html[data-design="refined"] .keyadd { border-radius: 6px; font-size: 12px; font-weight: 700; }
+html[data-design="refined"] .numbox { border-radius: 6px; font-size: 13px; }
+html[data-design="refined"] .numbox__unit { font-size: 11px; }
+html[data-design="refined"] .statusline { font-size: 12px; }
+html[data-design="refined"] .deflist > div { font-size: 13px; }
+html[data-design="refined"] .fdock__head h2 { font-size: 14px; font-weight: 700; }
+html[data-design="refined"] .fdock__head .statusline { font-size: 12px; }
+html[data-design="refined"] .fdock__back,
+html[data-design="refined"] .fdock__close { border-radius: 10px; }
+html[data-design="refined"] .fme__id b { font-size: 14px; font-weight: 700; }
+html[data-design="refined"] .fme__level { font-size: 12px; }
+html[data-design="refined"] .fgroup__title { font-size: 11px; font-weight: 700; }
+html[data-design="refined"] .fgroup__title b { font-weight: 700; }
+html[data-design="refined"] .pfp { border-radius: 50%; font-size: 13px; font-weight: 700; }
+html[data-design="refined"] .pfp img { border-radius: 50%; }
+html[data-design="refined"] .pfp__dot { border-radius: 50%; }
+html[data-design="refined"] .pfp--md { font-size: 16px; }
+html[data-design="refined"] .pfp--lg { font-size: 22px; }
+html[data-design="refined"] .friendreq { font-size: 13px; }
+html[data-design="refined"] .friend { border-radius: 10px; }
+html[data-design="refined"] .friend__body b { font-size: 14px; }
+html[data-design="refined"] .friend__where { font-size: 12px; }
+html[data-design="refined"] .msg { border-radius: 14px; }
+html[data-design="refined"] .msg__text { font-size: 14px; }
+html[data-design="refined"] .msg__at { font-size: 11px; }
+html[data-design="refined"] .tick--failed { border-radius: 50%; font-size: 11px; font-weight: 700; }
+html[data-design="refined"] .iconbtn__dot { border-radius: 50%; }
+html[data-design="refined"] .toast__btn { border-radius: 6px; font: inherit; font-size: 12px; }
+html[data-design="refined"] .looksrow__item { font-size: 12px; }
+html[data-design="refined"] input[type="color"] { border-radius: 10px; }
+html[data-design="refined"] input[type="color"]::-webkit-color-swatch { border-radius: 6px; }
+html[data-design="refined"] .looksdemo { border-radius: 6px; font-size: 14px; }
+html[data-design="refined"] .looksdemo.is-on { border-radius: 10px; }
+html[data-design="refined"] .looksdemo.is-on .looksdemo__name { font-weight: 700; }
+html[data-design="refined"] .looksdemo__flag { border-radius: 2px; }
+html[data-design="refined"] .looksline { font-size: 12px; }
+html[data-design="refined"] .gradients__item { border-radius: 6px; }
+html[data-design="refined"] .playercard { border-radius: 14px; }
+html[data-design="refined"] .playercard__face { border-radius: 50%; font-size: 22px; font-weight: 700; }
+html[data-design="refined"] .playercard__id b { font-size: 16px; }
+html[data-design="refined"] .playercard__level { font-size: 12px; }
+html[data-design="refined"] .playercard__level b { font-size: 12px; }
+html[data-design="refined"] .playercard__xptext { font-size: 11px; }
+html[data-design="refined"] .xpbar { border-radius: 999px; }
+html[data-design="refined"] .possbar__track { border-radius: 999px; }
+html[data-design="refined"] .possbar__n { font-size: 12px; font-weight: 700; }
+html[data-design="refined"] .heatmap { border-radius: var(--radius); }
+html[data-design="refined"] .btn { border-radius: 10px; font-size: 13px; font-weight: 600; }
+html[data-design="refined"] .btn--sm { font-size: 13px; border-radius: 10px; }
+html[data-design="refined"] .switch { border-radius: 99px; }
+html[data-design="refined"] .switch::after { border-radius: 50%; }
+html[data-design="refined"] .themecard { border-radius: var(--r-surface); }
+html[data-design="refined"] .themecard__preview { border-radius: var(--r-ctl); }
+html[data-design="refined"] .themecard__bar { border-radius: 3px; }
+html[data-design="refined"] .themecard__btn { border-radius: 6px; }
+html[data-design="refined"] .themecard strong { font-size: var(--fs-sm); font-weight: 700; }
+html[data-design="refined"] .themecard small { font-size: var(--fs-2xs); }
+html[data-design="refined"] .themecard__edit { border-radius: 6px; font-size: 12px; }
+html[data-design="refined"] .themeedit__row { border-radius: var(--radius-sm); font-size: 13px; }
+html[data-design="refined"] .themepreview { border-radius: var(--radius); }
+html[data-design="refined"] .themepreview__body strong { font-size: 14px; }
+html[data-design="refined"] .themepreview__body small { font-size: 12px; }
+html[data-design="refined"] .themepreview__btn { border-radius: 10px; font-size: 12px; font-weight: 700; }
+html[data-design="refined"] .swatch { border-radius: 10px; }
+html[data-design="refined"] .colorinput { border-radius: 10px; }
+html[data-design="refined"] .colorinput::-webkit-color-swatch { border-radius: 6px; }
+html[data-design="refined"] .avatarpreview { border-radius: 50%; font-size: 22px; }
+html[data-design="refined"] .avatarpreview.is-empty { font-size: 16px; }
+html[data-design="refined"] .emojibtn { border-radius: 10px; font-size: 16px; }
+html[data-design="refined"] .authrow { border-radius: var(--radius); }
+html[data-design="refined"] .authrow__name { font-size: 13px; font-weight: 600; }
+html[data-design="refined"] .authrow__meta { font-size: 11px; }
+html[data-design="refined"] .badge { border-radius: 99px; font-size: 11px; font-weight: 700; }
+html[data-design="refined"] .searchbar { border-radius: 14px; }
+html[data-design="refined"] .searchbar input[type="text"] { border-radius: 0; }
+html[data-design="refined"] .replay { border-radius: var(--radius); }
+html[data-design="refined"] .replay__name { font-size: 13px; font-weight: 600; }
+html[data-design="refined"] .replay__meta { font-size: 11px; }
+html[data-design="refined"] .replay__digest { font-size: 11px; font-weight: 600; }
+html[data-design="refined"] .empty { border-radius: var(--radius); }
+html[data-design="refined"] .empty strong { font-size: 16px; font-weight: 700; }
+html[data-design="refined"] .empty p { font-size: 13px; }
+html[data-design="refined"] .rsearch { border-radius: 10px; }
+html[data-design="refined"] .rsearch input[type="text"] { border-radius: 0; font-size: 13px; }
+html[data-design="refined"] .filterchip { border-radius: 10px; font-size: 12px; font-weight: 600; }
+html[data-design="refined"] .filterchip__ico { font-size: 12px; }
+html[data-design="refined"] .filterchip__star { font-size: 13px; }
+html[data-design="refined"] .rcount { font-size: 12px; }
+html[data-design="refined"] .sortselect { border-radius: 10px; font-size: 12px; font-weight: 600; }
+html[data-design="refined"] .rpanel { border-radius: 18px; }
+html[data-design="refined"] .rtable__head { font-size: 11px; font-weight: 700; }
+html[data-design="refined"] .rrow::before { border-radius: 0 3px 3px 0; }
+html[data-design="refined"] .rrow__dist { font-size: 11px; }
+html[data-design="refined"] .rrow__flag { border-radius: 2px; }
+html[data-design="refined"] .rrow__flag--text { font-size: 11px; font-weight: 700; }
+html[data-design="refined"] .rrow__name { font-size: 13px; }
+html[data-design="refined"] .rrow__lock { font-size: 11px; }
+html[data-design="refined"] .rrow__players { font-size: 12px; font-weight: 600; border-radius: 6px; }
+html[data-design="refined"] .rrow__badge { border-radius: 99px; font-size: 11px; font-weight: 700; }
+html[data-design="refined"] .rrow__friends { border-radius: 99px; font-size: 11px; font-weight: 700; }
+html[data-design="refined"] .rrow__friends::before { border-radius: 50%; }
+html[data-design="refined"] .progress__bar { border-radius: 99px; }
+html[data-design="refined"] .progress__bar i { border-radius: 99px; }
+html[data-design="refined"] .progress__text { font-size: 12px; }
+html[data-design="refined"] .ghostbtn { border-radius: 10px; font-size: 12px; font-weight: 600; }
+html[data-design="refined"] .joinbtn { border-radius: 10px; font-size: 13px; font-weight: 700; }
+html[data-design="refined"] .nickcard { border-radius: 14px; }
+html[data-design="refined"] .nickcard h2 { font-size: 18px; font-weight: 700; }
+html[data-design="refined"] .nickcard p { font-size: 13px; }
+html[data-design="refined"] .modal__card { border-radius: 18px; }
+html[data-design="refined"] .modal__head h2 { font-size: 18px; font-weight: 700; }
+html[data-design="refined"] .profile__id b { font-size: 18px; font-weight: 700; }
+html[data-design="refined"] .profile__levelno { font-size: 13px; }
+html[data-design="refined"] .profile__label { font-size: 11px; font-weight: 700; }
+html[data-design="refined"] .profile__bio { font-size: 13px; }
+html[data-design="refined"] .profile__bioform textarea { border-radius: 10px; font: inherit; font-size: 13px; }
+html[data-design="refined"] .startcard { border-radius: 18px; }
+html[data-design="refined"] .startcard h1 { font-size: 22px; font-weight: 700; }
+html[data-design="refined"] .startcard p { font-size: 13px; }
+html[data-design="refined"] .startsummary__chip { border-radius: 999px; font-size: 12px; font-weight: 600; }
+html[data-design="refined"] .startcard__label { font-size: 11px; font-weight: 700; }
+html[data-design="refined"] .startcard input { font-size: 14px; }
+html[data-design="refined"] .rrow__fav { font-size: 12px; }
+html[data-design="refined"] .toast { border-radius: 14px; font-size: 13px; }
+html[data-design="refined"] .toast::before { border-radius: 99px; }
+html[data-design="refined"] .notebar { border-radius: 14px; }
+html[data-design="refined"] .notebar__text { font-size: 13px; }
+html[data-design="refined"] .notebar__text strong { font-size: 13px; font-weight: 600; }
+html[data-design="refined"] .notebar__text small { font-size: 12px; }
+html[data-design="refined"] .splash__word { font-size: 28px; font-weight: 700; }
+html[data-design="refined"] .splash__bar { border-radius: 99px; }
+html[data-design="refined"] .splash__bar i { border-radius: 99px; }
+html[data-design="refined"] .splash__status { font-size: 13px; }
+html[data-design="refined"] .splash__tip { border-radius: 99px; font-size: 12px; }
+html[data-design="refined"] .splash__tip b { font-weight: 700; }
+html[data-design="refined"] .splash__version { font-size: 11px; }
+html[data-design="refined"] .fcode__label { font-size: 11px; }
+html[data-design="refined"] .fcode__value { border-radius: 10px; font-size: 13px; }
+html[data-design="refined"] .rival { border-radius: 10px; font-size: 13px; }
+html[data-design="refined"] .row__ctl .skincolor { font-size: 11px; }
+html[data-design="refined"] .toplast { border-radius: var(--radius-sm); font-size: 12px; font-weight: 700; }
+html[data-design="refined"] .toplast__label { font-weight: 600; }
+html[data-design="refined"] .toplast__name { font-weight: 700; }
+html[data-design="refined"] .lastroom b { font-weight: 600; }
+html[data-design="refined"] .goal-banner { border-radius: 14px; }
+html[data-design="refined"] .goal-banner__title { font-size: 22px; font-weight: 800; }
+html[data-design="refined"] .goal-banner__scorer { font-size: 34px; font-weight: 700; }
+html[data-design="refined"] .goal-banner__assist { font-size: 18px; }
+html[data-design="refined"] .stats-panel { border-radius: 18px; }
+html[data-design="refined"] .stats-panel__header h2 { font-size: 22px; font-weight: 700; }
+html[data-design="refined"] .stats-panel__sub { font-size: 13px; }
+html[data-design="refined"] .stats-score__team { font-size: 12px; }
+html[data-design="refined"] .stats-score__n { font-size: 34px; font-weight: 800; }
+html[data-design="refined"] .stats-score__dash { font-size: 22px; }
+html[data-design="refined"] .stats-panel__note { border-radius: 10px; font-size: 13px; }
+html[data-design="refined"] .stats-mvp { border-radius: 14px; }
+html[data-design="refined"] .stats-mvp__tag { font-size: 11px; font-weight: 800; }
+html[data-design="refined"] .stats-mvp__who { font-size: 18px; font-weight: 700; }
+html[data-design="refined"] .stats-mvp__line { font-size: 12px; }
+html[data-design="refined"] .stats-block h3 { font-size: 12px; font-weight: 600; }
+html[data-design="refined"] .stats-block__help { font-size: 12px; }
+html[data-design="refined"] .stats-table { font-size: 14px; }
+html[data-design="refined"] .stats-table th { font-size: 11px; font-weight: 600; }
+html[data-design="refined"] .stats-table tr:first-child td { font-weight: 600; }
+html[data-design="refined"] .stats-table__own { font-size: 11px; }
+html[data-design="refined"] .team-dot { border-radius: 50%; }
+html[data-design="refined"] .stats-goals__match { font-size: 11px; }
+html[data-design="refined"] .stats-goal { font-size: 14px; }
+html[data-design="refined"] .stats-goal__clock { font-size: 12px; }
+html[data-design="refined"] .stats-goal__who { font-weight: 600; }
+html[data-design="refined"] .stats-goal__who.is-faint { font-weight: 400; }
+html[data-design="refined"] .stats-goal__own { font-size: 11px; }
+html[data-design="refined"] .stats-goal__assist { font-size: 12px; }
+html[data-design="refined"] .stats-goal__score { font-size: 13px; }
+html[data-design="refined"] .stats-goal.is-seekable { border-radius: 0 10px 10px 0; }
+html[data-design="refined"] .stats-panel__foot { font-size: 12px; }
+:root[data-design="refined"] { --radius: 14px; --radius-sm: 10px; --r-ctl: 10px; --r-surface: 14px; }
+html[data-design="refined"] .brand__name { font-size: 16px; font-weight: 750; }
+html[data-design="refined"] .gametab { border-radius: 6px; }
+html[data-design="refined"] .linkbar { border-radius: 6px; }
+html[data-design="refined"] .iconbtn,
+html[data-design="refined"] .friendsbtn,
+html[data-design="refined"] .mechip { border-radius: 6px; }
+html[data-design="refined"] .topbar-reveal { border-radius: 0 0 10px 10px; font-size: 11px; font-weight: 700; }
+html[data-design="refined"] .railitem { border-radius: 6px; font-size: 12px; font-weight: 650; }
+html[data-design="refined"] .rsearch,
+html[data-design="refined"] .filterchip,
+html[data-design="refined"] .sortselect { border-radius: 6px; }
+html[data-design="refined"] .rpanel { border-radius: 10px; }
+html[data-design="refined"] .replay { border-radius: 10px; }
+html[data-design="refined"] .panel__card { border-radius: 14px; }
+html[data-design="refined"] .panel__close { border-radius: 6px; }
+html[data-design="refined"] .pnav__item,
+html[data-design="refined"] .pnav__link { border-radius: 6px; }
+html[data-design="refined"] .sec,
+html[data-design="refined"] .panel__section,
+html[data-design="refined"] .panel__card .card { border-radius: 10px; }
+@media (max-width: 820px) {
+  html[data-design="refined"] .railitem { font-size: 11px; }
+}
+html[data-design="refined"] .subhead { font-size: 11px; font-weight: 700; }
+html[data-design="refined"] .linkbar { border-radius: 10px; }
+html[data-design="refined"] .linkbar input[type="text"] { font-size: 14px; }
+html[data-design="refined"] .linkbar__go { border-radius: 6px; }
+html[data-design="refined"] .lastroom { border-radius: 10px; font-size: 14px; font-weight: 650; }
+html[data-design="refined"] .lastroom b { font-weight: 800; font-size: 14px; }
+html[data-design="refined"] .pnav__tab { border-radius: 10px; }
+html[data-design="refined"] .pnav__tab b { font-size: 16px; font-weight: 750; }
+html[data-design="refined"] .pnav__tab small { font-size: 12px; }
+html[data-design="refined"] .pnav__tab.is-on::before { border-radius: 0 3px 3px 0; }
+html[data-design="refined"] .pagehead h1 { font-size: 28px; font-weight: 800; }
+html[data-design="refined"] .pagehead p { font-size: 14px; }
+html[data-design="refined"] .sec { border-radius: 14px; }
+html[data-design="refined"] .sec__title { font-size: 18px; font-weight: 800; }
+html[data-design="refined"] .sec__title::before { border-radius: 2px; }
+html[data-design="refined"] .sec__desc { font-size: 13px; }
+html[data-design="refined"] .subhead { font-size: 12px; }
+html[data-design="refined"] .row__label { font-size: 14px; font-weight: 650; }
+html[data-design="refined"] .row__desc { font-size: 13px; }
+html[data-design="refined"] .row__val { font-size: 13px; font-weight: 600; }
+html[data-design="refined"] .tag { font-size: 11px; }
+html[data-design="refined"] .adv { border-radius: 14px; }
+html[data-design="refined"] .adv > summary { font-size: 14px; font-weight: 700; }
+html[data-design="refined"] .launch { border-radius: 14px; }
+html[data-design="refined"] .launch__title { font-size: 18px; font-weight: 800; }
+html[data-design="refined"] .launch__desc { font-size: 13px; }
+html[data-design="refined"] .launch__go { border-radius: 10px; font-size: 13px; font-weight: 750; }
+html[data-design="refined"] .secmodal__card { border-radius: 18px; }
+html[data-design="refined"] .secmodal__close { border-radius: 10px; }
+html[data-design="refined"] .secmodal .sec__title { font-size: 22px; }
+html[data-design="refined"] .roster__crest { font-size: 11px; font-weight: 700; }
+html[data-design="refined"] .roster__list li { font-size: clamp(11px, 1.36vh, 13px); font-weight: 700; }
+html[data-design="refined"] .roster__list li.is-live:not(.is-none) .rn::before { border-radius: 50%; }
+html[data-design="refined"] .roster__list li.is-live em { font-size: 11px; font-weight: 600; }
+html[data-design="refined"] .roster__list li.is-none { font-size: 11px; }
+html[data-design="refined"] .pv { border-radius: 14px; }
+html[data-design="refined"] .pv__head b { font-size: 13px; font-weight: 700; }
+html[data-design="refined"] .pv__head small { font-size: 12px; }
+html[data-design="refined"] .pv canvas { border-radius: 10px; }
+html[data-design="refined"] .wl__ring { border-radius: 50%; }
+html[data-design="refined"] .wl__title { font-size: clamp(28px, 6vw, 62px); font-weight: 800; }
+html[data-design="refined"] .wl__hello { font-size: clamp(11px, 1.5vw, 14px); font-weight: 600; }
+html[data-design="refined"] .wl__phrase { font-size: clamp(18px, 3vw, 28px); font-weight: 400; }
+html[data-design="refined"] .wl__skip { font-size: 11px; }
+html[data-design="refined"] .wl__halo { border-radius: 50%; }
+html[data-design="refined"] .wl__spark { border-radius: 50%; }
+html[data-design="refined"] .wl__trackline { border-radius: 2px; }
+html[data-design="refined"] .wl__ball { border-radius: 50%; }
+html[data-design="refined"] .wl__hello { border-radius: 999px; }
+html[data-design="refined"] .wl__dust { border-radius: 50%; }
+html[data-design="refined"] .brand__crest { border-radius: 10px; }
+html[data-design="refined"] .gate__card { border-radius: 18px; }
+html[data-design="refined"] .gate__title { font-size: 22px; font-weight: 800; }
+html[data-design="refined"] .gate__sub { font-size: 13px; }
+html[data-design="refined"] .gate__input { border-radius: 10px; font-size: 16px; }
+html[data-design="refined"] .gate__btn { border-radius: 10px; font-weight: 800; }
+html[data-design="refined"] .gate__msg { font-size: 13px; }
+html[data-design="refined"] .gate__help { font-size: 12px; }
+html[data-design="refined"] #app[data-stage="game"] .audio__now { font-size: 12px; font-weight: 600; }
+html[data-design="refined"] .eq i { border-radius: 2px; }
+html[data-design="refined"] .nowplaying { border-radius: 18px; }
+html[data-design="refined"] .nowplaying::after { border-radius: 14px; }
+html[data-design="refined"] .np__top small { font-size: 11px; font-weight: 700; }
+html[data-design="refined"] .np__count { font-size: 11px; font-weight: 600; }
+html[data-design="refined"] .nowplaying__text b { font-size: 18px; font-weight: 800; }
+html[data-design="refined"] .nowplaying__text em { font-size: 13px; }
+html[data-design="refined"] .np__bar { border-radius: 4px; }
+html[data-design="refined"] .np__bar i { border-radius: 4px; }
+html[data-design="refined"] .np__times { font-size: 11px; }
+html[data-design="refined"] .np__play { border-radius: 50%; }
+html[data-design="refined"] .np__next { font-size: 11px; }
+html[data-design="refined"] .np__next i { font-weight: 700; font-size: 11px; }
+html[data-design="refined"] .audio__menu-in { border-radius: 14px; }
+html[data-design="refined"] .audio__menu .chip { border-radius: 10px; font-size: 12px; font-weight: 600; }
+html[data-design="refined"] .news__list li { font-size: 14px; }
+html[data-design="refined"] .notice__text { font-size: 16px; }
+html[data-design="refined"] .urgent { border-radius: 14px; }
+html[data-design="refined"] .urgent b { font-size: 13px; }
+html[data-design="refined"] .urgent p { font-size: 16px; }
+html[data-design="refined"] .urgent button { border-radius: 10px; font-weight: 800; }
+html[data-design="refined"] .cap__card { border-radius: 18px; }
+html[data-design="refined"] .cap__head h2 { font-size: 18px; }
+html[data-design="refined"] .cap__theme { font-size: 12px; }
+html[data-design="refined"] .cap__x { border-radius: 10px; font-size: 22px; }
+html[data-design="refined"] .cap__tab { font-weight: 700; }
+html[data-design="refined"] .cap__sum,
+html[data-design="refined"] .cap__muted { font-size: 13px; }
+html[data-design="refined"] .cap__h { font-size: 13px; }
+html[data-design="refined"] .cap__table { border-radius: 10px; }
+html[data-design="refined"] .cap__row { font-size: 13px; }
+html[data-design="refined"] .cap__row--head { font-size: 11px; }
+html[data-design="refined"] .cap__name { font-weight: 700; }
+html[data-design="refined"] .cap__dot { border-radius: 50%; }
+html[data-design="refined"] .cap__ver.is-old { font-weight: 700; }
+html[data-design="refined"] .cap__lbl { font-size: 12px; }
+html[data-design="refined"] .cap__chk { font-size: 13px; }
+html[data-design="refined"] .cap__input { border-radius: 10px; font-size: 14px; }
+html[data-design="refined"] .cap__btn { border-radius: 10px; font-weight: 800; }
+html[data-design="refined"] .cap__btn--ghost { font-weight: 600; }
+html[data-design="refined"] .cap__btn--sm { font-size: 12px; }
+html[data-design="refined"] .cap__key { border-radius: 10px; font-size: 13px; }
+html[data-design="refined"] .cap__key code { font-size: 18px; }
+html[data-design="refined"] .cap__notice { border-radius: 10px; }
+html[data-design="refined"] .cap__ntext { font-size: 13px; }
+html[data-design="refined"] .cap__msg { border-radius: 10px; font-size: 13px; }
+html[data-design="refined"] .cap__alert { border-radius: 10px; font-size: 13px; }
+html[data-design="refined"] .cap__brief { border-radius: 10px; font-size: 13px; }
+html[data-design="refined"] .cap__hist { font-size: 13px; }
+html[data-design="refined"] .cap__mcard { border-radius: 14px; font-size: 14px; }
+html[data-design="refined"] #captainBtn.has-alert::after { border-radius: 50%; }
+html[data-design="refined"] .favstar { font-size: 14px; }
+html[data-design="refined"] .trialchip { border-radius: 999px; font-size: 12px; font-weight: 700; }
+html[data-design="refined"] .rep__row { border-radius: 10px; }
+html[data-design="refined"] .rep__info span { font-size: 13px; }
+html[data-design="refined"] .rep__card { border-radius: 14px; }
+html[data-design="refined"] .rep__names label { font-size: 13px; }
+html[data-design="refined"] .rep__text { font: 13px/1.45 ui-monospace, Consolas, monospace; border-radius: 10px; }
+html[data-design="refined"] .club__hero { border-radius: 18px; }
+html[data-design="refined"] .club__hero::after { border-radius: 50%; }
+html[data-design="refined"] .club__eyebrow { font-size: 11px; font-weight: 800; }
+html[data-design="refined"] .club__title { font-size: 44px; font-weight: 900; }
+html[data-design="refined"] .kpi { border-radius: 14px; }
+html[data-design="refined"] .kpi b { font-size: 28px; font-weight: 900; }
+html[data-design="refined"] .kpi span { font-size: 11px; font-weight: 700; }
+html[data-design="refined"] .csec__head h2 { font-size: 16px; font-weight: 800; }
+html[data-design="refined"] .csec__head h2::before { border-radius: 2px; }
+html[data-design="refined"] .csec__tag { font-size: 12px; font-weight: 700; border-radius: 99px; }
+html[data-design="refined"] .cn__card { border-radius: 18px; }
+html[data-design="refined"] .cn__av { border-radius: 14px; font-weight: 900; font-size: 18px; }
+html[data-design="refined"] .cn__live { border-radius: 50%; }
+html[data-design="refined"] .cn__txt b { font-size: 14px; }
+html[data-design="refined"] .cn__txt span { font-size: 12px; }
+html[data-design="refined"] .cn__off span { font-size: 11px; font-weight: 800; }
+html[data-design="refined"] .cn__off em { font-size: 12px; border-radius: 99px; }
+html[data-design="refined"] .seg { border-radius: 14px; }
+html[data-design="refined"] .seg button { font: inherit; font-size: 13px; font-weight: 700; border-radius: 10px; }
+html[data-design="refined"] .pod { border-radius: 18px; }
+html[data-design="refined"] .pod__rank { border-radius: 50%; font-weight: 900; font-size: 13px; }
+html[data-design="refined"] .pod--1 .pod__rank { font-size: 16px; }
+html[data-design="refined"] .pod__av { border-radius: 14px; font-size: 22px; font-weight: 900; }
+html[data-design="refined"] .pod--1 .pod__av { font-size: 22px; }
+html[data-design="refined"] .pod__name { font-size: 14px; }
+html[data-design="refined"] .pod__val { font-size: 34px; font-weight: 900; }
+html[data-design="refined"] .pod--1 .pod__val { font-size: 40px; }
+html[data-design="refined"] .pod__unit { font-size: 11px; font-weight: 800; }
+html[data-design="refined"] .pod__sub { font-size: 12px; }
+html[data-design="refined"] .cr__row { border-radius: 14px; font-size: 14px; }
+html[data-design="refined"] .cr__row span.is-key { font-weight: 800; }
+html[data-design="refined"] .cr__row--head { font-size: 11px; font-weight: 800; }
+html[data-design="refined"] .cr__pos { font-weight: 800; }
+html[data-design="refined"] .cr__name { font-weight: 700; }
+html[data-design="refined"] .cr__bar2 { border-radius: 3px; }
+html[data-design="refined"] .cr__bar2 i { border-radius: 3px; }
+html[data-design="refined"] .rep__row { border-radius: 18px; }
+html[data-design="refined"] .rep__info b { font-size: 16px; }
+@media (max-width: 720px) {
+  html[data-design="refined"] .club__title { font-size: 34px; }
+  html[data-design="refined"] .pod__val { font-size: 28px; }
+  html[data-design="refined"] .pod--1 .pod__val { font-size: 34px; }
+}
+html[data-design="refined"] .pnav__tab { border-radius: 14px; }
+html[data-design="refined"] .pnav__tab b { font-size: 14px; }
+html[data-design="refined"] .pnav__tab small { font-size: 11px; }
+html[data-design="refined"] .pnav__ic { border-radius: 10px; }
+html[data-design="refined"] .page[data-page="ajustes"] .pagehead,
+html[data-design="refined"] .page[data-page="aspecto"] .pagehead { border-radius: 18px; }
+html[data-design="refined"] .page[data-page="ajustes"] .pagehead::before,
+html[data-design="refined"] .page[data-page="aspecto"] .pagehead::before { font-size: 11px; font-weight: 800; }
+html[data-design="refined"] .page[data-page="ajustes"] .pagehead h1,
+html[data-design="refined"] .page[data-page="aspecto"] .pagehead h1 { font-size: 34px; font-weight: 900; }
+html[data-design="refined"] .page[data-page="ajustes"] .sec,
+html[data-design="refined"] .page[data-page="aspecto"] .sec { border-radius: 18px; }
+html[data-design="refined"] .page[data-page="ajustes"] .sec__title,
+html[data-design="refined"] .page[data-page="aspecto"] .sec__title { font-size: 13px; font-weight: 800; }
+html[data-design="refined"] .page[data-page="ajustes"] .row,
+html[data-design="refined"] .page[data-page="aspecto"] .row { border-radius: 10px; }
+html[data-design="refined"] .launch { border-radius: 18px; }
+html[data-design="refined"] .themes__label span { font-size: 11px; font-weight: 800; }
+html[data-design="refined"] .themecard { border-radius: 18px; }
+html[data-design="refined"] .themecard__preview { border-radius: 10px; }
+html[data-design="refined"] .themecard.is-on::after { border-radius: 50%; font-size: 12px; font-weight: 900; }
+html[data-design="refined"] #favList .pnav__i { border-radius: 99px; font-size: 12px; font-weight: 600; }
+html[data-design="refined"] #favList .pnav__i::before { font-size: 11px; }
+html[data-design="refined"] .page[data-page="aspecto"] .pagehead,
+html[data-design="refined"] .page[data-page="ajustes"] .pagehead { border-radius: 18px; }
+html[data-design="refined"] .page[data-page="aspecto"] .pagehead::after,
+html[data-design="refined"] .page[data-page="ajustes"] .pagehead::after { border-radius: 50%; }
+html[data-design="refined"] .page[data-page="aspecto"] .pagehead h1,
+html[data-design="refined"] .page[data-page="ajustes"] .pagehead h1 { font-size: 34px; font-weight: 900; }
+html[data-design="refined"] .tabbar__chip,
+html[data-design="refined"] .tabbar__fold { font: inherit; font-size: 13px; font-weight: 700; border-radius: 99px; }
+html[data-design="refined"] .tabbar__fold { font-weight: 600; font-size: 12px; }
+html[data-design="refined"] .sec__chev { border-radius: 10px; }
+html[data-design="refined"][data-density="compact"] .row__label { font-size: 14px; }
+html[data-design="refined"][data-density="compact"] .row__desc { font-size: 12px; }
+html[data-design="refined"][data-density="compact"] .sec__title { font-size: 16px; }
+html[data-design="refined"][data-density="comfy"] .row__label { font-size: 16px; }
+html[data-design="refined"][data-density="comfy"] .row__desc { font-size: 13px; }
+html[data-design="refined"] .rrow__club { border-radius: 99px; font-size: 11px; font-weight: 800; }
+html[data-design="refined"][data-layout="top"] .railitem { font-size: 12px; border-radius: 10px; }
+html[data-design="refined"][data-layout="top"] .railedge i { border-radius: 0 0 3px 3px; }
+html[data-design="refined"][data-layout="dock"] .rail { border-radius: 18px; }
+html[data-design="refined"][data-layout="dock"] .railitem { border-radius: 14px; }
+html[data-design="refined"][data-layout="dock"] .railedge i { border-radius: 3px 3px 0 0; }
+html[data-design="refined"][data-layout="island"] .rail { border-radius: 24px; }
+html[data-design="refined"][data-layout="island"] .railitem { border-radius: 14px; }
+html[data-design="refined"][data-layout="bottom"] .railitem { font-size: 11px; border-radius: 10px; }
+html[data-design="refined"][data-layout="bottom"] .railedge i { border-radius: 3px 3px 0 0; }
+html[data-design="refined"][data-layout="mini"] .railitem { border-radius: 14px; }
+html[data-design="refined"][data-layout="right"] .railedge i { border-radius: 3px 0 0 3px; }
+html[data-design="refined"] .app[data-fullscreen="true"] .hotzone::after { border-radius: 0 0 3px 3px; }
+html[data-design="refined"] .laycard { border-radius: 14px; }
+html[data-design="refined"] .laycard b { font-size: 13px; }
+html[data-design="refined"] .laycard small { font-size: 11px; }
+html[data-design="refined"] .laycard__prev { border-radius: 10px; }
+html[data-design="refined"] .laycard__prev i { border-radius: 3px; }
+html[data-design="refined"] .laycard__prev--island .lp-bar { border-radius: 6px; }
+html[data-design="refined"] .laycard__prev--dock .lp-bar { border-radius: 6px; }
+html[data-design="refined"][data-room-rows="dense"] .rrow { font-size: 12px; }
+html[data-design="refined"][data-room-rows="large"] .rrow { font-size: 14px; }
+html[data-design="refined"][data-room-rows="large"] .rrow__name { font-size: 14px; }
+html[data-design="refined"] .rskel__row i { border-radius: 6px; }
+html[data-design="refined"] .rskel__row i:nth-child(2) { border-radius: 50%; }
+html[data-design="refined"] .replay__day { font-size: 11px; font-weight: 800; }
+html[data-design="refined"] .replay::before { border-radius: 0 3px 3px 0; }
+html[data-design="refined"] .replay__date { border-radius: 10px; }
+html[data-design="refined"] .replay__date b { font-size: 18px; font-weight: 800; }
+html[data-design="refined"] .replay__date span { font-size: 11px; font-weight: 700; }
+html[data-design="refined"] .rchip { border-radius: 999px; font-size: 11px; font-weight: 700; }
+html[data-design="refined"] .crumbs { font-size: 11px; font-weight: 700; }
+html[data-design="refined"] .crumbs__a { font: inherit; }
+html[data-design="refined"] :where(.chips) > .chip { border-radius: 999px; font: inherit; font-size: 12px; font-weight: 650; }
+html[data-design="refined"] .replay__star { border-radius: 10px; font-size: 18px; }
+html[data-design="refined"] .rline { border-radius: 3px; }
+html[data-design="refined"] .rline i { border-radius: 2px; }
+html[data-design="refined"][data-layout="consola"] .railitem,
+html[data-design="refined"][data-layout="comando"] .railitem { border-radius: 14px; }
+html[data-design="refined"] .hub__eyebrow { font-size: 11px; font-weight: 800; }
+html[data-design="refined"] .hub__head h1 { font-size: 40px; font-weight: 800; }
+html[data-design="refined"] .hub__head p { font-size: 14px; }
+html[data-design="refined"] .tile { border-radius: 18px; }
+html[data-design="refined"] .tile__ico { border-radius: 14px; }
+html[data-design="refined"] .tile__txt b { font-size: 18px; font-weight: 800; }
+html[data-design="refined"] .tile__txt small { font-size: 12px; }
+html[data-design="refined"] .tile kbd { border-radius: 6px; font: 700 11px var(--font); }
+html[data-design="refined"] .hub__hint { font-size: 12px; }
+@media (max-width: 760px) {
+  html[data-design="refined"] .hub__head h1 { font-size: 28px; }
+}
+html[data-design="refined"] .hubbtn { border-radius: 99px; font: 700 12px var(--font); }
+html[data-design="refined"] .cmdpill { border-radius: 99px; font: 650 12px var(--font); }
+html[data-design="refined"] .cmdpill kbd { border-radius: 99px; font: 700 11px var(--font); }
+html[data-design="refined"] .cmdk__card { border-radius: 18px; }
+html[data-design="refined"] .cmdk__input { font-size: 16px; }
+html[data-design="refined"] .cmdk__item { border-radius: 10px; }
+html[data-design="refined"] .cmdk__item b { font-size: 14px; font-weight: 650; }
+html[data-design="refined"] .cmdk__item small { font-size: 11px; }
+html[data-design="refined"] .cmdk__empty { font-size: 13px; }
+html[data-design="refined"][data-layout="radial"] .rail { border-radius: 50%; }
+html[data-design="refined"][data-layout="radial"] .rail::before { font: 300 34px/1 var(--font); }
+html[data-design="refined"][data-layout="radial"] .railitem { border-radius: 50%; }
+html[data-design="refined"][data-layout="radial"] .railedge i { border-radius: 3px 0 0 0; }
+html[data-design="refined"] .statusbar { font-size: 11px; font-weight: 600; }
+html[data-design="refined"] .laycard__prev--consola .lp-side,
+html[data-design="refined"] .laycard__prev--consola .lp-bar,
+html[data-design="refined"] .laycard__prev--consola .lp-main { border-radius: 4px; }
+html[data-design="refined"] .laycard__prev--comando .lp-bar { border-radius: 6px; }
+html[data-design="refined"] .laycard__prev--radial .lp-bar { border-radius: 50%; }
+html[data-design="refined"] .hostchk { font-size: var(--fs-sm); }
+html[data-design="refined"] .hostlive { border-radius: 10px; }
+html[data-design="refined"] .kings__row.is-king .cr__name { font-weight: 600; }
+html[data-design="refined"] .hostmaps__row b { font-size: var(--fs-sm); }
+html[data-design="refined"] .kings__tl { font-size: 11px; font-weight: 700; border-radius: 99px; }
+html[data-design="refined"] .profcard { border-radius: 18px; }
+html[data-design="refined"] .profcard__glow { border-radius: inherit; }
+html[data-design="refined"] .profcard__glow::after { border-radius: 14px; }
+html[data-design="refined"] .profcard__ring { border-radius: 50%; }
+html[data-design="refined"] .profcard__ring::before { border-radius: 50%; }
+html[data-design="refined"] .profcard__av { font-size: 22px; }
+html[data-design="refined"] .profcard__badge { border-radius: 99px; font: 800 11px/1 var(--font-display); }
+html[data-design="refined"] .profcard__name { font: 800 14px/1.1 var(--font-display); }
+html[data-design="refined"] .profcard__lvl { font-size: 11px; font-weight: 700; }
+html[data-design="refined"] .profcard__bar { border-radius: 99px; }
+html[data-design="refined"] .profcard__bar i { border-radius: inherit; }
+html[data-design="refined"] .profcard__stats b { font: 800 16px/1 var(--font-display); }
+html[data-design="refined"] .profcard__stats em { font-size: 11px; font-weight: 700; }
+html[data-design="refined"][data-layout="dock"] .profcard,
+html[data-design="refined"][data-layout="island"] .profcard,
+html[data-design="refined"][data-layout="mini"] .profcard { border-radius: 50%; }
+html[data-design="refined"][data-layout="dock"] .profcard__av,
+html[data-design="refined"][data-layout="island"] .profcard__av,
+html[data-design="refined"][data-layout="mini"] .profcard__av { font-size: 14px; }
+html[data-design="refined"][data-layout="dock"] .profcard__badge,
+html[data-design="refined"][data-layout="island"] .profcard__badge,
+html[data-design="refined"][data-layout="mini"] .profcard__badge { font-size: 11px; }
+html[data-design="refined"][data-layout="top"] .profcard,
+html[data-design="refined"][data-layout="bottom"] .profcard { border-radius: 14px; }
+html[data-design="refined"][data-layout="top"] .profcard__glow::after,
+html[data-design="refined"][data-layout="bottom"] .profcard__glow::after { border-radius: 10px; }
+html[data-design="refined"][data-layout="top"] .profcard__av,
+html[data-design="refined"][data-layout="bottom"] .profcard__av { font-size: 11px; }
+html[data-design="refined"][data-layout="top"] .profcard__name,
+html[data-design="refined"][data-layout="bottom"] .profcard__name { font-size: 12px; }
+html[data-design="refined"][data-layout="top"] .profcard__lvl,
+html[data-design="refined"][data-layout="bottom"] .profcard__lvl { font-size: 11px; }
+html[data-design="refined"][data-layout="top"] .profcard__stats b,
+html[data-design="refined"][data-layout="bottom"] .profcard__stats b { font-size: 13px; }
+html[data-design="refined"] .hostmut__body { border-radius: 14px; }
+html[data-design="refined"] .lookgal__item { border-radius: 14px; font-size: 12px; font-weight: 600; }
+html[data-design="refined"] .lookgal__item canvas { border-radius: 10px; }
+html[data-design="refined"] .lookchip { border-radius: 999px; font: inherit; font-size: 13px; font-weight: 700; }
+html[data-design="refined"] .lookchip__dot { border-radius: 50%; }
+html[data-design="refined"] .roommodes__set { border-radius: 999px; }
+html[data-design="refined"] .roommode { border-radius: 999px; font: inherit; font-size: 13px; font-weight: 700; }
+html[data-design="refined"] .roommodes__view { border-radius: 10px; }
+html[data-design="refined"] .roomviewbtn { border-radius: 10px; font-size: 16px; }
+html[data-design="refined"][data-roomview="cards"] .rrow { border-radius: 14px; }
+html[data-design="refined"][data-roomview="cards"] .rrow .rrow__name { font-size: 13px; }
+html[data-design="refined"][data-roomview="cards"] .rrow .rrow__dist { font-size: 11px; }
+html[data-design="refined"][data-roomview="cards"] .rrow::after { border-radius: 2px; }
+html[data-design="refined"][data-roomview="cards"][data-room-rows] .rrow { font-size: inherit; }
+html[data-design="refined"][data-roomview="bars"] .rrow__name { font-size: 14px; }
+html[data-design="refined"] .boardcol { border-radius: 14px; }
+html[data-design="refined"] .boardcol__head { font-size: 13px; }
+html[data-design="refined"] .boardcol__head span { font-weight: 700; }
+html[data-design="refined"] .boardcol__more { font-size: 11px; }
+html[data-design="refined"] .boardcol .rrow { border-radius: 10px; }
+html[data-design="refined"] .boardcol .rrow .rrow__name { font-size: 13px; }
+html[data-design="refined"] .roommap__wrap { border-radius: 14px; }
+html[data-design="refined"] .roommap__tip { border-radius: 10px; font-size: 12px; }
+html[data-design="refined"] .roommap__tip span { font-size: 12px; }
+html[data-design="refined"] .roommap__fit { border-radius: 10px; font-size: 16px; }
+html[data-design="refined"] .roommap__legend { font-size: 11px; }
+html[data-design="refined"] .roommap__legend i { border-radius: 50%; }
+html[data-design="refined"] .brand__mark { border-radius: 10px; }
+html[data-design="refined"] .brand__name { font-weight: 800; }
+html[data-design="refined"] .gametab { border-radius: 10px; }
+html[data-design="refined"] .gametab.is-active::after { border-radius: 3px 3px 0 0; }
+html[data-design="refined"] .linkbar { border-radius: 10px; }
+html[data-design="refined"] .linkbar__go { border-radius: 10px; }
+html[data-design="refined"] .audio { border-radius: 14px; }
+html[data-design="refined"] #app[data-stage="game"] .audio__now { font-size: 12px; font-weight: 700; }
+html[data-design="refined"] .audio__vol::-webkit-slider-runnable-track { border-radius: 99px; }
+html[data-design="refined"] .audio__vol::-webkit-slider-thumb { border-radius: 50%; }
+html[data-design="refined"] .topbar-reveal { border-radius: 0 0 14px 14px; }
+html[data-design="refined"] .topchip { border-radius: 999px; font-size: 12px; font-weight: 700; }
+html[data-design="refined"] .topchip__dot { border-radius: 50%; }
+html[data-design="refined"] :is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel__card { border-radius: 24px; }
+html[data-design="refined"] :is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel__close { border-radius: 50%; }
+html[data-design="refined"] :is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .pnav { border-radius: 18px; }
+html[data-design="refined"] :is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .pnav__search { border-radius: 14px; }
+html[data-design="refined"] :is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .pnav__tab,
+html[data-design="refined"] :is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .pnav__i { border-radius: 14px; }
+html[data-design="refined"] :is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .page[data-page] .pagehead h1 { font-size: 34px; font-weight: 800; }
+html[data-design="refined"] :is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .page[data-page] .pagehead p { font-size: 13px; }
+html[data-design="refined"] :is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .tabbar__chip,
+html[data-design="refined"] :is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .tabbar__fold { border-radius: 999px; font-size: 13px; }
+html[data-design="refined"] :is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .page[data-page] .sec { border-radius: 24px; }
+html[data-design="refined"] :is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .sec__title { font-size: 18px; font-weight: 750; }
+html[data-design="refined"] :is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .sec__title::before { border-radius: 14px; }
+html[data-design="refined"] :is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .sec__desc { font-size: 12px; }
+html[data-design="refined"] :is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .row { border-radius: 14px; }
+html[data-design="refined"] :is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .row__label { font-size: 14px; font-weight: 650; }
+html[data-design="refined"] :is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .row__desc { font-size: 13px; }
+html[data-design="refined"] :is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .row--tog { border-radius: 18px; }
+html[data-design="refined"] :is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .row--tog .row__label { font-size: 14px; }
+html[data-design="refined"] :is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .row--tog .row__desc { font-size: 12px; }
+html[data-design="refined"] :is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel select,
+html[data-design="refined"] :is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel input[type="text"]:not(#settingsSearch),
+html[data-design="refined"] :is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel input[type="number"] { border-radius: 14px; font-size: 14px; }
+html[data-design="refined"] :is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .seg { border-radius: 14px; }
+html[data-design="refined"] :is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .seg button { border-radius: 10px; font-size: 13px; }
+html[data-design="refined"] :is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .btn,
+html[data-design="refined"] :is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .ghostbtn { border-radius: 14px; }
+html[data-design="refined"] :is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .presetbtn { border-radius: 18px; }
+html[data-design="refined"] :is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .themecard { border-radius: 18px; }
+html[data-design="refined"] :is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel__pages::-webkit-scrollbar-thumb { border-radius: 10px; }
+html[data-design="refined"] .cap__card { border-radius: 24px; }
+html[data-design="refined"] .cap__card::before { border-radius: inherit; }
+html[data-design="refined"] .cap__logo { border-radius: 14px; font-size: 22px; }
+html[data-design="refined"] .cap__head h2 { font-size: 18px; }
+html[data-design="refined"] .cap__ttl small { font-size: 12px; }
+html[data-design="refined"] .cap__x { border-radius: 10px; }
+html[data-design="refined"] .cap__tab { border-radius: 999px; font-size: 13px; }
+html[data-design="refined"] .cap__tile { border-radius: 18px; }
+html[data-design="refined"] .cap__tile b { font-size: 28px; font-weight: 800; }
+html[data-design="refined"] .cap__tile span { font-size: 12px; }
+html[data-design="refined"] .cap__tile small { font-size: 11px; }
+html[data-design="refined"] .cap__table--cards { border-radius: 0; }
+html[data-design="refined"] .cap__mem { border-radius: 18px; }
+html[data-design="refined"] .cap__av { border-radius: 14px; font-weight: 800; font-size: 18px; }
+html[data-design="refined"] .cap__name { font-size: 16px; }
+html[data-design="refined"] .cap__state { font-size: 12px; }
+html[data-design="refined"] .cap__badge { border-radius: 999px; font-size: 11px; font-weight: 800; }
+html[data-design="refined"] .cap__ver { border-radius: 999px; font-size: 12px; }
+html[data-design="refined"] .cap__btn { border-radius: 10px; }
+html[data-design="refined"] .cap__input { border-radius: 10px; }
+html[data-design="refined"] .cap__h { font-size: 12px; }
+html[data-design="refined"] .cap__sec { border-radius: 18px; }
+html[data-design="refined"] .cap__sec > .cap__h { font-size: 13px; }
+html[data-design="refined"] .cap__notice,
+html[data-design="refined"] .cap__alert,
+html[data-design="refined"] .cap__brief,
+html[data-design="refined"] .cap__key { border-radius: 18px; }
+html[data-design="refined"] .cap__hist { border-radius: 14px; }
+html[data-design="refined"] .cap__mcard { border-radius: 18px; }
+html[data-design="refined"] .cap__tile b { font-size: 28px; }
+html[data-design="refined"] .cap__hero { border-radius: 18px; }
+html[data-design="refined"] .cap__hero .cap__name { font-size: 22px; }
+html[data-design="refined"] .cap__av--xl { border-radius: 18px; font-size: 28px; }
+html[data-design="refined"] .cap__hero .cap__go { font-size: 13px; }
+html[data-design="refined"] .cap__tline .cap__hist::before { border-radius: 50%; }
+html[data-design="refined"] .cap__tline .cap__hist .cap__muted { font-size: 12px; }
+html[data-design="refined"] #app[data-view="club"] .panel__card,
+html[data-design="refined"] #app[data-view="informes"] .panel__card,
+html[data-design="refined"] #app[data-view="hostear"] .panel__card { border-radius: 32px; }
+html[data-design="refined"] .club__hero { border-radius: 24px; }
+html[data-design="refined"] .club__title { font-size: 38px; }
+html[data-design="refined"] .kpi { border-radius: 18px; }
+html[data-design="refined"] .kpi b { font-size: 28px; }
+html[data-design="refined"] .csec { border-radius: 24px; }
+html[data-design="refined"] .csec__head h2 { font-size: 13px; }
+html[data-design="refined"] .cn__card { border-radius: 18px; }
+html[data-design="refined"] .cn__av { border-radius: 14px; }
+html[data-design="refined"] .cn__go { border-radius: 99px; }
+html[data-design="refined"] .seg { border-radius: 99px; }
+html[data-design="refined"] .seg button { border-radius: 99px; }
+html[data-design="refined"] .pod { border-radius: 24px; }
+html[data-design="refined"] .pod__av { border-radius: 18px; }
+html[data-design="refined"] .cr__row { border-radius: 14px; }
+html[data-design="refined"] .rpt__drop { border-radius: 18px; }
+html[data-design="refined"] .rpt__ico { font-size: 28px; border-radius: 18px; }
+html[data-design="refined"] .rpt__chips em { font-size: 12px; font-weight: 700; border-radius: 99px; }
+html[data-design="refined"] .rpt__drop .btn--primary { border-radius: 99px; font-weight: 800; }
+html[data-design="refined"] .reports__status { border-radius: 14px; }
+html[data-design="refined"] .reports__pick { border-radius: 18px; }
+html[data-design="refined"] .rep__card { border-radius: 24px; }
+html[data-design="refined"] .rep__text { border-radius: 18px; }
+html[data-design="refined"] .hostmode button { font-size: 14px; }
+html[data-design="refined"] .hcard { border-radius: 18px; }
+html[data-design="refined"] .hcard__t { font-size: 11px; font-weight: 800; }
+html[data-design="refined"] .hostgrid input,
+html[data-design="refined"] .hostgrid select { border-radius: 14px; }
+html[data-design="refined"] .hostmaps__row { border-radius: 14px; }
+html[data-design="refined"] .hostmut__body { border-radius: 18px; }
+html[data-design="refined"] .hostlive { border-radius: 18px; }
+html[data-design="refined"] .hostlive > b { font-size: 18px; }
+html[data-design="refined"] #hostGo { border-radius: 99px; font-size: 16px; font-weight: 800; }
+html[data-design="refined"] #hostStop { border-radius: 99px; }
+html[data-design="refined"] .lastroom { border-radius: 18px; }
+html[data-design="refined"] .nickcard { border-radius: 24px; }
+html[data-design="refined"] .nickcard__form input { border-radius: 99px; }
+html[data-design="refined"] .nickcard__form .btn { border-radius: 99px; }
+html[data-design="refined"] .roommodes__set,
+html[data-design="refined"] .roommodes__view { border-radius: 99px; }
+html[data-design="refined"] .roommode { border-radius: 99px; }
+html[data-design="refined"] .roomviewbtn { border-radius: 99px; }
+html[data-design="refined"] .rsearch,
+html[data-design="refined"] .filterchip,
+html[data-design="refined"] .sortselect,
+html[data-design="refined"] .rtoolbar .iconbtn { border-radius: 99px; }
+html[data-design="refined"] .rpanel { border-radius: 24px; }
+html[data-design="refined"] .rtable__head { font-size: 11px; }
+html[data-design="refined"] .rrow { border-radius: 14px; }
+html[data-design="refined"] .rrow::before { border-radius: 3px; }
+html[data-design="refined"] .rrow__players { border-radius: 99px; }
+html[data-design="refined"] .ghostbtn { border-radius: 99px; }
+html[data-design="refined"] .joinbtn { border-radius: 99px; font-size: 14px; }
+html[data-design="refined"]:not([data-layout="bottom"]):not([data-layout="comando"]):not([data-layout="consola"]):not([data-layout="dock"]):not([data-layout="island"]):not([data-layout="mini"]):not([data-layout="radial"]):not([data-layout="top"]) .railitem { border-radius: 14px; font-size: 12px; font-weight: 700; }
+html[data-design="refined"]:not([data-layout="bottom"]):not([data-layout="comando"]):not([data-layout="consola"]):not([data-layout="dock"]):not([data-layout="island"]):not([data-layout="mini"]):not([data-layout="radial"]):not([data-layout="top"]) .railitem.is-active::before { border-radius: 0 4px 4px 0; }
+html[data-design="refined"]:not([data-layout="bottom"]):not([data-layout="comando"]):not([data-layout="consola"]):not([data-layout="dock"]):not([data-layout="island"]):not([data-layout="mini"]):not([data-layout="radial"]):not([data-layout="top"]) .profcard { border-radius: 24px; }
+html[data-design="refined"]:not([data-layout="bottom"]):not([data-layout="comando"]):not([data-layout="consola"]):not([data-layout="dock"]):not([data-layout="island"]):not([data-layout="mini"]):not([data-layout="radial"]):not([data-layout="top"]) .roster { border-radius: 18px; }
+html[data-design="refined"] .looksdemo.is-on { border-radius: 14px; }
+html[data-design="refined"] .looksdemo.is-on[data-tvm-icon]::before { font-size: 13px; }
+html[data-design="refined"] .looksdemo.is-on[data-tvm-style="bar"] { border-radius: 4px; }
+html[data-design="refined"] .looksdemo__marks { border-radius: 99px; }
+html[data-design="refined"] .page[data-page="club"] .club__title { font-size: 44px; }
+html[data-design="refined"] .page[data-page="club"] .kpi { border-radius: 18px; }
+html[data-design="refined"] .page[data-page="club"] .kpi::before { border-radius: 0 0 3px 3px; }
+html[data-design="refined"] .page[data-page="club"] .kpi b { font-size: 34px; }
+html[data-design="refined"] .page[data-page="club"] .csec__head h2 { font-size: 12px; }
+html[data-design="refined"] .page[data-page="club"] .cn__av { border-radius: 14px; }
+html[data-design="refined"] .page[data-page="club"] .cn__txt b { font-size: 14px; }
+html[data-design="refined"] .page[data-page="club"] .pod { border-radius: 24px; }
+html[data-design="refined"] .page[data-page="club"] .pod__av { border-radius: 50%; font-size: 22px; }
+html[data-design="refined"] .page[data-page="club"] .pod--1 .pod__av { font-size: 28px; }
+html[data-design="refined"] .page[data-page="club"] .pod.is-self .pod__name::after { font-weight: 600; }
+html[data-design="refined"] .page[data-page="club"] .cr__row { border-radius: 99px; }
+html[data-design="refined"] .page[data-page="club"] .cr__row--head { border-radius: 0; }
+html[data-design="refined"] .page[data-page="club"] .cr__pos { border-radius: 50%; font-size: 12px; }
+html[data-design="refined"] .page[data-page="club"] .cr__bar2 { border-radius: 99px; }
+html[data-design="refined"] .page[data-page="club"] .cr__bar2 i { border-radius: 99px; }
+html[data-design="refined"] .splash__word { font-size: 34px; font-weight: 900; }
+html[data-design="refined"] .splash__status { font-size: 12px; font-weight: 700; }
+html[data-design="refined"] .splash__tip { border-radius: 99px; }
+html[data-design="refined"] .startcard { border-radius: 32px; }
+html[data-design="refined"] .startcard::before { border-radius: 0 0 4px 4px; }
+html[data-design="refined"] .startcard h1 { font-size: 28px; font-weight: 900; }
+html[data-design="refined"] .startcard p { font-size: 13px; }
+html[data-design="refined"] .startsummary__chip { font-weight: 700; border-radius: 99px; }
+html[data-design="refined"] .startcard input { font-size: 18px; font-weight: 700; border-radius: 99px; }
+html[data-design="refined"] .startcard .btn--lg { border-radius: 99px; font-size: 16px; font-weight: 800; }
+html[data-design="refined"] .startcard .btn--ghost { border-radius: 99px; }
+html[data-design="refined"] .splash__ring { border-radius: 50%; }
+html[data-design="refined"] .splash__ring::after { border-radius: 50%; }
+html[data-design="refined"] .splash__word { font-size: 28px; }
+html[data-design="refined"] .splash__word::after { border-radius: 2px; }
+html[data-design="refined"] .club__ring { border-radius: 50%; }
+html[data-design="refined"] #app[data-view="replays"] .panel__card { border-radius: 32px; }
+html[data-design="refined"] .page[data-page="replays"] .pagehead { border-radius: 24px; }
+html[data-design="refined"] .page[data-page="replays"] .pagehead h1 { font-size: 38px; font-weight: 900; }
+html[data-design="refined"] .page[data-page="replays"] .rowactions .btn { border-radius: 99px; }
+html[data-design="refined"] .page[data-page="replays"] .searchbar { border-radius: 99px; }
+html[data-design="refined"] .page[data-page="replays"] .sortselect { border-radius: 99px; }
+html[data-design="refined"] .page[data-page="replays"] .replay__day { font-size: 11px; }
+html[data-design="refined"] .page[data-page="replays"] .replay { border-radius: 24px; }
+html[data-design="refined"] .page[data-page="replays"] .replay__date { border-radius: 18px; }
+html[data-design="refined"] .page[data-page="replays"] .replay__actions .btn,
+html[data-design="refined"] .page[data-page="replays"] .replay__more .btn { border-radius: 99px; }
+html[data-design="refined"] .topbar .gametab { border-radius: 99px; font-weight: 700; }
+html[data-design="refined"] .topbar .gametab__x { border-radius: 50%; }
+html[data-design="refined"] .topbar .gametabs__add { border-radius: 50%; }
+html[data-design="refined"] .topbar .linkbar { border-radius: 99px; }
+html[data-design="refined"] .topbar .linkbar__go { border-radius: 50%; }
+html[data-design="refined"] .topbar .toplast,
+html[data-design="refined"] .topbar .topchip,
+html[data-design="refined"] .topbar .friendsbtn { border-radius: 99px; font-weight: 700; }
+html[data-design="refined"] .topbar .audio { border-radius: 99px; }
+html[data-design="refined"] .topbar .iconbtn { border-radius: 50%; }
+html[data-design="refined"] #app[data-view="musica"] .panel__card { border-radius: 32px; }
+html[data-design="refined"] .mus__hero { border-radius: 24px; }
+html[data-design="refined"] .mus__cover { border-radius: 24px; }
+html[data-design="refined"] .mus__title { font-size: 34px; font-weight: 900; }
+html[data-design="refined"] .mus__artist { font-size: 16px; font-weight: 600; }
+html[data-design="refined"] .mus__bar { border-radius: 99px; }
+html[data-design="refined"] .mus__bar i { border-radius: 99px; }
+html[data-design="refined"] .mus__times { font-size: 12px; font-weight: 700; }
+html[data-design="refined"] .mus__btn { border-radius: 50%; }
+html[data-design="refined"] .mus__vol { border-radius: 99px; }
+html[data-design="refined"] .mus__sw { border-radius: 18px; }
+html[data-design="refined"] .mus__sw b { font-size: 14px; }
+html[data-design="refined"] .mus__sw small { font-size: 12px; }
+html[data-design="refined"] .mus__sw i,
+html[data-design="refined"] .mus__tg i { border-radius: 99px; }
+html[data-design="refined"] .mus__sw i::after,
+html[data-design="refined"] .mus__tg i::after { border-radius: 50%; }
+html[data-design="refined"] .mus__search { border-radius: 99px; }
+html[data-design="refined"] .mus__add,
+html[data-design="refined"] #musAdd { border-radius: 99px; }
+html[data-design="refined"] .mus__row { border-radius: 99px; }
+html[data-design="refined"] .mus__n { border-radius: 50%; font-size: 12px; font-weight: 800; }
+html[data-design="refined"] .mus__n.is-eq i { border-radius: 2px; }
+html[data-design="refined"] .mus__t b { font-size: 14px; }
+html[data-design="refined"] .mus__t small { font-size: 12px; }
+html[data-design="refined"] .mus__tag { font-size: 11px; font-weight: 800; border-radius: 99px; }
+html[data-design="refined"] .mus__ib { border-radius: 50%; }
+html[data-design="refined"] .mus__empty { font-size: 13px; }
+html[data-design="refined"] .crop .crop__card { border-radius: 32px; }
+html[data-design="refined"] .crop__eyebrow { font-size: 11px; font-weight: 800; }
+html[data-design="refined"] .crop__head h2 { font-size: 22px; font-weight: 900; }
+html[data-design="refined"] .crop__stage { border-radius: 24px; }
+html[data-design="refined"] .crop__hud { border-radius: 99px; font-size: 12px; font-weight: 800; }
+html[data-design="refined"] .crop__hud i { border-radius: 50%; }
+html[data-design="refined"] .crop__tip { font-size: 12px; }
+html[data-design="refined"] .crop__label { font-size: 11px; font-weight: 800; }
+html[data-design="refined"] .crop__pitch { border-radius: 18px; }
+html[data-design="refined"] .crop__ctl { border-radius: 18px; }
+html[data-design="refined"] .crop__mini { border-radius: 50%; }
+html[data-design="refined"] .crop__chip { border-radius: 99px; font-size: 13px; font-weight: 700; }
+html[data-design="refined"] .crop__actions .btn { border-radius: 99px; }
+html[data-design="refined"] .assetrow__preview canvas { border-radius: inherit; }
+html[data-design="refined"] .crop__pitchprev { border-radius: 18px; }
+html[data-design="refined"] .assetrow__preview--wide { border-radius: 10px !important; }
+html[data-design="refined"][data-sw="square"] :is(.switch, .mus__sw i, .mus__tg i) { border-radius: 6px !important; }
+html[data-design="refined"][data-sw="square"] :is(.switch, .mus__sw i, .mus__tg i)::after { border-radius: 6px !important; }
+html[data-design="refined"][data-sw="check"] :is(.switch, .mus__sw i, .mus__tg i)::after { font: 900 12px/1 system-ui, sans-serif; }
+html[data-design="refined"][data-pc="compact"] .profcard .profcard__av { font-size: 16px; }
+html[data-design="refined"][data-pc="compact"] .profcard .profcard__badge { font-size: 11px; }
+html[data-design="refined"][data-pc="compact"] .profcard .profcard__name { font-size: 12px; }
+html[data-design="refined"][data-pc="carnet"]:not([data-layout="dock"]):not([data-layout="island"]):not([data-layout="mini"]):not([data-layout="top"]):not([data-layout="bottom"]) .profcard { border-radius: 14px; }
+html[data-design="refined"][data-pc="carnet"] .profcard::before { font: 800 11px/1 var(--font-display); }
+html[data-design="refined"][data-pc="carnet"] .profcard .profcard__ring { border-radius: 14px; }
+html[data-design="refined"][data-pc="carnet"] .profcard .profcard__ring::before { border-radius: 10px; }
+html[data-design="refined"][data-pc="carnet"] .profcard .profcard__av { border-radius: 10px; }
+html[data-design="refined"][data-toast="pill"] .toast { border-radius: 99px; font-weight: 600; }
+html[data-design="refined"][data-toast="pill"] .toast::before { border-radius: 50%; }
+html[data-design="refined"][data-toast="card"] .toast { border-radius: 18px; font-size: 13px; font-weight: 600; }
+html[data-design="refined"][data-toast="card"] .toast::before { border-radius: 50%; font: 900 14px/1 var(--font-display); }
+html[data-design="refined"][data-toast="bar"] .toast { border-radius: 14px; font-weight: 600; }
+html[data-design="refined"] .gsel { border-radius: 18px; }
+html[data-design="refined"] .gsel__group { font-size: 11px; font-weight: 800; }
+html[data-design="refined"] .gsel__opt { border-radius: 10px; font: 600 13px/1.2 var(--font); }
+html[data-design="refined"] .gsel__opt.is-on::before { font-weight: 900; }
+html[data-design="refined"] .mus__cover::after { border-radius: 32px; }
+html[data-design="refined"] .profcard__btitle { font: 800 11px/1 var(--font-display); }
+html[data-design="refined"] .profcard__blist > span { border-radius: 10px; font-size: 11px; }
+html[data-design="refined"] .profcard__blist i { font-weight: 800; }
+html[data-design="refined"] .profcard__bopen { border-radius: 99px; font-size: 11px; font-weight: 800; }

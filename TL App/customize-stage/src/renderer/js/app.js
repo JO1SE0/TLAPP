@@ -875,6 +875,7 @@ function applyConfig(config) {
   if (config.appearance.density === 'compact' || config.appearance.density === 'comfy') rd.density = config.appearance.density; else delete rd.density;
   applyGlass(config.appearance.glass);
   if (['narrow', 'wide'].includes(config.appearance.panelWidth)) rd.panelw = config.appearance.panelWidth; else delete rd.panelw;
+  applyDesign(config.appearance.design);
   if (['flat', 'shine', 'outline'].includes(config.appearance.btnStyle)) rd.btn = config.appearance.btnStyle; else delete rd.btn;
   if (['square', 'check', 'thin'].includes(config.appearance.switchStyle)) rd.sw = config.appearance.switchStyle; else delete rd.sw;
   if (['lift', 'glow', 'scale', 'none'].includes(config.appearance.hoverFx)) rd.hover = config.appearance.hoverFx; else delete rd.hover;
@@ -3855,6 +3856,7 @@ function renderLowEnd() {
   sw.type = 'button';
   sw.setAttribute('role', 'switch');
   sw.setAttribute('aria-checked', String(on));
+  sw.setAttribute('aria-label', en ? 'Low-end PC mode' : 'Modo PC lenta');
   sw.addEventListener('click', () => { sw.disabled = true; setLowEnd(!on); });
   const row = settingRow({
     label: en ? 'Low-end PC mode' : 'Modo PC lenta',
@@ -12084,6 +12086,17 @@ function applyGlass(v) {
   rd.glass = 'on';
   document.documentElement.style.setProperty('--glass-a', a.toFixed(2));
 }
+/* Diseño "Refinado": dos hojas que sólo se cargan cuando se elige (media="not all" las deja dormidas). */
+function applyDesign(v) {
+  const on = v === 'refined';
+  const rd = document.documentElement.dataset;
+  if (on) rd.design = 'refined'; else delete rd.design;
+  for (const id of ['cssRefinedGen', 'cssRefined']) {
+    const l = document.getElementById(id);
+    if (l) l.media = on ? 'all' : 'not all';
+  }
+}
+const DESIGNS = [['classic', 'Clásico', 'Classic'], ['refined', 'Refinado', 'Refined']];
 /* Ancho de los paneles y estilo de los botones principales: chips simples. */
 const PANEL_WIDTHS = [['narrow', 'Angosto', 'Narrow'], ['normal', 'Normal', 'Normal'], ['wide', 'Ancho', 'Wide']];
 const BTN_STYLES = [['normal', 'Como viene', 'Default'], ['flat', 'Plano', 'Flat'], ['shine', 'Brillante', 'Glossy'], ['outline', 'Contorno', 'Outline']];
@@ -12112,6 +12125,11 @@ function paintPanelLook() {
   $('#pwLabel').textContent = en ? 'Panel width' : 'Ancho de los paneles';
   $('#btnLabel').textContent = en ? 'Button style' : 'Estilo de botones';
   $('#btnDesc').textContent = en ? 'The main buttons (Play, Save, Enter…).' : 'Los botones principales (Jugar, Guardar, Entrar…).';
+  $('#designLabel').textContent = en ? 'Design' : 'Diseño';
+  $('#designDesc').textContent = en
+    ? 'Refined: one type scale with 11 px minimum, even corners, bigger click areas, visible keyboard focus and gold kept for the main action.'
+    : 'Refinado: una sola escala de letra (mínimo 11 px), esquinas parejas, zonas de click más grandes, foco visible con teclado y el dorado sólo para la acción principal.';
+  paintChipsInto($('#designChips'), DESIGNS, ap.design === 'refined' ? 'refined' : 'classic', 'dsg');
   paintChipsInto($('#pwChips'), PANEL_WIDTHS, ap.panelWidth || 'normal', 'pw');
   paintChipsInto($('#btnChips'), BTN_STYLES, ap.btnStyle || 'normal', 'bs');
   $('#swLabel').textContent = en ? 'Switches' : 'Interruptores';
@@ -12359,6 +12377,7 @@ $('#swChips').addEventListener('click', (e) => { const b = e.target.closest('[da
 $('#hovChips').addEventListener('click', (e) => { const b = e.target.closest('[data-hov]'); if (b) patchConfig({ appearance: { hoverFx: b.dataset.hov } }).then(paintPanelLook); });
 $('#pcChips').addEventListener('click', (e) => { const b = e.target.closest('[data-pcs]'); if (b) patchConfig({ appearance: { profCard: b.dataset.pcs } }).then(paintPanelLook); });
 $('#pwChips').addEventListener('click', (e) => { const b = e.target.closest('[data-pw]'); if (b) patchConfig({ appearance: { panelWidth: b.dataset.pw } }).then(paintPanelLook); });
+$('#designChips').addEventListener('click', (e) => { const b = e.target.closest('[data-dsg]'); if (b) patchConfig({ appearance: { design: b.dataset.dsg } }).then(paintPanelLook); });
 $('#btnChips').addEventListener('click', (e) => { const b = e.target.closest('[data-bs]'); if (b) patchConfig({ appearance: { btnStyle: b.dataset.bs } }).then(paintPanelLook); });
 
 function paintGlass() {

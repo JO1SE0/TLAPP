@@ -1,0 +1,89 @@
+/* ══════════════════════════════════════════════════════════
+   Diseño "Refinado" (Aspecto → Diseño).
+   Se suma a design-refined.gen.css (escala de letra y radios).
+   Basado en las guías de Apple: letra mínima legible, zonas de
+   click amplias, foco visible, un solo color fuerte por vista,
+   estado al apretar y respeto a "reducir movimiento".
+   Todo es transform / opacity / color: nada que cueste FPS.
+   ══════════════════════════════════════════════════════════ */
+
+/* ── Texto: interlineado y números alineados ───────────── */
+html[data-design="refined"] body { line-height: 1.45; }
+html[data-design="refined"] :is(.row__desc, .sec__desc, .row__label) { line-height: 1.4; }
+html[data-design="refined"] :is(.rrow__dist, .rrow__players, .profcard__stats b, .row__val, .rcount, .memenu__c b, .pod__sub) {
+  font-variant-numeric: tabular-nums;
+}
+/* Las etiquetas en mayúscula chicas se leen mejor con un poco menos de aire. */
+html[data-design="refined"] .rtable__head span { letter-spacing: .08em; }
+
+/* ── Un color fuerte por vista: el dorado queda para la acción principal ── */
+html[data-design="refined"] .roommode.is-on,
+html[data-design="refined"] .seg button.is-on,
+html[data-design="refined"] :is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .seg button.is-on {
+  background: rgb(var(--text-rgb) / 14%);
+  color: var(--text);
+  box-shadow: inset 0 1px 0 rgb(var(--text-rgb) / 12%), 0 1px 3px rgb(0 0 0 / 35%);
+}
+html[data-design="refined"] :where(.chips) > .chip.is-active {
+  background: rgb(var(--accent-rgb) / 14%);
+}
+
+/* ── Zonas de click: se agrandan sin cambiar lo que se ve ── */
+/* Deslizadores: 22 px de alto clickeable, la barra sigue de 5 px. */
+html[data-design="refined"] input[type="range"]:not(.audio__vol) {
+  height: 22px !important;
+  background: transparent !important;
+  box-shadow: none;
+  cursor: pointer;
+}
+html[data-design="refined"] input[type="range"]:not(.audio__vol)::-webkit-slider-runnable-track {
+  height: 5px;
+  border-radius: 99px;
+  background: linear-gradient(90deg, var(--accent) var(--fill, 50%), var(--surface-hi) var(--fill, 50%));
+}
+html[data-design="refined"] input[type="range"]:not(.audio__vol)::-webkit-slider-thumb { margin-top: -5px; }
+html[data-design="refined"] :is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel input[type="range"]::-webkit-slider-thumb { margin-top: -6.5px; }
+html[data-design="refined"] .audio__vol { height: 22px; }
+
+/* Migas de pan y estrella de favoritos: área invisible de al menos 24 px. */
+html[data-design="refined"] .crumbs__a,
+html[data-design="refined"] .favstar { position: relative; }
+html[data-design="refined"] .crumbs__a::after,
+html[data-design="refined"] .favstar::after {
+  content: "";
+  position: absolute;
+  inset: -6px -6px;
+  min-width: 24px;
+  min-height: 24px;
+}
+html[data-design="refined"] .favstar { opacity: .55; }
+
+/* ── Estado al apretar: cada botón responde al click ───── */
+html[data-design="refined"] :is(.btn, .chip, .roommode, .iconbtn, .seg button, .gametab, .favstar, .crumbs__a):active:not(:disabled) {
+  transform: scale(.97);
+  transition: transform 60ms ease-out;
+}
+
+/* ── Foco visible al moverse con el teclado ────────────── */
+html[data-design="refined"] :is(button, a, [role="button"], [tabindex]:not([tabindex="-1"]), select, input[type="range"], input[type="checkbox"], .switch, summary):focus-visible {
+  outline: 2px solid var(--accent) !important;
+  outline-offset: 2px;
+}
+html[data-design="refined"] :is(input:not([type="range"]):not([type="checkbox"]), textarea):focus-visible {
+  outline: 2px solid rgb(var(--accent-rgb) / 70%) !important;
+  outline-offset: 0;
+}
+/* Los paneles que reciben foco por código no muestran anillo. */
+html[data-design="refined"] :is(#panel, .crop__stage):focus-visible { outline: none !important; }
+
+/* ── "Reducir movimiento" de Windows ───────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  html[data-design="refined"] *,
+  html[data-design="refined"] *::before,
+  html[data-design="refined"] *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
