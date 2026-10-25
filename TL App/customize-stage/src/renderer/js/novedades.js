@@ -7,7 +7,7 @@
  * mismo, nadie vuelve a ver el cartel.
  */
 window.TL_NEWS = {
-  id: 'v1.0.51',
+  id: 'v1.0.58',
   title: { es: 'Qué hay de nuevo', en: "What's new" },
   items: {
     es: [
