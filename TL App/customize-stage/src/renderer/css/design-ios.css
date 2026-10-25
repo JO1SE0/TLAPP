@@ -80,65 +80,105 @@
   box-shadow: none;
 }
 :root[data-design="ios"] #tlBody .panel .pnav__group { letter-spacing: .02em; }
+/* Cada sección del índice con su cuadradito de color, como en Ajustes del iPad. */
+:root[data-design="ios"] #tlBody .panel :is(.pnav__i, .pnav__tab) .pnav__ic {
+  width: 30px; height: 30px;
+  border: 0; border-radius: 8px;
+  background: var(--accent);
+  color: var(--accent-text-on);
+  box-shadow: none;
+}
 
 /* Atajos de arriba: cápsulas grises. */
 :root[data-design="ios"] #tlBody .panel :is(.tabbar__chip, .tabbar__fold) { background: var(--ios-fill); border: 0; color: var(--text); box-shadow: none; }
 :root[data-design="ios"] #tlBody .panel :is(.tabbar__chip, .tabbar__fold):hover { background: var(--ios-fill-2); }
 :root[data-design="ios"] #tlBody .panel .tabbar { background: linear-gradient(var(--bg-1) 78%, transparent); }
 
-/* ── Secciones: lista agrupada ─────────────────────────── */
+/* ── Secciones: como Ajustes del iPhone ──────────────────
+   El título va AFUERA del bloque, chico y en mayúscula; la explicación va
+   abajo como nota al pie; el bloque es sólo la lista de filas, lisa, con
+   separadores finitos y el iconito de color al principio de cada fila. */
 :root[data-design="ios"] #tlBody .panel .page[data-page] :is(.sec, .sec--feature) {
+  display: flex;
+  flex-direction: column;
+  padding: 0;
   border: 0;
-  border-radius: 20px;
-  background: var(--ios-group);
-  box-shadow: none;
-}
-:root[data-design="ios"] #tlBody .panel .sec__title { font-size: 17px; font-weight: 600; letter-spacing: -.01em; }
-/* El cuadradito con el dibujo, como los iconos de Ajustes del iPhone. */
-:root[data-design="ios"] #tlBody .panel .sec__title::before {
-  border-radius: 9px;
-  background: var(--sec-ico, none) center / 18px no-repeat, var(--accent);
-  box-shadow: none;
-}
-:root[data-design="ios"] #tlBody .panel .sec__chev { background: var(--ios-fill); }
-
-/* Filas: sin cajitas, separadas por una línea finita que arranca después del margen. */
-:root[data-design="ios"] #tlBody .panel .row { border-radius: 12px; }
-:root[data-design="ios"] #tlBody .panel .row:hover { background: rgb(var(--text-rgb) / 4%); }
-:root[data-design="ios"] #tlBody .panel .row + .row:not(.row--tog) { box-shadow: none; }
-:root[data-design="ios"] #tlBody .panel .row + .row:not(.row--tog)::after {
-  content: "";
-  position: absolute;
-  left: 14px; right: 0; top: 0;
-  height: 1px;
-  background: var(--ios-sep);
-  pointer-events: none;
-}
-:root[data-design="ios"] #tlBody .panel .row { position: relative; }
-:root[data-design="ios"] #tlBody .panel .row__label { font-weight: 500; }
-
-/* Las tarjetitas de interruptores pasan a ser filas de la lista. */
-:root[data-design="ios"] #tlBody .panel .rows { display: flex; flex-direction: column; gap: 0; }
-:root[data-design="ios"] #tlBody .panel .rows + .rows { margin-top: 0; }
-:root[data-design="ios"] #tlBody .panel .row--tog {
-  min-height: 52px;
-  padding: 10px 14px;
-  border: 0;
-  border-radius: 12px;
+  border-radius: 0;
   background: none;
+  box-shadow: none;
+}
+:root[data-design="ios"] #tlBody .panel .page[data-page] .sec + .sec { margin-top: 30px; }
+:root[data-design="ios"] #tlBody .panel .page[data-page] .sec__head { order: 0; margin: 0 0 7px; padding: 0 16px; border: 0; min-height: 0; }
+:root[data-design="ios"] #tlBody .panel .page[data-page] .sec__head[data-fold] { padding-right: 44px; }
+:root[data-design="ios"] #tlBody .panel .page[data-page] .sec__title {
+  min-height: 0;
+  padding-left: 0;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+:root[data-design="ios"] #tlBody .panel .page[data-page] .sec__title::before { display: none; }
+:root[data-design="ios"] #tlBody .panel .page[data-page] .sec__chev { background: none; }
+:root[data-design="ios"] #tlBody .panel .page[data-page] .sec__desc { order: 2; margin: 7px 0 0; padding: 0 16px; font-size: 12px; color: var(--text-dim); }
+:root[data-design="ios"] #tlBody .panel .page[data-page] .sec__body {
+  order: 1;
+  overflow: hidden;
+  border-radius: 12px;
+  background: var(--ios-group);
+}
+:root[data-design="ios"] #tlBody .panel .page[data-page] .sec.is-collapsed .sec__head { margin-bottom: 0; }
+
+/* Filas: de borde a borde del bloque, sin cajitas. */
+:root[data-design="ios"] #tlBody .panel .page[data-page] .sec__body .row,
+:root[data-design="ios"] #tlBody .panel .page[data-page] .sec__body .row--tog {
+  position: relative;
+  margin: 0;
+  min-height: 48px;
+  padding: 9px 16px;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
   transform: none;
 }
-:root[data-design="ios"] #tlBody .panel .row--tog:hover { background: rgb(var(--text-rgb) / 4%); transform: none; }
-:root[data-design="ios"] #tlBody .panel .row--tog.is-on { background: none; }
-:root[data-design="ios"] #tlBody .panel .row--tog.is-on:hover { background: rgb(var(--text-rgb) / 4%); }
-:root[data-design="ios"] #tlBody .panel .row--tog + .row--tog::after {
+:root[data-design="ios"] #tlBody .panel .page[data-page] .sec__body :is(.row, .row--tog):hover { background: rgb(var(--text-rgb) / 4%); transform: none; }
+:root[data-design="ios"] #tlBody .panel .page[data-page] .sec__body .row--tog.is-on { background: none; }
+:root[data-design="ios"] #tlBody .panel .page[data-page] .sec__body .row--tog.is-on:hover { background: rgb(var(--text-rgb) / 4%); }
+:root[data-design="ios"] #tlBody .panel .page[data-page] .sec__body :is(.row--block, .row--text):hover { background: none; }
+:root[data-design="ios"] #tlBody .panel .page[data-page] .sec__body .row__label { font-size: 14px; font-weight: 500; }
+
+/* El iconito de color, con el dibujo de la sección. */
+:root[data-design="ios"] #tlBody .panel .page[data-page] .sec__body :is(.row, .row--tog):not(.row--block):not(.row--text) .row__text { position: relative; padding-left: 42px; }
+:root[data-design="ios"] #tlBody .panel .page[data-page] .sec__body :is(.row, .row--tog):not(.row--block):not(.row--text) .row__text::before {
   content: "";
   position: absolute;
-  left: 14px; right: 0; top: 0;
+  left: 0; top: 50%;
+  width: 29px; height: 29px;
+  margin-top: -14.5px;
+  border-radius: 7px;
+  background: var(--sec-ico, none) center / 17px no-repeat, var(--accent);
+}
+
+/* Separador: arranca después del icono, como en iOS. */
+:root[data-design="ios"] #tlBody .panel .page[data-page] .sec__body :is(.row, .row--tog) + :is(.row, .row--tog) { box-shadow: none; }
+:root[data-design="ios"] #tlBody .panel .page[data-page] .sec__body :is(.row, .row--tog) + :is(.row, .row--tog)::after,
+:root[data-design="ios"] #tlBody .panel .page[data-page] .sec__body .rows + .rows > :is(.row, .row--tog):first-child::after,
+:root[data-design="ios"] #tlBody .panel .page[data-page] .sec__body > .row + .rows > :is(.row, .row--tog):first-child::after {
+  content: "";
+  position: absolute;
+  left: 58px; right: 0; top: 0;
   height: 1px;
   background: var(--ios-sep);
   pointer-events: none;
 }
+:root[data-design="ios"] #tlBody .panel .page[data-page] .sec__body :is(.row--block, .row--text) + :is(.row, .row--tog)::after,
+:root[data-design="ios"] #tlBody .panel .page[data-page] .sec__body > :is(.row--block, .row--text) + .rows > :is(.row, .row--tog):first-child::after { left: 16px; }
+
+/* Las tarjetitas de interruptores pasan a ser filas de la lista. */
+:root[data-design="ios"] #tlBody .panel .page[data-page] .sec__body .rows { display: flex; flex-direction: column; gap: 0; margin: 0; }
+:root[data-design="ios"] #tlBody .panel .page[data-page] .sec__body .rows + .rows { margin-top: 0; }
 
 /* Perfiles de rendimiento, temas y tarjetas elegibles. */
 :root[data-design="ios"] #tlBody .panel .presetbtn { border: 0; background: var(--ios-group-hi); box-shadow: none; }

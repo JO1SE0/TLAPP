@@ -1,8 +1,11 @@
 'use strict';
 /*
  * Diseño "iOS" (Personalización → Diseño) adentro del juego: lista de salas de
- * HaxBall, la sala (equipos, ajustes, botones), los carteles (apodo, clave,
+ * HaxBall, los carteles (apodo, clave,
  * menú de un jugador, kick/ban, elegir cancha), el chat y el marcador.
+ *
+ * El lobby de la sala (.room-view) conserva el diseño del tema con un toque de
+ * cristal: así lo pidió Jefe.
  *
  * Se pone ENCIMA del tema (themes.gameCss) y de room-ui.css, en un <style>
  * propio que va último. Cada regla lleva `html:root` adelante: misma regla que
@@ -35,24 +38,24 @@ function css(p, opts = {}) {
   return `
 /* ── Letra ── */
 ${s('body')} { font-family: ${FONT} !important; letter-spacing: -.005em; }
-${s('.dialog button, .room-view button, .dialog input, .room-view input, .dialog select, .room-view select, .chatbox-view-contents')} { font-family: ${FONT} !important; }
+${s('.dialog button, .dialog input, .dialog select, .chatbox-view-contents')} { font-family: ${FONT} !important; }
 
-/* ── Hojas: carteles, sala y lista de salas ── */
-${s('.dialog, .room-view > .container, .choose-nickname-view > .dialog, .game-view > [data-hook="popups"] > .dialog')} {
+/* ── Hojas: carteles y lista de salas ── */
+${s('.dialog, .choose-nickname-view > .dialog, .game-view > [data-hook="popups"] > .dialog')} {
   border: 0 !important;
   border-radius: 26px !important;
   background: ${p.bg1 || p.panel} !important;
   box-shadow: ${sheet} !important;
 }
-${s('.dialog > h1, .room-view > .container > h1, .game-view > [data-hook="popups"] > .dialog > h1')} {
+${s('.dialog > h1, .game-view > [data-hook="popups"] > .dialog > h1')} {
   font-size: 17px !important; font-weight: 600 !important; letter-spacing: -.01em !important;
   border-bottom: 1px solid ${sep} !important;
 }
-${s('.dialog > h1::before, .room-view > .container > h1::before')} { display: none !important; }
+${s('.dialog > h1::before')} { display: none !important; }
 ${s('.game-view > [data-hook="popups"]')} { background-color: rgba(0,0,0,.45) !important; }
 
 /* ── Botones cápsula con relleno gris ── */
-${s('.dialog button, .room-view button, .connecting-view button, .disconnected-view button, .dialog .file-btn label, .room-view > .container .file-btn label, .chatbox-view-contents > .input button')} {
+${s('.dialog button, .connecting-view button, .disconnected-view button, .dialog .file-btn label, .chatbox-view-contents > .input button')} {
   border: 0 !important;
   border-radius: 99px !important;
   background: ${fill} !important;
@@ -65,23 +68,23 @@ ${s('.dialog button, .room-view button, .connecting-view button, .disconnected-v
   filter: none !important;
   transition: none !important;
 }
-${s('.dialog button:hover:not(:disabled), .room-view button:hover:not(:disabled), .connecting-view button:hover, .disconnected-view button:hover, .dialog .file-btn label:hover, .room-view > .container .file-btn label:hover')} {
+${s('.dialog button:hover:not(:disabled), .connecting-view button:hover, .disconnected-view button:hover, .dialog .file-btn label:hover')} {
   background: ${fill2} !important; color: ${p.text} !important; box-shadow: none !important; transform: none !important; filter: none !important;
 }
-${s('.dialog button:active:not(:disabled), .room-view button:active:not(:disabled)')} { opacity: .7 !important; transform: none !important; }
+${s('.dialog button:active:not(:disabled)')} { opacity: .7 !important; transform: none !important; }
 
 /* La acción principal de cada pantalla: el acento, liso. */
-${s('.room-view > .container > .controls button[data-hook="start-btn"], .roomlist-view > .dialog > .splitter > .buttons > button[data-hook="join"], .room-password-view > .dialog .buttons > button[data-hook="ok"], .choose-nickname-view > .dialog > button[data-hook="ok"], .dialog.pick-stadium-view > .splitter > .buttons > button:first-child')} {
+${s('.roomlist-view > .dialog > .splitter > .buttons > button[data-hook="join"], .room-password-view > .dialog .buttons > button[data-hook="ok"], .choose-nickname-view > .dialog > button[data-hook="ok"], .dialog.pick-stadium-view > .splitter > .buttons > button:first-child')} {
   background: ${p.accent} !important; color: ${accentText} !important; box-shadow: none !important;
 }
-${s('.room-view > .container > .controls button[data-hook="start-btn"]:hover:not(:disabled), .roomlist-view > .dialog > .splitter > .buttons > button[data-hook="join"]:hover:not(:disabled), .room-password-view > .dialog .buttons > button[data-hook="ok"]:hover:not(:disabled), .choose-nickname-view > .dialog > button[data-hook="ok"]:hover:not(:disabled), .dialog.pick-stadium-view > .splitter > .buttons > button:first-child:hover:not(:disabled)')} {
+${s('.roomlist-view > .dialog > .splitter > .buttons > button[data-hook="join"]:hover:not(:disabled), .room-password-view > .dialog .buttons > button[data-hook="ok"]:hover:not(:disabled), .choose-nickname-view > .dialog > button[data-hook="ok"]:hover:not(:disabled), .dialog.pick-stadium-view > .splitter > .buttons > button:first-child:hover:not(:disabled)')} {
   background: ${p.accent} !important; color: ${accentText} !important; filter: brightness(1.08) !important;
 }
 /* Lo que no se deshace: rojo. */
-${s('.room-view > .container > .controls button[data-hook="stop-btn"], .dialog > button[data-hook="kick"], .dialog.kick-player-view .row > button[data-hook="kick"]')} {
+${s('.dialog > button[data-hook="kick"], .dialog.kick-player-view .row > button[data-hook="kick"]')} {
   background: ${rgba(danger, 0.18)} !important; color: ${light ? danger : '#ffb3b9'} !important;
 }
-${s('.room-view > .container > .controls button[data-hook="stop-btn"]:hover:not(:disabled), .dialog > button[data-hook="kick"]:hover:not(:disabled), .dialog.kick-player-view .row > button[data-hook="kick"]:hover')} {
+${s('.dialog > button[data-hook="kick"]:hover:not(:disabled), .dialog.kick-player-view .row > button[data-hook="kick"]:hover')} {
   background: ${danger} !important; color: #ffffff !important;
 }
 /* «Cerrar» y parecidos: texto del acento, sin relleno. */
@@ -91,17 +94,17 @@ ${s('.dialog > button[data-hook="close"], .dialog.kick-player-view .row > button
 ${s('.dialog > button[data-hook="close"]:hover, .dialog.kick-player-view .row > button[data-hook="close"]:hover')} { background: ${fill} !important; }
 
 /* ── Campos ── */
-${s('.dialog input:not([type="range"]), .room-view > .container input:not([type="range"]), .dialog select, .room-view > .container select, .dialog.pick-stadium-view input:not([type="range"]), .game-view > [data-hook="popups"] > .dialog.kick-player-view input:not([type="range"])')} {
+${s('.dialog input:not([type="range"]), .dialog select, .dialog.pick-stadium-view input:not([type="range"]), .game-view > [data-hook="popups"] > .dialog.kick-player-view input:not([type="range"])')} {
   border: 0 !important;
   border-radius: 10px !important;
   background: ${fill} !important;
   color: ${p.text} !important;
   box-shadow: none !important;
 }
-${s('.dialog input:focus, .room-view > .container input:focus, .dialog select:focus, .room-view > .container select:focus')} {
+${s('.dialog input:focus, .dialog select:focus')} {
   box-shadow: 0 0 0 3px ${rgba(p.accent, 0.35)} !important; outline: none !important;
 }
-${s('.dialog .label-input, .room-view > .container .label-input')} {
+${s('.dialog .label-input')} {
   border-radius: 12px !important; background: ${group} !important; box-shadow: none !important;
 }
 
@@ -118,23 +121,19 @@ ${s('.roomlist-view > .dialog > .splitter > .buttons > button, .roomlist-view > 
 ${s('.roomlist-view > .dialog > .splitter .filters .bool')} { border: 0 !important; border-radius: 99px !important; background: ${fill} !important; }
 ${s('.roomlist-view > .notice')} { border: 0 !important; border-radius: 99px !important; background: ${rgba(p.accent, 0.18)} !important; }
 
-/* ── La sala ── */
-${s('.room-view > .container > .teams .player-list-view .list')} {
-  border: 0 !important; border-radius: 16px !important; background: ${group} !important; box-shadow: none !important;
+/* ── La sala (el lobby) ──
+   Queda con su diseño de siempre, que es el que gusta: sólo se le suma un
+   toque de cristal —filo claro y brillo arriba—, todo con sombras internas
+   que se pintan una vez. Sin desenfoque. */
+${s('.room-view > .container')} {
+  box-shadow: 0 36px 80px -26px rgba(0,0,0,.7),
+    inset 0 1px 0 rgba(255,255,255,.2),
+    inset 0 0 0 1px rgba(255,255,255,.08),
+    inset 0 60px 70px -60px rgba(255,255,255,.09) !important;
 }
-${s('.room-view .player-list-item')} { border-radius: 10px !important; }
-${s('.room-view > .container > .teams .player-list-view .buttons button[data-hook="join-btn"]')} {
-  border-radius: 99px !important; background: ${fill} !important; box-shadow: none !important; font-size: 12px !important;
-}
-${s('.room-view > .container > .teams .player-list-view .buttons button:not([data-hook="join-btn"])')} { background: transparent !important; }
-${s('.room-view > .container > .teams .player-list-view.t-red .buttons button[data-hook="join-btn"]')} { color: ${p.red} !important; background: ${rgba(p.red, 0.16)} !important; }
-${s('.room-view > .container > .teams .player-list-view.t-blue .buttons button[data-hook="join-btn"]')} { color: ${p.blue} !important; background: ${rgba(p.blue, 0.16)} !important; }
-${s('.room-view > .container > .teams > .tools button')} { border-radius: 99px !important; background: ${fill} !important; box-shadow: none !important; transform: none !important; }
 ${s('.room-view > .container > .settings')} {
-  border-radius: 20px !important; background: ${group} !important; box-shadow: none !important;
+  box-shadow: 0 18px 36px -26px rgba(0,0,0,.8), inset 0 1px 0 rgba(255,255,255,.14), inset 0 0 0 1px rgba(255,255,255,.08) !important;
 }
-${s('.room-view > .container > .settings input, .room-view > .container > .settings select')} { border-radius: 10px !important; }
-${s('.room-view > .container > .controls button')} { border-radius: 99px !important; transform: none !important; }
 
 /* ── Menú de un jugador y kick/ban ── */
 ${s('.game-view > [data-hook="popups"] > .dialog > button, .dialog.kick-player-view .row > button, .game-view > [data-hook="popups"] > .dialog.kick-player-view > button[data-hook="ban-btn"], .dialog button.tvm-menu-btn')} { border-radius: 12px !important; }
