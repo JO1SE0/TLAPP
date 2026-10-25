@@ -277,6 +277,15 @@ function applyBootFlags(perf) {
   // El cliente manda varios avisos por segundo al proceso principal (telemetría,
   // presencia, estadísticas): sin esto Chromium frena los que considera "demasiados".
   app.commandLine.appendSwitch('disable-ipc-flooding-protection');
+
+  /*
+   * Si el proceso de la placa de video se cae varias veces seguidas, Chromium
+   * cierra el PROGRAMA ENTERO («GPU process isn't usable. Goodbye»). Es lo que
+   * se veía como «crashea al apretar F11»: el cambio de pantalla completa con el
+   * V-Sync apagado y drivers flojos tumba el proceso de GPU un par de veces, y a
+   * la tercera se iba la app. Con esto Chromium lo vuelve a levantar y sigue.
+   */
+  app.commandLine.appendSwitch('disable-gpu-process-crash-limit');
 }
 
 function applyRuntimeFlags(perf) {
@@ -1374,7 +1383,10 @@ function setWindowFullscreen(fullscreen) {
     let answered = false;
     // Se prueban los dos procesos: la interfaz y el juego. El juego es otro
     // renderer y también puede quedarse colgado al cambiar de tamaño.
-    const alive = [mainWindow.webContents, gameContents]
+    // Sólo la interfaz. El juego tarda en contestar mientras rearma la cancha al
+    // nuevo tamaño (normal en PCs lentas), y deshacer el cambio por eso metía un
+    // SEGUNDO cambio de pantalla completa encima del primero.
+    const alive = [mainWindow.webContents]
       .filter((wc) => wc && !wc.isDestroyed() && !wc.isCrashed() && !wc.isLoading())
       .map((wc) => wc.executeJavaScript('1', true).catch(() => null));
     Promise.all(alive).then(() => { answered = true; });
@@ -2126,6 +2138,7 @@ handle('tabs:activate', (_e, id) => {
 /** Cuántas veces se repone el juego solo antes de dejarlo quieto. */
 const MAX_GAME_RECOVERIES = 3;
 let gameRecoveries = 0;
+let uiRecoveries = 0;
 
 app.on('render-process-gone', (_event, contents, details) => {
   // Cuál se murió se pregunta por identidad, uno por uno: interfaz, juego u otro.
@@ -2134,7 +2147,25 @@ app.on('render-process-gone', (_event, contents, details) => {
   const kind = esInterfaz ? 'interfaz' : esJuego ? 'juego' : 'otro';
   logToApp('error', `se murió el proceso de ${kind}: ${details.reason} (código ${details.exitCode})`);
 
-  // La interfaz no se puede reponer desde acá sin perder el estado; el juego sí, y es el que más importa.
+  /*
+   * La interfaz también se repone: antes quedaba la ventana en blanco (o se
+   * veía como que la app «crasheó») hasta cerrarla a mano. Se pierde lo que no
+   * estaba guardado de la interfaz, pero la config y el juego siguen.
+   */
+  if (esInterfaz && details.reason !== 'clean-exit' && details.reason !== 'killed') {
+    if (uiRecoveries >= MAX_GAME_RECOVERIES) {
+      logToApp('error', 'la interfaz se cayó demasiadas veces seguidas: no se repone más');
+      return;
+    }
+    uiRecoveries++;
+    logToApp('warn', `reponiendo la interfaz (intento ${uiRecoveries}/${MAX_GAME_RECOVERIES})`);
+    setTimeout(() => {
+      try { if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.reload(); } catch (err) { logToApp('error', `no se pudo reponer la interfaz: ${err.message}`); }
+    }, 400);
+    setTimeout(() => { uiRecoveries = Math.max(0, uiRecoveries - 1); }, 60000);
+    return;
+  }
+  // El juego se repone en el lugar, sin perder la sala de las otras pestañas.
   if (!esJuego || contents.isDestroyed()) return;
   if (details.reason === 'clean-exit' || details.reason === 'killed') return;
   if (gameRecoveries >= MAX_GAME_RECOVERIES) {

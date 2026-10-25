@@ -11,6 +11,11 @@ window.TL_NEWS = {
   title: { es: 'Qué hay de nuevo', en: "What's new" },
   items: {
     es: [
+      'Optimización: la cancha guardada ya no se rearma al mover la cámara ni al arrastrar, ocultar o mostrar el chat, F11 o el zoom (menos tirones y FPS más parejos).',
+      'Optimización: el techo de FPS ahora se cumple exacto (antes 144 daba ~54 reales) y con cuadros parejos, también en notebooks con batería.',
+      'Optimización del gol: el festejo, el destello y las fuentes quedan listos al entrar a la sala; sin recálculos forzados ni sombras gigantes en el cuadro del gol. El marcador neón y el clima cuestan menos por cuadro.',
+      'F11: la app ya no se cierra si la placa de video se cae al cambiar de pantalla, y la interfaz se repone sola si su proceso se cae.',
+      'Modo PC lenta: ahora también apaga marcador en la cancha, estilos de ficha y pelota, sombras, cola y aro.',
       'La tapa de la página Música late con los golpes del tema (se apaga en Ajustes de música → Tapa que late).',
       'Fondo con profundidad: el fondo del menú se corre un poquito con el mouse.',
       'Brillo que recorre los botones principales al pasar el mouse.',
@@ -106,6 +111,11 @@ window.TL_NEWS = {
       'Cada clave se usa en una sola PC: si cambiás de computadora, pedile a miclo que te la libere.'
     ],
     en: [
+      'Optimization: the cached pitch is no longer rebuilt when the camera moves or when you drag/hide/show the chat, press F11 or zoom (fewer hitches, steadier FPS).',
+      'Optimization: the FPS cap is now exact (144 used to give ~54) with even frame times, also on laptops on battery.',
+      'Goal optimization: celebration, flash and fonts are ready when you enter the room; no forced relayouts or huge shadows on the goal frame. Neon score and weather cost less per frame.',
+      'F11: the app no longer closes if the GPU process crashes while switching, and the interface recovers by itself if its process dies.',
+      'Low-end mode now also turns off the on-pitch score, disc and ball styles, shadows, trail and ring.',
       'The Music page cover pulses with the beat (turn off in Music settings → Beating cover).',
       'Background depth: the menu background shifts a little with the mouse.',
       'A shine sweeps across the main buttons on hover.',

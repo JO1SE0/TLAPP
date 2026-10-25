@@ -689,6 +689,10 @@ function applyClientStyles(doc) {
   style.textContent = `
     ${hudCss}
     ${fullBarCss}
+    /* El chat se desplaza en su propia capa: con el fondo transparente Chromium
+       no lo podía mover por GPU y repintaba cada mensaje (con sus sombras) en
+       cada paso de la rueda. */
+    .chatbox-view .chatbox-view-contents > .log { will-change: transform; }
     .tvm-link {
       color: ${p.blue} !important;
       text-decoration: underline;
@@ -1736,7 +1740,7 @@ function watchViews(doc) {
        */
       kind === 'room' || kind === 'game' ? watchRoomPanel(doc) : stopRoomPanel();
       // El festejo de gol queda listo antes del primer gol (estilo y escudo ya cargados).
-      if (kind === 'room' || kind === 'game') safe(() => clubGoal.warm(doc, assetUrl('crest')));
+      if (kind === 'room' || kind === 'game') { safe(() => clubGoal.warm(doc, assetUrl('crest'))); safe(warmGoalFx, doc); }
       // El selector de estadios sale del panel de la sala, así que sigue la
       // misma vida que él: fuera de la sala no hay diálogo que vigilar.
       kind === 'room' || kind === 'game' ? watchStadiumPicker(doc) : stopStadiumPicker();
@@ -6740,6 +6744,20 @@ function installTracking(view) {
    * los adornos.
    */
   let brushBroken = false;
+  /* Medidas de la cancha para el cache del estadio (ver `__tvmStadium` en
+     game-patch.js): con esto el cache cubre la cancha entera y mover la cámara
+     no lo invalida. Se calcula una vez por estadio. */
+  const boxes = new WeakMap();
+  view.__tvmFieldBox = (stadium) => {
+    if (!stadium || typeof stadium !== 'object') return null;
+    if (boxes.has(stadium)) return boxes.get(stadium);
+    let b = null;
+    try { b = pitchBounds(stadium) || matchGeom(stadium); } catch (e) { b = null; }
+    const box = b && b.halfW > 0 && b.halfH > 0 ? { halfW: b.halfW, halfH: b.halfH } : null;
+    // Sin los campos del parche todavía no se sabe: no se guarda el «no».
+    if (box || tracker.fields) boxes.set(stadium, box);
+    return box;
+  };
   view.__tvmPaint = (ctx, renderer, zoom) => {
     if (brushBroken) return;
     ownDraw++;
@@ -6863,7 +6881,8 @@ function skinPitch(ctx, w, h, stadium) {
   const tex = lookfx.textureSpec(visual.texture);
   const pimg = pitchImage(ctx);
   const relief = ['sunken', 'raised'].includes(skin.relief) ? skin.relief : '';
-  if (!modeOn && !tex && !visual.crest && !visual.light && !pimg && !relief) return;
+  const veil = visual.weather ? lookfx.weatherVeil(visual.weather, visual.weatherAmount) : null;
+  if (!modeOn && !tex && !visual.crest && !visual.light && !pimg && !relief && !veil) { return; }
 
   let field = modeOn ? pitchSkinColor() : null;
   let outside = modeOn ? pitchOutsideColor(field) : null;
@@ -6879,7 +6898,7 @@ function skinPitch(ctx, w, h, stadium) {
     // (arena, cemento, mármol) la levantan para no quedar barrosos.
     brightness = tex.lum || 0;
   }
-  if (!field && !outside && !brightness && !stripes && !tex && !visual.crest && !visual.light && !pimg && !relief) return;
+  if (!field && !outside && !brightness && !stripes && !tex && !visual.crest && !visual.light && !pimg && !relief && !veil) return;
 
   /*
    * El contexto llega con la transformación de mundo puesta: es la que usó el
@@ -6950,6 +6969,17 @@ function skinPitch(ctx, w, h, stadium) {
   if (visual.light) lookfx.paintLight(ctx, w, h, world, bounds, visual.light);
 
   if (relief && bounds) paintRelief(ctx, w, h, world, bounds, relief, clampNum(skin.reliefAmount, 0.1, 1, 0.6));
+
+  // El velo del clima (piso mojado, niebla tenue…): plano y debajo de los jugadores.
+  if (veil) {
+    ctx.save();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = veil;
+    ctx.fillRect(0, 0, w, h);
+    ctx.restore();
+  }
 
   if (visual.crest) {
     lookfx.paintCrest(ctx, world, bounds, crestImage(ctx), visual.crestOpacity, visual.crestSize);
@@ -7388,7 +7418,7 @@ function pitchSkinPrint() {
   const skin = (state.config.pitch && state.config.pitch.skin) || {};
   const field = pitchSkinColor();
   const vip = state.config.vip || {};
-  return `${skin.mode}|${field}|${pitchOutsideColor(field)}|${skin.strength}|${skin.brightness}|${skin.stripes}|${skin.cut}|${skin.imageAlpha}|${skin.relief}|${skin.reliefAmount}|${vip.pitchImage}|${JSON.stringify(vip.pitchCrop || null)}|${visual.pitchLine}|${flatGraphicsEnabled}|${visual.texture}|${visual.light}|${visual.crest}|${visual.crestOpacity}|${visual.crestSize}|${visual.lineColor}`;
+  return `${skin.mode}|${field}|${pitchOutsideColor(field)}|${skin.strength}|${skin.brightness}|${skin.stripes}|${skin.cut}|${skin.imageAlpha}|${skin.relief}|${skin.reliefAmount}|${visual.weather}|${visual.weatherAmount}|${vip.pitchImage}|${JSON.stringify(vip.pitchCrop || null)}|${visual.pitchLine}|${flatGraphicsEnabled}|${visual.texture}|${visual.light}|${visual.crest}|${visual.crestOpacity}|${visual.crestSize}|${visual.lineColor}`;
 }
 
 /** Le tira el cache al estadio para que se vuelva a dibujar con el color nuevo. */
@@ -7525,7 +7555,8 @@ function paintPitch(ctx, renderer, zoom) {
   const wantScore = !!visual.score;
   if (!wantTrail && !wantTeams && !wantSelf && !wantTouch && !wantHeat && !wantSelfTrail && !wantWeather && !wantScore) return;
 
-  if (wantWeather) lookfx.paintWeather(ctx, visual.weather, visual.weatherAmount, performance.now());
+  // El velo plano va en el cache de la cancha (`skinPitch`): acá sólo lo que se mueve.
+  if (wantWeather) lookfx.paintWeather(ctx, visual.weather, visual.weatherAmount, performance.now(), true);
   if (wantScore) {
     // Sólo con arcos: sin ellos no hay resultado que mostrar.
     const geom = matchGeom(currentStadium);
@@ -8409,7 +8440,9 @@ function isGoalAnnounce(text, ctx) {
 }
 
 function ensurePitchFxStyle(doc) {
-  if (fxStyled || !doc || !doc.head) return;
+  // Por documento, no una vez para siempre: si el juego se recarga, el
+  // documento nuevo no tenía el estilo y el destello salía sin formato.
+  if (!doc || !doc.head || doc.getElementById('tvm-pitch-fx')) return;
   fxStyled = true;
   const style = doc.createElement('style');
   style.id = 'tvm-pitch-fx';
@@ -8476,8 +8509,8 @@ function ensurePitchFxStyle(doc) {
     }
     #tvm-goal-flash.is-on .tvm-gl { animation: tvmGoalLogo 1.1s cubic-bezier(.2,.75,.25,1) both; }
     @keyframes tvmGoalText {
-      0%   { opacity: 0; transform: translate(-50%, 30%) scale(.7); letter-spacing: .5em; }
-      11%  { opacity: 1; transform: translate(-50%, 0) scale(1.08); letter-spacing: .1em; }
+      0%   { opacity: 0; transform: translate(-50%, 30%) scale(.7, .7); }
+      11%  { opacity: 1; transform: translate(-50%, 0) scale(1.08); }
       18%  { opacity: 1; transform: translate(-50%, 0) scale(1); }
       84%  { opacity: 1; transform: translate(-50%, 0) scale(1); }
       100% { opacity: 0; transform: translate(-50%, -20%) scale(1); }
@@ -8531,7 +8564,12 @@ function ensureFx2Style(doc) {
   st.id = 'tvm-fx2';
   st.textContent = `
     #tvm-goal-edge { position: fixed; inset: 0; z-index: 2147482990; pointer-events: none; opacity: 0;
-      box-shadow: inset 0 0 9vmin 1.2vmin var(--tvm-edge, #d0b878), inset 0 0 2vmin 0 var(--tvm-edge, #d0b878); }
+      /* Degradés y no una sombra difuminada: la sombra de pantalla completa se
+         rasterizaba justo en el cuadro del gol (el tirón). Se ve igual. */
+      background:
+        linear-gradient(90deg, var(--tvm-edge, #d0b878), transparent 9vmin, transparent calc(100% - 9vmin), var(--tvm-edge, #d0b878)),
+        linear-gradient(180deg, var(--tvm-edge, #d0b878), transparent 9vmin, transparent calc(100% - 9vmin), var(--tvm-edge, #d0b878));
+      background-blend-mode: normal; }
     #tvm-goal-edge.is-on { animation: tvmEdge 1.3s ease-out both; }
     @keyframes tvmEdge { 0% { opacity: 0; } 14% { opacity: .95; } 100% { opacity: 0; } }
     .tvm-spk { position: relative; display: inline-block; width: 0; height: 0; overflow: visible; pointer-events: none; vertical-align: middle; }
@@ -8559,9 +8597,24 @@ function goalEdgeFx(doc) {
   const fresh = Date.now() - lastGoal.at < 1500;
   const color = fresh && lastGoal.team === 'Red' ? '#e56e56' : fresh && lastGoal.team === 'Blue' ? '#5689e5' : '#d0b878';
   el.style.setProperty('--tvm-edge', color);
-  el.classList.remove('is-on');
-  void el.offsetWidth;
-  el.classList.add('is-on');
+  restartFx(el, 'is-on');
+}
+
+/*
+ * Reinicia una animación CSS sin forzar un recálculo de diseño.
+ *
+ * El truco de siempre (`void el.offsetWidth` entre sacar y poner la clase)
+ * obliga al navegador a maquetar TODO el documento en ese instante. En el gol se
+ * hacía tres veces seguidas (borde, sacudón, destello), justo en el cuadro más
+ * cargado. Sacando la clase y poniéndola en el cuadro siguiente pasa lo mismo
+ * sin maquetar a la fuerza.
+ */
+function restartFx(el, cls) {
+  if (!el) return;
+  if (!el.classList.contains(cls)) { el.classList.add(cls); return; }
+  el.classList.remove(cls);
+  const win = (el.ownerDocument && el.ownerDocument.defaultView) || window;
+  win.requestAnimationFrame(() => el.classList.add(cls));
 }
 
 /*
@@ -8695,58 +8748,92 @@ function goalImpact(skipFlash) {
   if (cfg.goalShake && pitchCanvas && pitchCanvas.isConnected) {
     // Se saca y se vuelve a poner para que reinicie: dos goles seguidos con la
     // clase ya puesta no vuelven a animar nada.
-    pitchCanvas.classList.remove('tvm-shake');
-    void pitchCanvas.offsetWidth;
-    pitchCanvas.classList.add('tvm-shake');
+    restartFx(pitchCanvas, 'tvm-shake');
     setTimeout(() => {
       if (pitchCanvas) pitchCanvas.classList.remove('tvm-shake');
     }, 460);
   }
 
   if (cfg.goalFlash && !skipFlash) {
-    if (!flashEl || !flashEl.isConnected) {
-      flashEl = doc.createElement('div');
-      flashEl.id = 'tvm-goal-flash';
-      flashEl.setAttribute('aria-hidden', 'true');
-      const add = (cls, tag = 'div') => {
-        const el = doc.createElement(tag);
-        el.className = cls;
-        flashEl.append(el);
-        return el;
-      };
-      add('tvm-gv');
-      add('tvm-gr');
-      add('tvm-gr');
-      // Chispas: se reparten una sola vez y salen en abanico cada gol.
-      const palette = ['#d0b878', '#f4f0df', '#3a5a9a', '#e9d49a'];
-      const n = 18;
-      for (let i = 0; i < n; i++) {
-        const spark = add('tvm-gp');
-        const angle = (i / n) * Math.PI * 2 + (i % 2 ? 0.12 : -0.12);
-        const dist = 20 + (i % 3) * 7;
-        spark.style.background = palette[i % palette.length];
-        spark.style.setProperty('--dx', `${(Math.cos(angle) * dist).toFixed(1)}vmin`);
-        spark.style.setProperty('--dy', `${(Math.sin(angle) * dist).toFixed(1)}vmin`);
-        spark.style.setProperty('--rot', `${Math.round(angle * 57.3)}deg`);
-      }
-      const crest = add('tvm-gl', 'img');
-      crest.alt = '';
-      crest.src = assetUrl('crest');
-      const text = add('tvm-gt');
-      text.textContent = 'GOL';
-      const names = add('tvm-gn');
-      names.append(doc.createElement('span'), doc.createElement('span'));
-      names.style.display = 'none';
-      doc.body.append(flashEl);
-    }
-    flashEl.classList.remove('is-on');
-    void flashEl.offsetWidth;
-    flashEl.classList.add('is-on');
+    if (!flashEl || !flashEl.isConnected) buildGoalFlash(doc);
+    restartFx(flashEl, 'is-on');
     paintGoalNames();
     setTimeout(() => {
       if (flashEl) flashEl.classList.remove('is-on');
     }, 2400);
   }
+}
+
+/** El destello de gol: se arma una vez (y de antemano, ver `warmGoalFx`). */
+function buildGoalFlash(doc) {
+  ensurePitchFxStyle(doc);
+  flashEl = doc.createElement('div');
+  flashEl.id = 'tvm-goal-flash';
+  flashEl.setAttribute('aria-hidden', 'true');
+  const add = (cls, tag = 'div') => {
+    const el = doc.createElement(tag);
+    el.className = cls;
+    flashEl.append(el);
+    return el;
+  };
+  add('tvm-gv');
+  add('tvm-gr');
+  add('tvm-gr');
+  // Chispas: se reparten una sola vez y salen en abanico cada gol.
+  const palette = ['#d0b878', '#f4f0df', '#3a5a9a', '#e9d49a'];
+  const n = 18;
+  for (let i = 0; i < n; i++) {
+    const spark = add('tvm-gp');
+    const angle = (i / n) * Math.PI * 2 + (i % 2 ? 0.12 : -0.12);
+    const dist = 20 + (i % 3) * 7;
+    spark.style.background = palette[i % palette.length];
+    spark.style.setProperty('--dx', `${(Math.cos(angle) * dist).toFixed(1)}vmin`);
+    spark.style.setProperty('--dy', `${(Math.sin(angle) * dist).toFixed(1)}vmin`);
+    spark.style.setProperty('--rot', `${Math.round(angle * 57.3)}deg`);
+  }
+  const crest = add('tvm-gl', 'img');
+  crest.alt = '';
+  crest.src = assetUrl('crest');
+  const text = add('tvm-gt');
+  text.textContent = 'GOL';
+  const names = add('tvm-gn');
+  names.append(doc.createElement('span'), doc.createElement('span'));
+  names.style.display = 'none';
+  doc.body.append(flashEl);
+}
+
+/*
+ * Todo lo del gol queda listo al entrar a la sala, no en el primer gol: los
+ * estilos, el destello con sus 25 piezas, el borde y las FUENTES. La primera vez
+ * que se usa una fuente (Impact, Bahnschrift…) Windows la busca y la carga, y
+ * eso caía justo en el cuadro del gol o la primera vez que aparecía el marcador
+ * en la cancha.
+ */
+let goalFxWarmDoc = null;
+function warmGoalFx(doc) {
+  if (!doc || !doc.body || goalFxWarmDoc === doc) return;
+  goalFxWarmDoc = doc;
+  ensurePitchFxStyle(doc);
+  ensureFx2Style(doc);
+  if (!flashEl || !flashEl.isConnected) buildGoalFlash(doc);
+  if (!doc.getElementById('tvm-goal-edge')) {
+    const el = doc.createElement('div');
+    el.id = 'tvm-goal-edge';
+    el.setAttribute('aria-hidden', 'true');
+    doc.body.append(el);
+  }
+  try {
+    const fams = ['Impact', '"Arial Black"', '"Bahnschrift"', '"Segoe UI Black"', '"Segoe UI"', '"Arial Narrow"', '"Consolas"', '"Georgia"', '"Arial Rounded MT Bold"', '"Trebuchet MS"'];
+    const cv = doc.createElement('canvas');
+    const c2 = cv.getContext('2d');
+    for (const f of fams) for (const w of ['700', '800', '900']) { c2.font = `${w} 48px ${f}, sans-serif`; c2.measureText('GOL 0123456789'); }
+    const probe = doc.createElement('div');
+    probe.setAttribute('aria-hidden', 'true');
+    probe.style.cssText = 'position:fixed;left:-9999px;top:0;opacity:0;pointer-events:none;white-space:nowrap;contain:strict;width:1px;height:1px;overflow:hidden';
+    probe.innerHTML = fams.map((f) => `<span style="font:900 20px ${f.replace(/"/g, "'")},sans-serif">GOL DOBLETE 0123456789</span>`).join('');
+    doc.body.append(probe);
+    setTimeout(() => probe.remove(), 4000);
+  } catch (e) { /* sin precalentado de fuentes */ }
 }
 
 /** Se avisa una sola vez por documento, y sólo si de verdad hacía falta. */
@@ -11987,24 +12074,82 @@ function installFrameLimiter(win) {
    */
   const chains = new Map();
 
+  /*
+   * Despertador preciso para el cuadro que toca.
+   *
+   * Antes el cuadro salteado se volvía a pedir con rAF. Medido: con el V-Sync
+   * apagado, un cuadro que no dibuja nada deja al compositor sin trabajo y el
+   * rAF siguiente tarda ~18 ms en llegar, así que CUALQUIER techo terminaba
+   * dando ~54-100 FPS desparejos (techo 144 → 54 FPS reales). Ahora se espera
+   * con un temporizador hasta el momento justo y el cuadro se dibuja desde ahí
+   * (medido: techo 60/144/240 → 60,5/144,5/240, cuadros parejos).
+   *
+   * El temporizador de Windows puede ser grueso (con batería, 15 ms): se mide
+   * cuánto se atrasa de verdad y el último tramo de la espera se hace con un
+   * mensaje (MessageChannel), que no tiene ese atraso.
+   */
+  let timerSlop = 1.5;
+  let fakeIds = 0x40000000;
+  const queue = [];
+  const port = (() => {
+    try {
+      const mc = new win.MessageChannel();
+      mc.port1.onmessage = () => { const fns = queue.splice(0); for (const fn of fns) fn(); };
+      return mc.port2;
+    } catch (e) { return null; }
+  })();
+  const post = (fn) => { if (port) { queue.push(fn); port.postMessage(0); } else win.setTimeout(fn, 0); };
+  const wakeAt = (target, fn) => {
+    const tok = { id: 0, dead: false };
+    const go = () => {
+      if (tok.dead) return;
+      const now = win.performance.now();
+      const left = target - now;
+      if (left <= 0.05) { fn(now); return; }
+      if (left > timerSlop + 1) {
+        const ask = left - timerSlop - 0.5;
+        const t0 = now;
+        tok.id = win.setTimeout(() => {
+          const late = win.performance.now() - (t0 + ask);
+          timerSlop = Math.min(20, Math.max(0.5, timerSlop * 0.85 + Math.max(0.5, late + 0.5) * 0.15));
+          go();
+        }, ask);
+      } else post(go);
+    };
+    go();
+    return tok;
+  };
+  const dropPending = (chain) => {
+    const p = chain.pending;
+    if (!p) return;
+    if (p.tok) { p.tok.dead = true; win.clearTimeout(p.tok.id); }
+    else if (p.raf) realCancel.call(win, p.raf);
+    chain.pending = null;
+  };
+
   win.requestAnimationFrame = function (callback) {
     // Sin techo no hay nada que envolver: el callback va derecho al rAF real.
     if (frameBudgetMs() <= 0) return realRaf.call(win, callback);
 
-    const chain = running || { last: 0, pending: 0, owned: 0, cancelled: false };
+    const chain = running || { next: 0, pending: null, owned: 0, cancelled: false };
 
     const step = (now) => {
       if (chain.cancelled) return;
 
       const budget = frameBudgetMs();
-      if (budget > 0 && now - chain.last < budget - 0.2) {
+      if (budget > 0 && now < chain.next - 0.2) {
         // Salteamos el dibujo, no el bucle. Ojo: se mueve `pending`, no
         // `owned`. El juego sigue con el handle viejo y tiene que servirle.
-        chain.pending = realRaf.call(win, step);
+        // Con la página escondida se deja el rAF (el navegador lo frena solo).
+        chain.pending = win.document.hidden ? { raf: realRaf.call(win, step) } : { tok: wakeAt(chain.next, step) };
         return;
       }
 
-      chain.last = now;
+      // Cadencia pareja: el próximo cuadro se cuenta desde el que tocaba, no
+      // desde el que salió (si no, cada atraso se acumula). Atrasado por más de
+      // un cuadro, se vuelve a empezar desde ahora.
+      if (budget > 0 && chain.next && now - chain.next < budget) chain.next += budget;
+      else chain.next = budget > 0 ? now + budget : 0;
       const armed = chain.owned;
       const previous = running;
       running = chain;
@@ -12019,8 +12164,19 @@ function installFrameLimiter(win) {
     };
 
     if (chain.owned) chains.delete(chain.owned);
-    chain.pending = realRaf.call(win, step);
-    chain.owned = chain.pending;
+    dropPending(chain);
+    let id;
+    if (running === chain && !win.document.hidden) {
+      // El bucle re-armándose desde su propio cuadro, con techo: se queda en el
+      // despertador. Volver al rAF del navegador acá le sumaba otra espera de
+      // cuadro (medido: techo 144 → 111 FPS).
+      id = ++fakeIds;
+      chain.pending = { tok: wakeAt(chain.next, step) };
+    } else {
+      id = realRaf.call(win, step);
+      chain.pending = { raf: id };
+    }
+    chain.owned = id;
     chains.set(chain.owned, chain);
     return chain.owned;
   };
@@ -12030,7 +12186,7 @@ function installFrameLimiter(win) {
     if (chain) {
       chain.cancelled = true;
       chains.delete(handle);
-      realCancel.call(win, chain.pending);
+      dropPending(chain);
       return;
     }
     realCancel.call(win, handle);

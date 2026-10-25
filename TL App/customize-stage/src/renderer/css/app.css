@@ -7043,3 +7043,15 @@ html:not([data-animations="off"]) :is(.btn--primary, .mus__btn--main):hover::aft
 .profcard__blist i { font-style: normal; font-weight: 800; color: var(--text); white-space: nowrap; font-variant-numeric: tabular-nums; }
 .profcard__bopen { align-self: center; padding: 6px 14px; border-radius: 99px; font-size: 11px; font-weight: 800; color: var(--accent-text-on); background: var(--accent); }
 .profcard__bopen:hover { filter: brightness(1.1); }
+
+/* ═══ Jugando, la interfaz no anima nada que no se vea ═══
+   Las animaciones infinitas de atrás (el brillo que gira en tu tarjeta, el
+   borde del «ahora suena», el texto que corre) le piden cuadros al compositor
+   todo el tiempo, y el compositor es el mismo proceso de GPU que dibuja el
+   juego. Con el riel guardado no se ven: se congelan. */
+#app[data-stage="game"] .profcard__glow::before,
+#app[data-stage="game"] .nowplaying::before,
+#app[data-stage="game"] .np__marq b,
+#app[data-stage="game"] .mus__n.is-eq i,
+#app[data-stage="game"] .stage__ring,
+#app[data-stage="game"] .rskel { animation-play-state: paused !important; }

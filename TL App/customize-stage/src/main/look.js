@@ -1576,7 +1576,28 @@ function wxSprite() {
   return c;
 }
 
-function paintWeather(ctx, kind, amount, now) {
+/**
+ * El velo de color de cada clima (el piso mojado, la niebla tenue…). Es plano y
+ * va DEBAJO de los jugadores, así que el juego lo mete adentro del cache de la
+ * cancha y lo paga una vez, no en cada cuadro (ver `skipVeil`).
+ */
+function weatherVeil(kind, amount) {
+  const k = Math.min(1, Math.max(0.2, amount || 0.6));
+  switch (kind) {
+    case 'rain': return 'rgba(18,34,62,0.09)';
+    case 'storm': return 'rgba(14,26,52,0.16)';
+    case 'snow': return 'rgba(235,245,255,0.05)';
+    case 'dust': return `rgba(196,146,78,${(0.04 + 0.07 * k).toFixed(3)})`;
+    case 'leaves': return 'rgba(120,70,20,0.05)';
+    case 'embers': return 'rgba(255,110,30,0.045)';
+    case 'fireflies': return 'rgba(6,12,34,0.13)';
+    case 'blizzard': return 'rgba(225,238,255,0.09)';
+    case 'fog': return `rgba(214,224,234,${(0.03 + 0.06 * k).toFixed(3)})`;
+    default: return null;
+  }
+}
+
+function paintWeather(ctx, kind, amount, now, skipVeil) {
   const cv = ctx.canvas;
   if (!cv) return;
   const m = ctx.getTransform();
@@ -1635,8 +1656,8 @@ function paintWeather(ctx, kind, amount, now) {
       const storm = kind === 'storm';
       // El suelo se pone un poco más oscuro y azulado, como mojado.
       ctx.setTransform(1, 0, 0, 1, 0, 0);
-      ctx.fillStyle = storm ? 'rgba(14,26,52,0.16)' : 'rgba(18,34,62,0.09)';
-      ctx.fillRect(0, 0, W, H);
+      if (!skipVeil) {ctx.fillStyle = storm ? 'rgba(14,26,52,0.16)' : 'rgba(18,34,62,0.09)';
+      ctx.fillRect(0, 0, W, H); }
       ctx.setTransform(m);
 
       const total = Math.round(WX_MAX * (0.35 + 0.65 * k));
@@ -1700,8 +1721,8 @@ function paintWeather(ctx, kind, amount, now) {
     } else if (kind === 'snow') {
       const total = Math.round(WX_MAX * (0.3 + 0.7 * k));
       ctx.setTransform(1, 0, 0, 1, 0, 0);
-      ctx.fillStyle = 'rgba(235,245,255,0.05)';
-      ctx.fillRect(0, 0, W, H);
+      if (!skipVeil) {ctx.fillStyle = 'rgba(235,245,255,0.05)';
+      ctx.fillRect(0, 0, W, H); }
       ctx.setTransform(m);
       for (let pass = 0; pass < 2; pass++) {
         ctx.beginPath();
@@ -1721,8 +1742,8 @@ function paintWeather(ctx, kind, amount, now) {
     } else if (kind === 'dust') {
       const total = Math.round(WX_MAX * (0.3 + 0.7 * k));
       ctx.setTransform(1, 0, 0, 1, 0, 0);
-      ctx.fillStyle = `rgba(196,146,78,${(0.04 + 0.07 * k).toFixed(3)})`;
-      ctx.fillRect(0, 0, W, H);
+      if (!skipVeil) {ctx.fillStyle = `rgba(196,146,78,${(0.04 + 0.07 * k).toFixed(3)})`;
+      ctx.fillRect(0, 0, W, H); }
       ctx.setTransform(m);
       ctx.beginPath();
       for (let i = 0; i < total; i++) {
@@ -1739,8 +1760,8 @@ function paintWeather(ctx, kind, amount, now) {
       // Hojas de otoño: elipses giradas en cuatro colores, una pasada por color.
       const total = Math.round(WX_MAX * (0.14 + 0.2 * k));
       ctx.setTransform(1, 0, 0, 1, 0, 0);
-      ctx.fillStyle = 'rgba(120,70,20,0.05)';
-      ctx.fillRect(0, 0, W, H);
+      if (!skipVeil) {ctx.fillStyle = 'rgba(120,70,20,0.05)';
+      ctx.fillRect(0, 0, W, H); }
       ctx.setTransform(m);
       const cols = ['rgba(214,120,38,0.85)', 'rgba(190,60,36,0.85)', 'rgba(222,176,52,0.85)', 'rgba(120,132,40,0.85)'];
       for (let c = 0; c < 4; c++) {
@@ -1761,8 +1782,8 @@ function paintWeather(ctx, kind, amount, now) {
       // Brasas que suben y titilan. Mezcla aditiva: brillan sobre el piso.
       const total = Math.round(WX_MAX * (0.2 + 0.3 * k));
       ctx.setTransform(1, 0, 0, 1, 0, 0);
-      ctx.fillStyle = 'rgba(255,110,30,0.045)';
-      ctx.fillRect(0, 0, W, H);
+      if (!skipVeil) {ctx.fillStyle = 'rgba(255,110,30,0.045)';
+      ctx.fillRect(0, 0, W, H); }
       ctx.setTransform(m);
       ctx.globalCompositeOperation = 'lighter';
       for (let pass = 0; pass < 2; pass++) {
@@ -1783,8 +1804,8 @@ function paintWeather(ctx, kind, amount, now) {
       // Luciérnagas: manchas suaves que pulsan, sobre un toque de noche.
       const total = Math.round(14 + 34 * k);
       ctx.setTransform(1, 0, 0, 1, 0, 0);
-      ctx.fillStyle = 'rgba(6,12,34,0.13)';
-      ctx.fillRect(0, 0, W, H);
+      if (!skipVeil) {ctx.fillStyle = 'rgba(6,12,34,0.13)';
+      ctx.fillRect(0, 0, W, H); }
       ctx.setTransform(m);
       // Halo tenue y centro por luciérnaga, AGRUPADOS por intensidad: cuatro niveles por capa,
       // un trazo por nivel (8 `fill` por cuadro en vez de ~100 con el estado cambiando cada vez).
@@ -1821,8 +1842,8 @@ function paintWeather(ctx, kind, amount, now) {
       // Ventisca: nieve rápida y de costado.
       const total = Math.round(WX_MAX * (0.4 + 0.6 * k));
       ctx.setTransform(1, 0, 0, 1, 0, 0);
-      ctx.fillStyle = 'rgba(225,238,255,0.09)';
-      ctx.fillRect(0, 0, W, H);
+      if (!skipVeil) {ctx.fillStyle = 'rgba(225,238,255,0.09)';
+      ctx.fillRect(0, 0, W, H); }
       ctx.setTransform(m);
       ctx.lineCap = 'round';
       ctx.beginPath();
@@ -1844,8 +1865,8 @@ function paintWeather(ctx, kind, amount, now) {
       // La niebla es una textura que se arma UNA vez (manchas que cierran en los
       // bordes) y se desliza: dos capas a distinta velocidad, cuatro `drawImage`.
       ctx.setTransform(1, 0, 0, 1, 0, 0);
-      ctx.fillStyle = `rgba(214,224,234,${(0.03 + 0.06 * k).toFixed(3)})`;
-      ctx.fillRect(0, 0, W, H);
+      if (!skipVeil) {ctx.fillStyle = `rgba(214,224,234,${(0.03 + 0.06 * k).toFixed(3)})`;
+      ctx.fillRect(0, 0, W, H); }
       // Una sola capa: dos `drawImage` que juntos cubren la pantalla una vez.
       const tex = wxFogTexture();
       const u = (((t * 0.009) % 1) + 1) % 1;
@@ -2007,12 +2028,19 @@ function paintMatchMark(ctx, o) {
         ctx.lineWidth = Math.max(1.5, size * 0.022);
         ctx.strokeStyle = fill;
         ctx.globalAlpha = base * a * 0.85;
-        if (style === 'neon') { ctx.shadowColor = fill; ctx.shadowBlur = size * 0.2; }
         ctx.beginPath();
         const start = -Math.PI / 2 + (mm.dir < 0 ? (1 - sweep) * TAU * 0.5 : 0);
         ctx.arc(0, 0, ringR, start, -Math.PI / 2 + TAU * sweep);
+        if (style === 'neon') {
+          // Brillo con trazos anchos y tenues en vez de `shadowBlur`: el desenfoque
+          // se recalculaba en cada cuadro sobre un círculo enorme.
+          const lw = ctx.lineWidth;
+          const ga = ctx.globalAlpha;
+          ctx.lineWidth = lw * 7; ctx.globalAlpha = ga * 0.12; ctx.stroke();
+          ctx.lineWidth = lw * 3.5; ctx.globalAlpha = ga * 0.25; ctx.stroke();
+          ctx.lineWidth = lw; ctx.globalAlpha = ga;
+        }
         ctx.stroke();
-        ctx.shadowBlur = 0;
       }
       if (burst && since < 0.9) {
         const pr = clamp01(since / 0.9);
@@ -2067,12 +2095,14 @@ function paintMatchMark(ctx, o) {
           ctx.fillStyle = fill;
           ctx.fillText(txt, 0, y);
           ctx.globalAlpha = Math.min(1, alpha * 1.5);
-          ctx.lineWidth = Math.max(2, size * 0.03);
+          const lw = Math.max(2, size * 0.03);
+          const ga = ctx.globalAlpha;
           ctx.strokeStyle = fill;
-          ctx.shadowColor = fill;
-          ctx.shadowBlur = size * 0.28;
+          // Mismo brillo que con `shadowBlur`, sin desenfocar texto gigante por cuadro.
+          ctx.lineWidth = lw * 6; ctx.globalAlpha = ga * 0.1; ctx.strokeText(txt, 0, y);
+          ctx.lineWidth = lw * 3; ctx.globalAlpha = ga * 0.22; ctx.strokeText(txt, 0, y);
+          ctx.lineWidth = lw; ctx.globalAlpha = ga;
           ctx.strokeText(txt, 0, y);
-          ctx.shadowBlur = 0;
         } else {
           ctx.globalAlpha = alpha;
           ctx.fillStyle = fill;
@@ -2110,6 +2140,7 @@ module.exports = {
   resetTrail,
   isLightLine,
   paintWeather,
+  weatherVeil,
   drawOwnRing,
   paintMatchMark,
   resetMatchMark,

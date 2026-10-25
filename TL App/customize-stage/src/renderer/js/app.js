@@ -3795,14 +3795,17 @@ function renderFpsCap() {
 /*
  * ── Modo «PC lenta» ─────────────────────────────────────────────────────
  * Un interruptor que apaga de una vez todo lo VISUAL que cuesta (animaciones,
- * partículas, pelota 3D, destellos, fondo animado, gráficos planos) y guarda lo
+ * partículas, pelota 3D, destellos, fondo animado, gráficos planos, marcador en
+ * la cancha, estilos de ficha y pelota, sombras, cola y aro) y guarda lo
  * que había para poder volver. Al apagarlo se devuelve sólo lo que sigue con el
  * valor que puso el modo: si en el medio tocaste algo a mano, se respeta.
  * No toca la jugabilidad, el sonido ni la resolución del juego.
  */
 const LOW_END = {
   appearance: { animations: false, sparks: false, musicGlow: false, crestBreath: false, roomCurtain: false, listStagger: false, toggleBounce: false, accentDrift: false, joinSparkle: false, goalEdge: false, musicInGame: false, pageTransition: 'off' },
-  visual: { menuBg: 'none', pitchWeather: 'none' },
+  // Lo que se dibuja EN CADA CUADRO de la partida (lo de la cancha que queda
+  // guardado en el cache no cuesta por cuadro y se respeta).
+  visual: { menuBg: 'none', pitchWeather: 'none', pitchScore: 'none', discStyle: 'default', softShadows: false, selfTrail: false, ringStyle: 'default', ballStyle: 'default' },
   pitch: { ball3d: false, goalFlash: false, goalShake: false },
   perf: { flatGraphics: true, gpuRasterization: true, zeroCopy: true, highProcessPriority: true, disableBackgroundThrottling: true }
 };
@@ -3856,8 +3859,8 @@ function renderLowEnd() {
   const row = settingRow({
     label: en ? 'Low-end PC mode' : 'Modo PC lenta',
     description: en
-      ? 'Turns off what costs FPS in one go: animations, particles, 3D ball, goal flashes, animated menu background and flat graphics.'
-      : 'Apaga de una vez lo que cuesta FPS: animaciones, partículas, pelota 3D, destellos de gol, fondo animado del menú y gráficos planos.',
+      ? 'Turns off what costs FPS in one go: animations, particles, 3D ball, goal flashes, animated menu background, on-pitch score, disc and ball styles, shadows, trail and ring styles, plus flat graphics.'
+      : 'Apaga de una vez lo que cuesta FPS: animaciones, partículas, pelota 3D, destellos de gol, fondo animado del menú, marcador en la cancha, estilos de ficha y pelota, sombras, cola y aro, y pone gráficos planos.',
     hint: en
       ? 'It remembers what you had and restores it when you turn it off (anything you changed by hand in the meantime is kept). Does not touch gameplay, sound or game resolution; for more FPS also lower “Resolution scale” in Graphics. Some changes need a restart.'
       : 'Recuerda lo que tenías y lo devuelve al apagarlo (lo que cambies a mano mientras tanto se respeta). No toca la jugabilidad, el sonido ni la resolución del juego; para ganar más FPS bajá también la «Escala de resolución» en Gráficos. Algunos cambios piden reiniciar.',

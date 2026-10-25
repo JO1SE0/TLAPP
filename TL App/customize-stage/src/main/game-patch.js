@@ -349,8 +349,14 @@ if (window.__tvmStadium) return;
 var PAD = 192;
 
 var cache = null, ctx = null;
-var lastStadium = null, lastPrint = '', lastW = 0, lastH = 0;
-var lastZoom = 0, lastTop = -1, lastBot = -1, lastCamX = 0, lastCamY = 0;
+var lastStadium = null, lastPrint = '', lastLineW = -1;
+/* Qué rectángulo de cancha (en unidades de mundo) tiene el cache y a qué zoom. */
+var c0x = 0, c0y = 0, c1x = 0, c1y = 0, cZoom = 1;
+/* Tamaño y zoom del cuadro anterior: para detectar ráfagas de cambios. */
+var frameW = 0, frameH = 0, frameZoom = 0, lastSizeChange = -1e9;
+var BURST_MS = 160;
+/* Presupuesto del cache que cubre la cancha entera: lado y píxeles máximos. */
+var MAX_SIDE = 6144, MAX_PX = 10e6;
 var flush = false, broken = false;
 
 /* Estadística, leíble desde afuera con window.__tvmStadiumStats. */
@@ -511,9 +517,27 @@ window.__tvmStadium = function (self, cvKey, camKey, zoom, topPad, botPad, lineW
     var ex = cam.x + offX, ey = cam.y + offY;
 
     var fp = print(stadium);
-    var camDx = (lastCamX - ex) * zoom;
-    var camDy = (lastCamY - ey) * zoom;
-    var limit = PAD * 0.8;
+    var now = window.performance.now();
+
+    /* Ráfaga de cambios de tamaño o zoom: arrastrar el chat, ocultarlo, F11, la
+       rueda del zoom. Mientras dura NO se rearma: se reusa lo que hay, escalado,
+       y se rearma una vez cuando el tamaño se queda quieto. Antes se rearmaba en
+       CADA cuadro de la ráfaga (cancha + colores + texturas + lecturas a la
+       placa), que es el tirón que se sentía al mover el chat. */
+    if (vw !== frameW || vh !== frameH || Math.abs(zoom - frameZoom) > 1e-3) {
+      lastSizeChange = now; frameW = vw; frameH = vh; frameZoom = zoom;
+    }
+    var burst = now - lastSizeChange < BURST_MS;
+
+    /* Lo que se ve, en coordenadas de cancha. El centro de la pantalla es la
+       cámara; el padding de arriba/abajo sólo corre ese centro. */
+    var cx = vw / 2, cy = (vh + topPad - botPad) / 2;
+    var vx0 = ex - cx / zoom, vx1 = ex + (vw - cx) / zoom;
+    var vy0 = ey - cy / zoom, vy1 = ey + (vh - cy) / zoom;
+
+    var same = !!cache && !flush && stadium === lastStadium && fp === lastPrint && lineW === lastLineW;
+    var covered = same && vx0 >= c0x && vx1 <= c1x && vy0 >= c0y && vy1 <= c1y;
+    var zoomOk = Math.abs(zoom - cZoom) <= 1e-3;
 
     /* Contadores: sin esto no hay forma de saber si el cache acierta. Un cache
        que falla siempre no es neutro, es más lento que no tenerlo. */
@@ -521,11 +545,9 @@ window.__tvmStadium = function (self, cvKey, camKey, zoom, topPad, botPad, lineW
     if (!cache) why = 'sin cache';
     else if (flush) why = 'flush';
     else if (stadium !== lastStadium) why = 'otro estadio';
-    else if (fp !== lastPrint) why = 'campos del estadio';
-    else if (vw !== lastW || vh !== lastH) why = 'tamaño';
-    else if (Math.abs(zoom - lastZoom) > 1e-3) why = 'zoom';
-    else if (Math.abs(topPad - lastTop) > 0.5 || Math.abs(botPad - lastBot) > 0.5) why = 'padding';
-    else if ((camDx * camDx + camDy * camDy) > limit * limit) why = 'cámara';
+    else if (fp !== lastPrint || lineW !== lastLineW) why = 'campos del estadio';
+    else if (!covered) why = 'cámara';
+    else if (!zoomOk && !burst) why = 'zoom';
 
     if (why) { S.misses++; S.why[why] = (S.why[why] || 0) + 1; } else S.hits++;
 
@@ -536,15 +558,33 @@ window.__tvmStadium = function (self, cvKey, camKey, zoom, topPad, botPad, lineW
         ctx = cache.getContext('2d', { alpha: false });
         if (!ctx) { broken = true; draw(self, stadium); return; }
       }
-      if (cache.width !== cacheW || cache.height !== cacheH) {
-        cache.width = cacheW;
-        cache.height = cacheH;
+
+      /* Qué cubre el cache. Si entra en el presupuesto, la cancha ENTERA más lo
+         que se ve: así mover la cámara no lo invalida nunca. Si no entra (mapa
+         gigante con mucho zoom), lo que se ve más un margen generoso. */
+      var m = Math.max(PAD, 0.25 * Math.max(vw, vh)) / zoom;
+      var r0x = vx0 - m, r1x = vx1 + m, r0y = vy0 - m, r1y = vy1 + m;
+      var box = null;
+      if (window.__tvmFieldBox) { try { box = window.__tvmFieldBox(stadium); } catch (e7) { box = null; } }
+      if (box && box.halfW > 0 && box.halfH > 0) {
+        var hx = Math.max(cx, vw - cx) / zoom + m, hy = Math.max(cy, vh - cy) / zoom + m;
+        var f0x = Math.min(r0x, -box.halfW - hx), f1x = Math.max(r1x, box.halfW + hx);
+        var f0y = Math.min(r0y, -box.halfH - hy), f1y = Math.max(r1y, box.halfH + hy);
+        var fw = (f1x - f0x) * zoom, fh = (f1y - f0y) * zoom;
+        if (fw <= MAX_SIDE && fh <= MAX_SIDE && fw * fh <= MAX_PX) { r0x = f0x; r1x = f1x; r0y = f0y; r1y = f1y; }
+      }
+      /* Alineado al píxel con la cámara de ahora: recién armado, se copia sin
+         remuestrear (nítido). */
+      r0x = ex - Math.ceil((ex - r0x) * zoom) / zoom;
+      r0y = ey - Math.ceil((ey - r0y) * zoom) / zoom;
+      var W = Math.max(1, Math.ceil((r1x - r0x) * zoom)), H = Math.max(1, Math.ceil((r1y - r0y) * zoom));
+      if (cache.width !== W || cache.height !== H) {
+        cache.width = W;
+        cache.height = H;
       }
       ctx.setTransform(1, 0, 0, 1, 0, 0);
-      ctx.clearRect(0, 0, cacheW, cacheH);
-      ctx.translate(cacheW / 2, (cacheH + topPad - botPad) / 2);
-      ctx.scale(zoom, zoom);
-      ctx.translate(-ex, -ey);
+      ctx.clearRect(0, 0, W, H);
+      ctx.setTransform(zoom, 0, 0, zoom, -r0x * zoom, -r0y * zoom);
       ctx.lineWidth = lineW;
 
       /* El dibujo del estadio lee this.<canvas>.width/height para su fondo, así
@@ -552,39 +592,31 @@ window.__tvmStadium = function (self, cvKey, camKey, zoom, topPad, botPad, lineW
          .width lo borraría entero. */
       var realCtx = self.c, realCv = self[cvKey];
       self.c = ctx;
-      self[cvKey] = { width: cacheW, height: cacheH };
+      self[cvKey] = { width: W, height: H };
       try {
-        var m0 = S.on ? performance.now() : 0;
+        var m0 = S.on ? window.performance.now() : 0;
         draw(self, stadium);
-        var m1 = S.on ? performance.now() : 0;
-        skin(ctx, cacheW, cacheH, stadium);
-        if (S.on) { S.drawMs += m1 - m0; S.skinMs += performance.now() - m1; }
+        var m1 = S.on ? window.performance.now() : 0;
+        skin(ctx, W, H, stadium);
+        if (S.on) { S.drawMs += m1 - m0; S.skinMs += window.performance.now() - m1; }
       } finally {
         self.c = realCtx;
         self[cvKey] = realCv;
       }
 
-      lastStadium = stadium; lastPrint = fp;
-      lastW = vw; lastH = vh; lastZoom = zoom;
-      lastTop = topPad; lastBot = botPad;
-      lastCamX = ex; lastCamY = ey;
-      camDx = 0; camDy = 0;
+      lastStadium = stadium; lastPrint = fp; lastLineW = lineW;
+      c0x = r0x; c0y = r0y; c1x = r0x + W / zoom; c1y = r0y + H / zoom; cZoom = zoom;
     }
 
     self.c.save();
     /* El cache se guarda SIEMPRE derecho: lo que espeja es la copia, no el
-       dibujo. Así prender o apagar el espejo no invalida nada —el cache que
-       había sigue sirviendo— y el estadio no se vuelve a dibujar por cambiar de
-       equipo, que es justo el momento en que menos ganas hay de un tirón.
-
-       setTransform(-1,0,0,1,vw,0) da vuelta la pantalla alrededor de su centro
-       horizontal, que es el mismo centro que usa la transformación de mundo
-       (el width/2 del canvas). Por eso el desplazamiento de cámara del
-       drawImage NO cambia de signo: la cuenta ya sale con el mismo camDx que en
-       el camino normal. */
+       dibujo. Así prender o apagar el espejo no invalida nada. */
     if (mirror) self.c.setTransform(-1, 0, 0, 1, vw, 0);
     else self.c.setTransform(1, 0, 0, 1, 0, 0);
-    self.c.drawImage(cache, -PAD + camDx, -PAD + camDy);
+    var sc = zoom / cZoom;
+    var dx = cx + zoom * (c0x - ex), dy = cy + zoom * (c0y - ey);
+    if (Math.abs(sc - 1) < 1e-4) self.c.drawImage(cache, dx, dy);
+    else self.c.drawImage(cache, dx, dy, cache.width * sc, cache.height * sc);
     self.c.restore();
 
     /* El desvío se aplica a la transformación y NO se deshace: lo que se dibuja
@@ -1664,7 +1696,7 @@ const KEEP = 4;
  * 23: `__tvmRoomLink` publica el código de la sala al entrar o al hostear, así
  *     los clientes se reconocen aunque hayan entrado desde la lista de salas.
  */
-const PATCH_VERSION = 25;
+const PATCH_VERSION = 26;
 
 /** El idioma es parte de la clave: el mismo bundle parchea distinto en cada uno. */
 function keyOf(url, lang) {

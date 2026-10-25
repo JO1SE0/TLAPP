@@ -38,7 +38,7 @@
     '.cg-bar.r{right:auto;left:calc(50% + 24vmin);transform-origin:left center;background:linear-gradient(270deg,transparent,#e9d49a 55%,#f4f0df)}',
     '@keyframes cgBar{0%{opacity:0;transform:scaleX(0)}18%{opacity:1;transform:scaleX(1)}80%{opacity:.9;transform:scaleX(1)}100%{opacity:0;transform:scaleX(1)}}',
     /* marco dorado en los bordes */
-    '.cg-frame{position:absolute;inset:0;opacity:0;box-shadow:inset 0 0 6vmin 1vmin rgba(233,212,154,.55),inset 0 0 0 .35vmin rgba(233,212,154,.6);animation:cgFrame 3s ease both;will-change:opacity}',
+    '.cg-frame{position:absolute;inset:0;opacity:0;box-shadow:inset 0 0 0 .35vmin rgba(233,212,154,.6);background:linear-gradient(90deg,rgba(233,212,154,.5),transparent 7vmin,transparent calc(100% - 7vmin),rgba(233,212,154,.5)),linear-gradient(180deg,rgba(233,212,154,.5),transparent 7vmin,transparent calc(100% - 7vmin),rgba(233,212,154,.5));animation:cgFrame 3s ease both;will-change:opacity}',
     '@keyframes cgFrame{0%{opacity:0}10%{opacity:1}30%{opacity:.5}45%{opacity:.9}80%{opacity:.5}100%{opacity:0}}',
     /* ondas */
     '.cg-ring{position:absolute;left:50%;top:46%;width:30vmin;height:30vmin;margin:-15vmin 0 0 -15vmin;border-radius:50%;border:.55vmin solid #e9d49a;box-shadow:0 0 3vmin rgba(208,184,120,.5);opacity:0;animation:cgRing 1.35s cubic-bezier(.16,.8,.3,1) both;will-change:transform,opacity}',
