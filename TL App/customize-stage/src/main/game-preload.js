@@ -21,7 +21,6 @@ const lookfx = require('./look');
 const zoomControl = require('./game-zoom');
 const themes = require('./themes');
 const roomUi = require('./room-ui');
-const gameDesign = require('./game-design');
 const clubGoal = require('./club-goal');
 let goalSfx = null;
 try { goalSfx = require('../renderer/js/goal-sfx.js'); } catch { /* sin sonidos incluidos */ }
@@ -595,28 +594,6 @@ function applyGameTheme(doc) {
 }
 
 /**
- * Diseño de la interfaz (Personalización → Diseño) adentro del juego: con «iOS»
- * la sala, la lista de salas y los carteles toman la misma forma que la app.
- * Va en su propio <style> al final; ver game-design.js.
- */
-function applyGameDesign(doc) {
-  if (!doc) return;
-  const mount = doc.head || doc.documentElement;
-  if (!mount) return;
-  const ap = state.config.appearance || {};
-  const css = gameDesign.css(currentPalette(), { design: ap.design, scoreboard: ap.scoreboard });
-  let style = doc.getElementById('tvm-design');
-  if (!css) { if (style) style.remove(); return; }
-  if (!style) {
-    style = doc.createElement('style');
-    style.id = 'tvm-design';
-  }
-  if (style.textContent !== css) style.textContent = css;
-  // Siempre último, aunque otra hoja se haya agregado después.
-  if (style !== mount.lastElementChild) mount.append(style);
-}
-
-/**
  * Reglas que no dependen del tema y van siempre, incluso con «Clásico» puesto
  * (que a propósito no re-estiliza nada):
  *
@@ -1163,7 +1140,6 @@ function onNewGameDocument(doc) {
   ensureFontFace(doc);
   applyGameTheme(doc);
   applyClientStyles(doc);
-  applyGameDesign(doc);
   watchChatLog(doc);
   attachHotkeys(doc);
   attachFreeCam(doc);
@@ -12676,7 +12652,6 @@ function boot() {
     if (doc) {
       applyGameTheme(doc);
       applyClientStyles(doc);
-      applyGameDesign(doc);
       watchChatLog(doc);
       // Imagen nueva (o VIP recién activado): se recarga y se repinta el disco.
       if ((config.vip || {}).avatarImage !== beforeImage) {

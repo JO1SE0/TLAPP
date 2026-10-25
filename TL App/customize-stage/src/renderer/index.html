@@ -20,12 +20,8 @@
   </style>
   <link rel="stylesheet" href="css/theme.css" />
   <link rel="stylesheet" href="css/app.css" />
-  <!-- Diseños "Refinado" e "iOS": sólo se activan si se eligen en Aspecto → Diseño. -->
-  <link rel="stylesheet" href="css/design-refined.gen.css" id="cssRefinedGen" media="not all" />
-  <link rel="stylesheet" href="css/design-refined.css" id="cssRefined" media="not all" />
-  <link rel="stylesheet" href="css/design-ios.css" id="cssIos" media="not all" />
 </head>
-<body id="tlBody">
+<body>
   <!-- ═══ Pantalla de carga ═══════════════════════════════════════
        Va sin `hidden` y primera en el body para que entre en el primer cuadro
        que pinta la ventana. `hideSplash()` la funde y la borra del DOM cuando
@@ -558,7 +554,7 @@
               <span data-i18n="rooms.hideFull">Ocultar llenas</span>
             </button>
             <button class="filterchip" id="hostBtn" type="button" hidden><span class="filterchip__ico">🏟</span><span>Hostear</span></button>
-            <select id="roomSort" class="sortselect" aria-label="Ordenar salas">
+            <select id="roomSort" class="sortselect">
               <option value="distance" data-i18n="rooms.sortDistance">Más cerca</option>
               <option value="players" data-i18n="rooms.sortPlayers">Más jugadores</option>
               <option value="name" data-i18n="rooms.sortName">Nombre</option>
@@ -1006,10 +1002,6 @@
             <header class="sec__head"><h2 class="sec__title" id="denTitle">Densidad de la interfaz</h2></header>
             <p class="sec__desc" id="denDesc"></p>
             <div class="sec__body">
-              <div class="row">
-                <div class="row__text"><span class="row__label" id="designLabel">Diseño</span><span class="row__desc" id="designDesc"></span></div>
-                <div class="row__ctl"><div class="chips" id="designChips"></div></div>
-              </div>
               <div class="row">
                 <div class="row__text"><span class="row__label" id="denLabel">Espaciado de los menús</span></div>
                 <div class="row__ctl"><div class="chips" id="denChips"></div></div>
@@ -1745,7 +1737,7 @@
               <div class="hostgrid">
                 <div class="field"><label for="hostName">Nombre de la sala</label><input type="text" id="hostName" maxlength="40" /></div>
                 <div class="field"><label for="hostSize">Cancha</label>
-                  <select id="hostSize" class="sortselect" aria-label="Tamaño de la sala"><option value="1">x1 (3 goles · 3 min)</option><option value="3">x3 (10 min)</option><option value="4">x4 (10 min)</option><option value="5">x5 (10 min)</option><option value="7" selected>x7 (12 min)</option><option value="train" id="hostTrainOpt">Entrenamiento (!train)</option></select></div>
+                  <select id="hostSize" class="sortselect"><option value="1">x1 (3 goles · 3 min)</option><option value="3">x3 (10 min)</option><option value="4">x4 (10 min)</option><option value="5">x5 (10 min)</option><option value="7" selected>x7 (12 min)</option><option value="train" id="hostTrainOpt">Entrenamiento (!train)</option></select></div>
                 <div class="field"><label for="hostMax">Cupo</label><input type="number" id="hostMax" min="2" max="30" value="18" /></div>
                 <div class="field"><label for="hostPass">Clave de la sala (opcional)</label><input type="text" id="hostPass" maxlength="30" autocomplete="off" /></div>
                 <div class="field"><label for="hostAdminKey">Clave de admin (!admin clave)</label><input type="text" id="hostAdminKey" maxlength="30" autocomplete="off" /></div>
@@ -1764,7 +1756,7 @@
                 <p class="note">Después de cada gol la sala cambia una regla al azar durante un rato (la pelota, los discos o el viento). Vale para los dos equipos por igual y todo vuelve a la normalidad solo. Con <code>!mutadores</code> lo prendés o apagás en pleno partido.</p>
                 <div class="hostmut__body" id="hostMutBody" hidden>
                   <div class="field"><label for="hostMutSecs">Duración de cada mutación</label>
-                    <select id="hostMutSecs" class="sortselect" aria-label="Tiempo de muteo"><option value="30">30 segundos</option><option value="45" selected>45 segundos</option><option value="60">1 minuto</option><option value="90">1 minuto y medio</option></select></div>
+                    <select id="hostMutSecs" class="sortselect"><option value="30">30 segundos</option><option value="45" selected>45 segundos</option><option value="60">1 minuto</option><option value="90">1 minuto y medio</option></select></div>
                   <div class="hostmut__list" id="hostMutList">
                     <label class="hostchk"><input type="checkbox" data-mut="gigante" checked /> Pelota gigante</label>
                     <label class="hostchk"><input type="checkbox" data-mut="mini" checked /> Pelota mini</label>
@@ -1819,7 +1811,7 @@
 
           <div class="rtoolbar replaytools">
             <div class="chips" id="replayChips"></div>
-            <select id="replaySort" class="sortselect" aria-label="Ordenar replays"></select>
+            <select id="replaySort" class="sortselect"></select>
             <span class="rcount" id="replayCount"></span>
           </div>
 
