@@ -2,10 +2,10 @@
 /*
  * Genera src/renderer/css/design-refined.gen.css a partir de theme.css y app.css.
  *
- * El diseño "Refinado" (Aspecto → Diseño) lleva los tamaños de letra a una escala
+ * Los diseños "Refinado" e "iOS" (Aspecto → Diseño) lleva los tamaños de letra a una escala
  * fija de 9 pasos con mínimo de 11 px, los radios de esquina a 6 pasos y saca los
  * pesos finos. Para no romper la cascada se copia CADA regla que toca esas
- * propiedades (cambie o no el valor) con el prefijo html[data-design="refined"]:
+ * propiedades (cambie o no el valor) con el prefijo html:is([data-design="refined"], [data-design="ios"]):
  * todas suben la misma especificidad y mantienen el orden, así que gana la misma
  * regla que ganaba antes, sólo que con el valor nuevo.
  *
@@ -19,7 +19,8 @@ const path = require('path');
 const CSS_DIR = path.join(__dirname, '..', 'src', 'renderer', 'css');
 const SOURCES = ['theme.css', 'app.css'];
 const OUT = path.join(CSS_DIR, 'design-refined.gen.css');
-const ATTR = '[data-design="refined"]';
+// Lo usan el diseño Refinado y el iOS (que se apoya en el Refinado).
+const ATTR = ':is([data-design="refined"], [data-design="ios"])';
 
 // ── Escalas ──────────────────────────────────────────────────────────────
 const TYPE = [11, 12, 13, 14, 16, 18, 22, 28, 34];
