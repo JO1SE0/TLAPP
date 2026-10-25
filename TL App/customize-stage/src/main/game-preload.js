@@ -8862,6 +8862,9 @@ function checkTrackingPatch(doc) {
  * Corre en el hilo del juego y en el camino crítico del dibujo, así que no hace
  * nada que asigne memoria: recorre los jugadores, mide distancias y sale.
  */
+/** Cada cuánto, como mínimo, se miden las estadísticas del partido (ms). */
+const TRACK_MIN_MS = 8;
+
 function onGameTick(view, room) {
   if (!room) return;
 
@@ -8934,6 +8937,17 @@ function onGameTick(view, room) {
   // El reloj de partido. El tope de 100 ms tapa los saltos de un alt-tab o de
   // un salto en la barra de tiempo del replay.
   const now = Date.now();
+  /*
+   * Como mucho ~125 veces por segundo, no en cada cuadro dibujado.
+   *
+   * La física de HaxBall avanza 60 veces por segundo: con 600-900 FPS esto
+   * medía distancias, posesión y contactos diez veces por cada paso real del
+   * juego, y con sala llena eso es recorrer a todos los jugadores miles de
+   * veces por segundo en el mismo hilo que dibuja. A 125 Hz se ve cada paso de
+   * física (hasta dos veces) y el resto del tiempo queda para dibujar. En una
+   * grabación acelerada se muestrea más seguido, en proporción.
+   */
+  if (tracker.lastAt && now - tracker.lastAt < TRACK_MIN_MS / Math.max(1, replaySpeed(view))) return;
   let advanced = 0;
   if (tracker.lastAt) {
     const elapsed = Math.min(now - tracker.lastAt, 100);

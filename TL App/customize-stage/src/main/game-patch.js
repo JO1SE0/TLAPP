@@ -380,7 +380,7 @@ try {
  * cambia, o sea la cancha congelada en pantalla. Recorrer los escalares cuesta
  * microsegundos contra redibujar la cancha entera.
  */
-var printObject = null, printValues = Object.create(null), printCount = 0, printRevision = 0;
+var printObject = null, printValues = Object.create(null), printCount = 0, printRevision = 0, printAt = -1e9;
 function print(o) {
   var count = 0, changed = o !== printObject;
   for (var k in o) {
@@ -514,8 +514,14 @@ window.__tvmStadium = function (self, cvKey, camKey, zoom, topPad, botPad, lineW
     }
     var ex = cam.x + offX, ey = cam.y + offY;
 
-    var fp = print(stadium);
     var now = window.performance.now();
+    /* La huella recorre todos los campos del estadio: con el MISMO estadio se
+       mira cada 50 ms y no en cada cuadro (a 700 FPS eran 700 recorridas por
+       segundo para ver casi siempre lo mismo). Un estadio nuevo se mira al
+       toque, y el cliente fuerza el rearmado con flush cuando cambia la piel. */
+    var fp;
+    if (stadium === printObject && now - printAt < 50) fp = printRevision;
+    else { fp = print(stadium); printAt = now; }
 
     /* Ráfaga de cambios de tamaño o zoom: arrastrar el chat, ocultarlo, F11, la
        rueda del zoom. Mientras dura NO se rearma: se reusa lo que hay, escalado,
@@ -1689,8 +1695,9 @@ const KEEP = 4;
  * 24-26: camisetas de los equipos y cache de la cancha nuevo.
  * 27: el cache de la cancha vuelve al tamaño de la pantalla + margen (el de la
  *     cancha entera bajaba los FPS).
+ * 28: la huella del estadio se mira cada 50 ms y no en cada cuadro.
  */
-const PATCH_VERSION = 27;
+const PATCH_VERSION = 28;
 
 /** El idioma es parte de la clave: el mismo bundle parchea distinto en cada uno. */
 function keyOf(url, lang) {

@@ -9,7 +9,7 @@ const haxball = require('./haxball-settings');
 const FILE = 'config.json';
 
 const DEFAULTS = {
-  version: 27,
+  version: 28,
   general: {
     gameUrl: 'https://www.haxball.com/play',
     nickname: '',
@@ -200,7 +200,7 @@ const DEFAULTS = {
     /** Abre la app ya en pantalla completa (para PCs que se traban al cambiar con F11 con el juego andando). */
     startFullscreen: true,
     /** Opcional: reusa la simulación del cuadro anterior si pasó <4 ms (ver patchLightSim). */
-    lightSim: false,
+    lightSim: true,
     /** «Modo PC lenta»: apaga de una vez lo visual que cuesta. `lowEndBackup` guarda lo que había para volver. */
     lowEnd: false,
     lowEndBackup: null,
@@ -852,7 +852,12 @@ function migrate(stored) {
 
   if (next.vip) next.vip.discord = null;
   delete next.privacy;
-  next.version = 27;
+  // v28: la simulación liviana viene prendida para todos, una sola vez. Con FPS
+  // altos es la que más cuadros devuelve (deja de re-simular la sala en cada
+  // cuadro dibujado) y las teclas propias siguen respondiendo al instante.
+  if (!(next.version >= 28) && next.perf) next.perf.lightSim = true;
+
+  next.version = 28;
   return next;
 }
 
