@@ -11,6 +11,7 @@ window.TL_NEWS = {
   title: { es: 'Qué hay de nuevo', en: "What's new" },
   items: {
     es: [
+      'Al entrar a jugar, la app suelta la memoria que no usa: el lienzo de las luciérnagas y los recursos sin uso de la interfaz. Con gráficos integrados le queda más memoria a la placa. No cambia nada de lo que se ve.',
       'Prioridades al jugar (con «Prioridad alta»): la partida y la placa de video arriba de todo; la interfaz de la app y las pestañas de atrás un escalón abajo mientras jugás. La sala que hosteás no se toca. Y menos basura de memoria por cuadro, para que el recolector no corte el partido.',
       'Gráficos integrados: jugando, el fondo del menú y las luciérnagas desaparecen de verdad (antes seguían debajo de la cancha), la cancha se le pide opaca a la placa y el marcador de arriba se repinta solo, sin tocar lo de alrededor.',
       'Sin personalizar fichas, pelota ni líneas, el juego dibuja directo con el navegador: la app ya no se mete en cada círculo, relleno y trazo de cada cuadro.',
@@ -118,6 +119,7 @@ window.TL_NEWS = {
       'Cada clave se usa en una sola PC: si cambiás de computadora, pedile a miclo que te la libere.'
     ],
     en: [
+      'When a match starts, the app releases memory it does not use: the fireflies canvas and unused interface resources. With integrated graphics the GPU gets more memory. Nothing you see changes.',
       'Priorities while playing (with «High priority»): the match and the GPU on top; the app interface and background tabs one step lower while you play. A room you host is left alone. Plus less memory garbage per frame, so the collector does not interrupt the match.',
       'Integrated graphics: while playing, the menu background and fireflies are truly gone (they used to stay under the pitch), the pitch is requested opaque from the GPU and the top scoreboard repaints on its own.',
       'Without disc, ball or line customizations, the game draws straight through the browser: the app no longer steps into every circle, fill and stroke of each frame.',

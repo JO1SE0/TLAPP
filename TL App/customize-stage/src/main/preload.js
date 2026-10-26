@@ -1,6 +1,6 @@
 'use strict';
 
-const { contextBridge, ipcRenderer } = require('electron');
+const { contextBridge, ipcRenderer, webFrame } = require('electron');
 
 /* ------------------------------------------------------------------ *
  * El tema, antes del primer cuadro
@@ -63,6 +63,8 @@ function on(channel, cb) {
 }
 
 contextBridge.exposeInMainWorld('tvm', {
+  /** Suelta memoria que la interfaz ya no usa (imágenes y recursos sin uso). No toca lo que se ve. */
+  trimMemory: () => { try { webFrame.clearCache(); } catch (e) { /* nada */ } },
   app: {
     info: () => call('app:info'),
     restart: () => call('app:restart'),

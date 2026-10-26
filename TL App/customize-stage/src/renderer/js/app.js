@@ -1975,6 +1975,13 @@ function setStage(kind) {
   state.stage = kind;
   $('#app').dataset.stage = kind;
   if (kind === 'game') roomCurtain();
+  /* Ya en la cancha, la interfaz suelta la memoria que no está usando (recursos
+     e imágenes sin uso). Va unos segundos después para no caer en la entrada, y
+     no toca nada de lo que se ve: lo que está en pantalla queda como está. */
+  if (kind === 'game') {
+    clearTimeout(state.trimTimer);
+    state.trimTimer = setTimeout(() => { if (state.stage === 'game' && window.tvm && window.tvm.trimMemory) window.tvm.trimMemory(); }, 3000);
+  }
   if (window.TLMusic) window.TLMusic.setInGame(kind === 'game');
   // Al volver al menú reaparece la tarjeta del tema que sigue sonando.
   try { if (kind !== 'game' && npPlaying) setTimeout(() => showNowPlaying(6000), 450); } catch (e) { /* todavía no se armó el cartel */ }

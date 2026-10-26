@@ -178,6 +178,7 @@
 
   function start() {
     if (raf || !canvas) return;
+    if (!canvas.width) resize();
     canvas.hidden = false;
     check = 60;
     last = performance.now();
@@ -189,6 +190,11 @@
     raf = 0;
     if (ctx) ctx.clearRect(0, 0, w, h);
     if (canvas) canvas.hidden = true;
+    // Jugando, el lienzo se achica a nada: suelta su memoria de la placa (en
+    // gráficos integrados es la misma que la de la PC). Al volver al menú se
+    // rearma solo del tamaño de la ventana, sin que se note.
+    const app = document.getElementById('app');
+    if (canvas && app && app.dataset.stage === 'game' && canvas.width) { canvas.width = 0; canvas.height = 0; }
   }
 
   /** Vuelve a mirar si corresponde andar: se llama cuando cambia algo de la pantalla. */
