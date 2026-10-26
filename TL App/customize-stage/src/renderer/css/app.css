@@ -7065,15 +7065,22 @@ html[data-stage="game"] .ambient,
 html[data-stage="game"] #sparks { display: none !important; }
 
 /* ═══ Fondo que late ═══
-   El borde de la pantalla se ilumina con el color del tema en cada golpe del
-   tema que suena. Va ENCIMA de todo (el fondo de verdad queda tapado por la
-   lista y los paneles) pero sólo en los bordes y sin tocar el mouse. El bucle
-   de la música le cambia sólo la opacidad: la placa la compone sin repintar.
-   Jugando no existe. */
-.bgbeat {
-  position: fixed; inset: 0; z-index: 2147480000; pointer-events: none; opacity: 0; will-change: opacity;
-  background:
-    radial-gradient(130% 120% at 50% 50%, transparent 48%, rgb(var(--accent-rgb) / 50%) 100%),
-    radial-gradient(85% 50% at 50% 112%, rgb(var(--accent-rgb) / 45%), transparent 70%);
-}
+   Un ambilight estéreo sobre la app, al ritmo del tema que suena:
+     · los bordes izquierdo y derecho siguen a cada canal (acento y acento 2),
+     · una luz de piso que crece con el bombo,
+     · dos líneas láser arriba y abajo que se estiran en cada golpe,
+     · y en los golpes fuertes, una onda que sale desde abajo.
+   Va encima de todo pero sólo en los bordes y sin tomar el mouse. El bucle de
+   la música toca sólo opacity/transform de estas capas: la placa las compone sin
+   repintar nada. Jugando no existe. */
+.bgbeat { position: fixed; inset: 0; z-index: 2147480000; pointer-events: none; overflow: hidden; }
+.bgbeat i { position: absolute; display: block; opacity: 0; will-change: opacity, transform; }
+.bgbeat [data-k="l"], .bgbeat [data-k="r"] { top: 0; bottom: 0; width: 24vw; }
+.bgbeat [data-k="l"] { left: 0; background: radial-gradient(60% 55% at 0% 50%, rgb(var(--accent-rgb) / 55%), transparent 70%), linear-gradient(90deg, rgb(var(--accent-rgb) / 30%), transparent 45%); }
+.bgbeat [data-k="r"] { right: 0; background: radial-gradient(60% 55% at 100% 50%, rgb(var(--accent-2-rgb, var(--accent-rgb)) / 55%), transparent 70%), linear-gradient(270deg, rgb(var(--accent-2-rgb, var(--accent-rgb)) / 30%), transparent 45%); }
+.bgbeat [data-k="floor"] { left: 0; right: 0; bottom: 0; height: 42vh; transform-origin: 50% 100%; background: radial-gradient(70% 100% at 50% 100%, rgb(var(--accent-rgb) / 50%), rgb(var(--accent-rgb) / 10%) 45%, transparent 75%); }
+.bgbeat [data-k="top"], .bgbeat [data-k="bot"] { left: 0; right: 0; height: 2px; transform-origin: 50% 50%; background: linear-gradient(90deg, transparent, rgb(var(--accent-rgb)) 30%, #fff 50%, rgb(var(--accent-2-rgb, var(--accent-rgb))) 70%, transparent); box-shadow: 0 0 14px 2px rgb(var(--accent-rgb) / 55%); }
+.bgbeat [data-k="top"] { top: 0; }
+.bgbeat [data-k="bot"] { bottom: 0; }
+.bgbeat [data-k="ring"] { left: 50%; bottom: 0; width: 140vmax; height: 140vmax; border-radius: 50%; transform: translate(-50%, 50%) scale(.15); border: 3px solid rgb(var(--accent-rgb) / 80%); box-shadow: 0 0 40px 6px rgb(var(--accent-rgb) / 35%), inset 0 0 40px 6px rgb(var(--accent-rgb) / 25%); }
 html[data-animations="off"] .bgbeat, html[data-stage="game"] .bgbeat { display: none; }
