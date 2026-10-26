@@ -5150,6 +5150,33 @@ let avatarImage = null;
 let avatarRaw = null;
 let avatarImageSrc = '';
 const hookedWindows = new WeakSet();
+/*
+ * Los métodos del canvas que se enganchan, por ventana: el original y el
+ * enganchado. `syncProtoHooks` pone uno u otro según lo que esté prendido, así
+ * que con todo de fábrica el juego dibuja con los métodos de Chromium tal cual,
+ * sin pasar por el cliente en cada círculo, relleno y trazo.
+ */
+const protoHooks = [];
+function syncProtoHooks() {
+  const flat = flatOn();
+  const arcOn = visual.ownRing || visual.sizes || visual.lines || visual.discFx;
+  const strokeOn = flat || arcOn || !!visual.lineColor || visual.lineGlow;
+  // Lo que quedó a medias de un disco se descarta: al cambiar de método no
+  // llega el trazo que lo cerraba.
+  if (pend.on && pend.k === 1) pend.on = false;
+  for (const h of protoHooks) {
+    const want = { arc: arcOn, fill: flat, stroke: strokeOn };
+    for (const m of ['arc', 'fill', 'stroke']) {
+      const next = want[m] ? h[m][1] : h[m][0];
+      if (h.proto[m] !== next) h.proto[m] = next;
+    }
+    for (const [prop, pair] of [['shadowBlur', h.sb], ['shadowColor', h.sc]]) {
+      if (!pair) continue;
+      const desc = flat ? pair[1] : pair[0];
+      if (h[prop] !== desc) { try { Object.defineProperty(h.proto, prop, desc); h[prop] = desc; } catch (e) { /* queda como estaba */ } }
+    }
+  }
+}
 
 /* ------------------------------------------------------------------ *
  * Imagen de la pelota
@@ -10120,6 +10147,7 @@ function syncCanvasHotFlags() {
   visual.nameFont = FONT_FAMILIES[cfg.nameFont] ? cfg.nameFont : 'default';
   visual.discFx = visual.shadows || visual.discStyle !== 'default' || visual.ballStyle !== 'default' || !!visual.ballColor || !!visual.discOutline || !!visual.ballOutline;
   visual.names = visual.nameScale !== 1 || !!visual.nameColor || visual.nameOutline || visual.nameFont !== 'default';
+  syncProtoHooks();
 }
 
 function flatOn() {
@@ -10185,6 +10213,7 @@ function installCanvasHooks(doc) {
   hookedWindows.add(view);
 
   // --- Modo Gráficos Planos (Rendimiento) ---
+  const hookEntry = { proto };
   const origShadowBlur = Object.getOwnPropertyDescriptor(proto, 'shadowBlur');
   if (origShadowBlur && origShadowBlur.set) {
     Object.defineProperty(proto, 'shadowBlur', {
@@ -10199,6 +10228,8 @@ function installCanvasHooks(doc) {
     });
   }
 
+  if (origShadowBlur && origShadowBlur.set) hookEntry.sb = [origShadowBlur, Object.getOwnPropertyDescriptor(proto, 'shadowBlur')];
+
   const origShadowColor = Object.getOwnPropertyDescriptor(proto, 'shadowColor');
   if (origShadowColor && origShadowColor.set) {
     Object.defineProperty(proto, 'shadowColor', {
@@ -10212,6 +10243,8 @@ function installCanvasHooks(doc) {
       }
     });
   }
+
+  if (origShadowColor && origShadowColor.set) hookEntry.sc = [origShadowColor, Object.getOwnPropertyDescriptor(proto, 'shadowColor')];
 
   /*
    * ── La textura de la cancha ─────────────────────────────────────────────
@@ -10634,6 +10667,13 @@ function installCanvasHooks(doc) {
    * Ahora el estado sale del propio juego, ya con nombres: ver `installTracking`
    * y el parche del minimapa en `game-patch.js`.
    */
+  hookEntry.arc = [origArc, proto.arc];
+  hookEntry.fill = [origFill, proto.fill];
+  hookEntry.stroke = [origStroke, proto.stroke];
+  hookEntry.shadowBlur = hookEntry.sb ? hookEntry.sb[1] : null;
+  hookEntry.shadowColor = hookEntry.sc ? hookEntry.sc[1] : null;
+  protoHooks.push(hookEntry);
+  syncProtoHooks();
 }
 
 /**
