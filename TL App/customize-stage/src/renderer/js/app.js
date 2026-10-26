@@ -4210,14 +4210,18 @@ const PITCH_SWITCHES = {
     { key: 'teamRings', label: 'Modo daltónico', description: 'Un aro por equipo, lleno o punteado.', hint: 'Se distinguen por la forma y no por el color, así que sirve con cualquier color que le ponga la sala.' },
     { key: 'goalFlash', label: 'Efecto de gol', description: 'Onda dorada, escudo y chispas con los colores del club.', hint: 'Dura poco más de un segundo y no tapa la cancha.' },
     { key: 'goalShake', label: 'Sacudón en el gol', description: 'La cancha pega un golpe.', hint: 'No mueve la cámara del juego ni te cambia lo que podés ver.' },
-    { key: 'goalClub', label: 'Festejo del plantel', description: 'Lluvia dorada y «Toda la Lecce» cuando mete un gol alguien del plantel.', hint: 'Sólo se activa con jugadores verificados con su clave, así que nadie puede fingirlo.' }
+    { key: 'goalClub', label: 'Festejo del plantel', description: 'Lluvia dorada y «Toda la Lecce» cuando mete un gol alguien del plantel.', hint: 'Sólo se activa con jugadores verificados con su clave, así que nadie puede fingirlo.' },
+    { key: 'clubKit', label: 'Camiseta del club', description: 'Si en un equipo hay dos o más socios, ese equipo se ve con la camiseta de Toda la Lecce.', hint: 'Sólo en tu pantalla y sólo con socios verificados. Si elegiste colores propios para los equipos, mandan los tuyos.' },
+    { key: 'clubArrival', label: 'Llegada del club', description: 'Un cartel con el escudo cuando hay tres o más socios en la sala.', hint: 'Sale una vez por sala y dura unos segundos.' },
   ],
   en: [
     { key: 'selfRing', label: 'Mark your disc', description: 'A ring in your colour on your disc.', hint: 'In a 4v4 it saves you from hunting for yourself.' },
     { key: 'teamRings', label: 'Colourblind mode', description: 'One ring per team, solid or dashed.', hint: 'They are told apart by shape and not by colour, so it works with whatever colours the room picks.' },
     { key: 'goalFlash', label: 'Goal effect', description: 'Golden shockwave, crest and sparks in the club colours.', hint: 'It lasts just over a second and does not cover the pitch.' },
     { key: 'goalShake', label: 'Goal shake', description: 'The pitch takes a hit.', hint: 'It does not move the game camera or change what you can see.' },
-    { key: 'goalClub', label: 'Squad celebration', description: 'Golden rain and "Toda la Lecce" when a squad member scores.', hint: 'Only fires for players verified with their key, so nobody can fake it.' }
+    { key: 'goalClub', label: 'Squad celebration', description: 'Golden rain and "Toda la Lecce" when a squad member scores.', hint: 'Only fires for players verified with their key, so nobody can fake it.' },
+    { key: 'clubKit', label: 'Club kit', description: 'If a team has two or more club members, that team shows the Toda la Lecce kit.', hint: 'Only on your screen and only with verified members. If you picked your own team colours, yours win.' },
+    { key: 'clubArrival', label: 'Club arrival', description: 'A banner with the crest when three or more club members are in the room.', hint: 'Shows once per room and lasts a few seconds.' },
   ]
 };
 

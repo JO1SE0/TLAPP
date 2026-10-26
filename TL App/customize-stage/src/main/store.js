@@ -588,6 +588,10 @@ const DEFAULTS = {
     goalShake: true,
     /** Festejo extra cuando mete un gol alguien del plantel verificado. */
     goalClub: true,
+    /** Con 2+ socios en un equipo, ese equipo se ve con la camiseta del club (sólo en tu pantalla). */
+    clubKit: true,
+    /** Cartel con el escudo cuando hay 3+ socios en la sala. */
+    clubArrival: true,
     /**
      * Estela de la pelota: por dónde ESTUVO, nunca por dónde va.
      *

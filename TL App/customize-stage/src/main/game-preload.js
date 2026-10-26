@@ -549,7 +549,70 @@ function syncTeamPick() {
   teamPick.blue = hex(v.teamBlue);
   teamPick.keep = !!v.teamKeepKits;
 }
+/*
+ * ── La camiseta del club ────────────────────────────────────────────────
+ *
+ * Con dos o más socios verificados en un equipo, ese equipo se pinta con la
+ * camiseta de Toda la Lecce (sólo en la pantalla de quien tiene la app). Si los
+ * dos equipos califican —un interno—, el rojo usa la titular y el azul la
+ * alternativa, así no quedan iguales.
+ *
+ * Las camisetas van en el formato del comando /colors de HaxBall:
+ *   «<ángulo> <color del número> <franja 1> [franja 2] [franja 3]»
+ * PROVISORIAS hasta que lleguen las del club: azul marino y dorado del escudo.
+ */
+const CLUB_KITS = {
+  home: '60 C9A85C 0F1D3A 172A50 0F1D3A',
+  away: '60 0F1D3A C9A85C E9D49A C9A85C'
+};
+function parseKit(line) {
+  const parts = String(line || '').trim().split(/\s+/);
+  const angle = Number(parts[0]);
+  const hex = parts.slice(1).filter((x) => /^[0-9a-f]{6}$/i.test(x)).map((x) => parseInt(x, 16));
+  if (!Number.isFinite(angle) || hex.length < 2) return null;
+  return { sd: angle, pd: hex[0], ib: hex.slice(1, 4) };
+}
+const clubKit = { teams: { 1: false, 2: false }, kits: { 1: parseKit(CLUB_KITS.home), 2: parseKit(CLUB_KITS.away) }, checkedAt: 0 };
+/** Cuántos socios hay en cada equipo (una vez por segundo, con la sala a mano). */
+function syncClubKit(f, room, now) {
+  if (now - clubKit.checkedAt < 1000) return;
+  clubKit.checkedAt = now;
+  const on = !!(state.config.pitch && state.config.pitch.clubKit !== false);
+  const count = { 1: 0, 2: 0 };
+  const players = on && room && f.team && f.name ? room[f.players] : null;
+  if (players) {
+    const me = myNick();
+    for (let i = 0; i < players.length; i++) {
+      const p = players[i];
+      const t = p && p[f.team];
+      if (!t) continue;
+      const side = canonicalTeam(String(t[f.name] || ''));
+      const id = side === 'Red' ? 1 : side === 'Blue' ? 2 : 0;
+      if (!id) continue;
+      const nick = String(p[f.name] || '').trim();
+      const peer = nick ? peers.get(nick) : null;
+      if ((peer && peer.name) || (selfClub && selfClub.name && nick && nick === me)) count[id]++;
+    }
+  }
+  const both = count[1] >= 2 && count[2] >= 2;
+  clubKit.teams[1] = count[1] >= 2;
+  clubKit.teams[2] = count[2] >= 2;
+  // Interno: titular el rojo, alternativa el azul. Si califica uno solo, lleva la titular.
+  clubKit.kits[1] = parseKit(CLUB_KITS.home);
+  clubKit.kits[2] = parseKit(both ? CLUB_KITS.away : CLUB_KITS.home);
+}
+const clubKitCache = new Map();
+function clubKitFor(team) {
+  const kit = clubKit.kits[team];
+  if (!kit) return null;
+  const key = `${team}|${kit.sd}|${kit.pd}|${kit.ib.join(',')}`;
+  let obj = clubKitCache.get(key);
+  if (!obj) { obj = kit; clubKitCache.set(key, obj); }
+  return obj;
+}
 function teamKit(team, kit) {
+  // Los colores que eligió el jugador mandan sobre la camiseta del club.
+  if (!teamPick.on && kit && clubKit.teams[team]) return clubKitFor(team) || kit;
   if (!teamPick.on || !kit) return kit;
   const col = team === 1 ? teamPick.red : team === 2 ? teamPick.blue : -1;
   if (col < 0) return kit;
@@ -4904,10 +4967,71 @@ function myNick() {
  * seguía puesta pero los hijos ya no estaban. Preguntándole al DOM en vez de a
  * una bandera propia, la fila se arregla sola en la pasada siguiente.
  */
+/*
+ * ── Llegada del club ────────────────────────────────────────────────────
+ *
+ * Con tres o más socios verificados en la sala sale, una vez por sala, un
+ * cartel arriba con el escudo y los nombres. Es un único elemento que baja,
+ * se queda un rato y se va con transform y opacity; después se borra entero.
+ */
+const arrival = { room: '', shown: false };
+function clubArrival(doc, names) {
+  const room = String(state.roomName || engineRoomName || '');
+  if (room !== arrival.room) { arrival.room = room; arrival.shown = false; }
+  if (arrival.shown || names.length < 3) return;
+  if (!(state.config.pitch && state.config.pitch.clubArrival !== false)) return;
+  if (!doc.body) return;
+  arrival.shown = true;
+  if (!doc.getElementById('tvm-arrival-css')) {
+    const st = doc.createElement('style');
+    st.id = 'tvm-arrival-css';
+    st.textContent = `
+      #tvm-arrival { position: fixed; left: 50%; top: 68px; z-index: 2147482500; pointer-events: none;
+        display: flex; align-items: center; gap: 14px; padding: 12px 22px 12px 14px; border-radius: 18px;
+        transform: translate(-50%, -140%); opacity: 0;
+        background: linear-gradient(135deg, #152a52, #0c1834); border: 1px solid rgba(208,184,120,.55);
+        box-shadow: 0 14px 34px -14px rgba(0,0,0,.85), inset 0 1px 0 rgba(255,255,255,.12);
+        font-family: Outfit, Bahnschrift, 'Segoe UI', sans-serif; color: #f4f0df; }
+      #tvm-arrival.is-on { animation: tvmArrival 4.2s cubic-bezier(.2,.8,.2,1) both; }
+      #tvm-arrival img { width: 46px; height: 46px; object-fit: contain; }
+      #tvm-arrival b { display: block; font-size: 11px; font-weight: 800; letter-spacing: .32em; color: #d0b878; }
+      #tvm-arrival span { display: block; margin-top: 3px; font-size: 15px; font-weight: 700; white-space: nowrap; max-width: 52vw; overflow: hidden; text-overflow: ellipsis; }
+      #tvm-arrival i { position: absolute; left: 14px; right: 14px; bottom: -1px; height: 2px; border-radius: 2px;
+        background: linear-gradient(90deg, transparent, #d0b878, transparent); transform-origin: center; transform: scaleX(0);
+        animation: tvmArrivalLine 4.2s ease both; }
+      @keyframes tvmArrival { 0% { transform: translate(-50%, -140%); opacity: 0; } 10% { transform: translate(-50%, 0); opacity: 1; }
+        84% { transform: translate(-50%, 0); opacity: 1; } 100% { transform: translate(-50%, -60%); opacity: 0; } }
+      @keyframes tvmArrivalLine { 0%, 10% { transform: scaleX(0); } 30% { transform: scaleX(1); } 100% { transform: scaleX(1); } }
+      html.tvm-noanim #tvm-arrival.is-on { animation: none; transform: translate(-50%, 0); opacity: 1; }`;
+    (doc.head || doc.documentElement).append(st);
+  }
+  doc.getElementById('tvm-arrival')?.remove();
+  const box = doc.createElement('div');
+  box.id = 'tvm-arrival';
+  box.setAttribute('aria-hidden', 'true');
+  const img = doc.createElement('img');
+  img.src = assetUrl('crest');
+  img.alt = '';
+  const txt = doc.createElement('div');
+  const title = doc.createElement('b');
+  title.textContent = 'TODA LA LECCE EN LA SALA';
+  const list = doc.createElement('span');
+  list.textContent = names.slice(0, 6).join(' · ') + (names.length > 6 ? ` +${names.length - 6}` : '');
+  txt.append(title, list);
+  box.append(img, txt, doc.createElement('i'));
+  doc.body.append(box);
+  if (state.config.appearance && state.config.appearance.animations === false) doc.documentElement.classList.add('tvm-noanim');
+  else doc.documentElement.classList.remove('tvm-noanim');
+  box.classList.add('is-on');
+  setTimeout(() => box.remove(), 4300);
+}
+
 function paintPeers(doc) {
   const me = selfPeer();
   const rows = playerRows(doc);
   safe(sparkleJoiners, doc, rows);
+  // Socios verificados en la sala (con nombre del plantel), para la llegada del club.
+  const socios = [];
 
   for (const row of rows) {
     const name = row.querySelector('[data-hook="name"]');
@@ -4916,6 +5040,7 @@ function paintPeers(doc) {
     const nick = (name.textContent || '').trim();
     const peer = nick ? (me && nick === me.nick ? me : peers.get(nick)) : null;
 
+    if (peer && peer.name && !socios.includes(peer.name)) socios.push(peer.name);
     const marks = ensureMarks(doc, row, !!peer);
     if (!peer) {
       applyPeerLook(row, name, null);
@@ -4946,6 +5071,7 @@ function paintPeers(doc) {
     if (box) box.style.display = (marks.logo.hidden && marks.friend.hidden) ? 'none' : '';
     applyPeerLook(row, name, peer.cosmetics);
   }
+  safe(clubArrival, doc, socios);
 }
 
 /**
@@ -8999,6 +9125,7 @@ function onGameTick(view, room) {
    * grabación acelerada se muestrea más seguido, en proporción.
    */
   if (tracker.lastAt && now - tracker.lastAt < TRACK_MIN_MS / Math.max(1, replaySpeed(view))) return;
+  syncClubKit(f, room, now);
   let advanced = 0;
   if (tracker.lastAt) {
     const elapsed = Math.min(now - tracker.lastAt, 100);
