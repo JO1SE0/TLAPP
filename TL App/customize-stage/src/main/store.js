@@ -110,6 +110,8 @@ const DEFAULTS = {
     parallax: true,
     /** La tapa de la página Música late con los golpes del tema. */
     musicPulse: true,
+    /** El fondo del menú se ilumina con los golpes del tema (sólo en el menú, nunca jugando). */
+    bgPulse: true,
     // Tamaño de la interfaz: 'auto' (según el monitor) o un porcentaje fijo (60–150).
     uiScale: 'auto',
     /** Estructura de la interfaz: classic | top (barra superior) | dock (dock flotante). */

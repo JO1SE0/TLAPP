@@ -7063,3 +7063,15 @@ html:not([data-animations="off"]) :is(.btn--primary, .mus__btn--main):hover::aft
    vuelven solos. */
 html[data-stage="game"] .ambient,
 html[data-stage="game"] #sparks { display: none !important; }
+
+/* ═══ Fondo que late ═══
+   Una capa propia arriba del ambiente: el bucle de la música le cambia sólo la
+   opacidad (la placa la compone sin repintar). Jugando, el ambiente entero no
+   existe (ver «Jugando, lo que queda DEBAJO del juego»). */
+.bgbeat {
+  position: absolute; inset: 0; pointer-events: none; opacity: 0; will-change: opacity;
+  background:
+    radial-gradient(55% 45% at 50% 62%, rgb(var(--accent-rgb) / 20%), transparent 72%),
+    radial-gradient(90% 60% at 50% 115%, rgb(var(--accent-rgb) / 16%), transparent 65%);
+}
+html[data-animations="off"] .bgbeat { display: none; }

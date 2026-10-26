@@ -1983,6 +1983,8 @@ function setStage(kind) {
     state.trimTimer = setTimeout(() => { if (state.stage === 'game' && window.tvm && window.tvm.trimMemory) window.tvm.trimMemory(); }, 3000);
   }
   if (window.TLMusic) window.TLMusic.setInGame(kind === 'game');
+  // El fondo que late se apaga jugando y vuelve al menú.
+  setTimeout(() => { try { pulseStart(); } catch (e) { /* todavía no */ } }, 80);
   // Al volver al menú reaparece la tarjeta del tema que sigue sonando.
   try { if (kind !== 'game' && npPlaying) setTimeout(() => showNowPlaying(6000), 450); } catch (e) { /* todavía no se armó el cartel */ }
   if (kind === 'browser') setTimeout(showNoticeIfReady, 600);
@@ -5063,11 +5065,21 @@ function pulseStop() {
   pulse.raf = 0; pulse.v = 0;
   const c = $('#musCover');
   if (c) { c.style.transform = ''; c.style.removeProperty('--pulse'); }
+  const g = $('#bgBeat');
+  if (g) g.style.opacity = '0';
+}
+/* Qué late: la tapa (en la página Música) y/o el fondo del menú (en cualquier
+   página). Jugando no late nada: el bucle ni siquiera corre. */
+function pulseCover() {
+  return state.view === 'musica' && state.config.appearance.musicPulse !== false;
+}
+function pulseBg() {
+  return state.config.appearance.bgPulse !== false;
 }
 function pulseWanted() {
   const M = window.TLMusic;
-  return !!(M && M.playing && state.view === 'musica' && state.stage !== 'game' && !document.hidden
-    && state.config && state.config.appearance.musicPulse !== false && document.documentElement.dataset.animations !== 'off');
+  return !!(M && M.playing && state.stage !== 'game' && !document.hidden && state.config
+    && document.documentElement.dataset.animations !== 'off' && (pulseCover() || pulseBg()));
 }
 function pulseStart() {
   const M = window.TLMusic;
@@ -5075,14 +5087,18 @@ function pulseStart() {
   if (!pulseWanted() || !now) { pulseStop(); return; }
   if (pulse.name !== now.name) { pulse.env = null; pulse.name = now.name; pulseLoad(now); }
   if (!pulse.env || pulse.raf) return;
+  const cover = $('#musCover');
+  const glow = $('#bgBeat');
   const tick = () => {
     if (!pulseWanted() || !pulse.env) { pulseStop(); return; }
     const t = window.TLMusic.time();
     const i = Math.floor(t.cur / pulse.hop);
     const target = pulse.env[Math.min(pulse.env.length - 1, Math.max(0, i))] || 0;
     pulse.v = target > pulse.v ? target : pulse.v * 0.86;
-    const c = $('#musCover');
-    if (c) { c.style.transform = `scale(${(1 + pulse.v * 0.075).toFixed(4)})`; c.style.setProperty('--pulse', pulse.v.toFixed(3)); }
+    if (cover && pulseCover()) { cover.style.transform = `scale(${(1 + pulse.v * 0.075).toFixed(4)})`; cover.style.setProperty('--pulse', pulse.v.toFixed(3)); }
+    else if (cover && cover.style.transform) { cover.style.transform = ''; cover.style.removeProperty('--pulse'); }
+    // El fondo: sólo opacidad de una capa propia (la compone la placa, no repinta nada).
+    if (glow) glow.style.opacity = pulseBg() ? (pulse.v * 0.9).toFixed(3) : '0';
     pulse.raf = requestAnimationFrame(tick);
   };
   pulse.raf = requestAnimationFrame(tick);
@@ -5155,7 +5171,8 @@ function paintMusicPage() {
     ['music', T.music, T.musicD, ap.music !== false],
     ['musicClub', T.club, T.clubD, ap.musicClub !== false],
     ['musicInGame', T.game, T.gameD, ap.musicInGame !== false],
-    ['musicPulse', isEn() ? 'Beating cover' : 'Tapa que late', isEn() ? 'The cover pulses with the song.' : 'La tapa se mueve con los golpes del tema.', ap.musicPulse !== false]
+    ['musicPulse', isEn() ? 'Beating cover' : 'Tapa que late', isEn() ? 'The cover pulses with the song.' : 'La tapa se mueve con los golpes del tema.', ap.musicPulse !== false],
+    ['bgPulse', isEn() ? 'Beating background' : 'Fondo que late', isEn() ? 'The menu background glows with the beat. Never while playing.' : 'El fondo del menú se ilumina con los golpes del tema. Nunca mientras jugás.', ap.bgPulse !== false]
   ];
   sws.replaceChildren(...defs.map(([key, label, desc, on]) => {
     const b = document.createElement('button');
@@ -5169,7 +5186,7 @@ function paintMusicPage() {
     txt.append(bb, sm);
     const knob = document.createElement('i');
     b.append(txt, knob);
-    b.addEventListener('click', () => patchConfig({ appearance: { [key]: !on } }));
+    b.addEventListener('click', () => patchConfig({ appearance: { [key]: !on } }).then(() => setTimeout(pulseStart, 30)));
     return b;
   }));
 
