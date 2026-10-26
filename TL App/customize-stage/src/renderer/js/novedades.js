@@ -11,6 +11,7 @@ window.TL_NEWS = {
   title: { es: 'Qué hay de nuevo', en: "What's new" },
   items: {
     es: [
+      'Bienvenida nueva al ritmo de la canción: la cancha se dibuja, cuenta 3·2·1, cuando entra el beat cae el escudo y aparece «TODA LA LECCE», y después entra el plantel como fichas de HaxBall que se pasan la pelota. Se salta con un clic.',
       'Camiseta del club: si en un equipo hay dos o más socios, ese equipo se ve con la camiseta de Toda la Lecce (sólo en tu pantalla). En un interno, un equipo lleva la titular y el otro la alternativa.',
       'Llegada del club: con tres o más socios en la sala aparece arriba un cartel con el escudo y sus nombres, una vez por sala.',
       'Al entrar a jugar, la app suelta la memoria que no usa: el lienzo de las luciérnagas y los recursos sin uso de la interfaz. Con gráficos integrados le queda más memoria a la placa. No cambia nada de lo que se ve.',
@@ -121,6 +122,7 @@ window.TL_NEWS = {
       'Cada clave se usa en una sola PC: si cambiás de computadora, pedile a miclo que te la libere.'
     ],
     en: [
+      'New welcome on the beat: the pitch draws in, counts 3·2·1, the crest drops when the beat kicks in with «TODA LA LECCE», then the squad comes in as HaxBall discs passing the ball. Click to skip.',
       'Club kit: if a team has two or more club members, that team shows the Toda la Lecce kit (only on your screen). In an internal match one team wears the home kit and the other the away kit.',
       'Club arrival: with three or more club members in the room, a banner with the crest and their names shows at the top, once per room.',
       'When a match starts, the app releases memory it does not use: the fireflies canvas and unused interface resources. With integrated graphics the GPU gets more memory. Nothing you see changes.',
