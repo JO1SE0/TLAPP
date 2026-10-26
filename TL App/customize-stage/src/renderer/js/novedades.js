@@ -11,7 +11,7 @@ window.TL_NEWS = {
   title: { es: 'Qué hay de nuevo', en: "What's new" },
   items: {
     es: [
-      'Fondo que late: un ambilight estéreo al ritmo del tema que suena. Los bordes izquierdo y derecho siguen a cada canal, una luz de piso crece con el bombo, dos líneas láser se estiran en cada golpe y en los golpes fuertes sale una onda desde abajo. Sólo en el menú: jugando se apaga del todo (Música → Fondo que late).',
+      'Interfaz que late: con música en el menú, unos filos finos de la interfaz se encienden con el tema: la línea bajo la barra de arriba (con un cometa que la recorre en los golpes fuertes), el borde del menú lateral con el canal izquierdo, el marco de tu tarjeta con el derecho y el de la lista de salas con el bombo. Sutil y sólo en el menú: jugando no existe (Música → Fondo que late).',
       'Camiseta del club: si en un equipo hay dos o más socios, ese equipo se ve con la camiseta de Toda la Lecce (sólo en tu pantalla). En un interno, un equipo lleva la titular y el otro la alternativa.',
       'Llegada del club: con tres o más socios en la sala aparece arriba un cartel con el escudo y sus nombres, una vez por sala.',
       'Al entrar a jugar, la app suelta la memoria que no usa: el lienzo de las luciérnagas y los recursos sin uso de la interfaz. Con gráficos integrados le queda más memoria a la placa. No cambia nada de lo que se ve.',
@@ -122,7 +122,7 @@ window.TL_NEWS = {
       'Cada clave se usa en una sola PC: si cambiás de computadora, pedile a miclo que te la libere.'
     ],
     en: [
-      'Beating background: a stereo ambilight on the beat of the current song. Left and right edges follow each channel, a floor light grows with the kick, two laser lines stretch on every hit and strong hits send a wave from the bottom. Menu only: fully off while playing (Music → Beating background).',
+      'Beating interface: with music in the menu, a few thin UI edges light up with the song: the line under the top bar (a comet runs along it on strong hits), the side menu edge with the left channel, your card frame with the right one and the room list frame with the kick. Subtle and menu only: gone while playing (Music → Beating background).',
       'Club kit: if a team has two or more club members, that team shows the Toda la Lecce kit (only on your screen). In an internal match one team wears the home kit and the other the away kit.',
       'Club arrival: with three or more club members in the room, a banner with the crest and their names shows at the top, once per room.',
       'When a match starts, the app releases memory it does not use: the fireflies canvas and unused interface resources. With integrated graphics the GPU gets more memory. Nothing you see changes.',

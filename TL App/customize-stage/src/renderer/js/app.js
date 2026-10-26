@@ -5087,8 +5087,28 @@ function pulseStop() {
   pulse.raf = 0; pulse.v = 0;
   const c = $('#musCover');
   if (c) { c.style.transform = ''; c.style.removeProperty('--pulse'); }
-  const g = $('#bgBeat');
-  if (g) for (const el of g.querySelectorAll('[data-k]')) { el.style.opacity = '0'; el.style.transform = ''; }
+  for (const el of document.querySelectorAll('[data-beat]')) el.style.opacity = '0';
+}
+/* Los filos que laten se cuelgan una sola vez de sus lugares (ver «Interfaz que late» en app.css). */
+function beatDeco() {
+  if (beatDeco.done) return;
+  beatDeco.done = true;
+  const add = (host, cls, kind, inner) => {
+    if (!host) return;
+    const i = document.createElement('i');
+    i.className = cls;
+    i.dataset.beat = kind;
+    i.setAttribute('aria-hidden', 'true');
+    if (inner) i.append(inner);
+    host.append(i);
+  };
+  const run = document.createElement('i');
+  run.className = 'beatline__run';
+  add($('#topbar'), 'beatline', 'v', run);
+  add($('#rail'), 'beatedge', 'l');
+  add($('#profCard'), 'beatframe', 'r');
+  add(document.querySelector('.rpanel'), 'beatframe', 'v2');
+  add(document.querySelector('.panel__card'), 'beatframe', 'v2');
 }
 /* Qué late: la tapa (en la página Música) y/o el fondo del menú (en cualquier
    página). Jugando no late nada: el bucle ni siquiera corre. */
@@ -5110,10 +5130,10 @@ function pulseStart() {
   if (pulse.name !== now.name) { pulse.env = null; pulse.name = now.name; pulseLoad(now); }
   if (!pulse.env || pulse.raf) return;
   const cover = $('#musCover');
-  const box = $('#bgBeat');
-  const part = (k) => (box ? box.querySelector(`[data-k="${k}"]`) : null);
-  const L = part('l'), R = part('r'), floor = part('floor'), top = part('top'), bot = part('bot');
-  const rings = box ? [...box.querySelectorAll('[data-k="ring"]')] : [];
+  beatDeco();
+  const parts = [...document.querySelectorAll('[data-beat]')];
+  const runner = $('.beatline__run');
+  let lit = false;
   const tick = () => {
     if (!pulseWanted() || !pulse.env) { pulseStop(); return; }
     const t = window.TLMusic.time();
@@ -5123,27 +5143,33 @@ function pulseStart() {
     pulse.v = target > pulse.v ? target : pulse.v * 0.86;
     if (cover && pulseCover()) { cover.style.transform = `scale(${(1 + pulse.v * 0.075).toFixed(4)})`; cover.style.setProperty('--pulse', pulse.v.toFixed(3)); }
     else if (cover && cover.style.transform) { cover.style.transform = ''; cover.style.removeProperty('--pulse'); }
-    if (box && pulseBg()) {
-      /* Todo con opacidad y transform de capas propias: la placa las compone sin repintar. */
+    if (pulseBg()) {
+      lit = true;
       const l = (pulse.envL && pulse.envL[i]) || 0;
       const r = (pulse.envR && pulse.envR[i]) || 0;
       pulse.l = l > pulse.l ? l : pulse.l * 0.9;
       pulse.r = r > pulse.r ? r : pulse.r * 0.9;
       const v = pulse.v;
-      if (L) L.style.opacity = (0.15 + pulse.l * 0.85).toFixed(3);
-      if (R) R.style.opacity = (0.15 + pulse.r * 0.85).toFixed(3);
-      if (floor) { floor.style.opacity = (v * 0.95).toFixed(3); floor.style.transform = `scaleY(${(0.55 + v * 0.65).toFixed(3)})`; }
-      if (top) { top.style.opacity = (0.25 + v * 0.75).toFixed(3); top.style.transform = `scaleX(${(0.15 + v * 0.85).toFixed(3)})`; }
-      if (bot) { bot.style.opacity = (0.25 + v * 0.75).toFixed(3); bot.style.transform = `scaleX(${(0.15 + v * 0.85).toFixed(3)})`; }
-      // Golpe fuerte: una onda que sale desde abajo (hay tres y se turnan).
-      const nowMs = performance.now();
-      if (rising && target > 0.7 && nowMs - pulse.lastHit > 260 && rings.length) {
-        pulse.lastHit = nowMs;
-        const ring = rings[pulse.ring++ % rings.length];
-        ring.animate([{ opacity: 0.7, transform: 'translate(-50%, 50%) scale(.15)' }, { opacity: 0, transform: 'translate(-50%, 50%) scale(1)' }], { duration: 900, easing: 'cubic-bezier(.1,.7,.3,1)' });
+      // Sutil: un piso tenue siempre y el golpe arriba de eso.
+      const level = { v: 0.18 + v * 0.82, v2: 0.05 + v * 0.55, l: 0.1 + pulse.l * 0.75, r: 0.08 + pulse.r * 0.6 };
+      for (const el of parts) {
+        const o = level[el.dataset.beat];
+        if (o !== undefined) el.style.opacity = o.toFixed(3);
       }
-    } else if (box && L && L.style.opacity !== '0') {
-      for (const el of box.querySelectorAll('[data-k]')) { el.style.opacity = '0'; el.style.transform = ''; }
+      // Golpe fuerte: un cometa recorre la línea de la barra de arriba.
+      const nowMs = performance.now();
+      if (runner && rising && target > 0.7 && nowMs - pulse.lastHit > 320) {
+        pulse.lastHit = nowMs;
+        const dir = (pulse.ring++ % 2) ? 1 : -1;
+        runner.animate([
+          { opacity: 0, transform: `translateX(${dir > 0 ? -20 : 830}%)` },
+          { opacity: 1, offset: 0.15 },
+          { opacity: 0, transform: `translateX(${dir > 0 ? 830 : -20}%)` }
+        ], { duration: 700, easing: 'cubic-bezier(.3,.6,.3,1)' });
+      }
+    } else if (lit) {
+      lit = false;
+      for (const el of parts) el.style.opacity = '0';
     }
     pulse.raf = requestAnimationFrame(tick);
   };
