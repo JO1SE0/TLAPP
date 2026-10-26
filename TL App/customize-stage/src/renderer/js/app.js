@@ -1983,8 +1983,6 @@ function setStage(kind) {
     state.trimTimer = setTimeout(() => { if (state.stage === 'game' && window.tvm && window.tvm.trimMemory) window.tvm.trimMemory(); }, 3000);
   }
   if (window.TLMusic) window.TLMusic.setInGame(kind === 'game');
-  // El fondo que late se apaga jugando y vuelve al menú.
-  setTimeout(() => { try { pulseStart(); } catch (e) { /* todavía no */ } }, 80);
   // Al volver al menú reaparece la tarjeta del tema que sigue sonando.
   try { if (kind !== 'game' && npPlaying) setTimeout(() => showNowPlaying(6000), 450); } catch (e) { /* todavía no se armó el cartel */ }
   if (kind === 'browser') setTimeout(showNoticeIfReady, 600);
@@ -5014,11 +5012,11 @@ const MUS_X = 'M6.4 6.4l11.2 11.2M17.6 6.4 6.4 17.6';
    tema), se decodifica y se saca la energía de los graves cada ~23 ms. Después,
    con el segundo que va sonando, se busca cuánto golpea y la tapa se agranda un
    pelito. Sólo con la página Música abierta y sonando. */
-const pulse = { name: '', env: null, envL: null, envR: null, hop: 0, loading: '', raf: 0, v: 0, l: 0, r: 0, lastHit: 0, ring: 0, cache: new Map() };
+const pulse = { name: '', env: null, hop: 0, loading: '', raf: 0, v: 0, cache: new Map() };
 async function pulseLoad(t) {
   if (!t || pulse.loading === t.name) return;
   const hit = pulse.cache.get(t.name);
-  if (hit) { pulse.name = t.name; pulse.env = hit.env; pulse.envL = hit.envL; pulse.envR = hit.envR; pulse.hop = hit.hop; return; }
+  if (hit) { pulse.name = t.name; pulse.env = hit.env; pulse.hop = hit.hop; return; }
   pulse.loading = t.name;
   try {
     const bytes = await tvm.tracks.bytes(t.name, !!t.user);
@@ -5049,33 +5047,11 @@ async function pulseLoad(t) {
       // Lo que importa es el GOLPE: cuánto sube sobre lo que venía sonando.
       env[i] = Math.min(1, 0.3 * v + 2.4 * Math.max(0, v - avg));
     }
-    /* Izquierda y derecha por separado (todo el espectro, no sólo el bombo):
-       cada borde de la pantalla sigue a su canal, como un ambilight estéreo. */
-    const side = (ch) => {
-      const r = new Float32Array(n);
-      for (let i = 0; i < n; i++) {
-        let acc = 0;
-        for (let j = i * HOP, e = j + HOP; j < e; j++) acc += ch[j] * ch[j];
-        r[i] = Math.sqrt(acc / HOP);
-      }
-      const srt = Float32Array.from(r).sort();
-      const tp = srt[Math.floor(srt.length * 0.96)] || 1;
-      const out = new Float32Array(n);
-      let av = 0;
-      for (let i = 0; i < n; i++) {
-        const v = Math.min(1, r[i] / tp);
-        av += (v - av) * 0.05;
-        out[i] = Math.min(1, 0.45 * v + 1.6 * Math.max(0, v - av));
-      }
-      return out;
-    };
-    const envL = side(a);
-    const envR = b ? side(b) : envL;
-    const entry = { env, envL, envR, hop: HOP / sr };
+    const entry = { env, hop: HOP / sr };
     pulse.cache.set(t.name, entry);
     if (pulse.cache.size > 8) pulse.cache.delete(pulse.cache.keys().next().value);
     const now = window.TLMusic && window.TLMusic.now;
-    if (now && now.name === t.name) { pulse.name = t.name; pulse.env = env; pulse.envL = envL; pulse.envR = envR; pulse.hop = entry.hop; pulseStart(); }
+    if (now && now.name === t.name) { pulse.name = t.name; pulse.env = env; pulse.hop = entry.hop; pulseStart(); }
   } catch (e) {
     /* un archivo que no se puede decodificar: la tapa queda quieta */
   } finally {
@@ -5087,41 +5063,11 @@ function pulseStop() {
   pulse.raf = 0; pulse.v = 0;
   const c = $('#musCover');
   if (c) { c.style.transform = ''; c.style.removeProperty('--pulse'); }
-  for (const el of document.querySelectorAll('[data-beat]')) el.style.opacity = '0';
-}
-/* Los filos que laten se cuelgan una sola vez de sus lugares (ver «Interfaz que late» en app.css). */
-function beatDeco() {
-  if (beatDeco.done) return;
-  beatDeco.done = true;
-  const add = (host, cls, kind, inner) => {
-    if (!host) return;
-    const i = document.createElement('i');
-    i.className = cls;
-    i.dataset.beat = kind;
-    i.setAttribute('aria-hidden', 'true');
-    if (inner) i.append(inner);
-    host.append(i);
-  };
-  const run = document.createElement('i');
-  run.className = 'beatline__run';
-  add($('#topbar'), 'beatline', 'v', run);
-  add($('#rail'), 'beatedge', 'l');
-  add($('#profCard'), 'beatframe', 'r');
-  add(document.querySelector('.rpanel'), 'beatframe', 'v2');
-  add(document.querySelector('.panel__card'), 'beatframe', 'v2');
-}
-/* Qué late: la tapa (en la página Música) y/o el fondo del menú (en cualquier
-   página). Jugando no late nada: el bucle ni siquiera corre. */
-function pulseCover() {
-  return state.view === 'musica' && state.config.appearance.musicPulse !== false;
-}
-function pulseBg() {
-  return state.config.appearance.bgPulse !== false;
 }
 function pulseWanted() {
   const M = window.TLMusic;
-  return !!(M && M.playing && state.stage !== 'game' && !document.hidden && state.config
-    && document.documentElement.dataset.animations !== 'off' && (pulseCover() || pulseBg()));
+  return !!(M && M.playing && state.view === 'musica' && state.stage !== 'game' && !document.hidden
+    && state.config && state.config.appearance.musicPulse !== false && document.documentElement.dataset.animations !== 'off');
 }
 function pulseStart() {
   const M = window.TLMusic;
@@ -5129,48 +5075,14 @@ function pulseStart() {
   if (!pulseWanted() || !now) { pulseStop(); return; }
   if (pulse.name !== now.name) { pulse.env = null; pulse.name = now.name; pulseLoad(now); }
   if (!pulse.env || pulse.raf) return;
-  const cover = $('#musCover');
-  beatDeco();
-  const parts = [...document.querySelectorAll('[data-beat]')];
-  const runner = $('.beatline__run');
-  let lit = false;
   const tick = () => {
     if (!pulseWanted() || !pulse.env) { pulseStop(); return; }
     const t = window.TLMusic.time();
-    const i = Math.min(pulse.env.length - 1, Math.max(0, Math.floor(t.cur / pulse.hop)));
-    const target = pulse.env[i] || 0;
-    const rising = target > pulse.v + 0.25;
+    const i = Math.floor(t.cur / pulse.hop);
+    const target = pulse.env[Math.min(pulse.env.length - 1, Math.max(0, i))] || 0;
     pulse.v = target > pulse.v ? target : pulse.v * 0.86;
-    if (cover && pulseCover()) { cover.style.transform = `scale(${(1 + pulse.v * 0.075).toFixed(4)})`; cover.style.setProperty('--pulse', pulse.v.toFixed(3)); }
-    else if (cover && cover.style.transform) { cover.style.transform = ''; cover.style.removeProperty('--pulse'); }
-    if (pulseBg()) {
-      lit = true;
-      const l = (pulse.envL && pulse.envL[i]) || 0;
-      const r = (pulse.envR && pulse.envR[i]) || 0;
-      pulse.l = l > pulse.l ? l : pulse.l * 0.9;
-      pulse.r = r > pulse.r ? r : pulse.r * 0.9;
-      const v = pulse.v;
-      // Sutil: un piso tenue siempre y el golpe arriba de eso.
-      const level = { v: 0.18 + v * 0.82, v2: 0.05 + v * 0.55, l: 0.1 + pulse.l * 0.75, r: 0.08 + pulse.r * 0.6 };
-      for (const el of parts) {
-        const o = level[el.dataset.beat];
-        if (o !== undefined) el.style.opacity = o.toFixed(3);
-      }
-      // Golpe fuerte: un cometa recorre la línea de la barra de arriba.
-      const nowMs = performance.now();
-      if (runner && rising && target > 0.7 && nowMs - pulse.lastHit > 320) {
-        pulse.lastHit = nowMs;
-        const dir = (pulse.ring++ % 2) ? 1 : -1;
-        runner.animate([
-          { opacity: 0, transform: `translateX(${dir > 0 ? -20 : 830}%)` },
-          { opacity: 1, offset: 0.15 },
-          { opacity: 0, transform: `translateX(${dir > 0 ? 830 : -20}%)` }
-        ], { duration: 700, easing: 'cubic-bezier(.3,.6,.3,1)' });
-      }
-    } else if (lit) {
-      lit = false;
-      for (const el of parts) el.style.opacity = '0';
-    }
+    const c = $('#musCover');
+    if (c) { c.style.transform = `scale(${(1 + pulse.v * 0.075).toFixed(4)})`; c.style.setProperty('--pulse', pulse.v.toFixed(3)); }
     pulse.raf = requestAnimationFrame(tick);
   };
   pulse.raf = requestAnimationFrame(tick);
@@ -5243,8 +5155,7 @@ function paintMusicPage() {
     ['music', T.music, T.musicD, ap.music !== false],
     ['musicClub', T.club, T.clubD, ap.musicClub !== false],
     ['musicInGame', T.game, T.gameD, ap.musicInGame !== false],
-    ['musicPulse', isEn() ? 'Beating cover' : 'Tapa que late', isEn() ? 'The cover pulses with the song.' : 'La tapa se mueve con los golpes del tema.', ap.musicPulse !== false],
-    ['bgPulse', isEn() ? 'Beating background' : 'Fondo que late', isEn() ? 'The menu background glows with the beat. Never while playing.' : 'El fondo del menú se ilumina con los golpes del tema. Nunca mientras jugás.', ap.bgPulse !== false]
+    ['musicPulse', isEn() ? 'Beating cover' : 'Tapa que late', isEn() ? 'The cover pulses with the song.' : 'La tapa se mueve con los golpes del tema.', ap.musicPulse !== false]
   ];
   sws.replaceChildren(...defs.map(([key, label, desc, on]) => {
     const b = document.createElement('button');
@@ -5258,7 +5169,7 @@ function paintMusicPage() {
     txt.append(bb, sm);
     const knob = document.createElement('i');
     b.append(txt, knob);
-    b.addEventListener('click', () => patchConfig({ appearance: { [key]: !on } }).then(() => setTimeout(pulseStart, 30)));
+    b.addEventListener('click', () => patchConfig({ appearance: { [key]: !on } }));
     return b;
   }));
 

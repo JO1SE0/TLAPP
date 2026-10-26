@@ -7063,23 +7063,3 @@ html:not([data-animations="off"]) :is(.btn--primary, .mus__btn--main):hover::aft
    vuelven solos. */
 html[data-stage="game"] .ambient,
 html[data-stage="game"] #sparks { display: none !important; }
-
-/* ═══ Interfaz que late ═══
-   Con música sonando en el menú, unos pocos filos de la interfaz se encienden
-   con el tema: la línea de abajo de la barra superior (con un cometa que la
-   recorre en los golpes fuertes), el borde del menú lateral, el marco de tu
-   tarjeta y el de la lista de salas o del panel abierto. Finitos, del color del
-   tema, y nada más. El bucle toca sólo opacity/transform: la placa los compone
-   sin repintar. Jugando no existen. */
-.beatline { position: absolute; left: 0; right: 0; bottom: -1px; height: 2px; z-index: 3; pointer-events: none; overflow: hidden; opacity: 0; will-change: opacity;
-  background: linear-gradient(90deg, transparent, rgb(var(--accent-rgb) / 90%) 20%, #fff8e2 50%, rgb(var(--accent-2-rgb, var(--accent-rgb)) / 90%) 80%, transparent);
-  box-shadow: 0 0 8px rgb(var(--accent-rgb) / 70%); }
-.beatline__run { position: absolute; top: -3px; left: 0; width: 12%; height: 8px; border-radius: 99px; opacity: 0; will-change: transform, opacity;
-  background: radial-gradient(50% 50% at 50% 50%, #fff, rgb(var(--accent-rgb) / 70%) 40%, transparent 72%); }
-.beatedge { position: absolute; top: 8%; bottom: 8%; right: -1px; width: 2px; z-index: 3; pointer-events: none; opacity: 0; will-change: opacity;
-  background: linear-gradient(180deg, transparent, rgb(var(--accent-rgb)) 30%, #fff8e2 50%, rgb(var(--accent-rgb)) 70%, transparent);
-  box-shadow: 0 0 10px rgb(var(--accent-rgb) / 60%); }
-.beatframe { position: absolute; inset: 0; z-index: 3; pointer-events: none; border-radius: inherit; opacity: 0; will-change: opacity;
-  box-shadow: inset 0 0 0 1.5px rgb(var(--accent-rgb) / 85%), inset 0 0 18px rgb(var(--accent-rgb) / 22%), 0 0 16px rgb(var(--accent-rgb) / 30%); }
-.rpanel { position: relative; }
-html[data-animations="off"] :is(.beatline, .beatedge, .beatframe), html[data-stage="game"] :is(.beatline, .beatedge, .beatframe) { display: none; }
