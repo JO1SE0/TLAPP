@@ -288,12 +288,30 @@ function applyBootFlags(perf) {
   app.commandLine.appendSwitch('disable-gpu-process-crash-limit');
 }
 
+/** Si el último reparto de prioridades fue el «jugando». */
+let lastPriorityPlaying = false;
+
 function applyRuntimeFlags(perf) {
   if (process.platform !== 'win32') return;
   const level = perf.highProcessPriority
     ? os.constants.priority.PRIORITY_HIGH
     : os.constants.priority.PRIORITY_NORMAL;
   const wanted = new Map([[process.pid, level]]);
+  const P = os.constants.priority;
+  /*
+   * Jugando, el reparto es más agresivo: el juego que se ve y la placa arriba
+   * de todo, y lo que no dibuja la partida (la interfaz de la app, las pestañas
+   * de atrás) un escalón ABAJO de lo normal. En gráficos integrados la CPU y la
+   * placa comparten todo, así que lo que no es la partida deja de competir.
+   * La sala que hosteás NO se toca: de ella dependen los demás jugadores.
+   */
+  const activeInfo = gameContents && tabInfo.get(gameContents);
+  const playing = !!(perf.highProcessPriority && activeInfo && activeInfo.view === 'game');
+  lastPriorityPlaying = playing;
+  try {
+    const uiPid = mainWindow && !mainWindow.isDestroyed() ? mainWindow.webContents.getOSProcessId() : 0;
+    if (uiPid > 0) wanted.set(uiPid, playing ? P.PRIORITY_BELOW_NORMAL : P.PRIORITY_NORMAL);
+  } catch { /* la ventana todavía no tiene proceso */ }
 
   // El canvas no se dibuja en el proceso principal: vive en el renderer del
   // webview. Antes «Prioridad alta» sólo aceleraba al coordinador y dejaba al
@@ -308,7 +326,7 @@ function applyRuntimeFlags(perf) {
       if (contents.isDestroyed() || typeof contents.getOSProcessId !== 'function') continue;
       const gamePid = contents.getOSProcessId();
       if (gamePid > 0) {
-        wanted.set(gamePid, contents === gameContents ? level : os.constants.priority.PRIORITY_NORMAL);
+        wanted.set(gamePid, contents === gameContents ? level : (playing ? P.PRIORITY_BELOW_NORMAL : P.PRIORITY_NORMAL));
       }
     } catch { /* el webview puede estar navegando */ }
   }
@@ -322,9 +340,9 @@ function applyRuntimeFlags(perf) {
   try {
     for (const proc of app.getAppMetrics()) {
       if (proc.type === 'GPU' && proc.pid > 0) {
-        wanted.set(proc.pid, perf.highProcessPriority
-          ? os.constants.priority.PRIORITY_ABOVE_NORMAL
-          : os.constants.priority.PRIORITY_NORMAL);
+        wanted.set(proc.pid, playing ? P.PRIORITY_HIGH
+          : perf.highProcessPriority ? P.PRIORITY_ABOVE_NORMAL
+          : P.PRIORITY_NORMAL);
       }
     }
   } catch { /* sin métricas todavía */ }
@@ -3961,6 +3979,11 @@ listen('game:view', (e, kind) => {
     if (kind === 'roomlist') { info.room = null; info.playing = false; }
   }
   send('game:view', kind, { ...tabMeta(e), seq: info ? info.viewSeq : 0 });
+  // Entrar o salir de la partida cambia el reparto de prioridades (ver applyRuntimeFlags).
+  if (e.sender === gameContents) {
+    const perf = store.get().perf;
+    if (!!(perf.highProcessPriority && kind === 'game') !== lastPriorityPlaying) applyRuntimeFlags(perf);
+  }
 });
 
 /**

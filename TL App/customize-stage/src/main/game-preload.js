@@ -7563,6 +7563,11 @@ function pitchAccent() {
 }
 
 let pitchAlphaLogged = false;
+/* Las opciones del marcador y de los aros se reusan: armar un objeto nuevo en
+   cada cuadro, a cientos de cuadros por segundo, es basura que después junta
+   el recolector de memoria en medio del partido (el tirón de un instante). */
+const mmOpts = {};
+const ringOpts = { self: false, teams: false, touch: false, selfTrail: false };
 function paintPitch(ctx, renderer, zoom) {
   /*
    * El canvas del juego, de paso. Es lo que sacude el gol, y desde acá se sabe
@@ -7605,28 +7610,27 @@ function paintPitch(ctx, renderer, zoom) {
     const bounds = geom && geom.goals > 0 ? geom : null;
     const now = performance.now();
     if (bounds) {
-      lookfx.paintMatchMark(ctx, {
-        now,
-        hasBall: now - liveBall.t < 600,
-        ballX: liveBall.x,
-        ballY: liveBall.y,
-        red: lastScore.red,
-        blue: lastScore.blue,
-        halfW: bounds.halfW,
-        halfH: bounds.halfH,
-        tint: visual.score,
-        opacity: visual.scoreOpacity,
-        style: visual.scoreStyle,
-        font: visual.scoreFont,
-        size: visual.scoreSize,
-        pos: visual.scorePos,
-        mode: visual.scoreMode,
-        anim: visual.scoreAnim,
-        burst: visual.scoreBurst,
-        colorR: visual.scoreColorR,
-        colorB: visual.scoreColorB,
-        mirrored: mirrorOn
-      });
+      mmOpts.now = now;
+      mmOpts.hasBall = now - liveBall.t < 600;
+      mmOpts.ballX = liveBall.x;
+      mmOpts.ballY = liveBall.y;
+      mmOpts.red = lastScore.red;
+      mmOpts.blue = lastScore.blue;
+      mmOpts.halfW = bounds.halfW;
+      mmOpts.halfH = bounds.halfH;
+      mmOpts.tint = visual.score;
+      mmOpts.opacity = visual.scoreOpacity;
+      mmOpts.style = visual.scoreStyle;
+      mmOpts.font = visual.scoreFont;
+      mmOpts.size = visual.scoreSize;
+      mmOpts.pos = visual.scorePos;
+      mmOpts.mode = visual.scoreMode;
+      mmOpts.anim = visual.scoreAnim;
+      mmOpts.burst = visual.scoreBurst;
+      mmOpts.colorR = visual.scoreColorR;
+      mmOpts.colorB = visual.scoreColorB;
+      mmOpts.mirrored = mirrorOn;
+      lookfx.paintMatchMark(ctx, mmOpts);
     }
   }
 
@@ -7647,7 +7651,8 @@ function paintPitch(ctx, renderer, zoom) {
   }
   if (wantTrail) paintTrail(ctx, cfg, px);
   if (wantTeams || wantSelf || wantTouch || wantSelfTrail) {
-    paintRings(ctx, renderer, f, px, { self: wantSelf, teams: wantTeams, touch: wantTouch, selfTrail: wantSelfTrail });
+    ringOpts.self = wantSelf; ringOpts.teams = wantTeams; ringOpts.touch = wantTouch; ringOpts.selfTrail = wantSelfTrail;
+    paintRings(ctx, renderer, f, px, ringOpts);
   }
 }
 

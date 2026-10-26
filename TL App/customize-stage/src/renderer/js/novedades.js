@@ -11,6 +11,7 @@ window.TL_NEWS = {
   title: { es: 'Qué hay de nuevo', en: "What's new" },
   items: {
     es: [
+      'Prioridades al jugar (con «Prioridad alta»): la partida y la placa de video arriba de todo; la interfaz de la app y las pestañas de atrás un escalón abajo mientras jugás. La sala que hosteás no se toca. Y menos basura de memoria por cuadro, para que el recolector no corte el partido.',
       'Gráficos integrados: jugando, el fondo del menú y las luciérnagas desaparecen de verdad (antes seguían debajo de la cancha), la cancha se le pide opaca a la placa y el marcador de arriba se repinta solo, sin tocar lo de alrededor.',
       'Sin personalizar fichas, pelota ni líneas, el juego dibuja directo con el navegador: la app ya no se mete en cada círculo, relleno y trazo de cada cuadro.',
       'Más FPS de fábrica: la «Simulación liviana» viene prendida. HaxBall volvía a calcular toda la sala en cada cuadro dibujado; ahora reusa la cuenta mientras no pase nada nuevo (tus teclas se toman al instante). Rinde más cuanto más gente hay en la sala. Se apaga en Configuración → Avanzado → Sistema.',
@@ -117,6 +118,7 @@ window.TL_NEWS = {
       'Cada clave se usa en una sola PC: si cambiás de computadora, pedile a miclo que te la libere.'
     ],
     en: [
+      'Priorities while playing (with «High priority»): the match and the GPU on top; the app interface and background tabs one step lower while you play. A room you host is left alone. Plus less memory garbage per frame, so the collector does not interrupt the match.',
       'Integrated graphics: while playing, the menu background and fireflies are truly gone (they used to stay under the pitch), the pitch is requested opaque from the GPU and the top scoreboard repaints on its own.',
       'Without disc, ball or line customizations, the game draws straight through the browser: the app no longer steps into every circle, fill and stroke of each frame.',
       'More FPS out of the box: «Light simulation» is now on. HaxBall re-simulated the whole room every drawn frame; now it reuses it until something new happens (your keys are taken instantly). The fuller the room, the bigger the gain. Turn it off in Settings → Advanced → System.',
