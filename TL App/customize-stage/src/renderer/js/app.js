@@ -3812,7 +3812,7 @@ const LOW_END = {
   appearance: { animations: false, sparks: false, musicGlow: false, crestBreath: false, roomCurtain: false, listStagger: false, toggleBounce: false, accentDrift: false, joinSparkle: false, goalEdge: false, musicInGame: false, pageTransition: 'off' },
   // Lo que se dibuja EN CADA CUADRO de la partida (lo de la cancha que queda
   // guardado en el cache no cuesta por cuadro y se respeta).
-  visual: { menuBg: 'none', pitchWeather: 'none', pitchScore: 'none', discStyle: 'default', softShadows: false, selfTrail: false, ringStyle: 'default', ballStyle: 'default' },
+  visual: { menuBg: 'none', pitchWeather: 'none', pitchScore: 'none', discStyle: 'default', softShadows: false, selfTrail: false, kickBurst: false, ringStyle: 'default', ballStyle: 'default' },
   pitch: { ball3d: false, goalFlash: false, goalShake: false },
   perf: { flatGraphics: true, gpuRasterization: true, zeroCopy: true, highProcessPriority: true, disableBackgroundThrottling: true }
 };
@@ -9819,12 +9819,13 @@ const LOOK_SECTIONS = {
     { key: 'discStyle', type: 'select', label: 'look.discStyle', options: [['default', 'look.opt.none'], ['sphere', 'look.ds.sphere'], ['glass', 'look.ds.glass'], ['neon', 'look.ds.neon'], ['metal', 'look.ds.metal'], ['bubble', 'look.ds.bubble'], ['target', 'look.ds.target'], ['stripes', 'look.ds.stripes'], ['gem', 'look.ds.gem'], ['cartoon', 'look.ds.cartoon'], ['dots', 'look.ds.dots']] },
     { key: 'softShadows', type: 'switch', label: 'look.softShadows', desc: 'look.softShadowsHelp' },
     { key: 'discOutline', type: 'color', label: 'look.discOutline' },
-    { key: 'ballStyle', type: 'select', label: 'look.ballStyle', options: [['default', 'look.opt.none'], ['soccer', 'look.bs.soccer'], ['neon', 'look.bs.neon'], ['gold', 'look.bs.gold'], ['beach', 'look.bs.beach'], ['eight', 'look.bs.eight'], ['star', 'look.bs.star'], ['panels', 'look.bs.panels'], ['triangles', 'look.bs.triangles'], ['vintage', 'look.bs.vintage'], ['tennis', 'look.bs.tennis'], ['basket', 'look.bs.basket'], ['volley', 'look.bs.volley'], ['baseball', 'look.bs.baseball'], ['golf', 'look.bs.golf'], ['bowling', 'look.bs.bowling'], ['earth', 'look.bs.earth'], ['moon', 'look.bs.moon'], ['disco', 'look.bs.disco'], ['orb', 'look.bs.orb'], ['pumpkin', 'look.bs.pumpkin'], ['melon', 'look.bs.melon'], ['eye', 'look.bs.eye']] },
+    { key: 'ballStyle', type: 'select', label: 'look.ballStyle', options: [['default', 'look.opt.none'], ['soccer', 'look.bs.soccer'], ['panels', 'look.bs.panels'], ['triangles', 'look.bs.triangles'], ['gold', 'look.bs.gold'], ['neon', 'look.bs.neon'], ['star', 'look.bs.star'], ['vintage', 'look.bs.vintage'], ['tango', 'look.bs.tango'], ['tennis', 'look.bs.tennis'], ['basket', 'look.bs.basket'], ['volley', 'look.bs.volley'], ['baseball', 'look.bs.baseball'], ['golf', 'look.bs.golf'], ['bowling', 'look.bs.bowling'], ['beach', 'look.bs.beach'], ['eight', 'look.bs.eight'], ['nine', 'look.bs.nine'], ['cue', 'look.bs.cue'], ['earth', 'look.bs.earth'], ['moon', 'look.bs.moon'], ['saturn', 'look.bs.saturn'], ['orb', 'look.bs.orb'], ['pumpkin', 'look.bs.pumpkin'], ['xmas', 'look.bs.xmas'], ['disco', 'look.bs.disco'], ['melon', 'look.bs.melon'], ['eye', 'look.bs.eye']], groups: [['look.pack.football', ['default', 'soccer', 'panels', 'triangles', 'gold', 'neon', 'star']], ['look.pack.retro', ['vintage', 'tango']], ['look.pack.sports', ['tennis', 'basket', 'volley', 'baseball', 'golf', 'bowling', 'beach']], ['look.pack.pool', ['eight', 'nine', 'cue']], ['look.pack.space', ['earth', 'moon', 'saturn', 'orb']], ['look.pack.party', ['pumpkin', 'xmas', 'disco']], ['look.pack.weird', ['melon', 'eye']]] },
     { key: 'ballColor', type: 'color', label: 'look.ballColor' },
     { key: 'ballOutline', type: 'color', label: 'look.ballOutline' },
     { key: 'ringStyle', type: 'select', label: 'look.ringStyle', desc: 'look.ringHelp', options: [['default', 'look.opt.simple'], ['double', 'look.ring.double'], ['dashed', 'look.ring.dashed'], ['crown', 'look.ring.crown'], ['glow', 'look.ring.glow'], ['dots', 'look.ring.dots'], ['arrow', 'look.ring.arrow']] },
     { key: 'ringColor', type: 'color', label: 'look.ringColor' },
     { key: 'selfTrail', type: 'switch', label: 'look.selfTrail', desc: 'look.selfTrailHelp' },
+    { key: 'kickBurst', type: 'switch', label: 'look.kickBurst', desc: 'look.kickBurstHelp' },
     { key: 'selfTrailColor', type: 'color', label: 'look.selfTrailColor', showIf: (v) => v.selfTrail },
     { key: 'teamColors', type: 'select', label: 'look.teamColors', desc: 'look.teamColorsHelp', options: [['room', 'look.tc.room'], ['mine', 'look.tc.mine']] },
     { key: 'teamRed', type: 'color', label: 'look.teamRed', showIf: (v) => v.teamColors === 'mine' },
@@ -9857,7 +9858,7 @@ const LOOK_SECTIONS = {
 const LOOK_DEFAULTS = {
   texture: 'none', pitchLight: 'none', ownRingColor: '', ownRingAlpha: 0.3, ownRingRadius: 25, ownRingSoft: 0, pitchWeather: 'none', pitchWeatherAmount: 0.6, pitchScore: 'team', pitchScoreOpacity: 0.16, pitchScoreStyle: 'ring', pitchScoreFont: 'default', pitchScoreSize: 1, pitchScorePos: 0.5, pitchScoreMode: 'kickoff', pitchScoreAnim: 'rise', pitchScoreBurst: true, pitchScoreColorR: '', pitchScoreColorB: '', softShadows: false, crest: false, crestOpacity: 0.18, crestSize: 0.45, lineColor: '', postColor: '', postStyle: 'default',
   discStyle: 'default', ballStyle: 'default', ballColor: '', lineGlow: false, discOutline: '', ballOutline: '', ringStyle: 'default', ringColor: '',
-  selfTrail: false, selfTrailColor: '', teamColors: 'room', teamRed: '#e0b04a', teamBlue: '#9aa3b5', teamKeepKits: false, nameScale: 1, nameColor: '', nameOutline: false, nameFont: 'default',
+  selfTrail: false, selfTrailColor: '', kickBurst: false, teamColors: 'room', teamRed: '#e0b04a', teamBlue: '#9aa3b5', teamKeepKits: false, nameScale: 1, nameColor: '', nameOutline: false, nameFont: 'default',
   chatScale: 1, chatBg: -1, chatFont: 'default', chatOpacity: 1, statsOpacity: 1, statsStyle: 'default', menuBg: 'none'
 };
 
@@ -9939,7 +9940,16 @@ function lookGalleryRow(item, value) {
   const cfg = state.config;
   const grid = document.createElement('div');
   grid.className = 'lookgal';
+  // Con `groups`, un rótulo antes del primero de cada pack (ver la pelota).
+  const groupAt = new Map();
+  for (const [labelKey, vals] of item.groups || []) if (vals.length) groupAt.set(vals[0], labelKey);
   for (const [val, label] of item.options) {
+    if (groupAt.has(val)) {
+      const head = document.createElement('div');
+      head.className = 'lookgal__group';
+      head.textContent = t(groupAt.get(val));
+      grid.append(head);
+    }
     const tile = document.createElement('button');
     tile.type = 'button';
     tile.className = 'lookgal__item' + (val === value ? ' is-on' : '');

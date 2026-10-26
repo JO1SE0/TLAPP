@@ -11,6 +11,9 @@ window.TL_NEWS = {
   title: { es: 'Qué hay de nuevo', en: "What's new" },
   items: {
     es: [
+      'Pelotas en packs (Personalización → Fichas y pelota): Fútbol, Mundial retro, Otros deportes, Billar, Espacio, Fiestas y Raras, con 5 nuevas: Mundial 78, Bola 9, Bola blanca, Saturno y Navidad.',
+      'Ráfaga al patear: una onda y chispas salen de tu ficha cada vez que pateás. Sólo la ves vos (Fichas y pelota).',
+      '6 temas nuevos inspirados en estadios, sin escudos ni logos: Noche de copa, Azul y oro, Banda roja, Verde y blanco, Celeste y blanco y Tribuna de cemento.',
       'Al entrar a jugar, la app suelta la memoria que no usa: el lienzo de las luciérnagas y los recursos sin uso de la interfaz. Con gráficos integrados le queda más memoria a la placa. No cambia nada de lo que se ve.',
       'Prioridades al jugar (con «Prioridad alta»): la partida y la placa de video arriba de todo; la interfaz de la app y las pestañas de atrás un escalón abajo mientras jugás. La sala que hosteás no se toca. Y menos basura de memoria por cuadro, para que el recolector no corte el partido.',
       'Gráficos integrados: jugando, el fondo del menú y las luciérnagas desaparecen de verdad (antes seguían debajo de la cancha), la cancha se le pide opaca a la placa y el marcador de arriba se repinta solo, sin tocar lo de alrededor.',
@@ -119,6 +122,9 @@ window.TL_NEWS = {
       'Cada clave se usa en una sola PC: si cambiás de computadora, pedile a miclo que te la libere.'
     ],
     en: [
+      'Balls in packs (Customization → Discs and ball): Football, Retro World Cup, Other sports, Pool, Space, Holidays and Odd ones, with 5 new ones: World Cup 78, Nine ball, Cue ball, Saturn and Christmas.',
+      'Kick burst: a ring and sparks come out of your disc every time you kick. Only you see it (Discs and ball).',
+      '6 new stadium-inspired themes, with no crests or logos: Cup night, Blue and gold, Red sash, Green and white, Sky blue and white, and Concrete stand.',
       'When a match starts, the app releases memory it does not use: the fireflies canvas and unused interface resources. With integrated graphics the GPU gets more memory. Nothing you see changes.',
       'Priorities while playing (with «High priority»): the match and the GPU on top; the app interface and background tabs one step lower while you play. A room you host is left alone. Plus less memory garbage per frame, so the collector does not interrupt the match.',
       'Integrated graphics: while playing, the menu background and fireflies are truly gone (they used to stay under the pitch), the pitch is requested opaque from the GPU and the top scoreboard repaints on its own.',

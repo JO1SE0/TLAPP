@@ -504,6 +504,8 @@ const DEFAULTS = {
     ringColor: '',
     /** Cola de color detrás de tu ficha. */
     selfTrail: false,
+    /** Onda y chispas desde tu ficha cuando pateás (sólo la ves vos). */
+    kickBurst: false,
     selfTrailColor: '',
     /** Nombres sobre las fichas. Vacío/1 = como vienen. */
     nameScale: 1,
