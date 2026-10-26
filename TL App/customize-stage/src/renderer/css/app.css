@@ -7065,13 +7065,15 @@ html[data-stage="game"] .ambient,
 html[data-stage="game"] #sparks { display: none !important; }
 
 /* ═══ Fondo que late ═══
-   Una capa propia arriba del ambiente: el bucle de la música le cambia sólo la
-   opacidad (la placa la compone sin repintar). Jugando, el ambiente entero no
-   existe (ver «Jugando, lo que queda DEBAJO del juego»). */
+   El borde de la pantalla se ilumina con el color del tema en cada golpe del
+   tema que suena. Va ENCIMA de todo (el fondo de verdad queda tapado por la
+   lista y los paneles) pero sólo en los bordes y sin tocar el mouse. El bucle
+   de la música le cambia sólo la opacidad: la placa la compone sin repintar.
+   Jugando no existe. */
 .bgbeat {
-  position: absolute; inset: 0; pointer-events: none; opacity: 0; will-change: opacity;
+  position: fixed; inset: 0; z-index: 2147480000; pointer-events: none; opacity: 0; will-change: opacity;
   background:
-    radial-gradient(55% 45% at 50% 62%, rgb(var(--accent-rgb) / 20%), transparent 72%),
-    radial-gradient(90% 60% at 50% 115%, rgb(var(--accent-rgb) / 16%), transparent 65%);
+    radial-gradient(130% 120% at 50% 50%, transparent 48%, rgb(var(--accent-rgb) / 50%) 100%),
+    radial-gradient(85% 50% at 50% 112%, rgb(var(--accent-rgb) / 45%), transparent 70%);
 }
-html[data-animations="off"] .bgbeat { display: none; }
+html[data-animations="off"] .bgbeat, html[data-stage="game"] .bgbeat { display: none; }
