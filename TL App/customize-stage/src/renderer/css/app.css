@@ -7055,3 +7055,11 @@ html:not([data-animations="off"]) :is(.btn--primary, .mus__btn--main):hover::aft
 #app[data-stage="game"] .mus__n.is-eq i,
 #app[data-stage="game"] .stage__ring,
 #app[data-stage="game"] .rskel { animation-play-state: paused !important; }
+
+/* ═══ Jugando, lo que queda DEBAJO del juego no existe ═══
+   El fondo ambiental y las luciérnagas viven detrás de la cancha: tapados, pero
+   igual son capas que la placa tiene en cuenta en cada cuadro (y en gráficos
+   integrados la placa comparte la memoria con la PC). Al salir de la partida
+   vuelven solos. */
+html[data-stage="game"] .ambient,
+html[data-stage="game"] #sparks { display: none !important; }

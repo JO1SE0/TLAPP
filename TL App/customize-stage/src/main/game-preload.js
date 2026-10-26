@@ -55,6 +55,16 @@ function hookDesynchronized(win) {
         // Modo experimental de baja latencia: se respeta lo que pide el juego (desincronizado).
         let lowLat = false;
         try { lowLat = !!(state.config && state.config.perf && state.config.perf.lowLatencyCanvas); } catch (e) { /* state aún sin armar */ }
+        /*
+         * La cancha opaca. HaxBall marca su canvas con `mozOpaque`: con eso se
+         * le pide además `alpha: false`, así la placa no tiene que mezclar la
+         * cancha con lo que hay debajo en cada cuadro. Las texturas de las
+         * fichas y los nombres no llevan la marca y quedan transparentes.
+         */
+        if (this.mozOpaque === true) {
+          if (!options) options = {};
+          if (typeof options === 'object') options.alpha = false;
+        }
         if (lowLat) return orig.call(this, type, options);
         if (!options) options = { desynchronized: false };
         else if (typeof options === 'object') options.desynchronized = false;
@@ -1052,6 +1062,10 @@ function applyClientStyles(doc) {
     /* Se esconde con clase y no con el atributo hidden: HaxBall le pone
        display a .elem y el atributo perdería. */
     .pick-stadium-view .tvm-maps--off { display: none !important; }
+
+    /* El marcador de arriba en su propia capa: el reloj cambia cada segundo y
+       así se repinta sólo esa barrita, no lo que tiene alrededor. */
+    .game-state-view .bar { will-change: transform; }
 
     /* La carpeta va contra el borde derecho de la fila. Flota en vez de ser un
        hijo más porque .elem no es flex y no hay que convertirlo en uno. */
@@ -7548,6 +7562,7 @@ function pitchAccent() {
   return (p && p.accent) || '#7b3fe4';
 }
 
+let pitchAlphaLogged = false;
 function paintPitch(ctx, renderer, zoom) {
   /*
    * El canvas del juego, de paso. Es lo que sacude el gol, y desde acá se sabe
@@ -7556,6 +7571,10 @@ function paintPitch(ctx, renderer, zoom) {
    * el sacudón tiene que andar aunque todas las ayudas estén apagadas.
    */
   if (ctx.canvas) pitchCanvas = ctx.canvas;
+  if (!pitchAlphaLogged && ctx.getContextAttributes) {
+    pitchAlphaLogged = true;
+    try { log('info', `cancha ${ctx.getContextAttributes().alpha ? 'con' : 'sin'} transparencia (${ctx.canvas.width}×${ctx.canvas.height})`, 'juego'); } catch (e) { /* sin dato */ }
+  }
   // El arrastre de la cámara libre necesita el zoom para pasar píxeles de
   // pantalla a unidades de cancha, y éste es el único lugar donde lo tenemos.
   freeCam.zoom = zoom || 1;
