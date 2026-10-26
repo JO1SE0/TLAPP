@@ -5293,8 +5293,7 @@ let ball3dLogged = false;
 const BALL_STYLES = [
   'soccer', 'neon', 'gold', 'beach', 'eight', 'star',
   'panels', 'triangles', 'vintage', 'tennis', 'basket', 'volley', 'baseball', 'golf', 'bowling',
-  'earth', 'moon', 'disco', 'orb', 'pumpkin', 'melon', 'eye',
-  'tango', 'nine', 'cue', 'saturn', 'xmas'
+  'earth', 'moon', 'disco', 'orb', 'pumpkin', 'melon', 'eye'
 ];
 /** Para que el estilo/color de la pelota gire y se sombree con la pelota 3D. */
 const ballFx3d = { spin: 0, shade: ball3d.shade, sphere: ball3d.sphere, surface: ball3d.surface, state: null };
@@ -6656,10 +6655,6 @@ function installTracking(view) {
     if (player && room && room === real.room && realActive()) {
       try { realKick(view, player); } catch { /* un toque perdido no apaga el sonido */ }
     }
-    // Ráfaga al patear: sólo si pateaste vos (se compara por nombre con tu
-    // jugador del último cuadro dibujado, que es otra copia del mismo).
-    if (visual.kickBurst && player && lastMe && tracker.fields && tracker.fields.name
-      && player[tracker.fields.name] === lastMe[tracker.fields.name]) kickFx.t = performance.now();
     return playHitSound();
   };
 
@@ -7572,34 +7567,7 @@ let pitchAlphaLogged = false;
    cada cuadro, a cientos de cuadros por segundo, es basura que después junta
    el recolector de memoria en medio del partido (el tirón de un instante). */
 const mmOpts = {};
-const ringOpts = { self: false, teams: false, touch: false, selfTrail: false, kick: false };
-/* Ráfaga al patear: cuándo fue tu última patada y tu jugador del último cuadro. */
-const KICK_FX_MS = 380;
-const kickFx = { t: -1e9 };
-let lastMe = null;
-/** Onda que se abre desde tu ficha y seis chispas cortas. Dura KICK_FX_MS. */
-function drawKickBurst(ctx, x, y, r, q, color, px) {
-  const e = 1 - (1 - q) * (1 - q);
-  ctx.save();
-  ctx.strokeStyle = color;
-  ctx.globalAlpha = 0.75 * (1 - q);
-  ctx.lineWidth = (3 - 2 * q) * px;
-  ctx.beginPath();
-  ctx.arc(x, y, r + (4 + 26 * e) * px, 0, TAU);
-  ctx.stroke();
-  ctx.lineCap = 'round';
-  ctx.lineWidth = 2 * px;
-  ctx.beginPath();
-  for (let i = 0; i < 6; i++) {
-    const a = (i * TAU) / 6 + 0.4;
-    const r0 = r + (6 + 18 * e) * px;
-    const r1 = r0 + (8 * (1 - q) + 2) * px;
-    ctx.moveTo(x + Math.cos(a) * r0, y + Math.sin(a) * r0);
-    ctx.lineTo(x + Math.cos(a) * r1, y + Math.sin(a) * r1);
-  }
-  ctx.stroke();
-  ctx.restore();
-}
+const ringOpts = { self: false, teams: false, touch: false, selfTrail: false };
 function paintPitch(ctx, renderer, zoom) {
   /*
    * El canvas del juego, de paso. Es lo que sacude el gol, y desde acá se sabe
@@ -7632,9 +7600,7 @@ function paintPitch(ctx, renderer, zoom) {
   const wantSelfTrail = visual.selfTrail && !replay;
   const wantWeather = !!visual.weather;
   const wantScore = !!visual.score;
-  if (renderer && renderer.__tvmMe) lastMe = renderer.__tvmMe;
-  const wantKick = visual.kickBurst && performance.now() - kickFx.t < KICK_FX_MS;
-  if (!wantTrail && !wantTeams && !wantSelf && !wantTouch && !wantHeat && !wantSelfTrail && !wantWeather && !wantScore && !wantKick) return;
+  if (!wantTrail && !wantTeams && !wantSelf && !wantTouch && !wantHeat && !wantSelfTrail && !wantWeather && !wantScore) return;
 
   // El velo plano va en el cache de la cancha (`skinPitch`): acá sólo lo que se mueve.
   if (wantWeather) lookfx.paintWeather(ctx, visual.weather, visual.weatherAmount, performance.now(), true);
@@ -7684,8 +7650,8 @@ function paintPitch(ctx, renderer, zoom) {
     if (doc) paintHeat(ctx, doc);
   }
   if (wantTrail) paintTrail(ctx, cfg, px);
-  if (wantTeams || wantSelf || wantTouch || wantSelfTrail || wantKick) {
-    ringOpts.self = wantSelf; ringOpts.teams = wantTeams; ringOpts.touch = wantTouch; ringOpts.selfTrail = wantSelfTrail; ringOpts.kick = wantKick;
+  if (wantTeams || wantSelf || wantTouch || wantSelfTrail) {
+    ringOpts.self = wantSelf; ringOpts.teams = wantTeams; ringOpts.touch = wantTouch; ringOpts.selfTrail = wantSelfTrail;
     paintRings(ctx, renderer, f, px, ringOpts);
   }
 }
@@ -7824,11 +7790,6 @@ function paintRings(ctx, renderer, f, px, want) {
       ctx.strokeStyle = 'rgba(255,214,0,0.9)';
       ctx.arc(at.x, at.y, r + 6 * px, 0, TAU);
       ctx.stroke();
-    }
-
-    if (want.kick && esMio) {
-      const q = Math.min(1, (ahora - kickFx.t) / KICK_FX_MS);
-      if (q < 1) drawKickBurst(ctx, at.x, at.y, r, q, visual.ringColor || pitchAccent(), px);
     }
 
     if (want.selfTrail && esMio) {
@@ -10139,7 +10100,7 @@ const visual = {
   texture: 'none', crest: false, crestOpacity: 0.18, crestSize: 0.45,
   lineColor: '', postColor: '', postStyle: 'default', discOutline: '', ballOutline: '',
   discStyle: 'default', ownRing: false, ownRingColor: '', ownRingAlpha: 0.3, ownRingRadius: 25, ownRingSoft: 0, weather: '', weatherAmount: 0.6, score: '', scoreOpacity: 0.16, scoreStyle: 'ring', scoreFont: 'default', scoreSize: 1, scorePos: 0.5, scoreMode: 'kickoff', scoreAnim: 'rise', scoreBurst: true, scoreColorR: '', scoreColorB: '', ballStyle: 'default', ringStyle: 'default', ringColor: '', light: '', shadows: false, ballColor: '', lineGlow: false,
-  selfTrail: false, selfTrailColor: '', kickBurst: false,
+  selfTrail: false, selfTrailColor: '',
   nameScale: 1, nameColor: '', nameOutline: false, nameFont: 'default',
   /** Hay algo que hacerle a las fichas o a la pelota en el `stroke()`. */
   discFx: false,
@@ -10203,7 +10164,6 @@ function syncCanvasHotFlags() {
   visual.ringStyle = ['double', 'dashed', 'crown', 'glow', 'dots', 'arrow'].includes(cfg.ringStyle) ? cfg.ringStyle : 'default';
   visual.ringColor = lookfx.safeColor(cfg.ringColor);
   visual.selfTrail = !!cfg.selfTrail;
-  visual.kickBurst = !!cfg.kickBurst;
   visual.selfTrailColor = lookfx.safeColor(cfg.selfTrailColor);
   visual.nameScale = clampNum(cfg.nameScale, 0.6, 2, 1);
   visual.nameColor = lookfx.safeColor(cfg.nameColor);

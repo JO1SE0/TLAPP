@@ -152,64 +152,6 @@ const BUILT_IN = {
     accent: '#3f6be7', accent2: '#ba33cf', accentText: '#ffffff',
     aura: { stops: ['#3f6be7', '#7b4ee0', '#ce46c9', '#141a4a'], seconds: 38 }
   },
-  /*
-   * Paletas inspiradas en estadios: los colores de una noche de cancha, sin
-   * escudos, nombres de clubes ni logos.
-   */
-  copa: {
-    label: 'Noche de copa',
-    description: 'Azul de noche y plata, como bajo las luces.',
-    dark: true,
-    bg: '#060b17', bg1: '#0b1426', panel: '#121f38', panelTop: '#1a2946',
-    field: '#070d1b',
-    text: '#eef2fa', dim: '#bcc6da', faint: '#8d99b3',
-    accent: '#b8c4d8', accent2: '#8a97ad', accentText: '#0b1426'
-  },
-  azuloro: {
-    label: 'Azul y oro',
-    description: 'Azul intenso con una franja dorada.',
-    dark: true,
-    bg: '#04102b', bg1: '#081a3f', panel: '#0f2656', panelTop: '#163168',
-    field: '#051332',
-    text: '#f6f1dc', dim: '#c9d1e6', faint: '#98a6c6',
-    accent: '#f0c12e', accent2: '#d29d12', accentText: '#0a1a3f'
-  },
-  bandaroja: {
-    label: 'Banda roja',
-    description: 'Blanco con la banda roja cruzada, sobre gris oscuro.',
-    dark: true,
-    bg: '#0c0c0e', bg1: '#151518', panel: '#1e1e23', panelTop: '#28282e',
-    field: '#0e0e11',
-    text: '#f5f3f3', dim: '#cfc8c9', faint: '#a1999b',
-    accent: '#d8283a', accent2: '#a8152a', accentText: '#ffffff'
-  },
-  verdiblanco: {
-    label: 'Verde y blanco',
-    description: 'Verde de tribuna y blanco.',
-    dark: true,
-    bg: '#04110a', bg1: '#081b11', panel: '#0e2a1b', panelTop: '#143524',
-    field: '#05130c',
-    text: '#eef8f1', dim: '#b8d4c2', faint: '#88a895',
-    accent: '#22a85a', accent2: '#13803f', accentText: '#04110a'
-  },
-  celeste: {
-    label: 'Celeste y blanco',
-    description: 'Cielo celeste y blanco sobre azul profundo.',
-    dark: true,
-    bg: '#061220', bg1: '#0a1b2f', panel: '#112842', panelTop: '#183450',
-    field: '#071424',
-    text: '#f2f8fd', dim: '#bfd3e6', faint: '#8fa7c0',
-    accent: '#6cc3ee', accent2: '#3d9fd4', accentText: '#061220'
-  },
-  tribuna: {
-    label: 'Tribuna de cemento',
-    description: 'Gris de cemento y naranja de bengala.',
-    dark: true,
-    bg: '#0e0e0e', bg1: '#171716', panel: '#22221f', panelTop: '#2c2c28',
-    field: '#101010',
-    text: '#f4f1ea', dim: '#cdc7ba', faint: '#a09a8d',
-    accent: '#f07a1e', accent2: '#c95a0b', accentText: '#140a02'
-  },
   claro: {
     label: 'Claro',
     description: 'Fondo blanco. Para jugar de día.',
