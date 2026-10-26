@@ -682,7 +682,6 @@ function startWelcome() {
   try {
     window.TLWelcome.play({
       sound: cfg.welcomeSound !== false,
-      volume: Math.min(1, Math.max(0.3, (Number(cfg.musicVolume) || 0.35) * 1.6)),
       nick: String((state.config.general && state.config.general.nickname) || '').trim(),
       english: isEn()
     });
