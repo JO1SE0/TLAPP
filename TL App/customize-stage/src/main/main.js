@@ -3480,7 +3480,26 @@ handle('perf:keys', () => new Promise((resolve) => {
 handle('perf:keysettings', () => shell.openExternal('ms-settings:easeofaccess-keyboard'));
 
 /* Salas -------------------------------------------------------------- */
-handle('rooms:list', () => roomlist.fetchRooms(geo));
+handle('rooms:list', async () => {
+  try {
+    return await roomlist.fetchRooms(geo);
+  } catch (err) {
+    /*
+     * Un 403 suele ser el muro de Cloudflare. Se le avisa a la sonda para que,
+     * si es eso, aparezca la verificación de siempre en el hueco del juego, y
+     * se explica en criollo en vez de mostrar el código pelado.
+     */
+    if (err && err.status === 403) {
+      probeHaxball().catch(() => {});
+      const e = new Error(err.challenge
+        ? 'HaxBall pide verificación (Cloudflare). Pasala en la pestaña del juego y tocá actualizar.'
+        : 'HaxBall rechazó el pedido (403). Esperá un minuto y tocá actualizar.');
+      e.status = 403;
+      throw e;
+    }
+    throw err;
+  }
+});
 handle('flags:get', () => flags.get());
 
 /**

@@ -156,12 +156,30 @@ function distanceKm(a, b) {
  * puede contestar 403 aunque la lista esté bien. `net` sale como el propio
  * Chromium de la app, con su User-Agent verdadero.
  */
+/*
+ * Va por la partición del juego y con sus cookies, como la sonda de main.js:
+ * cuando HaxBall pone el muro de Cloudflare, la cookie que deja la
+ * verificación (o la propia carga del juego) vive en esa partición. Pidiendo
+ * la lista desde la sesión de al lado, sin cookie y con otro User-Agent, el
+ * muro contestaba 403 aunque el juego entrara sin problema.
+ */
+const GAME_PARTITION = 'persist:haxball';
+
 function viaChromium(signal) {
   return new Promise((resolve, reject) => {
     let net;
-    try { ({ net } = require('electron')); } catch { net = null; }
+    let session;
+    try { ({ net, session } = require('electron')); } catch { net = null; }
     if (!net || typeof net.request !== 'function') { reject(new Error('sin net')); return; }
-    const req = net.request({ url: LIST_URL, method: 'GET' });
+    const opts = { url: LIST_URL, method: 'GET' };
+    let ua = '';
+    try {
+      const ses = session.fromPartition(GAME_PARTITION);
+      ua = ses.getUserAgent();
+      Object.assign(opts, { partition: GAME_PARTITION, useSessionCookies: true });
+    } catch { /* sin partición: sale por la sesión por defecto */ }
+    const req = net.request(opts);
+    if (ua) { try { req.setHeader('User-Agent', ua); } catch { /* da igual */ } }
     req.setHeader('Referer', 'https://www.haxball.com/');
     req.setHeader('Cache-Control', 'no-cache');
     const chunks = [];
@@ -170,7 +188,14 @@ function viaChromium(signal) {
     req.on('response', (res) => {
       res.on('data', (c) => chunks.push(c));
       res.on('end', () => {
-        if (res.statusCode < 200 || res.statusCode >= 300) { const e = new Error(`HaxBall respondió ${res.statusCode}`); e.status = res.statusCode; reject(e); return; }
+        if (res.statusCode < 200 || res.statusCode >= 300) {
+          const e = new Error(`HaxBall respondió ${res.statusCode}`);
+          e.status = res.statusCode;
+          const body = Buffer.concat(chunks).toString('utf8');
+          if (res.headers['cf-mitigated'] || /Just a moment|challenge-platform/i.test(body)) e.challenge = true;
+          reject(e);
+          return;
+        }
         resolve(Buffer.concat(chunks));
       });
       res.on('error', reject);
