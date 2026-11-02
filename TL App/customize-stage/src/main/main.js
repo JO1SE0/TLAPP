@@ -15,6 +15,7 @@ const replayArchive = require('./replay-archive');
 const haxball = require('./haxball-settings');
 const themes = require('./themes');
 const roomlist = require('./roomlist');
+const powerThrottle = require('./power-throttle');
 const flags = require('./flags');
 const discord = require('./discord');
 const updater = require('./updater');
@@ -353,6 +354,20 @@ function applyRuntimeFlags(perf) {
     } catch {
       /* falta de permisos: no es crítico */
     }
+  }
+
+  /*
+   * Que Windows no los frene para ahorrar energía (ver power-throttle.js). Va
+   * con «Prioridad alta», que viene prendida: mismo espíritu, sin otro switch.
+   * Sólo se lanza para procesos nuevos, así que casi siempre no hace nada.
+   */
+  if (perf.highProcessPriority) {
+    try {
+      const pids = app.getAppMetrics()
+        .filter((m) => m.pid > 0 && ['Browser', 'GPU', 'Tab', 'Utility'].includes(m.type))
+        .map((m) => m.pid);
+      powerThrottle.unthrottle(pids, (msg) => logToApp('info', msg));
+    } catch { /* sin métricas todavía */ }
   }
 }
 
