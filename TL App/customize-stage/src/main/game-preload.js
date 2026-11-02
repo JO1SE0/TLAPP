@@ -7581,7 +7581,7 @@ function pitchSkinPrint() {
   const skin = (state.config.pitch && state.config.pitch.skin) || {};
   const field = pitchSkinColor();
   const vip = state.config.vip || {};
-  return `${skin.mode}|${field}|${pitchOutsideColor(field)}|${skin.strength}|${skin.brightness}|${skin.stripes}|${skin.cut}|${skin.imageAlpha}|${skin.relief}|${skin.reliefAmount}|${visual.weather}|${visual.weatherAmount}|${vip.pitchImage}|${JSON.stringify(vip.pitchCrop || null)}|${visual.pitchLine}|${flatGraphicsEnabled}|${visual.texture}|${visual.light}|${visual.crest}|${visual.crestOpacity}|${visual.crestSize}|${visual.lineColor}`;
+  return `${skin.mode}|${field}|${pitchOutsideColor(field)}|${skin.strength}|${skin.brightness}|${skin.stripes}|${skin.cut}|${skin.imageAlpha}|${skin.relief}|${skin.reliefAmount}|${visual.weather}|${visual.weatherAmount}|${vip.pitchImage}|${JSON.stringify(vip.pitchCrop || null)}|${visual.pitchLine}|${flatGraphicsEnabled}|${visual.texture}|${visual.light}|${visual.crest}|${visual.crestOpacity}|${visual.crestSize}|${visual.lineColor}|${visual.lineGlow}`;
 }
 
 /** Le tira el cache al estadio para que se vuelva a dibujar con el color nuevo. */

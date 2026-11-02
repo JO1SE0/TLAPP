@@ -443,7 +443,35 @@ function skin(c, w, h, stadium) {
   c.restore();
 }
 
-window.__tvmStadium = function (self, cvKey, camKey, zoom, topPad, botPad, lineW, stadium, draw) {
+/*
+ * Las paredes y líneas del estadio (los «segmentos») también van al cache.
+ *
+ * HaxBall las redibujaba en CADA cuadro, una por una: armar el color como texto,
+ * un trazo por pared, y en las canchas con curvas un arco por tramo. Son fijas
+ * —los vértices de HaxBall no se mueven nunca—, así que pagarlas a 600 FPS era
+ * puro gasto, y es la razón de que los FPS cambien tanto según la cancha: las
+ * canchas con cientos de paredes curvas eran las más pesadas. Ahora se dibujan
+ * una vez, junto con el piso, y después se copian con él.
+ *
+ * Van DESPUÉS de la piel del cliente, igual que antes (la piel repinta el piso,
+ * no tiene que tapar las paredes). Sin el sitio reconocido, \`segs\` no llega y
+ * todo queda como siempre.
+ */
+var segsOff = false;
+function paredes(self, stadium, segs, lineW) {
+  if (!segs) return;
+  self.c.lineWidth = lineW;
+  segs(self, stadium);
+}
+/* Vuelta atrás: si dibujarlas dentro del cache falla una vez, se vuelve para
+   siempre a dibujarlas en cada cuadro, como hace HaxBall solo. */
+function paredesCache(self, stadium, segs, lineW) {
+  if (!segs || segsOff) return;
+  try { paredes(self, stadium, segs, lineW); }
+  catch (e7) { segsOff = true; flush = true; }
+}
+
+window.__tvmStadium = function (self, cvKey, camKey, zoom, topPad, botPad, lineW, stadium, draw, segs) {
   var cv = self[cvKey];
   var cam = self[camKey];
 
@@ -482,6 +510,7 @@ window.__tvmStadium = function (self, cvKey, camKey, zoom, topPad, botPad, lineW
        la excepción (un error, o un canvas que todavía no está), y quedarse sin
        los colores elegidos sin decir nada es peor que el costo. */
     skin(self.c, cv ? cv.width : 0, cv ? cv.height : 0, stadium);
+    paredes(self, stadium, segs, lineW);
     pintar(self, zoom);
     return;
   }
@@ -560,7 +589,7 @@ window.__tvmStadium = function (self, cvKey, camKey, zoom, topPad, botPad, lineW
       if (!cache) {
         cache = window.document.createElement('canvas');
         ctx = cache.getContext('2d', { alpha: false });
-        if (!ctx) { broken = true; draw(self, stadium); return; }
+        if (!ctx) { broken = true; draw(self, stadium); paredes(self, stadium, segs, lineW); return; }
       }
 
       /* Qué cubre el cache: lo que se ve más PAD píxeles de cada lado, del mismo
@@ -595,6 +624,7 @@ window.__tvmStadium = function (self, cvKey, camKey, zoom, topPad, botPad, lineW
         draw(self, stadium);
         var m1 = S.on ? window.performance.now() : 0;
         skin(ctx, W, H, stadium);
+        paredesCache(self, stadium, segs, lineW);
         if (S.on) { S.drawMs += m1 - m0; S.skinMs += window.performance.now() - m1; }
       } finally {
         self.c = realCtx;
@@ -621,12 +651,13 @@ window.__tvmStadium = function (self, cvKey, camKey, zoom, topPad, botPad, lineW
        tiene que moverse junto con la cancha. El juego resetea la transformación
        al empezar cada cuadro, así que no queda nada colgado. */
     if (offX || offY) self.c.translate(-offX, -offY);
+    if (segsOff && segs) { self.c.save(); paredes(self, stadium, segs, lineW); self.c.restore(); }
   } catch (err) {
     /* Cualquier cosa rara: se apaga el cache para siempre y se vuelve al dibujo
        normal. Vale más perder los cuadros que dejar la cancha rota. */
     broken = true;
     try { window.console && window.console.warn && window.console.warn('[TVM] cache de estadio apagado:', err); } catch (e2) {}
-    try { draw(self, stadium); } catch (e3) {}
+    try { draw(self, stadium); paredes(self, stadium, segs, lineW); } catch (e3) {}
   }
 
   /* ── El pincel del cliente ────────────────────────────────────────────
@@ -647,6 +678,24 @@ window.__tvmStadium = function (self, cvKey, camKey, zoom, topPad, botPad, lineW
  * Aplica el cache del estadio. Devuelve el original si el sitio no encaja.
  * @returns {{source: string, applied: boolean, reason: string}}
  */
+/*
+ * Lo que viene pegado al dibujo del piso: `this.<seg>(<arg>);`, las paredes.
+ * Sólo se lo mete en el cache si la función es la que se espera —recorre la
+ * lista de segmentos y traza cada uno visible— y no otra cosa con la misma
+ * forma de llamada. Si no encaja, el piso se cachea igual y las paredes se
+ * siguen dibujando en cada cuadro, como antes.
+ */
+const SEGMENTS_CALL = /^\s*this\.(\w+)\(\s*([\w.]+)\s*\)\s*;/;
+function segmentsFn(source, name) {
+  const def = new RegExp(`[;}\\s]${name}\\(a\\)\\{if\\(null!=a\\)\\{var b=0;for\\(a=a\\.\\w+;b<a\\.length;\\)this\\.(\\w+)\\(a\\[b\\+\\+\\]\\)\\}\\}`);
+  const m = source.match(def);
+  if (!m) return false;
+  const one = source.indexOf(`${m[1]}(a){if(a.`);
+  if (one < 0) return false;
+  const body = source.slice(one, one + 400);
+  return /strokeStyle/.test(body) && /\.stroke\(\)/.test(body) && /\.arc\(/.test(body) && /\.lineTo\(/.test(body);
+}
+
 function patchStadium(source) {
   const matches = source.match(new RegExp(CALL_SITE.source, 'g')) || [];
   if (matches.length === 0) {
@@ -658,23 +707,32 @@ function patchStadium(source) {
     return { source, applied: false, reason: `el patrón del estadio encajó ${matches.length} veces, se esperaba 1` };
   }
 
-  let captured = null;
-  const patched = source.replace(CALL_SITE, (_full, cv, tp, bp, z, cam, lw, draw, arg) => {
-    captured = { cv, tp, bp, z, cam, lw, draw, arg };
-    return (
-      `this.c.translate(this.${cv}.width/2,(this.${cv}.height+${tp}-${bp})/2);` +
-      `this.c.scale(${z},${z});` +
-      `this.c.translate(-this.${cam}.x,-this.${cam}.y);` +
-      `this.c.lineWidth=${lw};` +
-      `window.__tvmStadium(this,"${cv}","${cam}",${z},${tp},${bp},${lw},${arg},` +
-      `function(s,t){s.${draw}(t)});`
-    );
-  });
+  const at = source.search(CALL_SITE);
+  const site = source.slice(at).match(CALL_SITE);
+  const end = at + site[0].length;
+  const [, cv, tp, bp, z, cam, lw, draw, arg] = site;
+
+  let segs = 'null';
+  let cut = end;
+  const next = source.slice(end, end + 80).match(SEGMENTS_CALL);
+  if (next && next[2] === arg && next[1] !== draw && segmentsFn(source, next[1])) {
+    segs = `function(s,t){s.${next[1]}(t)}`;
+    cut = end + next[0].length;
+  }
+
+  const patched = source.slice(0, at) +
+    `this.c.translate(this.${cv}.width/2,(this.${cv}.height+${tp}-${bp})/2);` +
+    `this.c.scale(${z},${z});` +
+    `this.c.translate(-this.${cam}.x,-this.${cam}.y);` +
+    `this.c.lineWidth=${lw};` +
+    `window.__tvmStadium(this,"${cv}","${cam}",${z},${tp},${bp},${lw},${arg},` +
+    `function(s,t){s.${draw}(t)},${segs});` +
+    source.slice(cut);
 
   return {
     source: PRELUDE + patched,
     applied: true,
-    reason: `estadio cacheado (canvas=${captured.cv} cámara=${captured.cam} dibujo=${captured.draw})`
+    reason: `estadio cacheado (canvas=${cv} cámara=${cam} dibujo=${draw}${segs !== 'null' ? ' + paredes' : ', paredes por cuadro'})`
   };
 }
 
@@ -1586,6 +1644,43 @@ function patchLightSim(source) {
   return { source: out, applied: true, fields: { lightSim: true }, reason: 'simulación liviana' };
 }
 
+/* ------------------------------------------------------------------ *
+ * Menos basura por cuadro adentro de HaxBall
+ * ------------------------------------------------------------------ *
+ * Cada objeto que el juego crea y tira en un cuadro lo tiene que juntar después
+ * el recolector de JavaScript, y cuando junta frena todo un instante: no baja
+ * el promedio de FPS, pero se siente como un micro-tirón. Dos de las fábricas
+ * de basura del dibujo de HaxBall corren en todos los cuadros:
+ *
+ *   · El color de cada cosa se arma como texto («rgba(r,g,b,255)») con un array
+ *     y un join, cada vez: pelota, discos sueltos, uniones, flechas del borde.
+ *     Los colores son siempre los mismos pocos, así que se guardan ya armados.
+ *   · Al terminar el cuadro arma un Set nuevo con los jugadores para limpiar los
+ *     que se fueron. Ahora reusa siempre el mismo.
+ *
+ * Los dos se anclan por forma, no por nombre, y cada uno se aplica o no por su
+ * cuenta: si HaxBall cambia uno, el otro sigue.
+ */
+const RGBA_SITE = /static (\w+)\(a\)\{return"rgba\("\+\[\(a&16711680\)>>>16,\(a&65280\)>>>8,a&255\]\.join\(\)\+",255\)"\}/;
+const PRUNE_SITE = /(\w+)\(a\)\{let b=new Set;(var c=0;for\(a=a\.\w+;c<a\.length;\)b\.add\(a\[c\+\+\]\.\w+\);c=this\.\w+\.keys\(\);)/;
+
+function patchGarbage(source) {
+  let out = source;
+  const done = [];
+  if ((out.match(new RegExp(RGBA_SITE.source, 'g')) || []).length === 1) {
+    out = out.replace(RGBA_SITE, (_all, name) =>
+      `static ${name}(a){var m=window.__tvmRgba||(window.__tvmRgba=new Map),s=m.get(a);` +
+      `if(void 0===s){s="rgba("+[(a&16711680)>>>16,(a&65280)>>>8,a&255].join()+",255)";if(512<m.size)m.clear();m.set(a,s)}return s}`);
+    done.push('colores');
+  }
+  if ((out.match(new RegExp(PRUNE_SITE.source, 'g')) || []).length === 1) {
+    out = out.replace(PRUNE_SITE, (_all, name, rest) => `${name}(a){let b=this.tvmSet||(this.tvmSet=new Set);b.clear();${rest}`);
+    done.push('jugadores');
+  }
+  if (!done.length) return { source, applied: false, reason: 'menos basura: no encajó ningún sitio' };
+  return { source: out, applied: true, reason: `menos basura por cuadro (${done.join(', ')})` };
+}
+
 function patch(source, opts) {
   if (typeof source !== 'string' || source.length < 1000) {
     return { source, applied: false, reason: 'fuente vacía o demasiado corta' };
@@ -1599,7 +1694,7 @@ function patch(source, opts) {
   const fields = {};
   let out = source;
 
-  for (const step of [patchCameraZoom, patchSettings, patchStadium, patchTracking, patchRoomName, patchPitchBounds, patchReplaySpeed, patchReplayScan, patchScore, patchSelf, patchAvatar, patchTeamKit, patchBall, patchMirror, patchSounds, patchRoomLink, patchLightSim]) {
+  for (const step of [patchCameraZoom, patchSettings, patchStadium, patchTracking, patchRoomName, patchPitchBounds, patchReplaySpeed, patchReplayScan, patchScore, patchSelf, patchAvatar, patchTeamKit, patchBall, patchMirror, patchSounds, patchRoomLink, patchLightSim, patchGarbage]) {
     const res = step(out);
     out = res.source;
     if (res.fields) Object.assign(fields, res.fields);
@@ -1696,8 +1791,10 @@ const KEEP = 4;
  * 27: el cache de la cancha vuelve al tamaño de la pantalla + margen (el de la
  *     cancha entera bajaba los FPS).
  * 28: la huella del estadio se mira cada 50 ms y no en cada cuadro.
+ * 29: las paredes del estadio van al cache con el piso, y menos basura por
+ *     cuadro (colores ya armados, el Set de jugadores reusado).
  */
-const PATCH_VERSION = 28;
+const PATCH_VERSION = 29;
 
 /** El idioma es parte de la clave: el mismo bundle parchea distinto en cada uno. */
 function keyOf(url, lang) {

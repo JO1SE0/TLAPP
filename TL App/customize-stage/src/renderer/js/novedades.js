@@ -11,6 +11,8 @@ window.TL_NEWS = {
   title: { es: 'Qué hay de nuevo', en: "What's new" },
   items: {
     es: [
+      'Más FPS en las canchas pesadas: las paredes y líneas del estadio ya no se redibujan una por una en cada cuadro, se dibujan una vez junto con el piso. Las canchas con cientos de paredes curvas eran las que más bajaban los FPS.',
+      'Partidas más parejas: el juego genera menos basura en cada cuadro (colores ya armados, listas reusadas), así el recolector de memoria frena menos seguido y hay menos micro-tirones.',
       'Windows ya no le baja la velocidad a la app para ahorrar energía (Power Throttling): en notebooks y con el plan «Equilibrado» podía frenar el proceso de la placa o el del juego y se veía como bajones de FPS. Va con «Prioridad alta», sin cambiar nada de lo que se ve.',
       'Lista de salas: ya no falla con «HaxBall respondió 403». Ahora se pide con la misma sesión que el juego, así pasa el filtro de HaxBall igual que la cancha. Si HaxBall pide verificación, te lo dice y aparece para resolverla.',
       'Camiseta del club: si en un equipo hay dos o más socios, ese equipo se ve con la camiseta de Toda la Lecce (sólo en tu pantalla). En un interno, un equipo lleva la titular y el otro la alternativa.',
@@ -123,6 +125,8 @@ window.TL_NEWS = {
       'Cada clave se usa en una sola PC: si cambiás de computadora, pedile a miclo que te la libere.'
     ],
     en: [
+      'More FPS on heavy stadiums: walls and lines are no longer redrawn one by one every frame, they are drawn once together with the floor. Stadiums with hundreds of curved walls were the ones dropping FPS the most.',
+      'Smoother matches: the game creates less garbage every frame (prebuilt colors, reused lists), so the memory collector pauses less often and there are fewer micro-stutters.',
       'Windows no longer slows the app down to save power (Power Throttling): on laptops and on the «Balanced» plan it could throttle the GPU or game process, showing up as FPS drops. Comes with «High priority», nothing visual changes.',
       'Room list: no more «HaxBall answered 403». It is now requested with the same session as the game, so it gets past HaxBall\'s filter just like the game does. If HaxBall asks for verification, the app tells you and shows it.',
       'Club kit: if a team has two or more club members, that team shows the Toda la Lecce kit (only on your screen). In an internal match one team wears the home kit and the other the away kit.',
