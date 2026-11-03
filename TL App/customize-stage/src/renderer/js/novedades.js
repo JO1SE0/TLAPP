@@ -11,6 +11,7 @@ window.TL_NEWS = {
   title: { es: 'Qué hay de nuevo', en: "What's new" },
   items: {
     es: [
+      'Fichas más livianas: cada ficha de jugador se dibuja una vez como una figurita y en cada cuadro sólo se pega, en vez de armarla de cero (círculo, camiseta, número y borde). Se ve igual y se rearma sola si cambia la camiseta, el avatar, el zoom o la patada. Con efectos de ficha puestos (tamaño, contorno, estilos) se dibuja como siempre.',
       'Auto-entrar arreglado: elegís la sala, lo apretás y la app mira sola cada 3 segundos si se liberó un lugar, sin tener que actualizar la lista a mano. Apenas hay lugar entra, y deja de mirar al entrar o al apagarlo.',
       'Más FPS en las canchas pesadas: las paredes y líneas del estadio ya no se redibujan una por una en cada cuadro, se dibujan una vez junto con el piso. Las canchas con cientos de paredes curvas eran las que más bajaban los FPS.',
       'Partidas más parejas: el juego genera menos basura en cada cuadro (colores ya armados, listas reusadas), así el recolector de memoria frena menos seguido y hay menos micro-tirones.',
@@ -126,6 +127,7 @@ window.TL_NEWS = {
       'Cada clave se usa en una sola PC: si cambiás de computadora, pedile a miclo que te la libere.'
     ],
     en: [
+      'Lighter player discs: each disc is drawn once as a sticker and just pasted every frame instead of being built from scratch (circle, kit, number and outline). Looks the same and rebuilds itself when the kit, avatar, zoom or kick changes. With disc effects on (size, outline, styles) it draws as usual.',
       'Auto-join fixed: pick the room, press it and the app checks by itself every 3 seconds for a free slot, no need to refresh the list by hand. It joins as soon as there is room and stops checking when you join or turn it off.',
       'More FPS on heavy stadiums: walls and lines are no longer redrawn one by one every frame, they are drawn once together with the floor. Stadiums with hundreds of curved walls were the ones dropping FPS the most.',
       'Smoother matches: the game creates less garbage every frame (prebuilt colors, reused lists), so the memory collector pauses less often and there are fewer micro-stutters.',

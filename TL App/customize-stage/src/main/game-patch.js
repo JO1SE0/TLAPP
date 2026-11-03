@@ -471,7 +471,95 @@ function paredesCache(self, stadium, segs, lineW) {
   catch (e7) { segsOff = true; flush = true; }
 }
 
+/*
+ * Las fichas como figuritas.
+ *
+ * HaxBall arma cada ficha desde cero en cada cuadro: el círculo, el relleno con
+ * la camiseta (un patrón escalado y corrido) y el borde. Acá cada ficha se
+ * dibuja UNA vez en un canvas chiquito y en cada cuadro sólo se pega, que es
+ * una sola operación en vez de seis. Se rearma sola cuando cambia algo: la
+ * camiseta o el avatar (HaxBall crea un patrón nuevo cada vez), el borde de la
+ * patada, el radio, el zoom o el espejo.
+ *
+ * Para que se vea IGUAL y no un poquito borrosa, se pega en píxeles enteros y la
+ * parte fraccionaria de la posición va adentro de la figurita, en cuartos de
+ * cuartos de píxel (se arman a medida que aparecen). Medido: alineada da los
+ * mismos píxeles que el dibujo de HaxBall, y entre medio la diferencia es de
+ * 1/8 de píxel como mucho, invisible.
+ *
+ * Se aparta sola —y dibuja HaxBall como siempre— mientras el zoom está
+ * cambiando, si la transformación del cuadro no es la esperada, o si el cliente
+ * tiene puesto algo que retoca las fichas en el momento (tamaños, contornos,
+ * estilos, gráficos planos): esos ganchos necesitan ver el dibujo de verdad.
+ */
+var dT = { ok: false, c: null, a: 1, d: 1, e: 0, f: 0, burst: false };
+/* Pasos por píxel de la parte fraccionaria: 4 → error máximo de 1/8 px, que es
+   lo mismo que redondea el propio rasterizador de bordes (se probó con 8 y da
+   la misma diferencia, con el doble de memoria). */
+var Q = 4;
+var sprites = new WeakMap(), spriteCount = 0, spritesOff = false;
+function grabT(c, burst) {
+  dT.ok = false;
+  if (spritesOff) return;
+  try {
+    var m = c.getTransform();
+    if (m.b !== 0 || m.c !== 0 || !m.a || !m.d) return;
+    dT.c = c; dT.a = m.a; dT.d = m.d; dT.e = m.e; dT.f = m.f; dT.burst = burst; dT.ok = true;
+  } catch (e8) {}
+}
+window.__tvmDisc = function (c, x, y, r, pat, stroke) {
+  if (!dT.ok || dT.c !== c || dT.burst || !pat || window.__tvmDiscOff) return false;
+  try {
+    var a = dT.a, d = dT.d, mir = !!window.__tvmMirror, lw = c.lineWidth;
+    var dx = a * x + dT.e, dy = d * y + dT.f;
+    var ix = Math.floor(dx), iy = Math.floor(dy);
+    var qx = Math.round((dx - ix) * Q), qy = Math.round((dy - iy) * Q);
+    if (qx === Q) { qx = 0; ix++; }
+    if (qy === Q) { qy = 0; iy++; }
+    var e = sprites.get(pat);
+    if (!e) { e = { a: 0, d: 0, r: 0, lw: 0, m: false, l: [] }; sprites.set(pat, e); }
+    if (e.a !== a || e.d !== d || e.r !== r || e.lw !== lw || e.m !== mir) {
+      e.a = a; e.d = d; e.r = r; e.lw = lw; e.m = mir; e.l = [];
+    }
+    var k = (stroke === 'white' ? Q * Q : 0) + qx * Q + qy;
+    var it = e.l[k];
+    if (!it || it.st !== stroke) {
+      if (++spriteCount > 1500) { sprites = new WeakMap(); spriteCount = 0; e = { a: a, d: d, r: r, lw: lw, m: mir, l: [] }; sprites.set(pat, e); }
+      var half = Math.ceil((r + lw / 2) * Math.max(Math.abs(a), Math.abs(d))) + 2;
+      var cv = window.document.createElement('canvas');
+      cv.width = cv.height = 2 * half;
+      var x2 = cv.getContext('2d');
+      x2.setTransform(a, 0, 0, d, half + qx / Q, half + qy / Q);
+      x2.fillStyle = pat;
+      x2.strokeStyle = stroke;
+      x2.lineWidth = lw;
+      x2.beginPath();
+      x2.arc(0, 0, r, 0, 2 * Math.PI, false);
+      x2.save();
+      x2.scale(r / 32, r / 32);
+      if (mir) x2.scale(-1, 1);
+      x2.translate(-32, -32);
+      x2.fill();
+      x2.restore();
+      x2.stroke();
+      it = { cv: cv, h: half, st: stroke };
+      e.l[k] = it;
+    }
+    c.setTransform(1, 0, 0, 1, 0, 0);
+    c.drawImage(it.cv, ix - it.h, iy - it.h);
+    c.setTransform(a, 0, 0, d, dT.e, dT.f);
+    c.beginPath();
+    return true;
+  } catch (e9) {
+    /* Vuelta atrás: cualquier error y no se usan más en esta carga. */
+    spritesOff = true; dT.ok = false;
+    try { c.setTransform(dT.a, 0, 0, dT.d, dT.e, dT.f); } catch (e10) {}
+    return false;
+  }
+};
+
 window.__tvmStadium = function (self, cvKey, camKey, zoom, topPad, botPad, lineW, stadium, draw, segs) {
+  dT.ok = false;
   var cv = self[cvKey];
   var cam = self[camKey];
 
@@ -511,6 +599,7 @@ window.__tvmStadium = function (self, cvKey, camKey, zoom, topPad, botPad, lineW
        los colores elegidos sin decir nada es peor que el costo. */
     skin(self.c, cv ? cv.width : 0, cv ? cv.height : 0, stadium);
     paredes(self, stadium, segs, lineW);
+    grabT(self.c, false);
     pintar(self, zoom);
     return;
   }
@@ -652,6 +741,7 @@ window.__tvmStadium = function (self, cvKey, camKey, zoom, topPad, botPad, lineW
        al empezar cada cuadro, así que no queda nada colgado. */
     if (offX || offY) self.c.translate(-offX, -offY);
     if (segsOff && segs) { self.c.save(); paredes(self, stadium, segs, lineW); self.c.restore(); }
+    grabT(self.c, burst);
   } catch (err) {
     /* Cualquier cosa rara: se apaga el cache para siempre y se vuelve al dibujo
        normal. Vale más perder los cuadros que dejar la cancha rota. */
@@ -1681,6 +1771,28 @@ function patchGarbage(source) {
   return { source: out, applied: true, reason: `menos basura por cuadro (${done.join(', ')})` };
 }
 
+/* ------------------------------------------------------------------ *
+ * Las fichas como figuritas (ver `__tvmDisc` en el PRELUDE)
+ * ------------------------------------------------------------------ *
+ *   lm(a,b){0>a.V||(this.c.beginPath(),null==b?(…):(this.c.fillStyle=b.ak,
+ *     this.c.strokeStyle=b.To),this.c.beginPath(),this.c.arc(a.a.x,a.a.y,a.V,0,2*Math.PI,!1),
+ *     null!=b?(this.c.save(),b=a.V/32, …
+ *
+ * `b` es la textura del jugador (null para la pelota y los discos sueltos, que
+ * siguen como siempre). Antes del dibujo de HaxBall se le pregunta al PRELUDE;
+ * si contesta que la pegó, se sale. Si no, sigue el dibujo de siempre.
+ */
+const DISC_SITE = /(\w+)\(a,b\)\{(0>a\.(\w+)\|\|\(this\.c\.beginPath\(\),null==b\?\(this\.c\.fillStyle=[\w.]+\(a\.\w+\),this\.c\.strokeStyle="black"\):\(this\.c\.fillStyle=b\.(\w+),this\.c\.strokeStyle=b\.(\w+)\),this\.c\.beginPath\(\),this\.c\.arc\(a\.(\w+)\.x,a\.\6\.y,a\.\3,0,2\*Math\.PI,!1\),null!=b\?\(this\.c\.save\(\),b=a\.\3\/32,)/;
+
+function patchDiscSprites(source) {
+  const n = (source.match(new RegExp(DISC_SITE.source, 'g')) || []).length;
+  if (n !== 1) return { source, applied: false, reason: `fichas como figuritas: encajó ${n} veces, se esperaba 1` };
+  if (!source.includes('window.__tvmDisc = function')) return { source, applied: false, reason: 'fichas como figuritas: falta el PRELUDE' };
+  const out = source.replace(DISC_SITE, (_all, name, rest, rad, pat, st, pos) =>
+    `${name}(a,b){if(null!=b&&0<=a.${rad}&&window.__tvmDisc&&window.__tvmDisc(this.c,a.${pos}.x,a.${pos}.y,a.${rad},b.${pat},b.${st}))return;${rest}`);
+  return { source: out, applied: true, reason: 'fichas como figuritas' };
+}
+
 function patch(source, opts) {
   if (typeof source !== 'string' || source.length < 1000) {
     return { source, applied: false, reason: 'fuente vacía o demasiado corta' };
@@ -1694,7 +1806,7 @@ function patch(source, opts) {
   const fields = {};
   let out = source;
 
-  for (const step of [patchCameraZoom, patchSettings, patchStadium, patchTracking, patchRoomName, patchPitchBounds, patchReplaySpeed, patchReplayScan, patchScore, patchSelf, patchAvatar, patchTeamKit, patchBall, patchMirror, patchSounds, patchRoomLink, patchLightSim, patchGarbage]) {
+  for (const step of [patchCameraZoom, patchSettings, patchStadium, patchTracking, patchRoomName, patchPitchBounds, patchReplaySpeed, patchReplayScan, patchScore, patchSelf, patchAvatar, patchTeamKit, patchBall, patchMirror, patchSounds, patchRoomLink, patchLightSim, patchGarbage, patchDiscSprites]) {
     const res = step(out);
     out = res.source;
     if (res.fields) Object.assign(fields, res.fields);
@@ -1793,8 +1905,9 @@ const KEEP = 4;
  * 28: la huella del estadio se mira cada 50 ms y no en cada cuadro.
  * 29: las paredes del estadio van al cache con el piso, y menos basura por
  *     cuadro (colores ya armados, el Set de jugadores reusado).
+ * 30: las fichas de los jugadores se pegan como figuritas ya dibujadas.
  */
-const PATCH_VERSION = 29;
+const PATCH_VERSION = 30;
 
 /** El idioma es parte de la clave: el mismo bundle parchea distinto en cada uno. */
 function keyOf(url, lang) {

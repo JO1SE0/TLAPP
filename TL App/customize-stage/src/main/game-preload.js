@@ -5304,7 +5304,11 @@ function syncProtoHooks() {
   // Lo que quedó a medias de un disco se descarta: al cambiar de método no
   // llega el trazo que lo cerraba.
   if (pend.on && pend.k === 1) pend.on = false;
+  // Las fichas «figurita» del parche (ver `__tvmDisc` en game-patch.js) se
+  // apartan cuando algo de acá tiene que ver el dibujo real de cada ficha.
+  const discOff = !!(flat || visual.sizes || visual.lines || visual.discFx);
   for (const h of protoHooks) {
+    try { if (h.view) h.view.__tvmDiscOff = discOff; } catch (e) { /* ventana cerrada */ }
     const want = { arc: arcOn, fill: flat, stroke: strokeOn };
     for (const m of ['arc', 'fill', 'stroke']) {
       const next = want[m] ? h[m][1] : h[m][0];
@@ -10364,7 +10368,7 @@ function installCanvasHooks(doc) {
   hookedWindows.add(view);
 
   // --- Modo Gráficos Planos (Rendimiento) ---
-  const hookEntry = { proto };
+  const hookEntry = { proto, view };
   const origShadowBlur = Object.getOwnPropertyDescriptor(proto, 'shadowBlur');
   if (origShadowBlur && origShadowBlur.set) {
     Object.defineProperty(proto, 'shadowBlur', {
