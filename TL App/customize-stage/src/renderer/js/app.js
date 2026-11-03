@@ -3066,6 +3066,7 @@ async function doJoin(tokenOrLink) {
 function toggleAutoJoin() {
   if (state.autoJoin) {
     state.autoJoin = null;
+    stopAutoJoinPoll();
     toast(t('rooms.autoJoinOff'), 'ok');
     syncJoinButton();
     return;
@@ -3075,21 +3076,68 @@ function toggleAutoJoin() {
   state.autoJoin = state.selected;
   syncJoinButton();
   toast(t('rooms.autoJoinOn', { name: room ? room.name.slice(0, 24) : '' }), 'ok');
+  autoJoinFails = 0;
+  stopAutoJoinPoll();
   loadRooms();
 }
 
 /**
- * En vez de golpear la sala una y otra vez, mira la lista (que ya se refresca)
- * y entra recién cuando hay lugar. Es más amable con el servidor y con el host.
+ * En vez de golpear la sala una y otra vez, mira la lista y entra recién cuando
+ * hay lugar. Es más amable con el servidor y con el host.
+ *
+ * Antes miraba la lista «que ya se refrescaba»… pero sola no se refrescaba
+ * nunca: el auto-entrar andaba sólo si uno apretaba actualizar a mano. Ahora,
+ * mientras está puesto, la lista se pide sola cada pocos segundos, en silencio
+ * (sin la animación de carga), y se corta apenas entra o se apaga.
  */
+const AUTOJOIN_EVERY = 3000;
+const AUTOJOIN_MAX = 60000;
+let autoJoinTimer = 0;
+let autoJoinFails = 0;
+
 function checkAutoJoin() {
   if (!state.autoJoin || state.stage === 'game') return;
   const room = (state.rooms.list || []).find((r) => r.token === state.autoJoin);
-  if (!room || room.players >= room.maxPlayers) return;
+  if (!room || room.players >= room.maxPlayers) { scheduleAutoJoin(); return; }
   const token = state.autoJoin;
   state.autoJoin = null;
+  stopAutoJoinPoll();
   syncJoinButton();
   doJoin(token);
+}
+
+function stopAutoJoinPoll() {
+  clearTimeout(autoJoinTimer);
+  autoJoinTimer = 0;
+}
+
+function scheduleAutoJoin() {
+  if (!state.autoJoin || autoJoinTimer) return;
+  // Si HaxBall contesta mal, se espera el doble cada vez (hasta un minuto).
+  const wait = Math.min(AUTOJOIN_EVERY * 2 ** autoJoinFails, AUTOJOIN_MAX);
+  autoJoinTimer = setTimeout(pollAutoJoin, wait);
+}
+
+async function pollAutoJoin() {
+  autoJoinTimer = 0;
+  if (!state.autoJoin) return;
+  // Jugando no se mira: se retoma al volver a la lista.
+  if (state.stage === 'game' || state.rooms.loading) { scheduleAutoJoin(); return; }
+  try {
+    const data = await tvm.rooms.list();
+    if (!state.rooms.loading) {
+      state.rooms = { ...data, list: data.rooms, loading: false, error: null };
+      state.roomsFailures = 0;
+    }
+    autoJoinFails = 0;
+  } catch (err) {
+    autoJoinFails++;
+  }
+  if (!state.autoJoin) return;
+  if (state.stage === 'game') { scheduleAutoJoin(); return; }
+  // renderRooms vuelve a llamar a checkAutoJoin: entra o agenda la próxima.
+  renderRooms();
+  scheduleAutoJoin();
 }
 
 /* ── Pantalla de inicio ─────────────────────────────────── */
@@ -9412,6 +9460,7 @@ function isLoadingVisible() {
  */
 function cancelConnecting() {
   state.autoJoin = null;
+  stopAutoJoinPoll();
   state.pendingJoin = null;
   hideLoading();
   setStage('browser');

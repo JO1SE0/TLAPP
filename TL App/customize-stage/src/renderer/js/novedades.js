@@ -11,6 +11,7 @@ window.TL_NEWS = {
   title: { es: 'Qué hay de nuevo', en: "What's new" },
   items: {
     es: [
+      'Auto-entrar arreglado: elegís la sala, lo apretás y la app mira sola cada 3 segundos si se liberó un lugar, sin tener que actualizar la lista a mano. Apenas hay lugar entra, y deja de mirar al entrar o al apagarlo.',
       'Más FPS en las canchas pesadas: las paredes y líneas del estadio ya no se redibujan una por una en cada cuadro, se dibujan una vez junto con el piso. Las canchas con cientos de paredes curvas eran las que más bajaban los FPS.',
       'Partidas más parejas: el juego genera menos basura en cada cuadro (colores ya armados, listas reusadas), así el recolector de memoria frena menos seguido y hay menos micro-tirones.',
       'Windows ya no le baja la velocidad a la app para ahorrar energía (Power Throttling): en notebooks y con el plan «Equilibrado» podía frenar el proceso de la placa o el del juego y se veía como bajones de FPS. Va con «Prioridad alta», sin cambiar nada de lo que se ve.',
@@ -125,6 +126,7 @@ window.TL_NEWS = {
       'Cada clave se usa en una sola PC: si cambiás de computadora, pedile a miclo que te la libere.'
     ],
     en: [
+      'Auto-join fixed: pick the room, press it and the app checks by itself every 3 seconds for a free slot, no need to refresh the list by hand. It joins as soon as there is room and stops checking when you join or turn it off.',
       'More FPS on heavy stadiums: walls and lines are no longer redrawn one by one every frame, they are drawn once together with the floor. Stadiums with hundreds of curved walls were the ones dropping FPS the most.',
       'Smoother matches: the game creates less garbage every frame (prebuilt colors, reused lists), so the memory collector pauses less often and there are fewer micro-stutters.',
       'Windows no longer slows the app down to save power (Power Throttling): on laptops and on the «Balanced» plan it could throttle the GPU or game process, showing up as FPS drops. Comes with «High priority», nothing visual changes.',
