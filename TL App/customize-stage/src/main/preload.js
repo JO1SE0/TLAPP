@@ -155,6 +155,7 @@ contextBridge.exposeInMainWorld('tvm', {
     remove: (name) => call('tracks:remove', name)
   },
   clubTheme: () => call('club:theme'),
+  sfxSamples: (kind) => call('sfx:samples', kind),
 
   admin: {
     get: () => call('admin:get'),

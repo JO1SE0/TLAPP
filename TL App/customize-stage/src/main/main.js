@@ -2381,6 +2381,15 @@ handle('tracks:bytes', async (_e, name, user) => {
   return fs.promises.readFile(file);
 });
 
+/** Las grabaciones de los sonidos incluidos (assets/sfx/<tipo>-N.ogg), para la vista previa. */
+handle('sfx:samples', async (_e, kind) => {
+  const k = String(kind || '').replace(/[^a-z]/g, '');
+  if (!k) return [];
+  const dir = path.join(ROOT, 'assets', 'sfx');
+  const files = (await fs.promises.readdir(dir).catch(() => [])).filter((f) => f.startsWith(`${k}-`) && f.endsWith('.ogg')).sort().slice(0, 12);
+  return Promise.all(files.map((f) => fs.promises.readFile(path.join(dir, f))));
+});
+
 /** El tema de la página Club (va aparte de assets/music: no es un tema del menú). */
 handle('club:theme', async () => fs.promises.readFile(path.join(ROOT, 'assets', 'club-theme.ogg')));
 

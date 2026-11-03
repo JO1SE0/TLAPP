@@ -24,6 +24,18 @@ const roomUi = require('./room-ui');
 const clubGoal = require('./club-goal');
 let goalSfx = null;
 try { goalSfx = require('../renderer/js/goal-sfx.js'); } catch { /* sin sonidos incluidos */ }
+/* Las grabaciones de «Pelota real» se leen del disco acá mismo (assets/sfx). */
+try {
+  if (goalSfx && goalSfx.setSampleSource) {
+    goalSfx.setSampleSource((kind) => {
+      const fs = require('fs');
+      const path = require('path');
+      const dir = path.join(__dirname, '..', '..', 'assets', 'sfx');
+      const files = fs.readdirSync(dir).filter((f) => f.startsWith(`${kind}-`) && f.endsWith('.ogg')).sort();
+      return files.map((f) => { const b = fs.readFileSync(path.join(dir, f)); return b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength); });
+    });
+  }
+} catch { /* sin grabaciones: suena el sintetizado */ }
 const gif = require('./gif');
 const haxball = require('./haxball-settings');
 const countries = require('./countries');

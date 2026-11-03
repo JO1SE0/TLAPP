@@ -5681,11 +5681,24 @@ $('#goalSfxChips').addEventListener('click', (e) => {
   if (window.TLGoalSfx) window.TLGoalSfx.play(b.dataset.sfx, vol);
   patchConfig({ appearance: { goalSfx: b.dataset.sfx } });
 });
+// La vista previa de «Pelota real» pide las grabaciones al proceso principal.
+if (window.TLGoalSfx && window.TLGoalSfx.setSampleSource) {
+  window.TLGoalSfx.setSampleSource(async (kind) => {
+    const list = await tvm.sfxSamples(kind);
+    return (list || []).map((b) => b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength));
+  });
+}
 $('#kickSfxChips').addEventListener('click', (e) => {
   const b = e.target.closest('[data-kick]');
   if (!b) return;
   const vol = state.config.appearance.kickSfxVolume ?? 0.7;
-  if (window.TLGoalSfx) window.TLGoalSfx.playKick(b.dataset.kick, vol);
+  // La primera vez se cargan las grabaciones y recién ahí suena la de verdad.
+  if (window.TLGoalSfx) {
+    window.TLGoalSfx.warm();
+    const p = window.TLGoalSfx.loadSamples && window.TLGoalSfx.loadSamples('kick');
+    if (b.dataset.kick === 'real' && p) p.then(() => window.TLGoalSfx.playKick('real', vol));
+    else window.TLGoalSfx.playKick(b.dataset.kick, vol);
+  }
   patchConfig({ appearance: { kickSfx: b.dataset.kick } });
 });
 $('#kickSfxVolume').addEventListener('input', (e) => {

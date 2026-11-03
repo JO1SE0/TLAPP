@@ -186,6 +186,7 @@
    * archivos ni cuentas por cuadro, y por golpe se crean cinco o seis nodos.   */
   const KICK_STYLES = [
     ['default', 'El del juego', 'Game default'],
+    ['real', 'Pelota real', 'Real ball'],
     ['lofi', 'Lo-fi', 'Lo-fi'],
     ['vinilo', 'Vinilo', 'Vinyl'],
     ['cassette', 'Cassette', 'Cassette'],
@@ -251,7 +252,51 @@
 
   const PENTA = [392, 440, 523.25, 587.33, 659.25];
 
+  /* ── Grabaciones de verdad ─────────────────────────────────────────────
+   * «Pelota real» usa patadas grabadas (assets/sfx/kick-*.ogg), recortadas al
+   * golpe y emparejadas de volumen. Quien carga los archivos lo dice el que usa
+   * esto (`setSampleSource`): en la partida los lee el preload del disco y en la
+   * vista previa los pide al proceso principal. Se decodifican UNA vez al
+   * preparar el audio (`warm`), así el golpe sale sin demora. Cada patada elige
+   * una grabación al azar, sin repetir la anterior, con una variación chiquita
+   * de tono: nunca suenan dos iguales seguidas.                             */
+  let sampleSource = null;
+  const samples = {};
+  const sampleLoading = {};
+  let lastSample = {};
+  function setSampleSource(fn) { sampleSource = typeof fn === 'function' ? fn : null; }
+  function loadSamples(kind) {
+    if (samples[kind] || sampleLoading[kind] || !sampleSource || !shared) return sampleLoading[kind] || null;
+    const ctx = shared;
+    sampleLoading[kind] = Promise.resolve()
+      .then(() => sampleSource(kind))
+      .then((list) => Promise.all((list || []).map((ab) => new Promise((res) => {
+        try { ctx.decodeAudioData(ab, res, () => res(null)); } catch (e) { res(null); }
+      }))))
+      .then((bufs) => { const ok = bufs.filter(Boolean); if (ok.length) samples[kind] = ok; })
+      .catch(() => {})
+      .then(() => { sampleLoading[kind] = null; });
+    return sampleLoading[kind];
+  }
+  function playSample(ctx, out, t, kind, k) {
+    const list = samples[kind];
+    if (!list || !list.length) { loadSamples(kind); return false; }
+    let i = Math.floor(Math.random() * list.length);
+    if (list.length > 1 && i === lastSample[kind]) i = (i + 1) % list.length;
+    lastSample[kind] = i;
+    const s = ctx.createBufferSource();
+    s.buffer = list[i];
+    s.playbackRate.value = k;
+    s.connect(out);
+    s.start(t);
+    return true;
+  }
+
   const KICKS = {
+    real(c, o, t, k) {
+      // Hasta que terminen de cargar (sólo el primer golpe de todos), el pelotazo.
+      if (!playSample(c, o, t, 'kick', 0.97 + (k - 0.95) * 0.6)) KICKS.pelotazo(c, o, t, k);
+    },
     lofi(c, o, t, k) {
       const s = soften(c, o, 3200);
       body(c, s, t, 175 * k, 68 * k, 0.17, 0.95);
@@ -341,6 +386,7 @@
   /* Parejos de volumen: los clics (madera, chasquido) tienen poco pico y sonarían
      muy bajito al lado de un pelotazo. Medidos contra un pico común de ~0,5. */
   const KICK_TRIM = {
+    real: 1,
     lofi: 0.9, vinilo: 1, cassette: 0.9, madera: 2.5, bongo: 1.1, burbuja: 1.2, gota: 1.4, tecla: 1.6,
     cuero: 1.1, pelotazo: 0.8, marimba: 1.25, chasquido: 3.6, vidrio: 1.6, pluck: 0.95, redoblante: 1.2
   };
@@ -351,9 +397,10 @@
     try {
       const Ctor = AC || (typeof AudioContext !== 'undefined' ? AudioContext : null);
       if (!Ctor) return false;
-      if (!shared) shared = new Ctor();
+      if (!shared) shared = new Ctor({ latencyHint: 'interactive' });
       if (shared.state === 'suspended' && shared.resume) shared.resume();
       noiseBuffer(shared);
+      loadSamples('kick');
       return true;
     } catch (e) { return false; }
   }
@@ -378,5 +425,5 @@
     } catch (e) { return false; }
   }
 
-  return { STYLES, KICK_STYLES, KICKS, play, playKick, warm, has: (s) => !!RECIPES[s], hasKick: (s) => !!KICKS[s] };
+  return { STYLES, KICK_STYLES, KICKS, play, playKick, warm, setSampleSource, loadSamples, has: (s) => !!RECIPES[s], hasKick: (s) => !!KICKS[s] };
 });
