@@ -11,7 +11,7 @@ window.TL_NEWS = {
   title: { es: 'Qué hay de nuevo', en: "What's new" },
   items: {
     es: [
-      'Nuevo sonido de patada «Pelota real»: patadas grabadas de verdad (cinco distintas) que salen al azar, sin repetir la anterior y con una variación chiquita de tono. Se cargan al entrar a la sala, así que no agregan demora al patear. En Personalización → Sonidos.',
+      'Cinco sonidos de patada nuevos con grabaciones de verdad, cada uno para elegir por separado: Pelotazo real, Golpe seco, Patada real, Toque rápido y Bombazo. Se cargan al entrar a la sala, así que no agregan demora al patear. En Personalización → Sonidos.',
       'Página Club con su tema: al abrirla suena bajito, en loop, «Timeless» desde donde entra el beat. La música del menú se pausa mientras tanto y al salir sigue desde donde estaba. Los números de arriba entran uno por golpe y el escudo late con el tema.',
       'Cartel de versión nueva rediseñado: tarjeta con la versión de dónde a dónde (v1.0.57 → v1.0.58), barra de descarga con porcentaje y estado de «lista para instalar» en verde.',
       'Fichas más livianas: cada ficha de jugador se dibuja una vez como una figurita y en cada cuadro sólo se pega, en vez de armarla de cero (círculo, camiseta, número y borde). Se ve igual y se rearma sola si cambia la camiseta, el avatar, el zoom o la patada. Con efectos de ficha puestos (tamaño, contorno, estilos) se dibuja como siempre.',
@@ -130,7 +130,7 @@ window.TL_NEWS = {
       'Cada clave se usa en una sola PC: si cambiás de computadora, pedile a miclo que te la libere.'
     ],
     en: [
-      'New «Real ball» kick sound: real recorded kicks (five of them) played at random, never the same twice in a row and with a tiny pitch variation. Loaded when you join the room, so no extra delay when kicking. In Customization → Sounds.',
+      'Five new kick sounds from real recordings, each one selectable on its own: Real strike, Dry punch, Real kick, Quick touch and Thump. Loaded when you join the room, so no extra delay when kicking. In Customization → Sounds.',
       'Club page theme: when you open it, «Timeless» plays softly on loop from where the beat drops. Menu music pauses meanwhile and resumes where it was when you leave. The top numbers come in one per beat and the crest pulses with the song.',
       'Redesigned update notice: a card showing from/to versions (v1.0.57 → v1.0.58), a download bar with percentage and a green «ready to install» state.',
       'Lighter player discs: each disc is drawn once as a sticker and just pasted every frame instead of being built from scratch (circle, kit, number and outline). Looks the same and rebuilds itself when the kit, avatar, zoom or kick changes. With disc effects on (size, outline, styles) it draws as usual.',

@@ -5696,7 +5696,7 @@ $('#kickSfxChips').addEventListener('click', (e) => {
   if (window.TLGoalSfx) {
     window.TLGoalSfx.warm();
     const p = window.TLGoalSfx.loadSamples && window.TLGoalSfx.loadSamples('kick');
-    if (b.dataset.kick === 'real' && p) p.then(() => window.TLGoalSfx.playKick('real', vol));
+    if (/^real\d?$/.test(b.dataset.kick) && p) p.then(() => window.TLGoalSfx.playKick(b.dataset.kick, vol));
     else window.TLGoalSfx.playKick(b.dataset.kick, vol);
   }
   patchConfig({ appearance: { kickSfx: b.dataset.kick } });

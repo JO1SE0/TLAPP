@@ -186,7 +186,11 @@
    * archivos ni cuentas por cuadro, y por golpe se crean cinco o seis nodos.   */
   const KICK_STYLES = [
     ['default', 'El del juego', 'Game default'],
-    ['real', 'Pelota real', 'Real ball'],
+    ['real1', 'Pelotazo real', 'Real strike'],
+    ['real2', 'Golpe seco', 'Dry punch'],
+    ['real3', 'Patada real', 'Real kick'],
+    ['real4', 'Toque rápido', 'Quick touch'],
+    ['real5', 'Bombazo', 'Thump'],
     ['lofi', 'Lo-fi', 'Lo-fi'],
     ['vinilo', 'Vinilo', 'Vinyl'],
     ['cassette', 'Cassette', 'Cassette'],
@@ -278,12 +282,19 @@
       .then(() => { sampleLoading[kind] = null; });
     return sampleLoading[kind];
   }
-  function playSample(ctx, out, t, kind, k) {
+  /** `fixed`: una grabación puntual (cada una es su propio sonido); sin eso, al azar. */
+  function playSample(ctx, out, t, kind, k, fixed) {
     const list = samples[kind];
     if (!list || !list.length) { loadSamples(kind); return false; }
-    let i = Math.floor(Math.random() * list.length);
-    if (list.length > 1 && i === lastSample[kind]) i = (i + 1) % list.length;
-    lastSample[kind] = i;
+    let i;
+    if (typeof fixed === 'number') {
+      if (!list[fixed]) return false;
+      i = fixed;
+    } else {
+      i = Math.floor(Math.random() * list.length);
+      if (list.length > 1 && i === lastSample[kind]) i = (i + 1) % list.length;
+      lastSample[kind] = i;
+    }
     const s = ctx.createBufferSource();
     s.buffer = list[i];
     s.playbackRate.value = k;
@@ -293,10 +304,15 @@
   }
 
   const KICKS = {
-    real(c, o, t, k) {
-      // Hasta que terminen de cargar (sólo el primer golpe de todos), el pelotazo.
-      if (!playSample(c, o, t, 'kick', 0.97 + (k - 0.95) * 0.6)) KICKS.pelotazo(c, o, t, k);
-    },
+    // Cada grabación es su propio sonido para elegir (assets/sfx/kick-N.ogg).
+    // Hasta que terminen de cargar (sólo el primer golpe de todos), el pelotazo.
+    real1(c, o, t, k) { if (!playSample(c, o, t, 'kick', 0.97 + (k - 0.95) * 0.6, 0)) KICKS.pelotazo(c, o, t, k); },
+    real2(c, o, t, k) { if (!playSample(c, o, t, 'kick', 0.97 + (k - 0.95) * 0.6, 1)) KICKS.pelotazo(c, o, t, k); },
+    real3(c, o, t, k) { if (!playSample(c, o, t, 'kick', 0.97 + (k - 0.95) * 0.6, 2)) KICKS.pelotazo(c, o, t, k); },
+    real4(c, o, t, k) { if (!playSample(c, o, t, 'kick', 0.97 + (k - 0.95) * 0.6, 3)) KICKS.pelotazo(c, o, t, k); },
+    real5(c, o, t, k) { if (!playSample(c, o, t, 'kick', 0.97 + (k - 0.95) * 0.6, 4)) KICKS.pelotazo(c, o, t, k); },
+    // La mezcla al azar de antes: ya no está en la lista, queda por si alguien la tenía elegida.
+    real(c, o, t, k) { if (!playSample(c, o, t, 'kick', 0.97 + (k - 0.95) * 0.6)) KICKS.pelotazo(c, o, t, k); },
     lofi(c, o, t, k) {
       const s = soften(c, o, 3200);
       body(c, s, t, 175 * k, 68 * k, 0.17, 0.95);
@@ -386,7 +402,7 @@
   /* Parejos de volumen: los clics (madera, chasquido) tienen poco pico y sonarían
      muy bajito al lado de un pelotazo. Medidos contra un pico común de ~0,5. */
   const KICK_TRIM = {
-    real: 1,
+    real: 1, real1: 1, real2: 1, real3: 1, real4: 1, real5: 1,
     lofi: 0.9, vinilo: 1, cassette: 0.9, madera: 2.5, bongo: 1.1, burbuja: 1.2, gota: 1.4, tecla: 1.6,
     cuero: 1.1, pelotazo: 0.8, marimba: 1.25, chasquido: 3.6, vidrio: 1.6, pluck: 0.95, redoblante: 1.2
   };
