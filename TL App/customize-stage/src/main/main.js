@@ -238,7 +238,14 @@ function applyBootFlags(perf) {
   }
   // En notebooks con dos placas, pide la dedicada en vez de la integrada.
   if (perf.highPerformanceGpu) app.commandLine.appendSwitch('force_high_performance_gpu');
-  if (perf.lowLatencyAudio) app.commandLine.appendSwitch('force-wave-audio');
+  /*
+   * Audio: antes «baja latencia» forzaba `force-wave-audio`, que es al revés: la
+   * ruta vieja de Windows (WaveOut), que en Vista+ pasa por una capa de
+   * compatibilidad con más búferes encima de WASAPI. Se sentía como demora
+   * entre la patada y su sonido. Ahora «baja latencia» deja WASAPI (lo normal
+   * de Chromium) y apagarlo vuelve a WaveOut, para alguna PC con problemas.
+   */
+  if (!perf.lowLatencyAudio) app.commandLine.appendSwitch('force-wave-audio');
 
   /*
    * Techo del montón de JavaScript.

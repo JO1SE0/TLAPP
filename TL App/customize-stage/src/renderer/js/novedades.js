@@ -11,6 +11,7 @@ window.TL_NEWS = {
   title: { es: 'Qué hay de nuevo', en: "What's new" },
   items: {
     es: [
+      'Patada sin demora: tu patada suena en el momento en que se ve, no cuando la confirma la sala (eso llegaba un ping tarde). La confirmada se calla, así que no suena doble. Además el audio usa la ruta de Windows con menos demora (WASAPI); antes «Audio de baja latencia» forzaba la ruta vieja, que era más lenta.',
       'Cinco sonidos de patada nuevos con grabaciones de verdad, cada uno para elegir por separado: Pelotazo real, Golpe seco, Patada real, Toque rápido y Bombazo. Se cargan al entrar a la sala, así que no agregan demora al patear. En Personalización → Sonidos.',
       'Página Club con su tema: al abrirla suena bajito, en loop, «Timeless» desde donde entra el beat. La música del menú se pausa mientras tanto y al salir sigue desde donde estaba. Los números de arriba entran uno por golpe y el escudo late con el tema.',
       'Cartel de versión nueva rediseñado: tarjeta con la versión de dónde a dónde (v1.0.57 → v1.0.58), barra de descarga con porcentaje y estado de «lista para instalar» en verde.',
@@ -130,6 +131,7 @@ window.TL_NEWS = {
       'Cada clave se usa en una sola PC: si cambiás de computadora, pedile a miclo que te la libere.'
     ],
     en: [
+      'No kick delay: your kick sounds the moment you see it, not when the room confirms it (that came one ping late). The confirmed one stays silent, so it never doubles. Audio also uses the Windows path with the least delay (WASAPI); «Low latency audio» used to force the old, slower path.',
       'Five new kick sounds from real recordings, each one selectable on its own: Real strike, Dry punch, Real kick, Quick touch and Thump. Loaded when you join the room, so no extra delay when kicking. In Customization → Sounds.',
       'Club page theme: when you open it, «Timeless» plays softly on loop from where the beat drops. Menu music pauses meanwhile and resumes where it was when you leave. The top numbers come in one per beat and the crest pulses with the song.',
       'Redesigned update notice: a card showing from/to versions (v1.0.57 → v1.0.58), a download bar with percentage and a green «ready to install» state.',

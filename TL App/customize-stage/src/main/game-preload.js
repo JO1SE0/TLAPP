@@ -1570,6 +1570,8 @@ function playBuiltInKick() {
   return goalSfx.playKick(style, own * lv);
 }
 
+/** El renderer del último cuadro: de ahí sale quién sos (`__tvmMe`). */
+let lastRenderer = null;
 let hitAudio = null;
 let hitAudioFor = '';
 let hitStopTimer = null;
@@ -6785,6 +6787,63 @@ function installTracking(view) {
     const kickChoice = state.config.appearance && state.config.appearance.kickSfx;
     if (goalSfx && kickChoice && kickChoice !== 'default') goalSfx.warm();
   } catch { /* sin audio: suena el del juego */ }
+  /*
+   * La patada propia, en el momento en que se VE (ver KICK_STEP_SITE en
+   * game-patch.js). El paso de física avisa desde todas las simulaciones; la que
+   * se dibuja va adelantada un ping respecto de la confirmada, así que tu
+   * patada suena acá, con lo que ves, y la confirmada que le corresponde
+   * después se calla. Cada cuadro la copia se vuelve a simular desde lo
+   * confirmado y la misma patada avisa otra vez: se la reconoce por el lugar
+   * (la ficha está en el mismo punto) y no vuelve a sonar.
+   */
+  const F = () => view.__tvmF || {};
+  const ownId = () => {
+    const f = F();
+    const me = lastRenderer && lastRenderer.__tvmMe;
+    return me && f.playerId ? me[f.playerId] : undefined;
+  };
+  const kickSpot = (player) => {
+    const f = F();
+    const disc = player && player[f.disc || 'I'];
+    return disc && disc[f.pos || 'a'];
+  };
+  const earlyKicks = [];
+  const nearKick = (p, maxDist, test) => {
+    for (const e of earlyKicks) {
+      const dx = e.x - p.x;
+      const dy = e.y - p.y;
+      if (dx * dx + dy * dy <= maxDist * maxDist && test(e)) return e;
+    }
+    return null;
+  };
+  const rememberKick = (p, now, used) => {
+    earlyKicks.push({ x: p.x, y: p.y, first: now, last: now, used });
+    if (earlyKicks.length > 10) earlyKicks.shift();
+  };
+  /** Suena la patada propia: la elegida, o la de fábrica si no hay otra. */
+  const ownKickSound = () => {
+    if (!playHitSound() && typeof view.__tvmKickDefault === 'function') {
+      try { view.__tvmKickDefault(); } catch (e) { /* sin sonido de fábrica */ }
+    }
+  };
+  view.__tvmKickAt = (player, match) => {
+    try {
+      const f = F();
+      if (!f.playerId || replaySeeking()) return;
+      // La confirmada tiene su propio aviso (abajo): acá sólo la que se dibuja.
+      if (match && f.matchRoom && real.room && match[f.matchRoom] === real.room) return;
+      const id = ownId();
+      if (id === undefined || !player || player[f.playerId] !== id) return;
+      const p = kickSpot(player);
+      if (!p) return;
+      const now = performance.now();
+      const same = nearKick(p, 8, (e) => now - e.last < 400);
+      if (same) { same.last = now; return; }
+      rememberKick(p, now, false);
+      ownKickSound();
+    } catch (e) { /* una patada sin sonido adelantado suena igual al confirmarse */ }
+  };
+
   view.__tvmKick = (player, room) => {
     // El motor habló: el parche de sonidos está puesto en este documento. Ver
     // `engineSaidGoal`.
@@ -6797,6 +6856,22 @@ function installTracking(view) {
     if (player && room && room === real.room && realActive()) {
       try { realKick(view, player); } catch { /* un toque perdido no apaga el sonido */ }
     }
+    // Tu patada ya sonó al verse: la confirmada se calla (true = «ya me ocupé»).
+    try {
+      const f = F();
+      const id = ownId();
+      if (f.playerId && id !== undefined && player && player[f.playerId] === id && !replaySeeking()) {
+        const p = kickSpot(player);
+        if (p) {
+          const now = performance.now();
+          const hit = nearKick(p, 14, (e) => !e.used && now - e.first < 2500);
+          if (hit) { hit.used = true; hit.last = now; return true; }
+          // No se vio antes (sos el host, o la copia no llegó a simularla): suena
+          // ahora y queda anotada para que la copia no la repita.
+          rememberKick(p, now, true);
+        }
+      }
+    } catch (e) { /* sigue el camino de siempre */ }
     return playHitSound();
   };
 
@@ -6938,6 +7013,7 @@ function installTracking(view) {
     return box;
   };
   view.__tvmPaint = (ctx, renderer, zoom) => {
+    lastRenderer = renderer;
     if (brushBroken) return;
     ownDraw++;
     try {

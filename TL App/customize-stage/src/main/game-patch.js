@@ -1176,6 +1176,8 @@ function patchSounds(source) {
 
   const out = source.replace(SOUND_SITE, (_full, a, patada, snd, play, bufPatada, gol, d, bufGol) => (
     `window.__tvmRoom&&window.__tvmRoom(${a});` +
+    // El sonido de patada de fábrica, a mano: lo usa la patada «al verse».
+    `window.__tvmKickDefault=function(){${snd}.${play}(${snd}.${bufPatada})};` +
     `${a}.${patada}=function(){if(!(window.__tvmKick&&window.__tvmKick(arguments[0],this)))${snd}.${play}(${snd}.${bufPatada})};` +
     `${a}.${gol}=function(${d}){if(!(window.__tvmGoal&&window.__tvmGoal(${d},this)))${snd}.${play}(${snd}.${bufGol});`
   ));
@@ -1793,6 +1795,38 @@ function patchDiscSprites(source) {
   return { source: out, applied: true, reason: 'fichas como figuritas' };
 }
 
+/* ------------------------------------------------------------------ *
+ * La patada propia, en el momento en que se VE
+ * ------------------------------------------------------------------ *
+ * El sonido de patada de HaxBall sale de la simulación confirmada, que va
+ * atrasada respecto de lo que se dibuja (la copia extrapolada) más o menos un
+ * ping: pateás, ves la pelota salir y el «pum» llega después.
+ *
+ * En el paso de física, donde se aplica una patada:
+ *
+ *   f&&(null!=this.Sa.yi&&this.Sa.yi(d),d.Yb=!1, …
+ *
+ * se avisa SIEMPRE —también en la copia que se dibuja, que no tiene avisos
+ * propios— con el jugador y el partido. El preload hace sonar ahí la patada del
+ * jugador local y después calla la confirmada que corresponde a la misma.
+ * También se publica el campo del id de jugador (del buscador `ma`), que es lo
+ * que permite reconocerte en la copia, donde los objetos son otros.
+ */
+const KICK_STEP_SITE = /(\w)&&\(null!=this\.(\w+)\.(\w+)&&this\.\2\.\3\((\w)\),\4\.(\w+)=!1,/;
+const PLAYER_FIND_SITE = /(\w+)\(a\)\{let b=0,c=this\.\w+;for\(;b<c\.length;\)\{let d=c\[b\];\+\+b;if\(d\.(\w+)==a\)return d\}return null\}/;
+
+function patchEarlyKick(source) {
+  const n = (source.match(new RegExp(KICK_STEP_SITE.source, 'g')) || []).length;
+  const finds = [...source.matchAll(new RegExp(PLAYER_FIND_SITE.source, 'g'))];
+  if (n !== 1 || finds.length !== 1) return { source, applied: false, reason: `patada al verse: encajó ${n}/${finds.length} veces, se esperaba 1/1` };
+  let matchRoom = '';
+  const out = source.replace(KICK_STEP_SITE, (all, f, sala, aviso, d) => {
+    matchRoom = sala;
+    return `${f}&&(window.__tvmKickAt&&window.__tvmKickAt(${d},this),` + all.slice(f.length + 3);
+  });
+  return { source: out, applied: true, fields: { playerId: finds[0][2], matchRoom }, reason: `patada al verse (id=${finds[0][2]} sala=${matchRoom})` };
+}
+
 function patch(source, opts) {
   if (typeof source !== 'string' || source.length < 1000) {
     return { source, applied: false, reason: 'fuente vacía o demasiado corta' };
@@ -1806,7 +1840,7 @@ function patch(source, opts) {
   const fields = {};
   let out = source;
 
-  for (const step of [patchCameraZoom, patchSettings, patchStadium, patchTracking, patchRoomName, patchPitchBounds, patchReplaySpeed, patchReplayScan, patchScore, patchSelf, patchAvatar, patchTeamKit, patchBall, patchMirror, patchSounds, patchRoomLink, patchLightSim, patchGarbage, patchDiscSprites]) {
+  for (const step of [patchCameraZoom, patchSettings, patchStadium, patchTracking, patchRoomName, patchPitchBounds, patchReplaySpeed, patchReplayScan, patchScore, patchSelf, patchAvatar, patchTeamKit, patchBall, patchMirror, patchSounds, patchRoomLink, patchLightSim, patchGarbage, patchDiscSprites, patchEarlyKick]) {
     const res = step(out);
     out = res.source;
     if (res.fields) Object.assign(fields, res.fields);
@@ -1906,8 +1940,9 @@ const KEEP = 4;
  * 29: las paredes del estadio van al cache con el piso, y menos basura por
  *     cuadro (colores ya armados, el Set de jugadores reusado).
  * 30: las fichas de los jugadores se pegan como figuritas ya dibujadas.
+ * 31: la patada propia avisa desde la simulación que se dibuja (sin ping).
  */
-const PATCH_VERSION = 30;
+const PATCH_VERSION = 31;
 
 /** El idioma es parte de la clave: el mismo bundle parchea distinto en cada uno. */
 function keyOf(url, lang) {
