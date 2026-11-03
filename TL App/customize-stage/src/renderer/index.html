@@ -70,19 +70,28 @@
     <!-- La versión nueva. Antes esto era un toast de cuatro segundos: se iba
          solo y había que acordarse de ir a Ajustes → Actualizaciones. Acá se
          descarga y se instala sin salir del cartel. -->
-    <div class="notebar notebar--info" id="updateNotice" hidden>
-      <svg data-icon class="notebar__ico" viewBox="0 0 24 24"><path d="M12 3v11M7.6 9.6 12 14l4.4-4.4M4.5 19.5h15"/></svg>
-      <div class="notebar__text">
-        <!-- Sin data-i18n: los tres textos y el botón los escribe
+    <div class="notebar notebar--info upd" id="updateNotice" data-phase="available" hidden>
+      <span class="upd__badge" aria-hidden="true">
+        <i class="upd__halo"></i>
+        <svg class="upd__ico upd__ico--get" viewBox="0 0 24 24"><path d="M12 3.5v11M7.4 10 12 14.6 16.6 10M5 19.5h14"/></svg>
+        <svg class="upd__ico upd__ico--ok" viewBox="0 0 24 24"><path d="M5 12.5l4.4 4.4L19 7.3"/></svg>
+        <svg class="upd__ico upd__ico--err" viewBox="0 0 24 24"><path d="M12 7.5v6M12 16.8v.2"/><circle cx="12" cy="12" r="9"/></svg>
+      </span>
+      <div class="notebar__text upd__text">
+        <!-- Sin data-i18n: los textos y el botón los escribe
              `paintUpdateNotice()`, que además depende de la fase. -->
+        <span class="upd__eyebrow"><b>TL App</b><span class="upd__ver" id="updateNoticeVer"></span></span>
         <strong id="updateNoticeTitle">Hay una versión nueva</strong>
         <small id="updateNoticeText"></small>
       </div>
-      <div class="notebar__actions">
+      <div class="notebar__actions upd__actions">
         <button class="btn btn--ghost btn--sm" id="updateNoticeLater" data-i18n="perf.later"><svg data-icon viewBox="0 0 24 24"><path d="M6.4 6.4l11.2 11.2M17.6 6.4 6.4 17.6"/></svg>Ahora no</button>
-        <button class="btn btn--primary btn--sm" id="updateNoticeGo"><svg data-icon viewBox="0 0 24 24"><path d="M12 3v11M7.6 9.6 12 14l4.4-4.4M4.5 19.5h15"/></svg>Actualizar</button>
+        <button class="btn btn--primary btn--sm upd__go" id="updateNoticeGo"><svg data-icon viewBox="0 0 24 24"><path d="M12 3v11M7.6 9.6 12 14l4.4-4.4M4.5 19.5h15"/></svg>Actualizar</button>
       </div>
-      <span class="notebar__bar" id="updateNoticeBar" hidden><i id="updateNoticeFill"></i></span>
+      <div class="upd__progress" id="updateNoticeBar" hidden>
+        <span class="upd__track"><i id="updateNoticeFill"></i></span>
+        <em id="updateNoticePct">0%</em>
+      </div>
     </div>
   </div>
 
@@ -2171,6 +2180,7 @@
   <script src="js/welcome.js"></script>
   <script src="js/sparks.js"></script>
   <script src="js/music.js"></script>
+  <script src="js/club-theme.js"></script>
   <script src="js/sfx.js"></script>
   <script src="js/goal-sfx.js"></script>
   <script src="js/novedades.js"></script>

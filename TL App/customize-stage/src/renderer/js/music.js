@@ -17,7 +17,7 @@
   const M = {
     all: [], tracks: [], index: 0, pool: [], cur: 0,
     enabled: true, volume: 0.35, club: true,
-    allowed: false, inGame: false, started: false, userPaused: false,
+    allowed: false, inGame: false, started: false, userPaused: false, held: false,
     likes: new Set(), hidden: new Set(), hist: [], queued: -1,
     introDone: false, errors: 0, xfade: 3000, crossing: false, loading: null, timers: new WeakMap()
   };
@@ -25,7 +25,7 @@
   // Dentro de una sala la música sigue, pero más baja, para oír el juego.
   const IN_GAME_GAIN = 0.4;
   const gain = () => Math.min(1, Math.max(0, M.volume)) * (M.inGame ? IN_GAME_GAIN : 1);
-  const wantPlaying = () => M.enabled && M.allowed && !M.userPaused && M.tracks.length > 0 && !(M.inGame && M.inGameOff);
+  const wantPlaying = () => M.enabled && M.allowed && !M.userPaused && !M.held && M.tracks.length > 0 && !(M.inGame && M.inGameOff);
   const current = () => M.pool[M.cur];
   /** Una canción del club que empieza con «00» es la de arranque (hoy no hay ninguna): suena una sola vez, al abrir la app. */
   const isIntro = (t) => !!t && !t.user && /^\s*0+\s*[-.)]/.test(t.name || '');
@@ -286,6 +286,19 @@
       }
     },
     get paused() { return M.userPaused; },
+    /**
+     * Otra cosa necesita el parlante (el tema de la página Club): se baja y se
+     * frena el que suena, sin tocar la pausa del jugador ni cambiar de tema. Al
+     * soltarlo sigue desde donde quedó.
+     */
+    hold(flag) {
+      const next = !!flag;
+      if (next === M.held) return;
+      M.held = next;
+      if (M.allowed) sync();
+    },
+    get enabled() { return M.enabled; },
+    get volume() { return M.volume; },
     /** Salta a una parte del tema actual (0 a 1). */
     seek(f) { const a = current(); if (a && isFinite(a.duration) && a.duration) a.currentTime = Math.min(1, Math.max(0, f)) * a.duration; },
     /** Segundos que lleva y que dura el tema actual. */

@@ -2381,6 +2381,9 @@ handle('tracks:bytes', async (_e, name, user) => {
   return fs.promises.readFile(file);
 });
 
+/** El tema de la página Club (va aparte de assets/music: no es un tema del menú). */
+handle('club:theme', async () => fs.promises.readFile(path.join(ROOT, 'assets', 'club-theme.ogg')));
+
 handle('tracks:add', async () => {
   const res = await dialog.showOpenDialog(mainWindow, {
     title: 'Elegí tus canciones',

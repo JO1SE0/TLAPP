@@ -11,6 +11,8 @@ window.TL_NEWS = {
   title: { es: 'Qué hay de nuevo', en: "What's new" },
   items: {
     es: [
+      'Página Club con su tema: al abrirla suena bajito, en loop, «Timeless» desde donde entra el beat. La música del menú se pausa mientras tanto y al salir sigue desde donde estaba. Los números de arriba entran uno por golpe y el escudo late con el tema.',
+      'Cartel de versión nueva rediseñado: tarjeta con la versión de dónde a dónde (v1.0.57 → v1.0.58), barra de descarga con porcentaje y estado de «lista para instalar» en verde.',
       'Fichas más livianas: cada ficha de jugador se dibuja una vez como una figurita y en cada cuadro sólo se pega, en vez de armarla de cero (círculo, camiseta, número y borde). Se ve igual y se rearma sola si cambia la camiseta, el avatar, el zoom o la patada. Con efectos de ficha puestos (tamaño, contorno, estilos) se dibuja como siempre.',
       'Auto-entrar arreglado: elegís la sala, lo apretás y la app mira sola cada 3 segundos si se liberó un lugar, sin tener que actualizar la lista a mano. Apenas hay lugar entra, y deja de mirar al entrar o al apagarlo.',
       'Más FPS en las canchas pesadas: las paredes y líneas del estadio ya no se redibujan una por una en cada cuadro, se dibujan una vez junto con el piso. Las canchas con cientos de paredes curvas eran las que más bajaban los FPS.',
@@ -127,6 +129,8 @@ window.TL_NEWS = {
       'Cada clave se usa en una sola PC: si cambiás de computadora, pedile a miclo que te la libere.'
     ],
     en: [
+      'Club page theme: when you open it, «Timeless» plays softly on loop from where the beat drops. Menu music pauses meanwhile and resumes where it was when you leave. The top numbers come in one per beat and the crest pulses with the song.',
+      'Redesigned update notice: a card showing from/to versions (v1.0.57 → v1.0.58), a download bar with percentage and a green «ready to install» state.',
       'Lighter player discs: each disc is drawn once as a sticker and just pasted every frame instead of being built from scratch (circle, kit, number and outline). Looks the same and rebuilds itself when the kit, avatar, zoom or kick changes. With disc effects on (size, outline, styles) it draws as usual.',
       'Auto-join fixed: pick the room, press it and the app checks by itself every 3 seconds for a free slot, no need to refresh the list by hand. It joins as soon as there is room and stops checking when you join or turn it off.',
       'More FPS on heavy stadiums: walls and lines are no longer redrawn one by one every frame, they are drawn once together with the floor. Stadiums with hundreds of curved walls were the ones dropping FPS the most.',

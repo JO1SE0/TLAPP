@@ -154,6 +154,7 @@ contextBridge.exposeInMainWorld('tvm', {
     add: () => call('tracks:add'),
     remove: (name) => call('tracks:remove', name)
   },
+  clubTheme: () => call('club:theme'),
 
   admin: {
     get: () => call('admin:get'),

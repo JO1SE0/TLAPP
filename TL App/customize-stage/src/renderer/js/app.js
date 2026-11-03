@@ -854,6 +854,7 @@ function applyConfig(config) {
   paintPreview();
   // Partículas del menú: dependen de su interruptor y de que las animaciones estén prendidas.
   if (window.TLMusic) { window.TLMusic.configure(config.appearance.music !== false, config.appearance.musicVolume, config.appearance.musicClub !== false); window.TLMusic.setLists(config.appearance.musicLikes, config.appearance.musicHidden); window.TLMusic.setInGameMusic(config.appearance.musicInGame !== false); }
+  if (window.TLClubTheme) { if (config.appearance.music === false) window.TLClubTheme.stop(); else window.TLClubTheme.setVolume(config.appearance.musicVolume); }
   try { paintNowLike(); } catch (e) { /* la tarjeta todavía no se armó */ }
   try { if (state.view === 'musica') paintMusicPage(); } catch (e) { /* la página todavía no se armó */ }
   if (window.TLSfx) window.TLSfx.configure(config.appearance.uiSounds !== false, config.appearance.uiSoundStyle);
@@ -1917,6 +1918,8 @@ function setView(name) {
   if (name === 'cuenta') loadAuth();
   if (name === 'club') { loadClubRank(); loadKings(); }
   if (name === 'musica') musicPageOpen(); else musicPageClose();
+  // El tema del club suena sólo con la página Club abierta y en el menú.
+  if (window.TLClubTheme) { if (name === 'club' && state.stage !== 'game') window.TLClubTheme.start(); else window.TLClubTheme.stop(); }
   if (name === 'hostear') loadHostState();
   if (name === 'informes') loadReports();
   /*
@@ -1983,6 +1986,10 @@ function setStage(kind) {
     state.trimTimer = setTimeout(() => { if (state.stage === 'game' && window.tvm && window.tvm.trimMemory) window.tvm.trimMemory(); }, 3000);
   }
   if (window.TLMusic) window.TLMusic.setInGame(kind === 'game');
+  if (window.TLClubTheme) {
+    if (kind === 'game') window.TLClubTheme.stop();
+    else if (state.view === 'club') window.TLClubTheme.start();
+  }
   // Al volver al menú reaparece la tarjeta del tema que sigue sonando.
   try { if (kind !== 'game' && npPlaying) setTimeout(() => showNowPlaying(6000), 450); } catch (e) { /* todavía no se armó el cartel */ }
   if (kind === 'browser') setTimeout(showNoticeIfReady, 600);
@@ -8602,6 +8609,13 @@ function paintUpdateNotice() {
 
   const busy = phase === 'downloading';
   const done = phase === 'ready';
+  bar.dataset.phase = phase;
+  // De dónde a dónde: «v1.0.57 → v1.0.58». Sin la versión actual, sólo la nueva.
+  const ver = $('#updateNoticeVer');
+  if (ver) {
+    const now = (state.info && state.info.version) || '';
+    ver.textContent = latest ? (now && now !== latest ? `v${now} → v${latest}` : `v${latest}`) : '';
+  }
 
   $('#updateNoticeTitle').textContent = done
     ? t('update.readyTitle', { v: latest })
@@ -8628,7 +8642,15 @@ function paintUpdateNotice() {
   $('#updateNoticeLater').disabled = busy;
 
   $('#updateNoticeBar').hidden = !busy;
-  $('#updateNoticeFill').style.transform = `scaleX(${Math.min(1, Math.max(0, state.update.percent / 100))})`;
+  paintUpdatePct();
+}
+
+/** La barra y el número de la descarga, en el cartel. */
+function paintUpdatePct() {
+  const p = Math.min(1, Math.max(0, (state.update.percent || 0) / 100));
+  $('#updateNoticeFill').style.transform = `scaleX(${p})`;
+  const pct = $('#updateNoticePct');
+  if (pct) pct.textContent = `${Math.round(p * 100)}%`;
 }
 
 /** @param {'idle'|'available'|'downloading'|'ready'|'failed'} phase */
@@ -8696,8 +8718,7 @@ function paintUpdateProgress(progress) {
   // baje el que la baje, las dos barras tienen que moverse.
   if (state.update.phase === 'downloading') {
     state.update.percent = progress.percent == null ? 0 : progress.percent;
-    $('#updateNoticeFill').style.transform =
-      `scaleX(${Math.min(1, Math.max(0, state.update.percent / 100))})`;
+    paintUpdatePct();
   }
 
   $('#updateProgress').hidden = false;
