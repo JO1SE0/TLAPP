@@ -20,6 +20,7 @@
   </style>
   <link rel="stylesheet" href="css/theme.css" />
   <link rel="stylesheet" href="css/app.css" />
+  <link rel="stylesheet" href="css/estadio.css" />
 </head>
 <body>
   <!-- ═══ Pantalla de carga ═══════════════════════════════════════
@@ -44,6 +45,14 @@
     <span class="blob blob--1"></span>
     <span class="blob blob--2"></span>
     <span class="aura"></span>
+    <!-- Estadio de noche: torres de luz, haces y el césped iluminado. Todo
+         quieto (un solo pintado); sólo se prende una vez al abrir la app. -->
+    <span class="stadium" aria-hidden="true">
+      <i class="stadium__beams"></i>
+      <i class="stadium__tower stadium__tower--l"></i>
+      <i class="stadium__tower stadium__tower--r"></i>
+      <i class="stadium__pitch"></i>
+    </span>
   </div>
 
   <!-- ═══ Avisos fijos ════════════════════════════════════════════
@@ -1019,39 +1028,39 @@
                 <div class="row__text"><span class="row__label" id="scaleLabel">Tamaño de la interfaz</span><span class="row__desc" id="scaleDesc"></span></div>
                 <div class="row__ctl"><div class="chips" id="scaleChips"></div></div>
               </div>
-              <div class="row">
+              <div class="row row--clasica">
                 <div class="row__text"><span class="row__label" id="glassLabel">Opacidad del vidrio</span><span class="row__desc" id="glassDesc"></span></div>
                 <div class="row__ctl"><input type="range" id="glassRange" min="50" max="100" step="1" value="100" /><b class="row__val" id="glassValue">100%</b></div>
               </div>
-              <div class="row">
+              <div class="row row--clasica">
                 <div class="row__text"><span class="row__label" id="pwLabel">Ancho de los paneles</span></div>
                 <div class="row__ctl"><div class="chips" id="pwChips"></div></div>
               </div>
-              <div class="row">
+              <div class="row row--clasica">
                 <div class="row__text"><span class="row__label" id="btnLabel">Estilo de botones</span><span class="row__desc" id="btnDesc"></span></div>
                 <div class="row__ctl"><div class="chips" id="btnChips"></div></div>
               </div>
-              <div class="row">
+              <div class="row row--clasica">
                 <div class="row__text"><span class="row__label" id="swLabel">Interruptores</span></div>
                 <div class="row__ctl"><div class="chips" id="swChips"></div></div>
               </div>
-              <div class="row">
+              <div class="row row--clasica">
                 <div class="row__text"><span class="row__label" id="hovLabel">Al pasar el mouse</span><span class="row__desc" id="hovDesc"></span></div>
                 <div class="row__ctl"><div class="chips" id="hovChips"></div></div>
               </div>
-              <div class="row">
+              <div class="row row--clasica">
                 <div class="row__text"><span class="row__label" id="pcLabel">Tarjeta de perfil</span><span class="row__desc" id="pcDesc"></span></div>
                 <div class="row__ctl"><div class="chips" id="pcChips"></div></div>
               </div>
-              <div class="row">
+              <div class="row row--clasica">
                 <div class="row__text"><span class="row__label" id="tsLabel">Avisos</span></div>
                 <div class="row__ctl"><div class="chips" id="tsChips"></div></div>
               </div>
-              <div class="row">
+              <div class="row row--clasica">
                 <div class="row__text"><span class="row__label" id="rsLabel">Plantel del menú</span></div>
                 <div class="row__ctl"><div class="chips" id="rsChips"></div></div>
               </div>
-              <div class="row">
+              <div class="row row--clasica">
                 <div class="row__text"><span class="row__label" id="hsLabel">Encabezado de páginas</span></div>
                 <div class="row__ctl"><div class="chips" id="hsChips"></div></div>
               </div>
@@ -1063,7 +1072,7 @@
                 <div class="row__text"><span class="row__label" id="tiltLabel">Inclinación 3D</span><span class="row__desc" id="tiltDesc"></span></div>
                 <div class="row__ctl"><div class="chips" id="tiltChips"></div></div>
               </div>
-              <div class="row">
+              <div class="row row--clasica">
                 <div class="row__text"><span class="row__label" id="parLabel">Fondo con profundidad</span><span class="row__desc" id="parDesc"></span></div>
                 <div class="row__ctl"><div class="chips" id="parChips"></div></div>
               </div>
@@ -1184,7 +1193,7 @@
             </div>
           </section>
 
-          <section class="sec" data-sec="menubg">
+          <section class="sec sec--clasica" data-sec="menubg">
             <header class="sec__head">
               <h2 class="sec__title" data-i18n="look.menu.title">Fondo del menú</h2>
               <span class="tag" data-i18n="skin.tag">Sólo lo ves vos</span>
@@ -1960,6 +1969,11 @@
       </div><!-- /.panel -->
     </div><!-- /.body -->
     </div><!-- /.shell -->
+    <!-- Cartel LED de la tribuna: texto que corre con datos reales (ver
+         `paintLed` en app.js). Dentro de una sala no existe. -->
+    <div class="ledboard" id="ledBoard" aria-hidden="true">
+      <div class="ledboard__track" id="ledTrack"></div>
+    </div>
   </div>
 
   <!-- ═══ Amigos ═══════════════════════════════════════════════════
@@ -2186,6 +2200,7 @@
   <script src="js/novedades.js"></script>
   <script src="js/captain.js"></script>
   <script src="js/app.js"></script>
+  <script src="js/estadio.js"></script>
   <script src="js/favorites.js"></script>
 </body>
 </html>

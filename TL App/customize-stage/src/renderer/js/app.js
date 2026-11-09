@@ -867,25 +867,41 @@ function applyConfig(config) {
   const rd = document.documentElement.dataset;
   rd.pageTrans = config.appearance.pageTransition || 'fade';
   { const rr = config.appearance.roomRows; const prev = rd.roomRows; if (rr === 'dense' || rr === 'large') rd.roomRows = rr; else delete rd.roomRows; if (prev !== rd.roomRows) { try { if (roomParts) paintRoomWindow(true); } catch (e) { /* aún no hay lista */ } } }
-  if (LAYOUT_IDS.includes(config.appearance.layout)) rd.layout = config.appearance.layout; else delete rd.layout;
+  /*
+   * La cara de la app. Estadio se arma sobre la disposición «arriba» (el riel
+   * pasa a ser la fila de sectores, y dentro de una sala se guarda y vuelve al
+   * acercar el mouse al borde de arriba: eso ya estaba probado). Clásica es la
+   * de siempre, con el menú a la izquierda. Las otras disposiciones se fueron.
+   */
+  const ui = config.appearance.ui === 'classic' ? 'classic' : 'estadio';
+  if (ui === 'estadio') rd.layout = 'top'; else delete rd.layout;
+  if (rd.ui !== ui) {
+    rd.ui = ui;
+    try { if (window.TLEstadio) window.TLEstadio.mount(ui === 'estadio'); } catch (e) { /* adorno */ }
+    try { if (roomParts) paintRoomWindow(true); } catch (e) { /* aún no hay lista */ }
+  }
   if (state.layoutSeen !== rd.layout) {
     state.layoutSeen = rd.layout;
     /* Consola arranca en el Inicio; al salir de ella el Inicio se cierra. */
     try { openHub(rd.layout === 'consola'); } catch (e) { /* aún no está armado */ }
   }
   if (config.appearance.density === 'compact' || config.appearance.density === 'comfy') rd.density = config.appearance.density; else delete rd.density;
-  applyGlass(config.appearance.glass);
-  if (['narrow', 'wide'].includes(config.appearance.panelWidth)) rd.panelw = config.appearance.panelWidth; else delete rd.panelw;
-  if (['flat', 'shine', 'outline'].includes(config.appearance.btnStyle)) rd.btn = config.appearance.btnStyle; else delete rd.btn;
-  if (['square', 'check', 'thin'].includes(config.appearance.switchStyle)) rd.sw = config.appearance.switchStyle; else delete rd.sw;
-  if (['lift', 'glow', 'scale', 'none'].includes(config.appearance.hoverFx)) rd.hover = config.appearance.hoverFx; else delete rd.hover;
-  if (['compact', 'carnet', 'minimal'].includes(config.appearance.profCard)) rd.pc = config.appearance.profCard; else delete rd.pc;
-  if (['pill', 'card', 'bar'].includes(config.appearance.toastStyle)) rd.toast = config.appearance.toastStyle; else delete rd.toast;
-  if (['accent', 'glow', 'hidden'].includes(config.appearance.rosterStyle)) rd.roster = config.appearance.rosterStyle; else delete rd.roster;
-  if (['crest', 'flat'].includes(config.appearance.heroStyle)) rd.hero = config.appearance.heroStyle; else delete rd.hero;
+  /* Los estilos sueltos de la interfaz clásica (vidrio, ancho de paneles, botones,
+     interruptores, tarjeta de perfil, avisos, plantel, encabezados). Estadio
+     tiene los suyos: ahí no se aplican, y sus opciones no se muestran. */
+  const classic = ui === 'classic';
+  applyGlass(classic ? config.appearance.glass : 1);
+  if (classic && ['narrow', 'wide'].includes(config.appearance.panelWidth)) rd.panelw = config.appearance.panelWidth; else delete rd.panelw;
+  if (classic && ['flat', 'shine', 'outline'].includes(config.appearance.btnStyle)) rd.btn = config.appearance.btnStyle; else delete rd.btn;
+  if (classic && ['square', 'check', 'thin'].includes(config.appearance.switchStyle)) rd.sw = config.appearance.switchStyle; else delete rd.sw;
+  if (classic && ['lift', 'glow', 'scale', 'none'].includes(config.appearance.hoverFx)) rd.hover = config.appearance.hoverFx; else delete rd.hover;
+  if (classic && ['compact', 'carnet', 'minimal'].includes(config.appearance.profCard)) rd.pc = config.appearance.profCard; else delete rd.pc;
+  if (classic && ['pill', 'card', 'bar'].includes(config.appearance.toastStyle)) rd.toast = config.appearance.toastStyle; else delete rd.toast;
+  if (classic && ['accent', 'glow', 'hidden'].includes(config.appearance.rosterStyle)) rd.roster = config.appearance.rosterStyle; else delete rd.roster;
+  if (classic && ['crest', 'flat'].includes(config.appearance.heroStyle)) rd.hero = config.appearance.heroStyle; else delete rd.hero;
   if (config.appearance.dropdowns === 'glass') rd.dd = 'glass'; else { delete rd.dd; closeGlassSelect(); }
   if (config.appearance.tilt !== false) rd.tilt = 'on'; else delete rd.tilt;
-  if (config.appearance.parallax !== false) rd.par = 'on'; else { delete rd.par; parallaxReset(); }
+  if (classic && config.appearance.parallax !== false) rd.par = 'on'; else { delete rd.par; parallaxReset(); }
   const flag = (k, name) => { if (config.appearance[k] === false) rd[name] = 'off'; else delete rd[name]; };
   flag('crestBreath', 'crestBreath');
   flag('roomCurtain', 'roomCurtain');
@@ -2310,8 +2326,15 @@ function visibleRooms() {
  * Todas las salas siguen estando: lo que cambia es cuántas hay dibujadas a la
  * vez, no cuántas se pueden ver. */
 const ROW_HEIGHTS = { dense: 26, normal: 32, large: 46 };
+/* Estadio tiene filas de tablero, más altas: tienen que coincidir con el CSS (`.rrow` en estadio.css). */
+const ROW_HEIGHTS_ESTADIO = { dense: 32, normal: 40, large: 50 };
 function roomViewName() { return document.documentElement.dataset.roomview || 'list'; }
-const rowH = () => (roomViewName() === 'bars' ? 40 : (ROW_HEIGHTS[document.documentElement.dataset.roomRows] || 32));
+const rowH = () => {
+  if (roomViewName() === 'bars') return 40;
+  const rd = document.documentElement.dataset;
+  if (rd.ui === 'estadio' && roomViewName() === 'list') return ROW_HEIGHTS_ESTADIO[rd.roomRows] || 40;
+  return ROW_HEIGHTS[rd.roomRows] || 32;
+};
 /** Filas de más arriba y abajo del borde, para que el scroll no muestre huecos. */
 const OVERSCAN = 6;
 
@@ -2472,6 +2495,7 @@ function renderRooms() {
     rooms: state.rooms.totalRooms.toLocaleString('es-AR')
   });
   try { paintStatusBar(); if (state.hub) paintHub(); } catch (e) { /* adorno */ }
+  try { if (window.TLEstadio) { window.TLEstadio.board(); window.TLEstadio.room(); } } catch (e) { /* adorno */ }
   paintRoomModes();
 
   const list = visibleRooms();
@@ -2882,6 +2906,8 @@ function roomRow(room) {
   if (state.selected === room.token) row.classList.add('is-selected');
   row.dataset.token = room.token;
   row.style.setProperty('--fill', `${Math.min(100, Math.round((room.players / Math.max(1, room.maxPlayers)) * 100))}%`);
+  // Las diez luces del tablero (Estadio): cuántas van prendidas. Una sala con gente prende al menos una.
+  row.style.setProperty('--pips', String(room.players > 0 ? Math.max(1, Math.min(10, Math.round((room.players / Math.max(1, room.maxPlayers)) * 10))) : 0));
 
   const dist = document.createElement('span');
   dist.className = 'rrow__dist';
@@ -3000,6 +3026,7 @@ function syncJoinButton() {
   $('#actJoin').disabled = !state.selected;
   $('#actAutoJoin').disabled = !state.selected && !state.autoJoin;
   $('#actAutoJoin').classList.toggle('is-on', !!state.autoJoin);
+  try { if (window.TLEstadio) window.TLEstadio.room(); } catch (e) { /* adorno */ }
 }
 
 /** Antes de entrar siempre se confirma el apodo en la pantalla de inicio. */
@@ -5381,6 +5408,8 @@ function paintNowLike() {
 }
 function paintNowText() {
   $('#npTitle').textContent = npInfo.title;
+  try { paintLed(); } catch (e) { /* adorno */ }
+  try { if (window.TLEstadio) window.TLEstadio.music(); } catch (e) { /* adorno */ }
   // Títulos largos: se deslizan.
   const mq = $('#npTitle').parentElement;
   mq.classList.remove('is-marq');
@@ -11135,6 +11164,7 @@ function paintClubNow(list) {
   if (k) k.textContent = String(online.length);
   state.clubOnline = online.length;
   try { paintStatusBar(); if (state.hub) paintHub(); } catch (e) { /* adorno */ }
+  try { if (window.TLEstadio) { window.TLEstadio.plantel(members); window.TLEstadio.board(); } } catch (e) { /* adorno */ }
 
   const nodes = [];
   for (const m of online) {
@@ -11755,7 +11785,9 @@ function renderTabBar(page) {
     if (head) head.after(bar); else inner.prepend(bar);
   }
   const cur = currentTab(page);
-  const secs = $$('.page__inner > .sec[data-tab]', el).filter((sec) => sec.dataset.tab === cur && !sec.dataset.modal && !sec.hidden);
+  const secs = $$('.page__inner > .sec[data-tab]', el).filter((sec) => sec.dataset.tab === cur && !sec.dataset.modal && !sec.hidden
+    // Lo que es sólo de la interfaz clásica no se ofrece en Estadio (ahí no se ve).
+    && !(sec.classList.contains('sec--clasica') && document.documentElement.dataset.ui === 'estadio'));
   const chips = secs.map((sec) => {
     const b = document.createElement('button');
     b.type = 'button';
@@ -11809,42 +11841,26 @@ function renderTabBar(page) {
 initCollapsibles();
 
 
-/* ── Interfaz: la estructura de todo el cliente ──────────────────────────────
- * Tres maneras de armar el mismo cliente. Es un atributo en la raíz
- * (`data-layout`) y reglas de CSS: no hay JS corriendo ni nada que repintar
- * por cuadro. «Clásico» es la de siempre y la que arranca por defecto. */
+/* ── Interfaz: la cara de todo el cliente ─────────────────────────────────────
+ * Dos: Estadio (la nueva, por defecto) y Clásica (la de antes, con el menú a la
+ * izquierda). Es un atributo en la raíz (`data-ui`) y reglas de CSS; Estadio
+ * además acomoda unas piezas en su lugar (ver estadio.js). Las disposiciones
+ * viejas (dock, isla, radial…) se sacaron: `appearance.layout` ya no se lee. */
 const LAYOUTS = [
+  { id: 'estadio', es: 'Estadio', en: 'Stadium',
+    desD: 'La nueva: sectores arriba, tablero de salas y cartel LED.', desE: 'The new one: sectors on top, room board and LED sign.' },
   { id: 'classic', es: 'Clásica', en: 'Classic',
-    desD: 'Menú lateral a la izquierda. La de siempre.', desE: 'Side menu on the left. The usual one.' },
-  { id: 'top', es: 'Barra superior', en: 'Top bar',
-    desD: 'Pestañas arriba y todo el ancho para el contenido.', desE: 'Tabs on top and the full width for content.' },
-  { id: 'dock', es: 'Dock flotante', en: 'Floating dock',
-    desD: 'Una píldora abajo al centro, con los íconos.', desE: 'A pill at the bottom centre, icons only.' },
-  { id: 'island', es: 'Isla', en: 'Island',
-    desD: 'Una píldora vertical flotando a la izquierda.', desE: 'A vertical pill floating on the left.' },
-  { id: 'bottom', es: 'Barra inferior', en: 'Bottom bar',
-    desD: 'Pestañas con nombre abajo, como en el celular.', desE: 'Labelled tabs at the bottom, phone style.' },
-  { id: 'mini', es: 'Íconos', en: 'Icons only',
-    desD: 'El menú de siempre pero angosto, sólo íconos.', desE: 'The usual side menu, narrow, icons only.' },
-  { id: 'right', es: 'Lateral derecho', en: 'Right side',
-    desD: 'La clásica, pero con el menú a la derecha.', desE: 'The classic, with the menu on the right.' },
-  { id: 'consola', es: 'Consola', en: 'Console',
-    desD: 'Sin menú: un Inicio con mosaicos grandes, como una consola.', desE: 'No menu: a Home with big tiles, like a console.' },
-  { id: 'comando', es: 'Comando', en: 'Command',
-    desD: 'Sin menú: una paleta (Ctrl+K) para ir a cualquier lado.', desE: 'No menu: a palette (Ctrl+K) to go anywhere.' },
-  { id: 'radial', es: 'Radial', en: 'Radial',
-    desD: 'Un botón en la esquina que abre los destinos en abanico.', desE: 'A corner button that fans the destinations out.' }
+    desD: 'La de antes, con el menú a la izquierda.', desE: 'The previous one, with the menu on the left.' }
 ];
-const LAYOUT_IDS = ['top', 'dock', 'mini', 'right', 'island', 'bottom', 'consola', 'comando', 'radial'];
 function paintLayout() {
   const host = $('#layoutCards');
   if (!host || !state.config) return;
   const en = isEn();
   $('#layTitle').textContent = en ? 'Interface layout' : 'Interfaz';
   $('#layDesc').textContent = en
-    ? 'Changes how the whole client is laid out. It starts on Classic and you can come back any time.'
-    : 'Cambia cómo se arma todo el cliente. Arranca en Clásica y podés volver cuando quieras.';
-  const cur = state.config.appearance.layout || 'classic';
+    ? 'How the whole client looks. Your colours, settings and data are the same in both.'
+    : 'Cómo se ve todo el cliente. Tus colores, ajustes y datos son los mismos en las dos.';
+  const cur = state.config.appearance.ui === 'classic' ? 'classic' : 'estadio';
   const sig = `${cur}|${en}`;
   if (host.dataset.sig !== sig) {
     host.dataset.sig = sig;
@@ -11893,12 +11909,11 @@ function paintLayout() {
   /* Los íconos del menú no dicen nada sin la etiqueta: se las damos de tooltip. */
   for (const b of $$('#rail .railitem')) { const sp = b.querySelector('span'); if (sp && sp.textContent.trim()) b.title = sp.textContent.trim(); }
   const back = $('#layReset');
-  back.textContent = en ? 'Back to Classic' : 'Volver a la clásica';
-  back.hidden = cur === 'classic';
+  back.hidden = true;
 }
 $('#layoutCards').addEventListener('click', (e) => {
   const b = e.target.closest('[data-lay]');
-  if (b) patchConfig({ appearance: { layout: b.dataset.lay } });
+  if (b) patchConfig({ appearance: { ui: b.dataset.lay } });
 });
 $('#rowsChips').addEventListener('click', (e) => {
   const b = e.target.closest('[data-rows]');
@@ -11908,7 +11923,7 @@ $('#statusChips').addEventListener('click', (e) => {
   const b = e.target.closest('[data-sb]');
   if (b) patchConfig({ appearance: { statusBar: b.dataset.sb === 'true' } });
 });
-$('#layReset').addEventListener('click', () => patchConfig({ appearance: { layout: 'classic' } }));
+
 
 
 /* ── Barra de estado ─────────────────────────────────────────────────────────
@@ -11916,8 +11931,51 @@ $('#layReset').addEventListener('click', () => patchConfig({ appearance: { layou
  * conectados, cuánta gente hay en HaxBall y la hora. Apagada no existe (ni el
  * nodo ni el temporizador); prendida se repinta cuando llega un dato nuevo y
  * cada 30 s por la hora. Dentro de una sala se esconde: ahí abajo hay cancha. */
+/* ── Cartel LED de la tribuna ─────────────────────────────────────────────────
+ * La franja de abajo, como el cartel de publicidad que rodea la cancha. Lleva lo
+ * que ya sabe el cliente —gente en HaxBall, el club conectado, el tema que
+ * suena— y corre solo con `transform` (una capa, nada de pintar por cuadro).
+ * Sólo se reescribe cuando cambia el texto: así la animación no salta. Dentro
+ * de una sala el CSS lo saca del árbol, así que no gasta nada jugando. */
+function paintLed() {
+  const track = $('#ledTrack');
+  if (!track || !state.config) return;
+  const en = isEn();
+  const items = ['TODA LA LECCE'];
+  const r = state.rooms;
+  if (r && r.totalRooms) {
+    items.push(en
+      ? `${Number(r.totalPlayers).toLocaleString('es-AR')} players in ${Number(r.totalRooms).toLocaleString('es-AR')} rooms`
+      : `${Number(r.totalPlayers).toLocaleString('es-AR')} jugadores en ${Number(r.totalRooms).toLocaleString('es-AR')} salas`);
+  }
+  if (typeof state.clubOnline === 'number') items.push(en ? `${state.clubOnline} from the club online` : `${state.clubOnline} del club conectados`);
+  const nick = state.config.general && state.config.general.nickname;
+  if (nick) items.push(en ? `Welcome, ${nick}` : `Bienvenido, ${nick}`);
+  if (typeof npInfo !== 'undefined' && npInfo && npInfo.title) items.push(`♪ ${npInfo.title}`);
+  if (state.info && state.info.version) items.push(`TL App v${state.info.version}`);
+  const sig = items.join('|');
+  if (track.dataset.sig === sig) return;
+  track.dataset.sig = sig;
+  // Dos copias seguidas: la animación corre la mitad del ancho y empalma sin corte.
+  const half = () => {
+    const g = document.createElement('span');
+    g.className = 'ledboard__run';
+    for (const text of items) {
+      const b = document.createElement('b');
+      b.textContent = text;
+      g.append(b);
+    }
+    return g;
+  };
+  track.replaceChildren(half(), half());
+  // Velocidad pareja (≈ 48 px/s) sin importar cuánto texto haya.
+  const w = track.firstChild.offsetWidth || 900;
+  track.style.setProperty('--led-dur', `${Math.max(14, Math.round(w / 48))}s`);
+}
+
 let statusTimer = 0;
 function paintStatusBar() {
+  try { paintLed(); } catch (e) { /* adorno */ }
   const on = !!(state.config && state.config.appearance.statusBar === true);
   let bar = $('#statusbar');
   if (!on) {
@@ -12076,10 +12134,10 @@ function cmdEntries() {
   out.push({ label: en ? 'Create a room' : 'Crear sala', hint: en ? 'Action' : 'Acción', run: () => { goView('play'); const c = $('#actCreate'); if (c) c.click(); } });
   out.push({ label: en ? 'Open replays folder' : 'Abrir carpeta de replays', hint: en ? 'Action' : 'Acción', run: () => { tvm.replays.openFolder(); } });
   out.push({ label: en ? 'Toggle full screen' : 'Pantalla completa', hint: 'F11', run: () => { tvm.window.toggleFullscreen(); } });
-  const cur = (state.config && state.config.appearance.layout) || 'classic';
+  const cur = state.config && state.config.appearance.ui === 'classic' ? 'classic' : 'estadio';
   for (const l of LAYOUTS) {
     if (l.id === cur) continue;
-    out.push({ label: `${en ? 'Interface' : 'Interfaz'}: ${en ? l.en : l.es}`, hint: en ? 'Change layout' : 'Cambiar interfaz', run: () => patchConfig({ appearance: { layout: l.id } }) });
+    out.push({ label: `${en ? 'Interface' : 'Interfaz'}: ${en ? l.en : l.es}`, hint: en ? 'Change look' : 'Cambiar interfaz', run: () => patchConfig({ appearance: { ui: l.id } }) });
   }
   return out;
 }

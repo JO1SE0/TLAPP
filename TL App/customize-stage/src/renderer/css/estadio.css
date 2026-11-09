@@ -1,0 +1,830 @@
+/* ══════════════════════════════════════════════════════════════════════
+   TL App — interfaz «Estadio»
+   ══════════════════════════════════════════════════════════════════════
+   Todo lo de este archivo vale sólo con `html[data-ui="estadio"]`. Con la
+   interfaz Clásica no se aplica ni una regla.
+
+   La estructura:
+     marquesina (barra de arriba) · sectores (el menú, numerado) · contenido ·
+     cartel LED abajo.
+   Salas va en tres columnas (ver estadio.js): tu ficha y el plantel, el
+   tablero, y la sala elegida con el botón de entrar.
+   Las demás pantallas ocupan todo el ancho, sin ventanas flotando encima.
+
+   Reglas que se cumplen en todo el archivo:
+   · Colores: sólo los tokens del tema. Cambiar de tema cambia todo.
+   · Rendimiento: lo único que se mueve solo es el texto del cartel LED
+     (`transform`), y únicamente en el menú. Dentro de una sala el estadio, el
+     cartel y los sectores no existen o están quietos. Sin filtros ni blur.
+   · Chromium 91: nada de :has(), color-mix(), @layer ni contenedores.
+   ══════════════════════════════════════════════════════════════════════ */
+
+html[data-ui="estadio"] {
+  --font: Bahnschrift, "Outfit", "Segoe UI", system-ui, sans-serif;
+  --font-cond: "Bahnschrift SemiCondensed", Bahnschrift, "Outfit", sans-serif;
+  --font-display: var(--font-cond);
+  --e-r: 3px;
+  --e-lit: linear-gradient(180deg, rgb(var(--text-rgb) / 6%), rgb(var(--text-rgb) / 1.5%) 120px);
+  --e-stand: rgb(0 0 0 / 34%);
+  --e-line: rgb(var(--text-rgb) / 8%);
+  --e-glow: 0 0 12px rgb(var(--accent-rgb) / 70%);
+  --e-led: #04060b;
+  --e-dots: radial-gradient(circle at 1.5px 1.5px, transparent 1px, rgb(0 0 0 / 50%) 1.6px) 0 0 / 3px 3px;
+  --e-ok: var(--ok, #3ddc97);
+  --e-ok-rgb: 61 220 151;
+  --led-h: 30px;
+  --sectors-h: 50px;
+  --e-beams:
+    conic-gradient(from 148deg at 6% -12%, transparent 0deg, rgb(var(--text-rgb) / 11%) 6deg, rgb(var(--text-rgb) / 3%) 12deg, transparent 17deg),
+    conic-gradient(from 167deg at 6% -12%, transparent 0deg, rgb(var(--text-rgb) / 7%) 5deg, transparent 10deg),
+    conic-gradient(from 183deg at 94% -12%, transparent 0deg, rgb(var(--text-rgb) / 7%) 5deg, transparent 10deg),
+    conic-gradient(from 195deg at 94% -12%, transparent 2deg, rgb(var(--text-rgb) / 3%) 7deg, rgb(var(--text-rgb) / 11%) 11deg, transparent 17deg);
+}
+html[data-ui="estadio"] body { font-family: var(--font); }
+html[data-ui="estadio"] :where(h1, h2, h3) { font-family: var(--font-cond); }
+
+/* Letra de cartel: condensada y en mayúsculas. Se usa en muchos lugares. */
+html[data-ui="estadio"] :is(
+  #rail .railitem, .est-label, .est-eyebrow, .est-boardhead__h, .est-live__n small, .est-live__n b,
+  #app .roommode, #app .filterchip, #app .sortselect, #app .rtable__head, #app .rrow__players, #app .rrow__dist,
+  #app .ghostbtn, #app .joinbtn, #app .est-btn, .est-match__name, .est-match__meta, .est-score, .est-pl__name, .est-pl__n,
+  #app .btn, .modal .btn, .startcard .btn, #app .chip, #app .tag, #app .seg button,
+  #app .pagehead h1, #app .sec__title, #app .csec__head h2, #app .csec__head h3, #app .csec__tag, #app .eyebrow,
+  #app .pnav__tab b, #app .pnav__tab strong, #app .pnav__i b, #app .tabbar__chip, #app .tabbar__fold,
+  #app .presetbtn b, #app .presetbtn strong, #app .themecard strong, #app .laycard b,
+  #app .kpi b, #app .kpi span, #app .club__title, #app .club__eyebrow, #app .mus__title, #app .mus__artist, #app .mus__sw b,
+  .ledboard__run b, .brand__name, .gametab, .modal__head h2, .startcard h1, .startcard__label, .startsummary__chip,
+  .splash__word, .splash__status, .memenu__id b, .fdock__head h2, .toast, .notebar strong, .est-music b
+) {
+  font-family: var(--font-cond);
+  font-stretch: 87.5%;
+}
+
+/* Barras de scroll finas. */
+html[data-ui="estadio"] ::-webkit-scrollbar { width: 8px; height: 8px; }
+html[data-ui="estadio"] ::-webkit-scrollbar-track { background: transparent; }
+html[data-ui="estadio"] ::-webkit-scrollbar-thumb { background: rgb(var(--text-rgb) / 14%); border-radius: 1px; border: 2px solid transparent; background-clip: padding-box; }
+html[data-ui="estadio"] ::-webkit-scrollbar-thumb:hover { background-color: rgb(var(--accent-rgb) / 60%); }
+
+/* Lo que es sólo de la clásica no existe acá. */
+html[data-ui="estadio"] .row--clasica, html[data-ui="estadio"] .sec--clasica, html[data-ui="estadio"] .roster, html[data-ui="estadio"] .rail__hr, html[data-ui="estadio"] .rail__sp, html[data-ui="estadio"] .bgpar,
+html[data-ui="estadio"] #profCard .profcard__glow, html[data-ui="estadio"] #layReset { display: none !important; }
+
+/* ══ 1 · El estadio (fondo) ═══════════════════════════════════════════ */
+.stadium { display: none; }
+html[data-ui="estadio"] .ambient .blob { display: none; }
+html[data-ui="estadio"] .ambient {
+  background:
+    radial-gradient(90% 50% at 50% 116%, rgb(var(--accent-rgb) / 13%), transparent 70%),
+    linear-gradient(180deg, var(--bg-0), var(--bg-1) 56%, var(--bg-0));
+}
+html[data-ui="estadio"] .stadium { position: absolute; inset: 0; display: block; pointer-events: none; }
+html[data-ui="estadio"] .stadium > i { position: absolute; display: block; }
+html[data-ui="estadio"] .stadium__beams {
+  inset: 0; background: var(--e-beams);
+  -webkit-mask-image: linear-gradient(180deg, #000, rgb(0 0 0 / 70%) 50%, transparent 96%);
+  mask-image: linear-gradient(180deg, #000, rgb(0 0 0 / 70%) 50%, transparent 96%);
+}
+html[data-ui="estadio"] .stadium__tower {
+  top: -110px; width: 380px; height: 260px;
+  background: radial-gradient(closest-side, rgb(var(--text-rgb) / 14%), rgb(var(--accent-rgb) / 5%) 50%, transparent);
+}
+html[data-ui="estadio"] .stadium__tower--l { left: calc(6% - 190px); }
+html[data-ui="estadio"] .stadium__tower--r { right: calc(6% - 190px); }
+html[data-ui="estadio"] .stadium__pitch {
+  left: 0; right: 0; bottom: 0; height: 42%;
+  background: repeating-linear-gradient(90deg, rgb(var(--text-rgb) / 1.8%) 0 110px, transparent 110px 220px);
+  -webkit-mask-image: linear-gradient(180deg, transparent, #000 80%);
+  mask-image: linear-gradient(180deg, transparent, #000 80%);
+}
+html[data-ui="estadio"][data-scheme="light"] .stadium__beams, html[data-ui="estadio"][data-scheme="light"] .stadium__tower { opacity: .5; }
+/* Se prenden las luces: una vez, al abrir la app. Parpadeo corto y quedan fijas. */
+html[data-ui="estadio"]:not([data-animations="off"]) .stadium__beams,
+html[data-ui="estadio"]:not([data-animations="off"]) .stadium__tower { animation: eLights 1.5s steps(1, end) .35s both; }
+@keyframes eLights { 0% { opacity: 0; } 20% { opacity: .5; } 28% { opacity: .1; } 42% { opacity: .85; } 50% { opacity: .3; } 64%, 100% { opacity: 1; } }
+html[data-ui="estadio"][data-stage="game"] .stadium { display: none; }
+
+/* El contenido deja ver el estadio. */
+html[data-ui="estadio"] #app .browser, html[data-ui="estadio"] #app .app, html[data-ui="estadio"] #app.app { background: transparent; }
+html[data-ui="estadio"] #app .browser::before, html[data-ui="estadio"] #app .browser::after { display: none; }
+
+/* ══ 2 · La marquesina (barra de arriba) ══════════════════════════════ */
+html[data-ui="estadio"] #app .topbar {
+  background: linear-gradient(180deg, rgb(0 0 0 / 55%), rgb(0 0 0 / 30%));
+  border-bottom: 1px solid var(--e-line);
+  box-shadow: none;
+}
+html[data-ui="estadio"] #app .topbar::after { display: none; }
+html[data-ui="estadio"] #app .brand { gap: 10px; }
+html[data-ui="estadio"] #app .brand__crest { background: none; box-shadow: none; }
+html[data-ui="estadio"] #app .brand__mark { border-radius: 0; box-shadow: none; filter: drop-shadow(0 0 10px rgb(var(--accent-rgb) / 45%)); }
+html[data-ui="estadio"] #app .brand__name { font-size: 20px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
+html[data-ui="estadio"] #app .gametab { height: 32px; border-radius: 0; text-transform: uppercase; letter-spacing: .08em; font-size: 12.5px; font-weight: 700; }
+html[data-ui="estadio"] #app .gametab.is-active { background: rgb(var(--accent-rgb) / 14%); box-shadow: inset 0 -2px 0 var(--accent); }
+html[data-ui="estadio"] #app .gametab.is-active::after { display: none; }
+html[data-ui="estadio"] #app .gametabs__add { border-radius: 0; }
+html[data-ui="estadio"] #app .linkbar {
+  height: 32px; border-radius: 0; border: 1px solid rgb(var(--text-rgb) / 10%);
+  background: rgb(0 0 0 / 35%); box-shadow: none;
+  -webkit-clip-path: polygon(8px 0, 100% 0, 100% 100%, 0 100%, 0 8px);
+  clip-path: polygon(8px 0, 100% 0, 100% 100%, 0 100%, 0 8px);
+}
+html[data-ui="estadio"] #app .linkbar:focus-within { border-color: var(--accent); background: rgb(0 0 0 / 45%); box-shadow: none; }
+html[data-ui="estadio"] #app .linkbar__go { width: 26px; height: 26px; border-radius: 0; background: var(--accent); color: var(--accent-text-on); }
+html[data-ui="estadio"] #app .linkbar__go:hover { transform: none; }
+html[data-ui="estadio"] #app .audio { border-radius: 0; background: rgb(0 0 0 / 30%); border-color: rgb(var(--text-rgb) / 8%); }
+html[data-ui="estadio"] #app .topbar .iconbtn, html[data-ui="estadio"] #app .friendsbtn, html[data-ui="estadio"] #app .mechip, html[data-ui="estadio"] #app .toplast, html[data-ui="estadio"] #app .topchip, html[data-ui="estadio"] #app .wbtn { border-radius: 0; }
+html[data-ui="estadio"] #app .topbar .iconbtn:hover { transform: none; }
+html[data-ui="estadio"] #app .toplast, html[data-ui="estadio"] #app .topchip { text-transform: uppercase; letter-spacing: .06em; font-family: var(--font-cond); font-stretch: 87.5%; }
+html[data-ui="estadio"] #app .topbar-reveal { border-radius: 0; }
+
+/* ══ 3 · Los sectores (el menú) ═══════════════════════════════════════ */
+html[data-ui="estadio"] #app #rail {
+  height: var(--sectors-h); padding: 0 18px; gap: 2px; justify-content: center; counter-reset: sector;
+  background: linear-gradient(180deg, rgb(0 0 0 / 30%), rgb(0 0 0 / 10%));
+  border: 0; box-shadow: none; position: relative; overflow: visible;
+}
+/* Tira de LEDs abajo de los sectores. */
+html[data-ui="estadio"] #app #rail::after {
+  content: ""; position: absolute; left: 0; right: 0; bottom: -1px; height: 2px; pointer-events: none;
+  background: repeating-linear-gradient(90deg, var(--accent) 0 3px, transparent 3px 7px); opacity: .5;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 18%, #000 82%, transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 18%, #000 82%, transparent);
+}
+html[data-ui="estadio"] #rail .railitem {
+  position: relative; height: var(--sectors-h); padding: 0 16px; gap: 0; border-radius: 0;
+  font-size: 14px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase;
+  color: var(--text-faint); background: none; box-shadow: none; border: 0;
+  counter-increment: sector; isolation: isolate;
+}
+/* El número del sector, chiquito, antes del nombre. Va en lugar del ícono. */
+html[data-ui="estadio"] #rail .railitem svg { display: none; }
+html[data-ui="estadio"] #rail .railitem::before {
+  content: counter(sector, decimal-leading-zero); position: static; display: inline-block;
+  width: auto; height: auto; margin-right: 8px; background: none; border-radius: 0; opacity: 1; transform: none; box-shadow: none;
+  font-size: 10.5px; letter-spacing: 0; color: rgb(var(--text-rgb) / 30%);
+}
+html[data-ui="estadio"] #rail .railitem span { position: relative; white-space: nowrap; }
+html[data-ui="estadio"] #rail .railitem:hover { color: var(--text); background: none; transform: none; }
+html[data-ui="estadio"] #rail .railitem:hover::before { color: var(--accent); }
+/* Activo: el reflector cae sobre el sector, con la barra de LED abajo. */
+html[data-ui="estadio"] #rail .railitem.is-active { color: var(--text); background: none; box-shadow: none; }
+html[data-ui="estadio"] #rail .railitem.is-active::before { color: var(--accent); }
+html[data-ui="estadio"] #rail .railitem.is-active::after {
+  content: ""; position: absolute; z-index: -1; left: -10px; right: -10px; top: 0; bottom: 0; display: block;
+  background:
+    linear-gradient(var(--accent), var(--accent)) 50% 100% / calc(100% - 36px) 3px no-repeat,
+    linear-gradient(180deg, rgb(var(--accent-rgb) / 0%), rgb(var(--accent-rgb) / 24%));
+  -webkit-clip-path: polygon(28% 0, 72% 0, 100% 100%, 0 100%);
+  clip-path: polygon(28% 0, 72% 0, 100% 100%, 0 100%);
+  opacity: 1; transform: none; border-radius: 0; box-shadow: none; width: auto; height: auto;
+}
+html[data-ui="estadio"] #rail .railitem.is-active span { text-shadow: 0 0 14px rgb(var(--accent-rgb) / 50%); }
+html[data-ui="estadio"] #rail #captainBtn { margin-left: 0; }
+/* Dentro de una sala los sectores se guardan arriba (vuelven al acercar el mouse). */
+html[data-ui="estadio"] #app[data-stage="game"] #rail { background: var(--bg-0); border-bottom: 1px solid var(--e-line); }
+html[data-ui="estadio"] #app .railedge i { border-radius: 0; background: var(--accent); }
+
+/* ══ 4 · Salas: tres columnas ═════════════════════════════════════════ */
+html[data-ui="estadio"] #app .browser__shell {
+  max-width: none; height: 100%; margin: 0; padding: 16px 18px; box-sizing: border-box;
+  display: grid; gap: 0 16px;
+  grid-template-columns: 268px minmax(0, 1fr) 316px;
+  grid-template-rows: auto auto auto auto minmax(0, 1fr);
+  grid-template-areas: "left head right" "left nick right" "left modes right" "left tools right" "left board right";
+}
+html[data-ui="estadio"] #app .browser__shell > .est-left { grid-area: left; }
+html[data-ui="estadio"] #app .browser__shell > .est-right { grid-area: right; }
+html[data-ui="estadio"] #app .browser__shell > .est-boardhead { grid-area: head; }
+html[data-ui="estadio"] #app .browser__shell > .roommodes { grid-area: modes; }
+html[data-ui="estadio"] #app .browser__shell > .rtoolbar { grid-area: tools; }
+html[data-ui="estadio"] #app .browser__shell > .rpanel { grid-area: board; }
+html[data-ui="estadio"] #app .browser__shell > .nickcard { grid-area: nick; margin: 0; border-left: 1px solid var(--e-line); border-right: 1px solid var(--e-line); }
+/* La columna del medio es un solo tablero: cabecera, filtros, buscador y filas. */
+html[data-ui="estadio"] #app .est-boardhead, html[data-ui="estadio"] #app .browser__shell > .roommodes, html[data-ui="estadio"] #app .browser__shell > .rtoolbar, html[data-ui="estadio"] #app .browser__shell > .rpanel {
+  background: var(--e-stand); border-left: 1px solid var(--e-line); border-right: 1px solid var(--e-line);
+}
+html[data-ui="estadio"] #app .est-boardhead { position: relative; border-top: 1px solid var(--e-line); background: var(--e-lit), var(--e-stand); }
+
+/* Columnas: tribunas con el filete de luz arriba. */
+html[data-ui="estadio"] .est-col, html[data-ui="estadio"] .est-boardhead {
+  position: relative; min-width: 0; min-height: 0;
+}
+html[data-ui="estadio"] .est-col { display: flex; flex-direction: column; border: 1px solid var(--e-line); background: var(--e-lit), var(--e-stand); }
+html[data-ui="estadio"] .est-col::before, html[data-ui="estadio"] .est-boardhead::before {
+  content: ""; position: absolute; left: -1px; right: -1px; top: -1px; height: 3px; z-index: 1;
+  background: var(--accent); box-shadow: 0 0 16px rgb(var(--accent-rgb) / 55%);
+}
+html[data-ui="estadio"] .est-label {
+  display: flex; align-items: center; gap: 10px; padding: 14px 16px 10px;
+  font-size: 11px; font-weight: 700; letter-spacing: .26em; text-transform: uppercase; color: var(--accent);
+}
+html[data-ui="estadio"] .est-label::after { content: ""; flex: 1; height: 1px; background: linear-gradient(90deg, rgb(var(--accent-rgb) / 40%), transparent); }
+html[data-ui="estadio"] .est-label__aside { order: 2; font-style: normal; color: var(--text-faint); letter-spacing: .12em; }
+html[data-ui="estadio"] .est-label__aside:empty { display: none; }
+
+/* Tu ficha: la tarjeta de perfil de siempre, vestida de carta de jugador. */
+html[data-ui="estadio"] .est-ficha { padding: 0 14px; }
+html[data-ui="estadio"] #app #profCard {
+  width: 100%; height: auto; margin: 0; order: 0; padding: 16px 14px 12px; display: grid; gap: 0 12px;
+  grid-template-columns: auto minmax(0, 1fr); grid-template-areas: "ring info" "stats stats";
+  align-items: center; text-align: left; border-radius: 0; overflow: hidden;
+  background:
+    url("../../../assets/toda-la-lecce.png") right -26px top -6px / 128px auto no-repeat,
+    radial-gradient(90% 80% at 30% 0%, rgb(var(--accent-rgb) / 26%), transparent 70%),
+    linear-gradient(180deg, var(--bg-2), var(--bg-1));
+  box-shadow: inset 0 0 0 1px rgb(var(--accent-rgb) / 30%);
+  -webkit-clip-path: polygon(0 0, 100% 0, 100% calc(100% - 16px), calc(100% - 16px) 100%, 0 100%);
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 16px), calc(100% - 16px) 100%, 0 100%);
+  transition: box-shadow .2s ease;
+}
+/* El escudo de fondo, apenas visible: una capa encima que lo apaga. */
+html[data-ui="estadio"] #app #profCard::before {
+  content: ""; position: absolute; inset: 0; z-index: 0; pointer-events: none;
+  background: linear-gradient(90deg, rgb(var(--bg-1-rgb, 15 29 58) / 0%) 30%, rgb(var(--bg-1-rgb, 15 29 58) / 80%) 60%, rgb(var(--bg-1-rgb, 15 29 58) / 55%));
+}
+html[data-ui="estadio"] #app #profCard:hover { transform: none; box-shadow: inset 0 0 0 1px var(--accent); }
+html[data-ui="estadio"] #app #profCard::after { display: none; }
+html[data-ui="estadio"] #app #profCard .profcard__ring {
+  grid-area: ring; width: 64px; height: 64px; border-radius: 0;
+  -webkit-clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%);
+  clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%);
+  background: conic-gradient(var(--accent) calc(var(--p) * 1%), rgb(var(--text-rgb) / 14%) 0);
+  box-shadow: none;
+}
+html[data-ui="estadio"] #app #profCard .profcard__ring::before { inset: 3px; border-radius: 0; background: var(--bg-1); -webkit-clip-path: inherit; clip-path: inherit; }
+html[data-ui="estadio"] #app #profCard .profcard__av { width: 54px; height: 54px; border-radius: 0; font-family: var(--font-cond); font-weight: 700; font-size: 24px; -webkit-clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%); clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%); }
+html[data-ui="estadio"] #app #profCard .profcard__badge { display: none; }
+html[data-ui="estadio"] #app #profCard .profcard__info { grid-area: info; align-items: flex-start; gap: 2px; width: auto; }
+html[data-ui="estadio"] #app #profCard .profcard__name { max-width: 100%; font: 700 24px/1.05 var(--font-cond); font-stretch: 87.5%; letter-spacing: .05em; }
+html[data-ui="estadio"] #app #profCard .profcard__lvl { font: 700 10.5px/1 var(--font-cond); font-stretch: 87.5%; letter-spacing: .22em; color: var(--accent); }
+html[data-ui="estadio"] #app #profCard .profcard__bar { display: block; height: 4px; margin-top: 6px; border-radius: 0; background: rgb(0 0 0 / 40%); }
+html[data-ui="estadio"] #app #profCard .profcard__bar i { border-radius: 0; background: var(--accent); box-shadow: var(--e-glow); }
+html[data-ui="estadio"] #app #profCard .profcard__stats {
+  grid-area: stats; display: grid; width: auto; margin-top: 14px; padding: 12px 0 2px; gap: 0;
+  border-top: 1px solid rgb(var(--text-rgb) / 9%); border-left: 0;
+}
+html[data-ui="estadio"] #app #profCard .profcard__stats span + span { border-left: 1px solid rgb(var(--text-rgb) / 9%); }
+html[data-ui="estadio"] #app #profCard .profcard__stats b { font: 700 28px/1 var(--font-cond); font-stretch: 87.5%; color: var(--text); }
+html[data-ui="estadio"] #app #profCard .profcard__stats em { font: 700 9.5px/1.6 var(--font-cond); font-stretch: 87.5%; letter-spacing: .2em; color: var(--text-faint); }
+
+/* El plantel: dorsal, nombre y dónde está. */
+html[data-ui="estadio"] .est-plantel { flex: 1; min-height: 0; overflow: auto; padding-bottom: 8px; }
+html[data-ui="estadio"] .est-pl {
+  display: grid; grid-template-columns: 24px minmax(0, 1fr) auto 8px; align-items: center; gap: 8px;
+  width: 100%; padding: 6px 16px; border: 0; background: none; text-align: left; color: var(--text-dim); font: inherit;
+}
+html[data-ui="estadio"] button.est-pl { cursor: pointer; }
+html[data-ui="estadio"] button.est-pl:hover { background: rgb(var(--accent-rgb) / 10%); }
+html[data-ui="estadio"] .est-pl__n { font-size: 11px; font-weight: 700; color: rgb(var(--accent-rgb) / 70%); }
+html[data-ui="estadio"] .est-pl__name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
+html[data-ui="estadio"] .est-pl__where { max-width: 92px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-style: normal; font-size: 11px; color: var(--e-ok); }
+html[data-ui="estadio"] .est-pl__where.is-room { color: var(--e-ok); }
+html[data-ui="estadio"] .est-pl__dot { width: 7px; height: 7px; border-radius: 50%; background: rgb(var(--text-rgb) / 16%); }
+html[data-ui="estadio"] .est-pl.is-live { color: var(--text); }
+html[data-ui="estadio"] .est-pl.is-live .est-pl__dot { background: var(--e-ok); box-shadow: 0 0 8px rgb(var(--e-ok-rgb) / 80%); }
+html[data-ui="estadio"] .est-pl:not(.is-live) .est-pl__name { color: var(--text-faint); }
+
+/* Cabecera del tablero. */
+html[data-ui="estadio"] .est-boardhead { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; padding: 14px 18px 12px; }
+html[data-ui="estadio"] .est-boardhead__t { min-width: 0; }
+html[data-ui="estadio"] .est-eyebrow { display: block; margin-bottom: 6px; font-size: 11px; font-weight: 700; letter-spacing: .3em; text-transform: uppercase; color: var(--accent); }
+html[data-ui="estadio"] .est-boardhead__h { margin: 0; font-size: 34px; font-weight: 700; line-height: .95; letter-spacing: .04em; text-transform: uppercase; white-space: nowrap; }
+html[data-ui="estadio"] .est-live { display: flex; gap: 20px; text-align: right; }
+html[data-ui="estadio"] .est-live__n b { display: block; font-size: 26px; font-weight: 700; line-height: 1; color: var(--accent-mid, var(--accent)); text-shadow: 0 0 12px rgb(var(--accent-rgb) / 55%); font-variant-numeric: tabular-nums; }
+html[data-ui="estadio"] .est-live__n.is-club b { color: var(--e-ok); text-shadow: 0 0 12px rgb(var(--e-ok-rgb) / 55%); }
+html[data-ui="estadio"] .est-live__n small { font-size: 9.5px; font-weight: 700; letter-spacing: .2em; text-transform: uppercase; color: var(--text-faint); }
+
+/* Filtros: pestañas subrayadas; las vistas, a la derecha. */
+html[data-ui="estadio"] #app .roommodes { display: flex; flex-wrap: nowrap; align-items: stretch; justify-content: space-between; gap: 8px; margin: 0; padding: 0 10px; border-bottom: 1px solid var(--e-line); }
+html[data-ui="estadio"] #app .roommodes__set, html[data-ui="estadio"] #app .roommodes__view { display: flex; flex-wrap: nowrap; min-width: 0; }
+html[data-ui="estadio"] #app .roommodes__set, html[data-ui="estadio"] #app .roommodes__view { padding: 0; gap: 0; border-radius: 0; background: none; box-shadow: none; border: 0; }
+html[data-ui="estadio"] #app .roommode {
+  position: relative; padding: 11px 9px; border-radius: 0; background: none; box-shadow: none;
+  font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--text-faint); white-space: nowrap;
+}
+html[data-ui="estadio"] #app .roommode:hover { color: var(--text); background: none; }
+html[data-ui="estadio"] #app .roommode.is-on { color: var(--text); background: none; box-shadow: none; }
+html[data-ui="estadio"] #app .roommode.is-on::after { content: ""; position: absolute; left: 7px; right: 7px; bottom: -1px; height: 2px; background: var(--accent); box-shadow: var(--e-glow); }
+html[data-ui="estadio"] #app .roomviewbtn { width: 28px; padding: 0; height: auto; border-radius: 0; background: none; color: var(--text-faint); opacity: .8; }
+html[data-ui="estadio"] #app .roomviewbtn:hover { color: var(--text); opacity: 1; }
+html[data-ui="estadio"] #app .roomviewbtn.is-on, html[data-ui="estadio"] #app .roomviewbtn.is-active { color: var(--accent); opacity: 1; background: none; box-shadow: inset 0 -2px 0 var(--accent); }
+
+/* Buscador y filtros finos. */
+html[data-ui="estadio"] #app .rtoolbar { margin: 0; padding: 10px 12px; gap: 8px; flex-wrap: nowrap; }
+html[data-ui="estadio"] #app .rsearch, html[data-ui="estadio"] #app .filterchip, html[data-ui="estadio"] #app .sortselect, html[data-ui="estadio"] #app .rtoolbar .iconbtn {
+  min-height: 32px; height: 32px; border-radius: 0; background: rgb(0 0 0 / 30%); border: 1px solid rgb(var(--text-rgb) / 9%); box-shadow: none;
+}
+html[data-ui="estadio"] #app .rsearch { flex: 1 1 auto; min-width: 110px; padding: 0 10px; }
+html[data-ui="estadio"] #app .rsearch input { width: 100%; min-width: 0; background: none; border: 0; box-shadow: none; }
+html[data-ui="estadio"] #app .filterchip, html[data-ui="estadio"] #app .sortselect { flex: none; }
+html[data-ui="estadio"] #app .filterchip__ico { display: none; }
+html[data-ui="estadio"] #app .rsearch:focus-within { border-color: var(--accent); }
+html[data-ui="estadio"] #app .filterchip, html[data-ui="estadio"] #app .sortselect { padding-inline: 8px; gap: 5px; font-size: 11px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; white-space: nowrap; }
+html[data-ui="estadio"] #app .filterchip.is-on { border-color: rgb(var(--accent-rgb) / 60%); color: var(--accent-mid, var(--accent)); background: rgb(var(--accent-rgb) / 12%); }
+html[data-ui="estadio"] #app .rtoolbar .iconbtn { width: 32px; flex: none; }
+html[data-ui="estadio"] #app .rcount { display: none; }
+
+/* El tablero de salas. */
+html[data-ui="estadio"] #app .rpanel {
+  display: flex; flex-direction: column; min-height: 0; border-radius: 0; border-top: 0; border-bottom: 1px solid var(--e-line);
+  box-shadow: none; overflow: hidden;
+}
+html[data-ui="estadio"][data-roomview="list"] #app .rtable__head {
+  display: grid; grid-template-columns: 30px minmax(0, 1fr) 168px 74px 20px; gap: 0 10px; align-items: center;
+  height: 30px; padding: 0 18px; background: none; border-bottom: 1px solid var(--e-line);
+  font-size: 10px; font-weight: 700; letter-spacing: .22em; text-transform: uppercase; color: rgb(var(--accent-rgb) / 80%);
+}
+/* El orden de las columnas en el tablero: país · sala · ocupación · distancia · ★ */
+html[data-ui="estadio"][data-roomview="list"] #app .rtable__head > :nth-child(1) { order: 4; text-align: right; }
+html[data-ui="estadio"][data-roomview="list"] #app .rtable__head > :nth-child(2) { order: 1; }
+html[data-ui="estadio"][data-roomview="list"] #app .rtable__head > :nth-child(3) { order: 2; }
+html[data-ui="estadio"][data-roomview="list"] #app .rtable__head > :nth-child(4) { order: 3; }
+html[data-ui="estadio"][data-roomview="list"] #app .rtable__head > :nth-child(5) { order: 5; }
+html[data-ui="estadio"][data-roomview="list"] #app .rtable { padding: 0; }
+html[data-ui="estadio"][data-roomview="list"] #app .rrow {
+  display: grid; grid-template-columns: 30px minmax(0, 1fr) 168px 74px 20px; gap: 0 10px; align-items: center;
+  height: 40px; margin: 0; padding: 0 18px; border-radius: 0; border: 0; box-shadow: inset 0 -1px 0 rgb(var(--text-rgb) / 4.5%);
+  background: none; font-size: 13.5px;
+}
+html[data-ui="estadio"][data-roomview="list"][data-room-rows="dense"] #app .rrow { height: 32px; font-size: 12.5px; }
+html[data-ui="estadio"][data-roomview="list"][data-room-rows="large"] #app .rrow { height: 50px; font-size: 14.5px; }
+html[data-ui="estadio"][data-roomview="list"] #app .rrow .rrow__flag { order: 1; }
+html[data-ui="estadio"][data-roomview="list"] #app .rrow .rrow__name { order: 2; min-width: 0; }
+html[data-ui="estadio"][data-roomview="list"] #app .rrow .rrow__players { order: 3; }
+html[data-ui="estadio"][data-roomview="list"] #app .rrow .rrow__dist { order: 4; text-align: right; }
+html[data-ui="estadio"][data-roomview="list"] #app .rrow .rrow__fav { order: 5; }
+html[data-ui="estadio"][data-roomview="list"] #app .rrow:hover { background: rgb(var(--text-rgb) / 3.5%); }
+html[data-ui="estadio"][data-roomview="list"] #app .rrow.is-selected { background: linear-gradient(90deg, rgb(var(--accent-rgb) / 26%), rgb(var(--accent-rgb) / 4%) 80%); box-shadow: inset 0 -1px 0 rgb(var(--accent-rgb) / 18%); }
+html[data-ui="estadio"][data-roomview="list"] #app .rrow::before { left: 0; top: 0; bottom: 0; width: 3px; border-radius: 0; opacity: 0; box-shadow: var(--e-glow); }
+html[data-ui="estadio"][data-roomview="list"] #app .rrow:hover::before { opacity: .45; }
+html[data-ui="estadio"][data-roomview="list"] #app .rrow.is-selected::before { opacity: 1; }
+html[data-ui="estadio"][data-roomview="list"] #app .rrow.is-selected .rrow__label { font-weight: 700; }
+html[data-ui="estadio"][data-roomview="list"] #app .rrow.is-empty .rrow__label { color: var(--text-faint); }
+html[data-ui="estadio"][data-roomview="list"] #app .rrow__dist { white-space: nowrap; font-size: 11.5px; font-weight: 700; letter-spacing: .06em; color: var(--text-faint); }
+/* Ocupación: diez luces de tablero + el número. */
+html[data-ui="estadio"][data-roomview="list"] #app .rrow__players {
+  display: grid; grid-template-columns: 108px minmax(0, 1fr); align-items: center; justify-items: end; gap: 10px;
+  padding: 0; min-width: 0; border: 0; border-radius: 0; background: none; box-shadow: none;
+  font-size: 15px; font-weight: 700; letter-spacing: .03em; color: var(--text); text-shadow: none;
+}
+html[data-ui="estadio"][data-roomview="list"] #app .rrow__players::before {
+  content: ""; flex: none; width: 108px; height: 11px;
+  background:
+    linear-gradient(90deg, var(--pip, var(--e-ok)) calc(var(--pips, 0) * 10.8px), transparent 0) 0 0 / 100% 100% no-repeat,
+    rgb(var(--text-rgb) / 9%);
+  -webkit-mask-image: repeating-linear-gradient(90deg, #000 0 8.6px, transparent 8.6px 10.8px);
+  mask-image: repeating-linear-gradient(90deg, #000 0 8.6px, transparent 8.6px 10.8px);
+}
+html[data-ui="estadio"][data-roomview="list"] #app .rrow.is-almost-full { --pip: var(--warn); }
+html[data-ui="estadio"][data-roomview="list"] #app .rrow.is-full { --pip: var(--danger); }
+html[data-ui="estadio"][data-roomview="list"] #app .rrow.is-full .rrow__players, html[data-ui="estadio"][data-roomview="list"] #app .rrow.is-almost-full .rrow__players { color: var(--text); background: none; border: 0; }
+html[data-ui="estadio"][data-roomview="list"] #app .rrow.is-full .rrow__players { color: var(--danger); }
+html[data-ui="estadio"][data-roomview="list"] #app .rrow__flag { justify-self: start; }
+html[data-ui="estadio"][data-roomview="list"] #app .rrow__fav { border-radius: 0; }
+html[data-ui="estadio"][data-roomview="list"] #app .rrow__club { border-radius: 0; }
+html[data-ui="estadio"] #app .rpanel__foot { display: none; }
+
+/* Las otras vistas de la lista (tarjetas, barras, tablero, mapa) en tablas de estadio. */
+html[data-ui="estadio"]:not([data-roomview="list"]) #app .rrow { border-radius: 0; }
+html[data-ui="estadio"]:not([data-roomview="list"]) #app .rrow.is-selected { box-shadow: inset 0 0 0 1px var(--accent); }
+html[data-ui="estadio"]:not([data-roomview="list"]) #app .rrow__players { border-radius: 0; font-family: var(--font-cond); font-stretch: 87.5%; }
+html[data-ui="estadio"]:not([data-roomview="list"]) #app .rtable__head { font-family: var(--font-cond); font-stretch: 87.5%; letter-spacing: .2em; background: none; }
+
+/* La sala elegida. */
+html[data-ui="estadio"] .est-right { padding-bottom: 14px; }
+html[data-ui="estadio"] .est-match { padding: 0 16px; }
+html[data-ui="estadio"] .est-match__name {
+  margin: 2px 0 0; font-size: 26px; font-weight: 700; line-height: 1.04; letter-spacing: .03em; text-transform: uppercase;
+  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; word-break: break-word;
+}
+html[data-ui="estadio"] .est-match__meta { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 10px; font-size: 11px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--text-faint); }
+html[data-ui="estadio"] .est-match__meta b { color: var(--text-dim); }
+html[data-ui="estadio"] .est-match__meta .is-lock { color: var(--warn); }
+html[data-ui="estadio"] .est-right:not(.has-room) .est-match__meta { text-transform: none; letter-spacing: .02em; font-weight: 400; font-family: var(--font); font-size: 12px; line-height: 1.45; }
+/* El marcador electrónico de la sala. */
+html[data-ui="estadio"] .est-score {
+  position: relative; display: flex; align-items: center; gap: 16px; margin: 18px 0 14px; padding: 14px 16px;
+  background: var(--e-led); border: 1px solid rgb(var(--text-rgb) / 8%); overflow: hidden;
+  --s: var(--e-ok); --s-rgb: var(--e-ok-rgb);
+}
+html[data-ui="estadio"] .est-score::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: var(--e-dots); }
+html[data-ui="estadio"] .est-score.is-almost { --s: var(--warn); --s-rgb: var(--warn-rgb); }
+html[data-ui="estadio"] .est-score.is-full { --s: var(--danger); --s-rgb: var(--danger-rgb); }
+html[data-ui="estadio"] .est-score.is-idle { display: none; }
+html[data-ui="estadio"] .est-score.is-empty { --s: var(--text-faint); --s-rgb: var(--text-rgb); }
+html[data-ui="estadio"] .est-score__n { flex: none; font-size: 52px; font-weight: 700; line-height: 1; letter-spacing: .02em; color: var(--s); text-shadow: 0 0 14px rgb(var(--s-rgb) / 70%); font-variant-numeric: tabular-nums; }
+html[data-ui="estadio"] .est-score__n small { font-size: 24px; opacity: .55; }
+html[data-ui="estadio"] .est-score__dash { opacity: .35; }
+html[data-ui="estadio"] .est-score__cap { display: flex; flex-direction: column; gap: 3px; min-width: 0; font-size: 10px; font-weight: 700; letter-spacing: .18em; text-transform: uppercase; color: var(--text-faint); }
+html[data-ui="estadio"] .est-score__cap b { font-size: 13px; letter-spacing: .08em; color: var(--text); }
+html[data-ui="estadio"] .est-score__k { color: var(--s); }
+html[data-ui="estadio"] .est-score__club { color: var(--e-ok); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; letter-spacing: .08em; }
+
+/* ENTRAR: el botón del partido. */
+html[data-ui="estadio"] .est-go { padding: 0 16px; }
+html[data-ui="estadio"] #app .est-go .joinbtn {
+  display: flex; align-items: center; justify-content: center;
+  width: 100%; height: 58px; padding: 0 0 0 .24em; gap: 12px; border: 0; border-radius: 0;
+  font-size: 22px; font-weight: 700; letter-spacing: .24em; text-transform: uppercase;
+  -webkit-clip-path: polygon(14px 0, 100% 0, calc(100% - 14px) 100%, 0 100%);
+  clip-path: polygon(14px 0, 100% 0, calc(100% - 14px) 100%, 0 100%);
+  background: rgb(var(--text-rgb) / 8%); color: var(--text-faint); box-shadow: none;
+}
+html[data-ui="estadio"] #app .est-go .joinbtn:not(:disabled) {
+  background: linear-gradient(180deg, rgb(255 255 255 / 18%), transparent 55%), var(--accent);
+  color: var(--accent-text-on); cursor: pointer;
+}
+html[data-ui="estadio"] #app .est-go .joinbtn:not(:disabled):hover { background: linear-gradient(180deg, rgb(255 255 255 / 28%), transparent 60%), var(--accent); }
+html[data-ui="estadio"] #app .est-go .joinbtn:not(:disabled):active { transform: scale(.985); }
+html[data-ui="estadio"] #app .est-go .joinbtn svg { width: 20px; height: 20px; }
+/* Botones secundarios, de a dos. */
+html[data-ui="estadio"] .est-duo { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 8px 16px 0; }
+html[data-ui="estadio"] #app .est-duo > :is(.ghostbtn, .est-btn) {
+  width: 100%; height: 38px; min-width: 0; padding: 0 8px; gap: 6px; justify-content: center;
+  border: 1px solid rgb(var(--text-rgb) / 13%); border-radius: 0; background: rgb(0 0 0 / 24%);
+  font-size: 11.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-dim);
+  display: inline-flex; align-items: center; white-space: nowrap; overflow: hidden; cursor: pointer;
+}
+html[data-ui="estadio"] #app .est-duo > :is(.ghostbtn, .est-btn) span { overflow: hidden; text-overflow: ellipsis; }
+html[data-ui="estadio"] #app .est-duo > :is(.ghostbtn, .est-btn) svg { flex: none; width: 15px; height: 15px; }
+html[data-ui="estadio"] #app .est-duo > :is(.ghostbtn, .est-btn):hover:not(:disabled) { border-color: rgb(var(--accent-rgb) / 60%); color: var(--text); background: rgb(var(--accent-rgb) / 10%); }
+html[data-ui="estadio"] #app .est-duo > :is(.ghostbtn, .est-btn):disabled { opacity: .4; cursor: default; }
+html[data-ui="estadio"] #app .est-duo > :is(.ghostbtn, .est-btn).is-on { border-color: rgb(var(--accent-rgb) / 70%); color: var(--accent-mid, var(--accent)); background: rgb(var(--accent-rgb) / 14%); }
+/* Volver a la última sala. */
+html[data-ui="estadio"] .est-last { padding: 14px 16px 0; }
+html[data-ui="estadio"] .est-last:empty, html[data-ui="estadio"] .est-last > [hidden] { display: none; }
+html[data-ui="estadio"] #app .est-last .lastroom {
+  width: 100%; min-height: 0; height: auto; margin: 0; padding: 11px 12px; gap: 10px; display: flex; align-items: center; text-align: left;
+  border: 1px dashed rgb(var(--accent-rgb) / 40%); border-radius: 0; background: rgb(var(--accent-rgb) / 5%); box-shadow: none;
+  font-size: 11px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--accent);
+}
+html[data-ui="estadio"] #app .est-last .lastroom:hover { background: rgb(var(--accent-rgb) / 12%); border-style: solid; }
+html[data-ui="estadio"] #app .est-last .lastroom b { display: block; margin-left: auto; max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--font-cond); font-stretch: 87.5%; font-size: 13px; letter-spacing: .04em; color: var(--text); }
+html[data-ui="estadio"] .est-spacer { flex: 1; min-height: 12px; }
+/* Lo que suena, abajo de todo: abre Música. */
+html[data-ui="estadio"] .est-music {
+  display: flex; align-items: center; gap: 12px; margin: 0 16px; padding: 10px 12px; border: 1px solid var(--e-line);
+  background: rgb(0 0 0 / 28%); color: var(--text); text-align: left; cursor: pointer; font: inherit;
+}
+html[data-ui="estadio"] .est-music[hidden] { display: none; }
+html[data-ui="estadio"] .est-music:hover { border-color: rgb(var(--accent-rgb) / 50%); }
+html[data-ui="estadio"] .est-music__cv { flex: none; width: 38px; height: 38px; display: grid; place-items: center; background: linear-gradient(135deg, var(--accent), var(--bg-2)); color: var(--accent-text-on); }
+html[data-ui="estadio"] .est-music__cv svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+html[data-ui="estadio"] .est-music__t { flex: 1; min-width: 0; display: grid; }
+html[data-ui="estadio"] .est-music__t b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; letter-spacing: .06em; text-transform: uppercase; }
+html[data-ui="estadio"] .est-music__t small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; color: var(--text-faint); }
+html[data-ui="estadio"] .est-music__eq { flex: none; display: flex; align-items: flex-end; gap: 2px; height: 16px; }
+html[data-ui="estadio"] .est-music__eq i { width: 3px; height: 40%; background: var(--accent); transform-origin: bottom; }
+html[data-ui="estadio"] .est-music__eq i:nth-child(2) { height: 100%; }
+html[data-ui="estadio"] .est-music__eq i:nth-child(3) { height: 60%; }
+html[data-ui="estadio"] .est-music__eq i:nth-child(4) { height: 80%; }
+html[data-ui="estadio"] .est-music:not(.is-playing) .est-music__eq { opacity: .35; }
+
+/* El pedido de nombre aparece arriba del tablero. */
+html[data-ui="estadio"] #app .nickcard { border-radius: 0; border: 1px solid rgb(var(--accent-rgb) / 45%); background: var(--bg-1); box-shadow: 0 20px 40px -20px rgb(0 0 0 / 80%); }
+html[data-ui="estadio"] #app .nickcard__form input, html[data-ui="estadio"] #app .nickcard__form .btn { border-radius: 0; }
+
+/* Ventanas angostas: la columna de la ficha se va primero, después la de la sala se achica. */
+@media (max-width: 1180px) {
+  html[data-ui="estadio"] #app .browser__shell { grid-template-columns: 0 minmax(0, 1fr) 290px; gap: 0 14px; }
+  html[data-ui="estadio"] #app .browser__shell > .est-left { display: none; }
+  html[data-ui="estadio"] #app .browser__shell { column-gap: 0; }
+  html[data-ui="estadio"] #app .browser__shell > .est-right { margin-left: 14px; }
+}
+@media (max-width: 860px) {
+  html[data-ui="estadio"] #app .browser__shell { grid-template-columns: 0 minmax(0, 1fr) 0; }
+  html[data-ui="estadio"] #app .browser__shell > .est-right { display: none; }
+  html[data-ui="estadio"] .est-live { display: none; }
+}
+@media (max-height: 640px) {
+  html[data-ui="estadio"] #app #profCard .profcard__stats { display: none; }
+  html[data-ui="estadio"] .est-music { display: none; }
+}
+
+/* ══ 5 · Cartel LED ═══════════════════════════════════════════════════ */
+.ledboard { display: none; }
+html[data-ui="estadio"] .ledboard {
+  position: relative; z-index: 14; flex: 0 0 var(--led-h); height: var(--led-h);
+  display: flex; align-items: center; overflow: hidden; contain: strict;
+  background: var(--e-led); border-top: 1px solid rgb(var(--accent-rgb) / 35%);
+}
+html[data-ui="estadio"] .ledboard::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: var(--e-dots); }
+html[data-ui="estadio"] .ledboard::before { content: ""; position: absolute; inset: 0; z-index: 1; pointer-events: none; background: linear-gradient(90deg, var(--e-led), transparent 5%, transparent 95%, var(--e-led)); }
+html[data-ui="estadio"] .ledboard__track { display: flex; flex: none; white-space: nowrap; will-change: transform; animation: eLed var(--led-dur, 40s) linear infinite; }
+html[data-ui="estadio"] .ledboard__run { display: flex; flex: none; }
+html[data-ui="estadio"] .ledboard__run b {
+  display: inline-flex; align-items: center; font-size: 15px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase;
+  color: var(--accent-mid, var(--accent)); text-shadow: 0 0 6px rgb(var(--accent-rgb) / 85%);
+}
+html[data-ui="estadio"] .ledboard__run b::after { content: "▸"; margin: 0 26px; color: rgb(var(--text-rgb) / 45%); text-shadow: none; }
+html[data-ui="estadio"] .ledboard__run b:first-child { color: #fff; text-shadow: 0 0 6px rgb(255 255 255 / 60%); }
+@keyframes eLed { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+html[data-ui="estadio"] .ledboard:hover .ledboard__track { animation-play-state: paused; }
+html[data-ui="estadio"][data-animations="off"] .ledboard__track { animation: none; }
+/* En una sala el cartel no existe: ni ocupa lugar ni produce cuadros. */
+html[data-ui="estadio"] #app[data-stage="game"] .ledboard { display: none; }
+/* La barra de estado opcional queda arriba del cartel, con su misma ropa. */
+html[data-ui="estadio"] #app .statusbar { background: var(--e-led); border-top: 1px solid var(--e-line); font-family: var(--font-cond); font-stretch: 87.5%; letter-spacing: .1em; text-transform: uppercase; }
+
+/* ══ 6 · Pantallas (Replays, Club, Música, Estilo, Ajustes…) ══════════
+   Ocupan todo el contenido, como un sector más del estadio: nada de
+   ventanas flotando sobre la lista. */
+html[data-ui="estadio"] #app .panel { padding: 16px 18px; }
+html[data-ui="estadio"] #app#app .panel__scrim { background: rgb(4 7 14 / 55%); }
+html[data-ui="estadio"] #app#app[data-stage="browser"] .panel__scrim { background: var(--bg-0); }
+html[data-ui="estadio"] #app#app .panel__card {
+  width: 100%; max-width: none; height: 100%; max-height: none; margin: 0; border-radius: 0;
+  border: 1px solid var(--e-line);
+  background: var(--e-lit), var(--e-beams), radial-gradient(90% 50% at 50% 115%, rgb(var(--accent-rgb) / 10%), transparent 70%), linear-gradient(180deg, var(--bg-0), var(--bg-1));
+  box-shadow: 0 30px 60px -30px rgb(0 0 0 / 80%);
+}
+html[data-ui="estadio"] #app#app .panel__card::before {
+  content: ""; position: absolute; left: -1px; right: -1px; top: -1px; height: 3px; z-index: 3; pointer-events: none;
+  background: var(--accent); box-shadow: 0 0 16px rgb(var(--accent-rgb) / 55%);
+}
+html[data-ui="estadio"] #app#app .panel__close, html[data-ui="estadio"] #app#app .secmodal__close {
+  border-radius: 0; background: rgb(0 0 0 / 30%); border: 1px solid rgb(var(--text-rgb) / 12%);
+}
+html[data-ui="estadio"] #app#app .panel__close:hover, html[data-ui="estadio"] #app#app .secmodal__close:hover { border-color: var(--accent); background: rgb(var(--accent-rgb) / 16%); }
+
+/* El índice de Estilo / Ajustes: sectores numerados, como la planilla del vestuario. */
+html[data-ui="estadio"] #app#app .panel .pnav {
+  width: 280px; margin: 0; padding: 12px 0; border-radius: 0; border: 0; border-right: 1px solid var(--e-line);
+  background: rgb(0 0 0 / 22%); box-shadow: none; counter-reset: psec;
+}
+html[data-ui="estadio"] #app#app .panel .pnav__search { margin: 0 14px 10px; border-radius: 0; background: rgb(0 0 0 / 30%); border: 1px solid rgb(var(--text-rgb) / 10%); }
+html[data-ui="estadio"] #app#app .panel .pnav__search input { background: none; border: 0; box-shadow: none; }
+html[data-ui="estadio"] #app#app .panel .pnav__tab, html[data-ui="estadio"] #app#app .panel .pnav__i { position: relative; border: 0; outline: 0; border-radius: 0; counter-increment: psec; padding-left: 62px; min-height: 58px; }
+html[data-ui="estadio"] #app#app .panel .pnav__tab::after, html[data-ui="estadio"] #app#app .panel .pnav__i::after {
+  content: counter(psec, decimal-leading-zero); position: absolute; left: 16px; top: 50%; transform: translateY(-50%);
+  font: 700 26px/1 var(--font-cond); font-stretch: 87.5%; color: rgb(var(--text-rgb) / 20%);
+}
+html[data-ui="estadio"] #app#app .panel .pnav__tab > :first-child:is(svg, span, i), html[data-ui="estadio"] #app#app .panel .pnav__i > :first-child:is(svg, i) { display: none; }
+html[data-ui="estadio"] #app#app .panel .pnav__tab b, html[data-ui="estadio"] #app#app .panel .pnav__tab strong, html[data-ui="estadio"] #app#app .panel .pnav__i b { font-size: 15px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
+html[data-ui="estadio"] #app#app .panel .pnav__tab:hover, html[data-ui="estadio"] #app#app .panel .pnav__i:hover { background: rgb(var(--text-rgb) / 4%); }
+html[data-ui="estadio"] #app#app .panel .pnav__tab.is-on, html[data-ui="estadio"] #app#app .panel .pnav__i.is-on {
+  background: linear-gradient(90deg, rgb(var(--accent-rgb) / 24%), transparent); box-shadow: inset 3px 0 0 var(--accent);
+}
+html[data-ui="estadio"] #app#app .panel .pnav__tab.is-on::after, html[data-ui="estadio"] #app#app .panel .pnav__i.is-on::after { color: var(--accent); text-shadow: 0 0 12px rgb(var(--accent-rgb) / 60%); }
+
+/* Cabecera de cada pantalla: título de cartel. */
+html[data-ui="estadio"] #app#app .panel .page .pagehead, html[data-ui="estadio"] #app#app .panel .page[data-page] .pagehead { background: none; border: 0; box-shadow: none; }
+html[data-ui="estadio"] #app#app .page .pagehead h1, html[data-ui="estadio"] #app#app .panel .page[data-page] .pagehead h1 {
+  font-size: 42px; font-weight: 700; line-height: .95; letter-spacing: .04em; text-transform: uppercase;
+  color: var(--text); background: none; -webkit-text-fill-color: currentColor; text-shadow: 0 0 28px rgb(var(--accent-rgb) / 28%);
+}
+html[data-ui="estadio"] #app#app .pagehead p { color: var(--text-faint); }
+html[data-ui="estadio"] #app#app .eyebrow, html[data-ui="estadio"] #app#app .crumbs { letter-spacing: .28em; text-transform: uppercase; color: var(--accent); }
+html[data-ui="estadio"] #app#app .crumbs { letter-spacing: .14em; font-size: 10.5px; }
+/* Atajos de secciones: pestañas finitas. */
+html[data-ui="estadio"] #app#app .panel .tabbar { background: var(--bg-0); padding-bottom: 10px; box-shadow: 0 1px 0 var(--e-line), 0 10px 14px -10px rgb(0 0 0 / 60%); }
+html[data-ui="estadio"] #app#app .panel .page .page__inner { max-width: 980px; }
+html[data-ui="estadio"] #app#app .panel .tabbar__chip, html[data-ui="estadio"] #app#app .panel .tabbar__fold {
+  border-radius: 0; background: rgb(0 0 0 / 26%); border: 1px solid rgb(var(--text-rgb) / 9%);
+  font-size: 11.5px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--text-dim);
+}
+html[data-ui="estadio"] #app#app .panel .tabbar__chip:hover, html[data-ui="estadio"] #app#app .panel .tabbar__fold:hover { border-color: rgb(var(--accent-rgb) / 60%); background: rgb(var(--accent-rgb) / 12%); color: var(--text); }
+
+/* Secciones: bloques con un título de cartel y una línea, sin cajas redondas. */
+html[data-ui="estadio"] #app#app .panel .page[data-page] .sec, html[data-ui="estadio"] #app#app .csec {
+  border-radius: 0; border: 1px solid var(--e-line); background: rgb(var(--text-rgb) / 2%); box-shadow: none;
+}
+html[data-ui="estadio"] #app#app .panel .page[data-page] .sec--feature { background: radial-gradient(80% 100% at 0% 0%, rgb(var(--accent-rgb) / 12%), transparent 60%), rgb(var(--text-rgb) / 2%); box-shadow: inset 3px 0 0 var(--accent); }
+html[data-ui="estadio"] #app#app .panel .sec__title { font-size: 19px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+html[data-ui="estadio"] #app#app .panel .sec__title::before {
+  border-radius: 0; background: var(--sec-ico, none) center / 18px no-repeat, var(--accent);
+  box-shadow: 0 0 16px -4px rgb(var(--accent-rgb) / 80%);
+}
+html[data-ui="estadio"] #app#app .panel .sec__chev { border-radius: 0; }
+html[data-ui="estadio"] #app#app .csec__head h2, html[data-ui="estadio"] #app#app .csec__head h3 { font-weight: 700; letter-spacing: .14em; text-transform: uppercase; }
+html[data-ui="estadio"] #app#app .csec__head h2::before, html[data-ui="estadio"] #app#app .csec__head h3::before { border-radius: 0; }
+html[data-ui="estadio"] #app#app .csec__tag { border-radius: 0; letter-spacing: .1em; text-transform: uppercase; }
+
+/* Filas e interruptores. */
+html[data-ui="estadio"] #app#app .panel .row { border-radius: 0; }
+html[data-ui="estadio"] #app#app .panel .row__label { font-weight: 600; }
+html[data-ui="estadio"] #app#app .panel .row--tog { border-radius: 0; background: rgb(0 0 0 / 18%); border-color: rgb(var(--text-rgb) / 8%); }
+html[data-ui="estadio"] #app#app .panel .row--tog:hover { transform: none; background: rgb(var(--text-rgb) / 4%); border-color: rgb(var(--text-rgb) / 16%); }
+html[data-ui="estadio"] #app#app .panel .row--tog.is-on { background: linear-gradient(90deg, rgb(var(--accent-rgb) / 16%), rgb(var(--accent-rgb) / 3%)); border-color: rgb(var(--accent-rgb) / 40%); box-shadow: inset 3px 0 0 var(--accent) !important; }
+
+/* Interruptor de tablero: ON / OFF, como en el marcador. Mismo nodo y mismo clic
+   que siempre; sólo cambia cómo se dibuja. */
+html[data-ui="estadio"] #app#app :is(.switch, .mus__sw i, .mus__tg i) {
+  position: relative; flex: none; width: 74px; height: 26px; margin: 0; border: 1px solid rgb(var(--text-rgb) / 14%); border-radius: 0;
+  background: var(--e-led); box-shadow: none; overflow: hidden; transform: none;
+}
+html[data-ui="estadio"] #app#app :is(.switch, .mus__sw i, .mus__tg i)::before,
+html[data-ui="estadio"] #app#app :is(.switch, .mus__sw i, .mus__tg i)::after {
+  position: absolute; top: 0; bottom: 0; left: auto; right: auto; width: 50%; height: auto; display: grid; place-items: center;
+  border-radius: 0; box-shadow: none; transform: none; opacity: 1;
+  font: 700 11px/1 var(--font-cond); font-stretch: 87.5%; letter-spacing: .12em; color: rgb(var(--text-rgb) / 30%); background: none;
+  transition: background-color .15s ease, color .15s ease;
+}
+html[data-ui="estadio"] #app#app :is(.switch, .mus__sw i, .mus__tg i)::before { content: "ON"; left: 0; }
+html[data-ui="estadio"] #app#app :is(.switch, .mus__sw i, .mus__tg i)::after { content: "OFF"; right: 0; background: rgb(var(--text-rgb) / 14%); color: var(--text); }
+html[data-ui="estadio"] #app#app :is(.switch.is-on, .mus__sw.is-on i, .mus__tg.is-on i) { background: var(--e-led); box-shadow: 0 0 14px -4px rgb(var(--accent-rgb) / 80%); border-color: rgb(var(--accent-rgb) / 50%); }
+html[data-ui="estadio"] #app#app :is(.switch.is-on, .mus__sw.is-on i, .mus__tg.is-on i)::before { background: var(--accent); color: var(--accent-text-on); }
+html[data-ui="estadio"] #app#app :is(.switch.is-on, .mus__sw.is-on i, .mus__tg.is-on i)::after { background: none; color: rgb(var(--text-rgb) / 30%); transform: none; }
+html[data-ui="estadio"] #app#app .mus__tg i { width: 66px; height: 24px; }
+
+/* Campos: hundidos. */
+html[data-ui="estadio"] #app#app .panel :is(select, input[type="text"], input[type="number"], input[type="search"], input[type="password"], textarea),
+html[data-ui="estadio"] .modal :is(select, input[type="text"], input[type="password"], input[type="number"], textarea) {
+  border-radius: 0; background-color: rgb(0 0 0 / 30%); border: 1px solid rgb(var(--text-rgb) / 11%); box-shadow: none;
+}
+html[data-ui="estadio"] #app#app .panel :is(select, input, textarea):focus, html[data-ui="estadio"] .modal :is(select, input, textarea):focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgb(var(--accent-rgb) / 18%); outline: 0; }
+html[data-ui="estadio"] #app#app :is(.searchbar, .mus__search, .pnav__search) { border-radius: 0; }
+html[data-ui="estadio"] #app#app :is(.searchbar, .mus__search, .pnav__search) input { background: none !important; border: 0 !important; box-shadow: none !important; }
+/* Barras deslizantes: pista recta, perilla cuadrada. */
+html[data-ui="estadio"] #app#app input[type="range"]::-webkit-slider-runnable-track { border-radius: 0; }
+html[data-ui="estadio"] #app#app input[type="range"]::-webkit-slider-thumb { border-radius: 0; background: #fff; box-shadow: 0 0 0 3px rgb(var(--accent-rgb) / 40%), 0 2px 6px rgb(0 0 0 / 50%); }
+
+/* Segmentos y chips: el marcador de opciones. */
+html[data-ui="estadio"] #app#app .seg { border-radius: 0; padding: 2px; background: var(--e-led); border: 1px solid rgb(var(--text-rgb) / 10%); }
+html[data-ui="estadio"] #app#app .seg button { border-radius: 0; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+html[data-ui="estadio"] #app#app .seg button.is-on { background: var(--accent); color: var(--accent-text-on); box-shadow: 0 0 14px -3px rgb(var(--accent-rgb) / 80%); }
+html[data-ui="estadio"] #app#app .chip { border-radius: 0; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; background: rgb(0 0 0 / 24%); border: 1px solid rgb(var(--text-rgb) / 10%); box-shadow: none; }
+html[data-ui="estadio"] #app#app .chip:hover { border-color: rgb(var(--accent-rgb) / 55%); }
+html[data-ui="estadio"] #app#app .chip.is-active, html[data-ui="estadio"] #app#app .chip.is-on { background: var(--accent); color: var(--accent-text-on); border-color: var(--accent); box-shadow: 0 0 14px -4px rgb(var(--accent-rgb) / 80%); }
+html[data-ui="estadio"] #app#app .tag { border-radius: 0; letter-spacing: .08em; text-transform: uppercase; }
+
+/* Botones generales. */
+html[data-ui="estadio"] #app#app .btn, html[data-ui="estadio"] .modal .btn, html[data-ui="estadio"] .startcard .btn, html[data-ui="estadio"] .notebar .btn {
+  border-radius: 0; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
+}
+html[data-ui="estadio"] #app#app .btn--primary, html[data-ui="estadio"] .modal .btn--primary, html[data-ui="estadio"] .startcard .btn--primary, html[data-ui="estadio"] .notebar .btn--primary {
+  background: linear-gradient(180deg, rgb(255 255 255 / 16%), transparent 55%), var(--accent); color: var(--accent-text-on); border: 0;
+  box-shadow: 0 8px 22px -10px rgb(var(--accent-rgb) / 90%);
+}
+html[data-ui="estadio"] #app#app .btn--primary:hover, html[data-ui="estadio"] .modal .btn--primary:hover, html[data-ui="estadio"] .startcard .btn--primary:hover { box-shadow: 0 0 24px -4px rgb(var(--accent-rgb) / 85%); }
+html[data-ui="estadio"] #app#app .btn--ghost, html[data-ui="estadio"] .modal .btn--ghost, html[data-ui="estadio"] .startcard .btn--ghost, html[data-ui="estadio"] .notebar .btn--ghost { background: rgb(0 0 0 / 24%); border: 1px solid rgb(var(--text-rgb) / 14%); }
+html[data-ui="estadio"] #app#app .btn--ghost:hover, html[data-ui="estadio"] .modal .btn--ghost:hover { border-color: rgb(var(--accent-rgb) / 60%); background: rgb(var(--accent-rgb) / 10%); }
+html[data-ui="estadio"] #app#app .iconbtn { border-radius: 0; }
+
+/* Tarjetas para elegir: perfiles, temas, interfaz, looks. */
+html[data-ui="estadio"] #app#app .panel :is(.presetbtn, .themecard, .laycard, .lookcard, .look, .gstyle, .stylecard) { border-radius: 0; }
+html[data-ui="estadio"] #app#app .panel :is(.presetbtn.is-on, .themecard.is-on, .laycard.is-active) { box-shadow: 0 0 0 2px var(--accent), 0 0 24px -8px rgb(var(--accent-rgb) / 90%); }
+html[data-ui="estadio"] #app#app .panel :is(.presetbtn, .themecard, .laycard):hover { transform: none; }
+html[data-ui="estadio"] #app#app .panel :is(.presetbtn b, .presetbtn strong, .themecard strong, .laycard b) { letter-spacing: .08em; text-transform: uppercase; }
+html[data-ui="estadio"] #app#app .themepreview, html[data-ui="estadio"] #app#app .themecard__prev, html[data-ui="estadio"] #app#app .laycard__prev { border-radius: 0; }
+/* Las dos interfaces, dibujadas en miniatura. */
+html[data-ui="estadio"] #app#app .laycards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+html[data-ui="estadio"] #app#app .laycard__prev { height: 96px; }
+.laycard__prev--estadio .lp-side { display: block; left: 5px; right: 5px; bottom: 5px; height: 7px; border-radius: 0; background: var(--accent); opacity: .7; }
+.laycard__prev--estadio .lp-bar { left: 5px; right: 5px; top: 5px; height: 10px; border-radius: 0; }
+.laycard__prev--estadio .lp-main { left: 5px; right: 5px; top: 20px; bottom: 17px; border-radius: 0;
+  background: linear-gradient(90deg, var(--surface-hi) 0 24%, transparent 24% 27%, var(--surface-hi) 27% 73%, transparent 73% 76%, var(--surface-hi) 76%); }
+
+/* ══ 7 · Club: el tablero del estadio ═════════════════════════════════ */
+html[data-ui="estadio"] #app#app .page[data-page="club"] .club__hero {
+  border-radius: 0; border: 1px solid var(--e-line);
+  background: radial-gradient(70% 120% at 85% 50%, rgb(var(--accent-rgb) / 16%), transparent 65%), rgb(0 0 0 / 26%);
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+html[data-ui="estadio"] #app#app .page[data-page="club"] .club__title { font-size: 58px; font-weight: 700; line-height: .92; letter-spacing: .04em; text-transform: uppercase; text-shadow: 0 0 30px rgb(var(--accent-rgb) / 35%); }
+html[data-ui="estadio"] #app#app .club__eyebrow { letter-spacing: .3em; text-transform: uppercase; }
+html[data-ui="estadio"] #app#app .page[data-page="club"] .kpi {
+  border-radius: 0; background: var(--e-led); border: 1px solid rgb(var(--text-rgb) / 10%); box-shadow: none;
+}
+html[data-ui="estadio"] #app#app .page[data-page="club"] .kpi::before { display: none; }
+html[data-ui="estadio"] #app#app .page[data-page="club"] .kpi::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: var(--e-dots); }
+html[data-ui="estadio"] #app#app .page[data-page="club"] .kpi b { font-size: 40px; font-weight: 700; letter-spacing: .03em; color: var(--accent-mid, var(--accent)); text-shadow: 0 0 12px rgb(var(--accent-rgb) / 80%); }
+html[data-ui="estadio"] #app#app .page[data-page="club"] .kpi:first-child b { color: var(--e-ok); text-shadow: 0 0 12px rgb(var(--e-ok-rgb) / 80%); }
+html[data-ui="estadio"] #app#app .page[data-page="club"] .kpi span, html[data-ui="estadio"] #app#app .page[data-page="club"] .kpi small { letter-spacing: .16em; text-transform: uppercase; }
+html[data-ui="estadio"] #app#app .page[data-page="club"] :is(.pod, .pod__rank, .cr__row, .cr__pos, .cn__card, .cn__av, .cr__bar2, .cr__bar2 i, .cn__go) { border-radius: 0; }
+html[data-ui="estadio"] #app#app .page[data-page="club"] .cr__row.is-self, html[data-ui="estadio"] #app#app .page[data-page="club"] .pod.is-self { box-shadow: inset 3px 0 0 var(--accent); }
+
+/* ══ 8 · Música: la cabina ════════════════════════════════════════════ */
+html[data-ui="estadio"] #app#app .mus__hero { border-radius: 0; border: 1px solid var(--e-line); background: radial-gradient(80% 140% at 0% 0%, rgb(var(--accent-rgb) / 20%), transparent 62%), rgb(0 0 0 / 26%); box-shadow: inset 3px 0 0 var(--accent); }
+html[data-ui="estadio"] #app#app .mus__cover { border-radius: 0; }
+html[data-ui="estadio"] #app#app .mus__title { font-size: 40px; font-weight: 700; letter-spacing: .03em; text-transform: uppercase; }
+html[data-ui="estadio"] #app#app .mus__artist { font-size: 13px; letter-spacing: .16em; text-transform: uppercase; }
+html[data-ui="estadio"] #app#app :is(.mus__bar, .mus__bar i) { border-radius: 0; }
+html[data-ui="estadio"] #app#app :is(.mus__btn, .mus__btn--main, .mus__vol, .mus__search, .mus__add, #musAdd, .mus__sw, .mus__row, .mus__n, .mus__tag, .mus__ib) { border-radius: 0; }
+html[data-ui="estadio"] #app#app .mus__btn--main { box-shadow: 0 0 26px -6px rgb(var(--accent-rgb) / 80%); }
+html[data-ui="estadio"] #app#app .mus__sw { background: rgb(0 0 0 / 22%); }
+html[data-ui="estadio"] #app#app .mus__sw.is-on { box-shadow: inset 3px 0 0 var(--accent); }
+html[data-ui="estadio"] #app#app .mus__sw b { letter-spacing: .08em; text-transform: uppercase; }
+html[data-ui="estadio"] #app#app .mus__row.is-now { box-shadow: inset 3px 0 0 var(--accent); }
+html[data-ui="estadio"] #app#app .mus__n { font-family: var(--font-cond); font-stretch: 87.5%; }
+
+/* ══ 9 · Replays: la videoteca ════════════════════════════════════════ */
+html[data-ui="estadio"] #app#app .page[data-page="replays"] .pagehead { border-radius: 0; border: 1px solid var(--e-line); background: radial-gradient(80% 160% at 0% 0%, rgb(var(--accent-rgb) / 18%), transparent 62%), rgb(0 0 0 / 26%); box-shadow: inset 3px 0 0 var(--accent); }
+html[data-ui="estadio"] #app#app .page[data-page="replays"] :is(.searchbar, .sortselect, .replay, .replay__date, .rchip, .rowactions .btn, .replay__actions .btn, .replay__more .btn) { border-radius: 0; }
+html[data-ui="estadio"] #app#app .page[data-page="replays"] .replay { background: rgb(var(--text-rgb) / 2.5%); }
+html[data-ui="estadio"] #app#app .page[data-page="replays"] .replay:hover { box-shadow: inset 3px 0 0 var(--accent); }
+html[data-ui="estadio"] #app#app .page[data-page="replays"] .replay__date { background: var(--e-led); font-family: var(--font-cond); font-stretch: 87.5%; }
+html[data-ui="estadio"] #app#app .page[data-page="replays"] .replay__day { font-family: var(--font-cond); font-stretch: 87.5%; letter-spacing: .26em; }
+html[data-ui="estadio"] #app#app :is(.emptystate, .empty, .replays__empty) { border-radius: 0; }
+
+/* Informes, Hostear y Cuenta usan las mismas piezas (.csec, .sec, campos, botones). */
+html[data-ui="estadio"] #app#app :is(.hostsec, .report, .reports__item, .assetrow, .assetrow__preview, .idcard, .identity, .vipcard) { border-radius: 0; }
+
+/* ══ 10 · Ventanas, menús y avisos ════════════════════════════════════ */
+html[data-ui="estadio"] :is(.modal__card, .secmodal__card, .crop__card) {
+  border-radius: 0 !important; border: 1px solid rgb(var(--text-rgb) / 10%);
+  background: var(--e-lit), var(--bg-1); box-shadow: 0 40px 90px -30px rgb(0 0 0 / 85%), inset 0 3px 0 var(--accent);
+}
+html[data-ui="estadio"] .modal__head h2, html[data-ui="estadio"] .crop__head h2 { font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
+html[data-ui="estadio"] .modal .field input, html[data-ui="estadio"] .modal .field select { border-radius: 0; }
+html[data-ui="estadio"] #app .memenu {
+  border-radius: 0; border: 1px solid rgb(var(--text-rgb) / 10%); background: var(--e-lit), var(--bg-1);
+  box-shadow: 0 24px 50px -20px rgb(0 0 0 / 85%), inset 0 3px 0 var(--accent);
+}
+html[data-ui="estadio"] #app :is(.memenu__i, .memenu__c, .memenu__av, .mechip__av) { border-radius: 0; }
+html[data-ui="estadio"] #app .memenu__id b { letter-spacing: .06em; text-transform: uppercase; }
+html[data-ui="estadio"] #app#app .nowplaying { border-radius: 0; box-shadow: 0 24px 50px -20px rgb(0 0 0 / 85%), inset 0 3px 0 var(--accent); }
+html[data-ui="estadio"] #app :is(.np__play, .np__bar, .np__bar i) { border-radius: 0; }
+html[data-ui="estadio"] .toast { border-radius: 0; text-transform: none; box-shadow: 0 16px 34px -16px rgb(0 0 0 / 85%), inset 3px 0 0 var(--accent); }
+html[data-ui="estadio"] .toast.is-ok { box-shadow: 0 16px 34px -16px rgb(0 0 0 / 85%), inset 3px 0 0 var(--ok); }
+html[data-ui="estadio"] .toast.is-err { box-shadow: 0 16px 34px -16px rgb(0 0 0 / 85%), inset 3px 0 0 var(--danger); }
+html[data-ui="estadio"] .notebar { border-radius: 0; box-shadow: 0 20px 44px -20px rgb(0 0 0 / 85%), inset 3px 0 0 var(--accent); }
+html[data-ui="estadio"] .notebar strong { letter-spacing: .06em; text-transform: uppercase; }
+html[data-ui="estadio"] .upd__badge, html[data-ui="estadio"] .upd__track, html[data-ui="estadio"] .upd__track i { border-radius: 0; }
+html[data-ui="estadio"] .fdock { border-radius: 0; border-left: 1px solid var(--e-line); }
+html[data-ui="estadio"] .fdock::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 3px; background: var(--accent); z-index: 2; }
+html[data-ui="estadio"] .fdock__head h2 { letter-spacing: .1em; text-transform: uppercase; }
+html[data-ui="estadio"] .fdock :is(.frow, .fme, .fcode, .chat, .chat__input, input, .btn) { border-radius: 0; }
+html[data-ui="estadio"] :is(.cmdk__box, .cmdk__card, .cmdk input) { border-radius: 0; }
+html[data-ui="estadio"] .glasssel, html[data-ui="estadio"] .glasssel__list { border-radius: 0; }
+/* El resumen del partido (aparece sobre la cancha al terminar): marcador de TV. */
+html[data-ui="estadio"] .stats-panel { border-radius: 0; font-family: var(--font); box-shadow: 0 30px 70px rgb(0 0 0 / 80%), inset 0 3px 0 var(--accent); }
+html[data-ui="estadio"] .stats-panel h2, html[data-ui="estadio"] .stats-score__n, html[data-ui="estadio"] .stats-score__team { font-family: var(--font-cond); font-stretch: 87.5%; text-transform: uppercase; letter-spacing: .06em; }
+html[data-ui="estadio"] :is(.stats-table, .stats-mvp, .stats-block) { border-radius: 0; }
+
+/* ══ 11 · Entrada: apodo y pantalla de carga ══════════════════════════ */
+html[data-ui="estadio"] .startscreen {
+  background-color: var(--bg-0);
+  background-image: var(--e-beams), radial-gradient(60% 35% at 50% 108%, rgb(var(--accent-rgb) / 12%), transparent 70%), linear-gradient(180deg, var(--bg-0), var(--bg-1) 60%, var(--bg-0));
+}
+html[data-ui="estadio"] .startscreen::before {
+  background: repeating-linear-gradient(90deg, rgb(var(--text-rgb) / 2%) 0 110px, transparent 110px 220px);
+  -webkit-mask-image: linear-gradient(180deg, transparent 55%, #000); mask-image: linear-gradient(180deg, transparent 55%, #000);
+}
+html[data-ui="estadio"] .startcard {
+  border-radius: 0; border: 1px solid rgb(var(--text-rgb) / 10%); background: var(--e-lit), var(--bg-1);
+  box-shadow: 0 40px 90px -30px rgb(0 0 0 / 85%);
+}
+html[data-ui="estadio"] .startcard::before { left: -1px; right: -1px; top: -1px; height: 3px; border-radius: 0; background: var(--accent); box-shadow: 0 0 16px rgb(var(--accent-rgb) / 60%); }
+html[data-ui="estadio"] .startcard h1 { font-size: 29px; font-weight: 700; line-height: 1.02; letter-spacing: .06em; text-transform: uppercase; text-shadow: 0 0 24px rgb(var(--accent-rgb) / 35%); }
+html[data-ui="estadio"] .startcard__label { letter-spacing: .24em; }
+html[data-ui="estadio"] .startcard input { border-radius: 0; background: rgb(0 0 0 / 35%); }
+html[data-ui="estadio"] .startcard .btn--lg, html[data-ui="estadio"] .startcard .btn--ghost { border-radius: 0; letter-spacing: .2em; }
+html[data-ui="estadio"] .startsummary__chip {
+  border-radius: 0; background: var(--e-led); border: 1px solid rgb(var(--accent-rgb) / 28%); box-shadow: none;
+  text-transform: uppercase; letter-spacing: .1em; color: var(--accent-mid, var(--accent)); text-shadow: 0 0 6px rgb(var(--accent-rgb) / 70%);
+}
+html[data-ui="estadio"] .splash { background-image: var(--e-beams), linear-gradient(180deg, var(--bg-0), var(--bg-1)); }
+html[data-ui="estadio"] .splash::before { display: none; }
+html[data-ui="estadio"] .splash__word { letter-spacing: .3em; }
+html[data-ui="estadio"] .splash__tip { border-radius: 0; }
+
+/* ══ 12 · Temas claros ════════════════════════════════════════════════
+   El estadio de día: mismas piezas, superficies claras. Los carteles LED
+   (marcadores, cartel de abajo, interruptores) siguen siendo negros, como
+   en una cancha de verdad. */
+html[data-ui="estadio"][data-scheme="light"] {
+  --e-stand: rgb(255 255 255 / 66%);
+  --e-line: rgb(var(--text-rgb) / 12%);
+  --e-lit: linear-gradient(180deg, rgb(255 255 255 / 60%), rgb(255 255 255 / 0%) 120px);
+}
+html[data-ui="estadio"][data-scheme="light"] #app .topbar { background: rgb(255 255 255 / 72%); }
+html[data-ui="estadio"][data-scheme="light"] #app #rail { background: rgb(255 255 255 / 45%); }
+html[data-ui="estadio"][data-scheme="light"] #app[data-stage="game"] #rail { background: var(--bg-0); }
+html[data-ui="estadio"][data-scheme="light"] #app#app :is(
+  .linkbar, .audio, .rsearch, .filterchip, .sortselect, .rtoolbar .iconbtn, .est-duo > .ghostbtn, .est-duo > .est-btn, .est-music,
+  .panel .pnav, .panel .pnav__search, .panel .row--tog, .chip, .btn--ghost, .mus__sw, .tabbar__chip, .tabbar__fold,
+  .panel select, .panel input[type="text"], .panel input[type="number"], .panel input[type="search"], .panel textarea, .panel__close
+) { background-color: rgb(var(--text-rgb) / 5%); background-image: none; }
+html[data-ui="estadio"][data-scheme="light"] #app#app .panel .row--tog.is-on { background: linear-gradient(90deg, rgb(var(--accent-rgb) / 18%), rgb(var(--accent-rgb) / 4%)); }
+html[data-ui="estadio"][data-scheme="light"] #app#app .chip.is-active, html[data-ui="estadio"][data-scheme="light"] #app#app .chip.is-on { background: var(--accent); }
+html[data-ui="estadio"][data-scheme="light"] #app#app .panel .tabbar { background: var(--bg-0); }
+html[data-ui="estadio"][data-scheme="light"] #app#app .page[data-page="club"] .club__hero,
+html[data-ui="estadio"][data-scheme="light"] #app#app .mus__hero,
+html[data-ui="estadio"][data-scheme="light"] #app#app .page[data-page="replays"] .pagehead { background: radial-gradient(80% 140% at 0% 0%, rgb(var(--accent-rgb) / 18%), transparent 62%), rgb(255 255 255 / 55%); }
+html[data-ui="estadio"][data-scheme="light"] .modal :is(select, input[type="text"], input[type="password"], input[type="number"], textarea),
+html[data-ui="estadio"][data-scheme="light"] .startcard input { background-color: rgb(var(--text-rgb) / 5%); }
+/* Lo que va sobre negro (LED) se lee claro también en los temas claros. */
+html[data-ui="estadio"][data-scheme="light"] :is(.ledboard__run b, .est-score__cap b) { color: #fff; }
+html[data-ui="estadio"][data-scheme="light"] .ledboard__run b { text-shadow: 0 0 6px rgb(var(--accent-rgb) / 90%); }
+html[data-ui="estadio"][data-scheme="light"] .ledboard__run b:first-child { color: var(--accent); }
+html[data-ui="estadio"][data-scheme="light"] #app#app :is(.switch, .mus__sw i, .mus__tg i)::after { color: #fff; background: rgb(255 255 255 / 18%); }
+html[data-ui="estadio"][data-scheme="light"] #app#app :is(.switch.is-on, .mus__sw.is-on i, .mus__tg.is-on i)::after { color: rgb(255 255 255 / 35%); background: none; }
+html[data-ui="estadio"][data-scheme="light"] #app#app :is(.switch, .mus__sw i, .mus__tg i)::before { color: rgb(255 255 255 / 35%); }
+html[data-ui="estadio"][data-scheme="light"] #app#app :is(.switch.is-on, .mus__sw.is-on i, .mus__tg.is-on i)::before { color: var(--accent-text-on); }
+html[data-ui="estadio"][data-scheme="light"] #app#app .page[data-page="club"] .kpi b { color: #fff; }
+html[data-ui="estadio"][data-scheme="light"] .startsummary__chip { color: #fff; }
+
+/* El tablero por ocupación: dos por dos, que en la columna del medio no entran cuatro. */
+html[data-ui="estadio"] #app .roomboard { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: minmax(0, 1fr); }
+html[data-ui="estadio"] #app :is(.boardcol, .boardcol .rrow, .roommap__wrap, .roommap__fit, .roommap__tip) { border-radius: 0; }
+html[data-ui="estadio"] #app .boardcol { background: rgb(var(--text-rgb) / 2.5%); }
+html[data-ui="estadio"] #app .boardcol__head { font-family: var(--font-cond); font-stretch: 87.5%; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
+
+/* La marquesina no se aprieta cuando aparecen «última sala» y «del club jugando». */
+html[data-ui="estadio"] #app .gametabs, html[data-ui="estadio"] #app .gametabs__add { flex: none; }
+html[data-ui="estadio"] #app .linkbar { flex: 1 1 260px; min-width: 170px; max-width: 480px; }
+html[data-ui="estadio"] #app .toplast__label { display: none; }
+html[data-ui="estadio"] #app .toplast__name { max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media (max-width: 1280px) { html[data-ui="estadio"] #app .topchip span { display: none; } html[data-ui="estadio"] #app .topchip { padding: 0 9px; } }

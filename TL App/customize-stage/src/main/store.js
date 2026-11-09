@@ -112,7 +112,9 @@ const DEFAULTS = {
     musicPulse: true,
     // Tamaño de la interfaz: 'auto' (según el monitor) o un porcentaje fijo (60–150).
     uiScale: 'auto',
-    /** Estructura de la interfaz: classic | top (barra superior) | dock (dock flotante). */
+    /** Cara de la app: `estadio` (la nueva, por defecto) · `classic` (la de antes, con el menú a la izquierda). */
+    ui: 'estadio',
+    /** Disposición de la interfaz clásica. Ya no se elige: queda sólo por compatibilidad con configs viejas. */
     layout: 'classic',
     /** Alto de las filas de la lista de salas: dense | normal | large. */
     roomRows: 'normal',
