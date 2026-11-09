@@ -5186,6 +5186,7 @@ document.addEventListener('visibilitychange', () => setTimeout(pulseStart, 30));
 function musicPageOpen() {
   if (window.TLMusic) window.TLMusic.spotifyRefresh();
   paintMusicPage();
+  paintSpotify();
   setTimeout(pulseStart, 50);
   clearInterval(musTimer);
   musTimer = setInterval(musicPageTick, 500);
@@ -5242,7 +5243,8 @@ function paintMusicPage() {
     idle: en ? ['Spotify is quiet', 'Hit play in Spotify and it shows up here.'] : ['Spotify no está sonando', 'Dale play en Spotify y aparece acá.'],
     closed: en ? ['Spotify is not open', 'Open the Spotify desktop app on this PC.'] : ['Spotify no está abierto', 'Abrí Spotify de escritorio en esta PC.'],
     error: en ? ["Can't read Spotify", 'Windows did not answer. Try closing and opening Spotify.'] : ['No se pudo leer Spotify', 'Windows no respondió. Probá cerrar y abrir Spotify.'],
-    nowin: en ? ['Only on Windows', 'Spotify is read through Windows.'] : ['Sólo en Windows', 'Spotify se lee a través de Windows.']
+    nowin: en ? ['Only on Windows', 'Spotify is read through Windows.'] : ['Sólo en Windows', 'Spotify se lee a través de Windows.'],
+    nodevice: en ? ['Spotify is not playing anywhere', 'Open Spotify on your PC or phone, or pick a device below.'] : ['Spotify no suena en ningún lado', 'Abrilo en la PC o en el celu, o elegí un dispositivo abajo.']
   };
   const spIdle = sp && !now ? (SP_IDLE[sp.status] || SP_IDLE.idle) : null;
   $('#musTitle').textContent = now ? now.title : (spIdle ? spIdle[0] : T.idle);
@@ -5278,6 +5280,7 @@ function paintMusicPage() {
     ['musicInGame', T.game, T.gameD, ap.musicInGame !== false],
     ['musicPulse', isEn() ? 'Beating cover' : 'Tapa que late', isEn() ? 'The cover pulses with the song.' : 'La tapa se mueve con los golpes del tema.', ap.musicPulse !== false]
   ];
+  if (!!sp !== !$('#musSpotify').hidden) paintSpotify();
   sws.replaceChildren(...defs.map(([key, label, desc, on]) => {
     const b = document.createElement('button');
     b.type = 'button';
@@ -5428,6 +5431,248 @@ window.addEventListener('tl:spotifycover', () => {
   const now = window.TLMusic && window.TLMusic.now;
   if (now && now.spotify) { musCoverFor = ''; if (state.view === 'musica') musicCoverFor(now); }
 });
+
+/* ── Spotify con cuenta (API web) ─────────────────────────────────────────
+ * Con «Usar Spotify» prendido aparece una sección para conectar la cuenta.
+ * Conectada: buscar temas, poner playlists, sumar a la cola, aleatorio,
+ * repetir, me gusta y elegir en qué dispositivo suena. Lo que suena y los
+ * botones de siempre pasan a leerse/manejarse por la cuenta (ver music.js). */
+const SP = { status: null, playlists: null, plAt: 0, searchT: 0, query: '', results: null, likedUri: '', liked: false, msgT: 0 };
+const SP_TXT = {
+  es: {
+    lead: 'Conectá tu cuenta de Spotify (Premium) para buscar temas, poner tus playlists, sumar a la cola, cambiar el volumen y elegir dónde suena. Sin conectar igual se ve y se maneja lo básico.',
+    connect: 'Conectar', connecting: 'Esperando a Spotify…', how: 'Cómo sacar el Client ID (una vez)',
+    steps: ['Entrá a developer.spotify.com/dashboard con tu cuenta Premium y tocá «Create app».', 'Nombre y descripción: lo que quieras (por ejemplo «TL App»). En «Redirect URIs» pegá la dirección de abajo y tocá «Add».', 'En «Which API/SDKs are you planning to use?» marcá «Web API» y guardá.', 'En «User Management» agregá el mail de Spotify de cada uno que lo vaya a usar (hasta 5).', 'Copiá el «Client ID» de la app y pegalo acá arriba.'],
+    copy: 'Copiar', copied: 'Copiada',
+    who: (u) => (u ? `Conectado · ${u}` : 'Conectado'), logout: 'Desconectar',
+    shuffle: 'Aleatorio', repeat: { off: 'Repetir', context: 'Repetir: todo', track: 'Repetir: este' }, like: 'Me gusta', liked: 'Te gusta',
+    dev: 'Suena en', devNone: 'Ningún dispositivo', search: 'Buscar en Spotify…', pls: 'Tus playlists', noPls: 'No hay playlists.', noRes: 'Nada con eso.', queue: 'Sumar a la cola', queued: 'Sumado a la cola',
+    err: { premium: 'Para manejar Spotify desde la app hace falta Premium.', nodevice: 'Spotify no está abierto en ningún lado: abrilo en la PC o en el celu, o elegí un dispositivo.', forbidden: 'Spotify no lo permitió. ¿Tu mail está agregado en «User Management» de tu app?', rate: 'Demasiados pedidos seguidos: esperá unos segundos.', login: 'Se cerró la sesión de Spotify: conectá de nuevo.', error: 'Spotify no respondió. Probá de nuevo.' }
+  },
+  en: {
+    lead: 'Connect your Spotify account (Premium) to search songs, play your playlists, add to queue, change volume and pick where it plays. Without connecting, the basics still work.',
+    connect: 'Connect', connecting: 'Waiting for Spotify…', how: 'How to get the Client ID (once)',
+    steps: ['Go to developer.spotify.com/dashboard with your Premium account and click «Create app».', 'Name and description: anything (e.g. «TL App»). In «Redirect URIs» paste the address below and click «Add».', 'Under «Which API/SDKs are you planning to use?» tick «Web API» and save.', 'In «User Management» add the Spotify email of everyone who will use it (up to 5).', 'Copy the app «Client ID» and paste it above.'],
+    copy: 'Copy', copied: 'Copied',
+    who: (u) => (u ? `Connected · ${u}` : 'Connected'), logout: 'Disconnect',
+    shuffle: 'Shuffle', repeat: { off: 'Repeat', context: 'Repeat: all', track: 'Repeat: one' }, like: 'Like', liked: 'Liked',
+    dev: 'Playing on', devNone: 'No device', search: 'Search Spotify…', pls: 'Your playlists', noPls: 'No playlists.', noRes: 'Nothing found.', queue: 'Add to queue', queued: 'Added to queue',
+    err: { premium: 'Controlling Spotify from the app needs Premium.', nodevice: 'Spotify is not open anywhere: open it on your PC or phone, or pick a device.', forbidden: 'Spotify refused. Is your email added under «User Management» in your app?', rate: 'Too many requests: wait a few seconds.', login: 'Your Spotify session ended: connect again.', error: 'Spotify did not answer. Try again.' }
+  }
+};
+const spT = () => SP_TXT[isEn() ? 'en' : 'es'];
+const fmtMs = (s) => fmtT(s);
+
+async function spStatus(force) {
+  if (!window.tvm.spotifyApi) return { connected: false };
+  if (!SP.status || force) {
+    try { SP.status = await tvm.spotifyApi.status(); } catch (e) { SP.status = { connected: false }; }
+  }
+  if (window.TLMusic) window.TLMusic.setSpotifyApi(!!SP.status.connected);
+  return SP.status;
+}
+setTimeout(() => { spStatus().catch(() => {}); }, 1200);
+
+function spMsg(text) {
+  const m = $('#spMsg');
+  if (!m) return;
+  clearTimeout(SP.msgT);
+  m.textContent = text || '';
+  m.hidden = !text;
+  if (text) SP.msgT = setTimeout(() => { m.hidden = true; }, 7000);
+}
+window.addEventListener('tl:spotifyerr', (e) => { const c = e.detail && e.detail.code; if (c) spMsg(spT().err[c] || spT().err.error); });
+window.addEventListener('tl:spotifyapi', () => { spStatus(true).then(() => { if (state.view === 'musica') paintSpotify(); }); });
+
+function spImg(url) {
+  if (!url) { const d = document.createElement('span'); d.className = 'sp__ph'; return d; }
+  const i = document.createElement('img');
+  i.src = url; i.alt = ''; i.loading = 'lazy'; i.decoding = 'async';
+  return i;
+}
+
+async function spLoadPlaylists(force) {
+  if (!force && SP.playlists && Date.now() - SP.plAt < 5 * 60000) return;
+  let r = null;
+  try { r = await tvm.spotifyApi.playlists(); } catch (e) { r = null; }
+  if (r && r.ok) { SP.playlists = r.data || []; SP.plAt = Date.now(); paintSpotifyLists(); }
+}
+
+function paintSpotifyLists() {
+  const T = spT();
+  const sp = window.TLMusic && window.TLMusic.spotify;
+  const res = $('#spResults');
+  if (res) {
+    if (!SP.results) res.replaceChildren();
+    else if (!SP.results.length) { const p = document.createElement('p'); p.className = 'sp__empty'; p.textContent = T.noRes; res.replaceChildren(p); }
+    else res.replaceChildren(...SP.results.map((t) => {
+      const row = document.createElement('div');
+      row.className = 'sp__res';
+      const tx = document.createElement('span');
+      const b = document.createElement('b'); b.textContent = t.title;
+      const sm = document.createElement('small'); sm.textContent = [t.artist, t.album].filter(Boolean).join(' · ');
+      tx.append(b, sm);
+      const dur = document.createElement('span'); dur.className = 'sp__t'; dur.textContent = fmtMs(t.dur);
+      const q = document.createElement('button'); q.type = 'button'; q.className = 'sp__q'; q.textContent = '+'; q.title = T.queue;
+      q.addEventListener('click', async (ev) => {
+        ev.stopPropagation();
+        if (await window.TLMusic.spotifyApi('queue', t.uri)) toast(`${T.queued}: ${t.title}`, 'ok');
+      });
+      row.append(spImg(t.cover), tx, dur, q);
+      row.addEventListener('click', () => window.TLMusic.spotifyApi('playUri', { uri: t.uri }));
+      return row;
+    }));
+  }
+  const pl = $('#spPlaylists');
+  if (pl) {
+    if (!SP.playlists) pl.replaceChildren();
+    else if (!SP.playlists.length) { const p = document.createElement('p'); p.className = 'sp__empty'; p.textContent = T.noPls; pl.replaceChildren(p); }
+    else pl.replaceChildren(...SP.playlists.map((p) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'sp__pl' + (sp && sp.context === p.uri ? ' is-now' : '');
+      const n = document.createElement('b'); n.textContent = p.name;
+      const o = document.createElement('small'); o.textContent = p.owner;
+      b.append(spImg(p.cover), n, o);
+      b.addEventListener('click', () => window.TLMusic.spotifyApi('playUri', { context: p.uri }));
+      return b;
+    }));
+  }
+}
+
+async function paintSpotify() {
+  const sec = $('#musSpotify');
+  if (!sec) return;
+  const sp = window.TLMusic && window.TLMusic.spotify;
+  sec.hidden = !sp || !window.tvm.spotifyApi;
+  if (sec.hidden) return;
+  const T = spT();
+  const st = await spStatus();
+  $('#spLogin').hidden = !!st.connected;
+  $('#spMain').hidden = !st.connected;
+  $('#spWho').textContent = st.connected ? T.who(st.user) : '';
+  if (!st.connected) {
+    $('#spLead').textContent = T.lead;
+    const inp = $('#spClient');
+    if (!inp.value && st.clientId) inp.value = st.clientId;
+    if (!SP.connecting) $('#spConnect').textContent = T.connect;
+    $('#spHowTitle').textContent = T.how;
+    const ol = $('#spHow');
+    if (ol.children.length !== T.steps.length || ol.dataset.lang !== (isEn() ? 'en' : 'es')) {
+      ol.dataset.lang = isEn() ? 'en' : 'es';
+      ol.replaceChildren(...T.steps.map((s) => { const li = document.createElement('li'); li.textContent = s; return li; }));
+    }
+    $('#spRedirect').textContent = st.redirect || 'http://127.0.0.1:43827/callback';
+    $('#spCopy').textContent = T.copy;
+    return;
+  }
+  // Conectada
+  $('#spLogout').textContent = T.logout;
+  $('#spDevLabel').textContent = T.dev;
+  $('#spQuery').placeholder = T.search;
+  $('#spPlTitle').textContent = T.pls;
+  const sh = $('#spShuffle');
+  sh.textContent = T.shuffle;
+  sh.classList.toggle('is-on', !!(sp && sp.shuffle));
+  const rp = $('#spRepeat');
+  const rep = (sp && sp.repeat) || 'off';
+  rp.textContent = T.repeat[rep] || T.repeat.off;
+  rp.classList.toggle('is-on', rep !== 'off');
+  // Me gusta: se pregunta una vez por tema.
+  const lk = $('#spLike');
+  const uri = (sp && sp.uri) || '';
+  lk.hidden = !uri;
+  if (uri && uri !== SP.likedUri) {
+    SP.likedUri = uri;
+    SP.liked = false;
+    tvm.spotifyApi.liked(uri).then((r) => { if (r && r.ok && SP.likedUri === uri) { SP.liked = !!r.data; paintSpotify(); } }).catch(() => {});
+  }
+  lk.textContent = SP.liked ? `♥ ${T.liked}` : `♡ ${T.like}`;
+  lk.classList.toggle('is-on', SP.liked);
+  // Dispositivo: el actual en la lista; la lista entera se pide al abrirla.
+  const sel = $('#spDevice');
+  const dev = sp && sp.device;
+  if (document.activeElement !== sel) {
+    if (!sel.options.length || sel.dataset.cur !== (dev ? dev.id : '')) {
+      sel.dataset.cur = dev ? dev.id : '';
+      const o = document.createElement('option');
+      o.value = dev ? dev.id : '';
+      o.textContent = dev ? dev.name : T.devNone;
+      sel.replaceChildren(o);
+    }
+  }
+  if (sp && sp.status === 'nodevice') spMsg(T.err.nodevice);
+  spLoadPlaylists();
+  paintSpotifyLists();
+}
+
+$('#spConnect').addEventListener('click', async () => {
+  const T = spT();
+  const btn = $('#spConnect');
+  SP.connecting = true;
+  btn.disabled = true;
+  btn.textContent = T.connecting;
+  try {
+    SP.status = await tvm.spotifyApi.login($('#spClient').value);
+    if (window.TLMusic) window.TLMusic.setSpotifyApi(!!SP.status.connected);
+    toast(T.who(SP.status.user), 'ok');
+  } catch (e) {
+    toast(e.message, 'err');
+  } finally {
+    SP.connecting = false;
+    btn.disabled = false;
+    paintSpotify();
+  }
+});
+$('#spCopy').addEventListener('click', () => {
+  try { navigator.clipboard.writeText($('#spRedirect').textContent); $('#spCopy').textContent = spT().copied; } catch (e) { /* sin portapapeles */ }
+});
+$('#spLogout').addEventListener('click', async () => {
+  try { SP.status = await tvm.spotifyApi.logout(); } catch (e) { /* nada */ }
+  SP.playlists = null; SP.results = null; SP.likedUri = '';
+  if (window.TLMusic) window.TLMusic.setSpotifyApi(false);
+  paintSpotify();
+});
+$('#spShuffle').addEventListener('click', () => { const sp = window.TLMusic.spotify; window.TLMusic.spotifyApi('shuffle', !(sp && sp.shuffle)); });
+$('#spRepeat').addEventListener('click', () => {
+  const sp = window.TLMusic.spotify;
+  const order = ['off', 'context', 'track'];
+  const next = order[(order.indexOf((sp && sp.repeat) || 'off') + 1) % order.length];
+  window.TLMusic.spotifyApi('repeat', next);
+});
+$('#spLike').addEventListener('click', async () => {
+  const uri = SP.likedUri;
+  if (!uri) return;
+  const on = !SP.liked;
+  if (await window.TLMusic.spotifyApi('like', { uri, on })) { SP.liked = on; paintSpotify(); }
+});
+async function spFillDevices() {
+  let r = null;
+  try { r = await tvm.spotifyApi.devices(); } catch (e) { r = null; }
+  if (!r || !r.ok) return;
+  const sel = $('#spDevice');
+  const cur = sel.dataset.cur || '';
+  const list = r.data || [];
+  if (!list.length) return;
+  sel.replaceChildren(...list.map((d) => { const o = document.createElement('option'); o.value = d.id; o.textContent = d.name; if (d.id === cur || (!cur && d.active)) o.selected = true; return o; }));
+}
+$('#spDevice').addEventListener('mousedown', spFillDevices);
+$('#spDevice').addEventListener('focus', spFillDevices);
+$('#spDevice').addEventListener('change', (e) => { if (e.target.value) window.TLMusic.spotifyApi('transfer', e.target.value); e.target.blur(); });
+$('#spQuery').addEventListener('input', (e) => {
+  clearTimeout(SP.searchT);
+  const q = e.target.value.trim();
+  SP.query = q;
+  if (!q) { SP.results = null; paintSpotifyLists(); return; }
+  SP.searchT = setTimeout(async () => {
+    let r = null;
+    try { r = await tvm.spotifyApi.search(q); } catch (e2) { r = null; }
+    if (SP.query !== q) return;
+    if (r && r.ok) { SP.results = r.data || []; paintSpotifyLists(); } else if (r && r.code) spMsg(spT().err[r.code] || spT().err.error);
+  }, 380);
+});
+window.addEventListener('tl:spotify', () => { if (state.view === 'musica') paintSpotify(); });
+window.addEventListener('tl:track', () => { if (state.view === 'musica' && window.TLMusic && window.TLMusic.spotify) setTimeout(paintSpotify, 60); });
 
 /* «Ahora suena». En el menú: si a la derecha de la lista de salas hay un hueco ancho, es una tarjeta que se queda
    mientras suena la música; si no hay lugar, es una píldora que se muestra unos segundos al cambiar de tema.

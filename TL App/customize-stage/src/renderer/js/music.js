@@ -208,7 +208,9 @@
   const S = {
     on: false, playing: false, title: '', artist: '', album: '', key: '', cover: '',
     pos: 0, dur: 0, at: 0, canSeek: false, status: 'idle', timer: 0, busy: false, heldPause: false,
-    vol: -1, volAt: 0, volWant: null, volBusy: false
+    vol: -1, volAt: 0, volWant: null, volBusy: false,
+    // Con la cuenta conectada (API web) se lee y se maneja por ahí; si no, por Windows.
+    api: false, uri: '', device: null, shuffle: false, repeat: 'off', context: ''
   };
   const sNow = () => (S.title ? { title: S.title, artist: S.artist, name: `spotify:${S.key}`, user: false, spotify: true } : null);
   const sCur = () => {
@@ -226,11 +228,36 @@
     const sig = `${S.status}|${S.vol >= 0 ? S.vol.toFixed(2) : '-'}`;
     if (sig !== S.sig) { S.sig = sig; window.dispatchEvent(new CustomEvent('tl:spotify', { detail: { status: S.status } })); }
   }
+  /** Lo que devuelve la API, con la misma forma que lo que lee Windows. */
+  async function sReadApi() {
+    let r = null;
+    try { r = await window.tvm.spotifyApi.player(); } catch (e) { r = null; }
+    if (!r) return { ok: false, error: 'api' };
+    if (!r.ok) {
+      // Sin sesión válida: se vuelve a leer por Windows.
+      if (r.code === 'login') { S.api = false; window.dispatchEvent(new CustomEvent('tl:spotifyapi', { detail: { connected: false } })); }
+      return { ok: false, error: r.code || 'api' };
+    }
+    const d = r.data || {};
+    S.device = d.device || null;
+    S.shuffle = !!d.shuffle;
+    S.repeat = d.repeat || 'off';
+    S.context = d.context || '';
+    if (!d.active || !d.item) return { ok: true, running: true, nodevice: !d.active };
+    const it = d.item;
+    S.uri = it.uri || '';
+    return {
+      ok: true, running: true, playing: d.playing, title: it.title, artist: it.artist, album: it.album,
+      key: it.uri, cover: it.coverBig || '', pos: d.pos, dur: it.dur, age: 0, canSeek: true,
+      vol: d.device && d.device.vol >= 0 ? d.device.vol : undefined
+    };
+  }
   async function sRead() {
     if (!S.on || S.busy || !window.tvm || !window.tvm.spotify) return;
     S.busy = true;
     let r = null;
-    try { r = await window.tvm.spotify.get(); } catch (e) { r = null; }
+    if (S.api && window.tvm.spotifyApi) r = await sReadApi();
+    else { try { r = await window.tvm.spotify.get(); } catch (e) { r = null; } }
     S.busy = false;
     if (!S.on) return;
     if (!r || r.ok === false) {
@@ -245,7 +272,7 @@
     const playing = !!r.playing && !!title;
     const changedTrack = key !== S.key || title !== S.title;
     const changedPlay = playing !== S.playing;
-    S.status = !r.running ? 'closed' : (title ? 'ok' : 'idle');
+    S.status = r.nodevice ? 'nodevice' : !r.running ? 'closed' : (title ? 'ok' : 'idle');
     S.title = title; S.artist = artist; S.album = String(r.album || ''); S.key = key;
     if (typeof r.cover === 'string') S.cover = r.cover;
     else if (changedTrack && r.mode !== 'smtc') S.cover = '';
@@ -266,9 +293,20 @@
     if (!document.hidden) sRead();
     S.timer = setTimeout(sLoop, document.hidden ? 5000 : 1500);
   }
+  /** Orden por la API; `false` si no se pudo (sin Premium, sin dispositivo…). */
+  async function sApi(name, arg) {
+    if (!S.api || !window.tvm.spotifyApi) return false;
+    let r = null;
+    try { r = await window.tvm.spotifyApi.cmd(name, arg); } catch (e) { r = null; }
+    if (r && !r.ok && r.code) window.dispatchEvent(new CustomEvent('tl:spotifyerr', { detail: { code: r.code } }));
+    return !!(r && r.ok);
+  }
   async function sCmd(name, arg) {
     if (!window.tvm || !window.tvm.spotify) return;
-    try { await window.tvm.spotify.cmd(name, arg); } catch (e) { /* sin Spotify */ }
+    const apiName = name === 'toggle' ? (S.playing ? 'play' : 'pause') : name;
+    // `S.playing` ya se dio vuelta (optimista) antes de llamar acá: por eso 'play' si ahora dice que suena.
+    const viaApi = await sApi(apiName, arg);
+    if (!viaApi) { try { await window.tvm.spotify.cmd(name, arg); } catch (e) { /* sin Spotify */ } }
     // Spotify tarda un pelito en publicar el cambio.
     setTimeout(sRead, 350);
     setTimeout(sRead, 1100);
@@ -283,7 +321,9 @@
     while (S.volWant !== null) {
       const want = S.volWant;
       S.volWant = null;
-      try { await window.tvm.spotify.cmd('setvol', want); } catch (e) { /* sin Spotify */ }
+      // Con cuenta: el volumen del dispositivo de Spotify (anda también en el celu). Si no, el de Windows.
+      const viaApi = S.api && S.device && S.device.canVol ? await sApi('volume', want) : false;
+      if (!viaApi) { try { await window.tvm.spotify.cmd('setvol', want); } catch (e) { /* sin Spotify */ } }
     }
     S.volBusy = false;
   }
@@ -458,7 +498,11 @@
     prev() { if (S.on) sCmd('prev'); else step(-1, false); },
     skip() { if (S.on) sCmd('next'); else step(1, false); },
     /** Spotify: si está elegido, en qué anda (`ok` · `idle` · `closed` · `error` · `nowin`) y la tapa (data URL). */
-    get spotify() { return S.on ? { status: S.status, cover: S.cover, canSeek: S.canSeek, album: S.album, vol: S.vol } : null; },
+    get spotify() { return S.on ? { status: S.status, cover: S.cover, canSeek: S.canSeek, album: S.album, vol: S.vol, api: S.api, uri: S.uri, device: S.device, shuffle: S.shuffle, repeat: S.repeat, context: S.context } : null; },
+    /** La cuenta de Spotify quedó conectada (o se desconectó): de dónde leer. */
+    setSpotifyApi(on) { const next = !!on; if (next === S.api) return; S.api = next; S.cover = ''; S.key = ''; if (S.on) sRead(); },
+    /** Una orden de la API (poner un tema, cola, aleatorio…) y releer. */
+    async spotifyApi(name, arg) { const ok = await sApi(name, arg); setTimeout(sRead, 400); setTimeout(sRead, 1200); return ok; },
     /** Cambia el volumen de Spotify (0–1). */
     spotifyVolume(v) { if (S.on) sVolume(v); },
     /** Una lectura ya (por ejemplo, al abrir la página Música dentro de una sala). */

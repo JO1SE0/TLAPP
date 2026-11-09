@@ -154,6 +154,19 @@ contextBridge.exposeInMainWorld('tvm', {
     stop: () => call('spotify:stop')
   },
 
+  /** Spotify con cuenta (API web). Las de reproductor devuelven { ok, data } o { ok: false, code }. */
+  spotifyApi: {
+    status: () => call('spapi:status'),
+    login: (clientId) => call('spapi:login', clientId),
+    logout: () => call('spapi:logout'),
+    player: () => call('spapi:player'),
+    cmd: (name, arg) => call('spapi:cmd', name, arg),
+    search: (q) => call('spapi:search', q),
+    playlists: () => call('spapi:playlists'),
+    devices: () => call('spapi:devices'),
+    liked: (uri) => call('spapi:liked', uri)
+  },
+
   tracks: {
     list: () => call('tracks:list'),
     cover: (name, user) => call('tracks:cover', name, !!user),

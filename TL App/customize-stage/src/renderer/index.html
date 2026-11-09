@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta http-equiv="Content-Security-Policy"
-        content="default-src 'self' file:; img-src 'self' file: data:; style-src 'self' file: 'unsafe-inline'; script-src 'self' file:; connect-src 'self'" />
+        content="default-src 'self' file:; img-src 'self' file: data: https://*.scdn.co https://*.spotifycdn.com; style-src 'self' file: 'unsafe-inline'; script-src 'self' file:; connect-src 'self'" />
   <title>TL App</title>
   <!-- Este bloque existe para el primer cuadro: corre antes de que carguen las
        hojas de estilo. Los colores salen del tema, que el preload deja puesto en
@@ -1678,6 +1678,35 @@
           <section class="csec" id="musSwitches">
             <header class="csec__head"><h2 id="musSwTitle">Ajustes de música</h2></header>
             <div class="mus__sws" id="musSws"></div>
+          </section>
+
+          <!-- Spotify con cuenta: conectar, buscar, playlists, dispositivo. Sólo con «Usar Spotify». -->
+          <section class="csec sp" id="musSpotify" hidden>
+            <header class="csec__head"><h2 id="spTitle">Spotify</h2><span class="sp__who" id="spWho"></span></header>
+            <div class="sp__login" id="spLogin">
+              <p class="sp__lead" id="spLead"></p>
+              <div class="sp__row">
+                <input type="text" id="spClient" maxlength="40" spellcheck="false" autocomplete="off" placeholder="Client ID" />
+                <button class="btn btn--primary btn--sm" id="spConnect" type="button">Conectar</button>
+              </div>
+              <details class="sp__how"><summary id="spHowTitle">Cómo sacar el Client ID</summary><ol id="spHow"></ol>
+                <div class="sp__row"><code id="spRedirect"></code><button class="btn btn--ghost btn--sm" id="spCopy" type="button">Copiar</button></div>
+              </details>
+            </div>
+            <div class="sp__main" id="spMain" hidden>
+              <div class="sp__bar">
+                <button class="sp__pill" id="spShuffle" type="button"></button>
+                <button class="sp__pill" id="spRepeat" type="button"></button>
+                <button class="sp__pill" id="spLike" type="button"></button>
+                <label class="sp__dev"><span id="spDevLabel">Suena en</span><select id="spDevice"></select></label>
+                <button class="btn btn--ghost btn--sm" id="spLogout" type="button">Desconectar</button>
+              </div>
+              <p class="sp__msg" id="spMsg" hidden></p>
+              <div class="searchbar sp__search"><svg data-icon viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.8"/><path d="M16.1 16.1 20.2 20.2"/></svg><input type="text" id="spQuery" placeholder="Buscar en Spotify…" /></div>
+              <div class="sp__results" id="spResults"></div>
+              <h3 class="sp__sub" id="spPlTitle">Tus playlists</h3>
+              <div class="sp__pls" id="spPlaylists"></div>
+            </div>
           </section>
 
           <section class="csec">
