@@ -2563,7 +2563,9 @@ handle('theme:vars', (_e, accent, themeId) => themeVars(accent, themeId));
  */
 listen('theme:boot-vars', (e) => {
   try {
-    e.returnValue = themeVars();
+    // `--boot-ui` no es un color: le dice al preload qué cara tiene la app
+    // (Estadio o Clásica) para que la pantalla de carga ya salga con la correcta.
+    e.returnValue = { ...themeVars(), '--boot-ui': store.get().appearance.ui === 'classic' ? 'classic' : 'moderna' };
   } catch {
     // Un tema roto no puede dejar la ventana esperando una respuesta que no
     // llega: `sendSync` bloquea al renderer hasta que se conteste algo.

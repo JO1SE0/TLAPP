@@ -1,0 +1,502 @@
+/* ══════════════════════════════════════════════════════════════════════
+   TL App — interfaz «Moderna» (azul y dorado)
+   ══════════════════════════════════════════════════════════════════════
+   Todo lo de este archivo vale sólo con `html[data-ui="moderna"]`. Con la
+   interfaz Clásica no se aplica ni una regla.
+
+   La idea: tarjetas azul marino redondeadas sobre un fondo azul noche, el
+   dorado del escudo para lo elegido (pestaña, sala, interruptores, botón
+   principal), letra Outfit e íconos de línea. Pestañas arriba en una
+   cápsula; en Salas, la lista a la izquierda y la sala elegida a la derecha.
+
+   · Colores: siempre de los tokens del tema. Con el tema del club es azul y
+     dorado; con otro tema la app entera toma ese color, como siempre.
+   · Rendimiento: nada nuevo se anima solo. Sin blur ni filtros. Dentro de
+     una sala la interfaz no dibuja nada encima de la cancha que no estuviera.
+   · Chromium 91: nada de :has(), color-mix(), @layer ni contenedores.
+   · Lo que ya había (partículas, cortina, destello de gol, fondo del menú,
+     profundidad, música) sigue igual: esta capa viste, no apaga nada.
+   ══════════════════════════════════════════════════════════════════════ */
+
+html[data-ui="moderna"] {
+  --font: "Outfit", "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif;
+  --font-display: "Outfit", "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif;
+  --m-r: 22px;          /* tarjetas */
+  --m-r2: 14px;         /* tarjetas chicas, tiras */
+  --m-r3: 10px;         /* controles */
+  --m-card: linear-gradient(180deg, rgb(var(--text-rgb) / 5%), rgb(var(--text-rgb) / 2%)), var(--bg-1);
+  --m-card2: rgb(var(--text-rgb) / 6%);
+  --m-field: rgb(0 0 0 / 22%);
+  --m-line: rgb(var(--text-rgb) / 8%);
+  --m-shadow: 0 18px 40px -22px rgb(0 0 0 / 75%);
+  --m-gold: var(--accent);
+  --m-on: var(--accent-text-on);
+  --m-ok: #2fd18a;
+  --m-warn: #f2b84b;
+  --m-bad: #ef5a70;
+}
+html[data-ui="moderna"] body { font-family: var(--font); }
+
+/* Barras de scroll finas. */
+html[data-ui="moderna"] ::-webkit-scrollbar { width: 9px; height: 9px; }
+html[data-ui="moderna"] ::-webkit-scrollbar-track { background: transparent; }
+html[data-ui="moderna"] ::-webkit-scrollbar-thumb { background: rgb(var(--text-rgb) / 14%); border-radius: 9px; border: 2px solid transparent; background-clip: padding-box; }
+html[data-ui="moderna"] ::-webkit-scrollbar-thumb:hover { background-color: rgb(var(--accent-rgb) / 55%); }
+
+/* Lo que es sólo de la interfaz clásica no existe acá. */
+html[data-ui="moderna"] .row--clasica, html[data-ui="moderna"] .sec--clasica, html[data-ui="moderna"] .roster, html[data-ui="moderna"] .rail__hr, html[data-ui="moderna"] .rail__sp,
+html[data-ui="moderna"] #profCard .profcard__glow, html[data-ui="moderna"] #layReset { display: none !important; }
+
+/* ══ 1 · Fondo ════════════════════════════════════════════════════════ */
+html[data-ui="moderna"] .ambient {
+  background:
+    radial-gradient(70% 55% at 88% -5%, rgb(var(--accent-rgb) / 10%), transparent 60%),
+    radial-gradient(60% 50% at 0% 100%, rgb(var(--accent-rgb) / 5%), transparent 60%),
+    linear-gradient(180deg, var(--bg-1), var(--bg-0));
+}
+html[data-ui="moderna"] .ambient .blob { opacity: .14; }
+html[data-ui="moderna"][data-scheme="light"] .ambient .blob { opacity: .08; }
+html[data-ui="moderna"] #app .browser { background: transparent; }
+
+/* ══ 2 · Barra de arriba ══════════════════════════════════════════════ */
+html[data-ui="moderna"] #app .topbar {
+  background: transparent; border-bottom: 0; box-shadow: none;
+}
+html[data-ui="moderna"] #app .topbar::after { display: none; }
+html[data-ui="moderna"] #app .brand__name { font-weight: 600; font-size: 19px; letter-spacing: 0; }
+html[data-ui="moderna"] #app .brand__mark { border-radius: 0; box-shadow: none; }
+html[data-ui="moderna"] #app .gametab { border-radius: var(--m-r3); }
+html[data-ui="moderna"] #app .gametab.is-active { background: var(--m-card2); }
+html[data-ui="moderna"] #app .gametab.is-active::after { display: none; }
+html[data-ui="moderna"] #app .linkbar {
+  height: 36px; border-radius: 99px; border: 1px solid var(--m-line); background: var(--m-field); box-shadow: none;
+}
+html[data-ui="moderna"] #app .linkbar:focus-within { border-color: rgb(var(--accent-rgb) / 70%); box-shadow: 0 0 0 3px rgb(var(--accent-rgb) / 15%); }
+html[data-ui="moderna"] #app .linkbar__go { border-radius: 99px; background: var(--m-gold); color: var(--m-on); }
+html[data-ui="moderna"] #app .audio { border-radius: 99px; background: var(--m-card2); border-color: var(--m-line); }
+html[data-ui="moderna"] #app .topbar .iconbtn, html[data-ui="moderna"] #app .wbtn { border-radius: var(--m-r3); }
+html[data-ui="moderna"] #app .friendsbtn, html[data-ui="moderna"] #app .toplast, html[data-ui="moderna"] #app .topchip, html[data-ui="moderna"] #app .mechip { border-radius: 99px; }
+html[data-ui="moderna"] #app .topbar-reveal { border-radius: 0 0 var(--m-r2) var(--m-r2); }
+
+/* ══ 3 · Pestañas (el menú): una cápsula centrada ═════════════════════ */
+html[data-ui="moderna"] #app:not([data-stage="game"]) #rail {
+  align-self: center; width: auto; height: auto; margin: 2px auto 6px; padding: 4px; gap: 2px;
+  border: 1px solid var(--m-line); border-radius: 16px;
+  background: rgb(0 0 0 / 22%); box-shadow: none; overflow: visible;
+}
+html[data-ui="moderna"] #rail .railitem {
+  width: auto; height: 38px; padding: 0 18px; gap: 8px; border-radius: 12px;
+  font-family: var(--font); font-size: 14px; font-weight: 500; letter-spacing: 0; text-transform: none;
+  color: var(--text-dim); background: transparent; box-shadow: none; border: 0;
+}
+html[data-ui="moderna"] #rail .railitem svg { width: 17px; height: 17px; opacity: .8; }
+html[data-ui="moderna"] #rail .railitem:hover { color: var(--text); background: rgb(var(--text-rgb) / 6%); transform: none; }
+html[data-ui="moderna"] #rail .railitem.is-active {
+  color: var(--m-on); background: var(--m-gold); font-weight: 600;
+  box-shadow: 0 6px 16px -6px rgb(var(--accent-rgb) / 70%);
+}
+html[data-ui="moderna"] #rail .railitem.is-active svg { opacity: 1; color: currentColor; }
+html[data-ui="moderna"] #rail .railitem.is-active::before, html[data-ui="moderna"] #rail .railitem.is-active::after { display: none; }
+html[data-ui="moderna"] #rail #captainBtn { margin-left: 0; }
+/* En una sala la barra se guarda arriba y vuelve al acercar el mouse (como siempre). */
+html[data-ui="moderna"] #app[data-stage="game"] #rail { background: var(--bg-0); border-bottom: 1px solid var(--m-line); }
+
+/* ══ 4 · Salas: la lista y la sala elegida ════════════════════════════ */
+html[data-ui="moderna"] #app .browser.md-browser {
+  display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 22px;
+  padding: 10px 32px 24px; box-sizing: border-box; overflow: hidden;
+}
+html[data-ui="moderna"] #app[data-stage="game"] .browser.md-browser { display: none; }
+html[data-ui="moderna"] #app .md-browser > .browser__shell {
+  max-width: none; height: 100%; min-height: 0; margin: 0; padding: 24px 26px 14px; gap: 12px;
+  border: 1px solid var(--m-line); border-radius: var(--m-r); background: var(--m-card); box-shadow: var(--m-shadow);
+}
+html[data-ui="moderna"] .md-head__t { font-size: 32px; font-weight: 600; letter-spacing: -.02em; line-height: 1.1; }
+html[data-ui="moderna"] .md-head__s { margin-top: 2px; color: var(--text-faint); font-size: 14px; }
+
+html[data-ui="moderna"] #app .lastroom {
+  border-radius: var(--m-r2); border: 1px solid rgb(var(--accent-rgb) / 40%);
+  background: rgb(var(--accent-rgb) / 10%); box-shadow: none;
+}
+html[data-ui="moderna"] #app .nickcard { border-radius: var(--m-r2); border: 1px solid rgb(var(--accent-rgb) / 40%); background: rgb(var(--accent-rgb) / 8%); box-shadow: none; }
+html[data-ui="moderna"] #app .nickcard__form input, html[data-ui="moderna"] #app .nickcard__form .btn { border-radius: 99px; }
+
+/* Filtros: píldoras. */
+html[data-ui="moderna"] #app .roommodes { margin: 0; gap: 10px; }
+html[data-ui="moderna"] #app .roommodes__set, html[data-ui="moderna"] #app .roommodes__view { gap: 6px; padding: 0; border-radius: 0; background: none; box-shadow: none; border: 0; }
+html[data-ui="moderna"] #app .roommode {
+  padding: 8px 16px; border-radius: 99px; background: var(--m-card2); box-shadow: none;
+  font-size: 13.5px; font-weight: 500; letter-spacing: 0; text-transform: none; color: var(--text-dim);
+}
+html[data-ui="moderna"] #app .roommode:hover { color: var(--text); background: rgb(var(--text-rgb) / 10%); }
+html[data-ui="moderna"] #app .roommode.is-on { background: var(--m-gold); color: var(--m-on); font-weight: 600; box-shadow: 0 6px 16px -8px rgb(var(--accent-rgb) / 80%); }
+html[data-ui="moderna"] #app .roomviewbtn { width: 34px; height: 34px; border-radius: 99px; background: var(--m-card2); }
+html[data-ui="moderna"] #app .roomviewbtn.is-on, html[data-ui="moderna"] #app .roomviewbtn.is-active { background: rgb(var(--accent-rgb) / 22%); color: var(--text); box-shadow: inset 0 0 0 1px rgb(var(--accent-rgb) / 55%); }
+
+html[data-ui="moderna"] #app .rtoolbar { margin: 0; gap: 8px; }
+html[data-ui="moderna"] #app .rsearch, html[data-ui="moderna"] #app .filterchip, html[data-ui="moderna"] #app .sortselect, html[data-ui="moderna"] #app .rtoolbar .iconbtn {
+  min-height: 36px; height: 36px; border-radius: 99px; border: 1px solid var(--m-line); background: var(--m-field); box-shadow: none;
+}
+html[data-ui="moderna"] #app .rsearch { padding: 0 14px; }
+html[data-ui="moderna"] #app .rsearch input { background: none; border: 0; box-shadow: none; }
+html[data-ui="moderna"] #app .rsearch:focus-within { border-color: rgb(var(--accent-rgb) / 70%); }
+html[data-ui="moderna"] #app .filterchip { padding-inline: 12px; font-size: 12.5px; }
+html[data-ui="moderna"] #app .filterchip.is-on { border-color: rgb(var(--accent-rgb) / 60%); background: rgb(var(--accent-rgb) / 14%); }
+html[data-ui="moderna"] #app .rtoolbar .iconbtn { width: 36px; }
+html[data-ui="moderna"] #app .rcount { color: var(--text-faint); }
+
+/* La lista: sin caja propia, adentro de la tarjeta. */
+html[data-ui="moderna"] #app .md-browser .rpanel { border: 0; border-radius: 0; background: none; box-shadow: none; overflow: hidden; }
+html[data-ui="moderna"][data-roomview="list"] #app .rtable__head { display: none; }
+html[data-ui="moderna"] #app .rtable { padding: 4px 0; }
+html[data-ui="moderna"][data-roomview="list"] #app .rrow {
+  display: grid; grid-template-columns: 36px minmax(0, 1fr) 200px 76px 26px; gap: 0 14px; align-items: center;
+  height: 44px; margin: 0; padding: 0 10px; border: 0; border-radius: 12px; box-shadow: none; background: none; font-size: 14px;
+}
+html[data-ui="moderna"][data-roomview="list"][data-room-rows="dense"] #app .rrow { height: 34px; font-size: 13px; }
+html[data-ui="moderna"][data-roomview="list"][data-room-rows="large"] #app .rrow { height: 52px; font-size: 15px; }
+html[data-ui="moderna"][data-roomview="list"] #app .rrow .rrow__flag { order: 1; justify-self: start; }
+html[data-ui="moderna"][data-roomview="list"] #app .rrow .rrow__name { order: 2; min-width: 0; }
+html[data-ui="moderna"][data-roomview="list"] #app .rrow .rrow__players { order: 3; }
+html[data-ui="moderna"][data-roomview="list"] #app .rrow .rrow__dist { order: 4; text-align: right; }
+html[data-ui="moderna"][data-roomview="list"] #app .rrow .rrow__fav { order: 5; }
+html[data-ui="moderna"] #app .rrow:hover { background: rgb(var(--text-rgb) / 5%); }
+html[data-ui="moderna"] #app .rrow::before { display: none; }
+html[data-ui="moderna"] #app .rrow.is-selected { background: rgb(var(--accent-rgb) / 12%); box-shadow: inset 0 0 0 1.5px var(--m-gold); }
+html[data-ui="moderna"] #app .rrow__label { font-weight: 400; }
+html[data-ui="moderna"] #app .rrow.is-selected .rrow__label { font-weight: 500; }
+html[data-ui="moderna"] #app .rrow.is-empty .rrow__label { color: var(--text-faint); }
+html[data-ui="moderna"] #app .rrow__dist { color: var(--text-faint); font-size: 13px; white-space: nowrap; }
+/* Ocupación: barra redondeada + número. */
+html[data-ui="moderna"][data-roomview="list"] #app .rrow__players {
+  display: grid; grid-template-columns: minmax(0, 1fr) 58px; align-items: center; gap: 14px;
+  justify-self: stretch; width: auto; min-width: 0; padding: 0; border: 0; border-radius: 0; background: none; box-shadow: none; text-shadow: none;
+  font-size: 14px; font-weight: 600; color: var(--text); text-align: left;
+}
+html[data-ui="moderna"][data-roomview="list"] #app .rrow__players::before {
+  content: ""; height: 6px; border-radius: 6px;
+  background: linear-gradient(90deg, var(--bar, var(--m-ok)) var(--fill, 0%), rgb(var(--text-rgb) / 9%) 0);
+}
+html[data-ui="moderna"] #app .rrow.is-almost-full { --bar: var(--m-warn); }
+html[data-ui="moderna"] #app .rrow.is-full { --bar: var(--m-bad); }
+html[data-ui="moderna"][data-roomview="list"] #app .rrow.is-full .rrow__players, html[data-ui="moderna"][data-roomview="list"] #app .rrow.is-almost-full .rrow__players { color: var(--text); background: none; border: 0; }
+html[data-ui="moderna"] #app .rrow__flag { border-radius: 3px; }
+html[data-ui="moderna"] #app .rrow__club, html[data-ui="moderna"] #app .rrow__badge { border-radius: 99px; }
+html[data-ui="moderna"] #app .rrow__fav { border-radius: 99px; }
+
+/* El pie de la lista: crear sala y cambiar nombre. */
+html[data-ui="moderna"] #app .md-browser .rpanel__foot { padding: 10px 2px 0; border-top: 1px solid var(--m-line); background: none; }
+html[data-ui="moderna"] #app .ghostbtn { height: 36px; padding: 0 16px; border-radius: 99px; background: var(--m-card2); }
+html[data-ui="moderna"] #app .ghostbtn:hover { background: rgb(var(--text-rgb) / 10%); }
+
+/* Las otras vistas de la lista. */
+html[data-ui="moderna"] #app :is(.boardcol, .boardcol .rrow, .roommap__wrap, .roommap__fit, .roommap__tip) { border-radius: 12px; }
+html[data-ui="moderna"] #app .boardcol { background: var(--m-card2); border-color: var(--m-line); }
+html[data-ui="moderna"]:not([data-roomview="list"]) #app .rrow { border-radius: 12px; }
+
+/* Columna derecha. */
+html[data-ui="moderna"] .md-side { display: flex; flex-direction: column; gap: 18px; min-height: 0; overflow: auto; }
+html[data-ui="moderna"] .md-room, html[data-ui="moderna"] .md-me, html[data-ui="moderna"] .md-club {
+  position: relative; padding: 22px; border: 1px solid var(--m-line); border-radius: var(--m-r);
+  background: var(--m-card); box-shadow: var(--m-shadow);
+}
+html[data-ui="moderna"] .md-room {
+  border-color: rgb(var(--accent-rgb) / 35%);
+  background: radial-gradient(90% 70% at 100% 0%, rgb(var(--accent-rgb) / 18%), transparent 60%), linear-gradient(160deg, rgb(var(--text-rgb) / 7%), rgb(var(--text-rgb) / 2%)), var(--bg-2);
+}
+html[data-ui="moderna"] .md-room__k { font-size: 11.5px; font-weight: 600; letter-spacing: .12em; color: var(--accent-text); }
+html[data-ui="moderna"] .md-room__n { margin: 6px 0 4px; font-size: 21px; font-weight: 600; line-height: 1.2; word-break: break-word;
+  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+html[data-ui="moderna"] .md-room__m { color: var(--text-faint); font-size: 13px; line-height: 1.45; }
+html[data-ui="moderna"] .md-room__big { display: flex; align-items: baseline; gap: 8px; margin: 14px 0 16px; }
+html[data-ui="moderna"] .md-room__big b { font-size: 46px; font-weight: 600; line-height: 1; }
+html[data-ui="moderna"] .md-room__big span { color: var(--text-faint); font-size: 15px; }
+html[data-ui="moderna"] .md-room__big.is-almost b { color: var(--m-warn); }
+html[data-ui="moderna"] .md-room__big.is-full b { color: var(--m-bad); }
+html[data-ui="moderna"] .md-room__big.is-idle { display: none; }
+html[data-ui="moderna"] .md-room:not(.has-room) .md-room__m { margin-bottom: 16px; }
+html[data-ui="moderna"] #app .md-room__go .joinbtn {
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  width: 100%; height: 50px; padding: 0; border: 0; border-radius: var(--m-r2);
+  font-size: 16px; font-weight: 600; letter-spacing: 0; text-transform: none;
+  background: rgb(var(--text-rgb) / 8%); color: var(--text-faint); box-shadow: none;
+}
+html[data-ui="moderna"] #app .md-room__go .joinbtn:not(:disabled) {
+  background: linear-gradient(180deg, var(--accent-lift, var(--accent)), var(--accent)); color: var(--m-on); cursor: pointer;
+  box-shadow: 0 10px 24px -10px rgb(var(--accent-rgb) / 75%);
+}
+html[data-ui="moderna"] #app .md-room__go .joinbtn:not(:disabled):hover { filter: none; transform: translateY(-1px); }
+html[data-ui="moderna"] #app .md-room__go .joinbtn svg { width: 18px; height: 18px; }
+html[data-ui="moderna"] .md-room__duo { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
+html[data-ui="moderna"] #app .md-room__duo > :is(.ghostbtn, .md-btn) {
+  display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+  width: 100%; min-width: 0; height: 40px; padding: 0 10px; border: 0; border-radius: 12px;
+  background: rgb(var(--text-rgb) / 8%); color: var(--text); font: 500 13px/1 var(--font); cursor: pointer; white-space: nowrap; overflow: hidden;
+}
+html[data-ui="moderna"] #app .md-room__duo > :is(.ghostbtn, .md-btn) span { overflow: hidden; text-overflow: ellipsis; }
+html[data-ui="moderna"] #app .md-room__duo > :is(.ghostbtn, .md-btn) svg { flex: none; width: 15px; height: 15px; }
+html[data-ui="moderna"] #app .md-room__duo > :is(.ghostbtn, .md-btn):hover:not(:disabled) { background: rgb(var(--text-rgb) / 13%); }
+html[data-ui="moderna"] #app .md-room__duo > :is(.ghostbtn, .md-btn):disabled { opacity: .45; cursor: default; }
+html[data-ui="moderna"] #app .md-room__duo > :is(.ghostbtn, .md-btn).is-on { background: rgb(var(--accent-rgb) / 20%); color: var(--accent-text); box-shadow: inset 0 0 0 1px rgb(var(--accent-rgb) / 50%); }
+html[data-ui="moderna"] .md-ico { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+html[data-ui="moderna"] .md-fav.is-on .md-ico { fill: currentColor; }
+
+/* Tu tarjeta (la de siempre, movida): foto, nombre, nivel y números. */
+html[data-ui="moderna"] .md-me { padding: 0; }
+html[data-ui="moderna"] #app #profCard {
+  width: 100%; height: auto; margin: 0; padding: 18px 20px; display: grid; gap: 0 14px;
+  grid-template-columns: auto minmax(0, 1fr); grid-template-areas: "ring info" "stats stats";
+  align-items: center; text-align: left; border: 0; border-radius: var(--m-r); background: none; box-shadow: none;
+}
+html[data-ui="moderna"] #app #profCard:hover { transform: none; box-shadow: none; background: rgb(var(--text-rgb) / 3%); }
+html[data-ui="moderna"] #app #profCard::after { display: none; }
+html[data-ui="moderna"] #app #profCard .profcard__ring { grid-area: ring; width: 52px; height: 52px; }
+html[data-ui="moderna"] #app #profCard .profcard__ring::before { background: var(--bg-1); }
+html[data-ui="moderna"] #app #profCard .profcard__av { width: 44px; height: 44px; font-size: 18px; }
+html[data-ui="moderna"] #app #profCard .profcard__info { grid-area: info; align-items: flex-start; gap: 2px; width: auto; }
+html[data-ui="moderna"] #app #profCard .profcard__name { font: 600 16px/1.2 var(--font); letter-spacing: 0; text-transform: none; }
+html[data-ui="moderna"] #app #profCard .profcard__lvl { font-size: 12px; letter-spacing: 0; text-transform: none; font-weight: 500; color: var(--accent-text); }
+html[data-ui="moderna"] #app #profCard .profcard__bar { display: block; height: 5px; margin-top: 6px; border-radius: 5px; background: rgb(var(--text-rgb) / 10%); }
+html[data-ui="moderna"] #app #profCard .profcard__stats {
+  grid-area: stats; display: grid; width: auto; margin-top: 14px; padding: 14px 0 0; border-top: 1px solid var(--m-line);
+}
+html[data-ui="moderna"] #app #profCard .profcard__stats { border-left: 0; }
+html[data-ui="moderna"] #app #profCard .profcard__stats span + span { border-left: 0; }
+html[data-ui="moderna"] #app #profCard .profcard__badge { display: none; }
+html[data-ui="moderna"] #app #profCard .profcard__stats b { font: 600 26px/1.05 var(--font); color: var(--text); }
+html[data-ui="moderna"] #app #profCard .profcard__stats em { font-size: 12px; font-weight: 400; letter-spacing: 0; color: var(--text-faint); text-transform: none; }
+
+/* El club en línea. */
+html[data-ui="moderna"] .md-club[hidden] { display: none; }
+html[data-ui="moderna"] .md-club__t { font-size: 15px; font-weight: 600; }
+html[data-ui="moderna"] .md-club__av { display: flex; margin-top: 12px; min-height: 0; }
+html[data-ui="moderna"] .md-club__av:empty { display: none; }
+html[data-ui="moderna"] .md-club__av i {
+  width: 36px; height: 36px; margin-right: -9px; border-radius: 50%; border: 3px solid var(--bg-1);
+  display: grid; place-items: center; font-style: normal; font-weight: 600; font-size: 13px; color: #0c1630;
+}
+html[data-ui="moderna"] .md-club__s { margin-top: 10px; color: var(--text-faint); font-size: 13px; }
+html[data-ui="moderna"] .md-club__list { display: grid; gap: 6px; margin-top: 10px; }
+html[data-ui="moderna"] .md-club__list:empty { display: none; }
+html[data-ui="moderna"] .md-club__go {
+  display: grid; grid-template-columns: 16px auto minmax(0, 1fr); align-items: center; gap: 8px;
+  padding: 9px 12px; border: 0; border-radius: 12px; background: rgb(var(--text-rgb) / 6%); color: var(--text);
+  font: 500 13px/1.2 var(--font); text-align: left; cursor: pointer;
+}
+html[data-ui="moderna"] .md-club__go:hover { background: rgb(var(--accent-rgb) / 14%); }
+html[data-ui="moderna"] .md-club__go .md-ico { color: var(--m-ok); }
+html[data-ui="moderna"] .md-club__go span { color: var(--text-faint); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Ventanas angostas: la columna derecha se achica y después se va. */
+@media (max-width: 1180px) { html[data-ui="moderna"] #app .browser.md-browser { grid-template-columns: minmax(0, 1fr) 290px; padding-inline: 20px; } }
+@media (max-width: 900px) {
+  html[data-ui="moderna"] #app .browser.md-browser { grid-template-columns: minmax(0, 1fr); }
+  html[data-ui="moderna"] .md-side { display: none; }
+}
+
+/* ══ 5 · Pantallas (Replays, Club, Música, Personalización, Ajustes…) ═══ */
+html[data-ui="moderna"] #app .panel { padding: 10px 32px 24px; }
+html[data-ui="moderna"] #app#app .panel__scrim { background: rgb(4 8 18 / 55%); }
+html[data-ui="moderna"] #app#app[data-stage="browser"] .panel__scrim { background: var(--bg-0); background: radial-gradient(70% 55% at 88% -5%, rgb(var(--accent-rgb) / 10%), transparent 60%), linear-gradient(180deg, var(--bg-1), var(--bg-0)); }
+/* La tarjeta de afuera es invisible: adentro van dos tarjetas (índice y página). */
+html[data-ui="moderna"] #app#app .panel__card {
+  width: 100%; max-width: 1400px; height: 100%; max-height: none; margin: 0 auto;
+  border: 0; border-radius: 0; background: none; box-shadow: none; overflow: visible;
+}
+html[data-ui="moderna"] #app#app .panel__body { gap: 22px; height: 100%; }
+html[data-ui="moderna"] #app#app .panel__pages {
+  border: 1px solid var(--m-line); border-radius: var(--m-r); background: var(--m-card); box-shadow: var(--m-shadow);
+}
+html[data-ui="moderna"] #app#app .panel__close {
+  top: 14px; right: 14px; z-index: 5; width: 36px; height: 36px; border-radius: 50%;
+  background: rgb(var(--text-rgb) / 7%); border: 1px solid var(--m-line);
+}
+html[data-ui="moderna"] #app#app .panel__close:hover { background: rgb(var(--text-rgb) / 14%); }
+
+/* El índice: una tarjeta a la izquierda con las pestañas. */
+html[data-ui="moderna"] #app#app .panel .pnav {
+  width: 290px; margin: 0; padding: 16px 14px; flex: none;
+  border: 1px solid var(--m-line); border-radius: var(--m-r); background: var(--m-card); box-shadow: var(--m-shadow);
+}
+html[data-ui="moderna"] #app#app .panel .pnav__search {
+  height: 42px; margin-bottom: 10px; border-radius: 12px; background: var(--m-field); border: 1px solid var(--m-line);
+}
+html[data-ui="moderna"] #app#app .panel .pnav__search input { background: none; border: 0; box-shadow: none; }
+html[data-ui="moderna"] #app#app .panel .pnav__group { margin: 14px 10px 6px; font-size: 11px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--text-faint); }
+html[data-ui="moderna"] #app#app .panel .pnav__tab, html[data-ui="moderna"] #app#app .panel .pnav__i {
+  border: 0; border-radius: 12px; padding: 10px 12px; gap: 12px; background: none; box-shadow: none;
+}
+html[data-ui="moderna"] #app#app .panel .pnav__tab:hover, html[data-ui="moderna"] #app#app .panel .pnav__i:hover { background: rgb(var(--text-rgb) / 6%); transform: none; }
+html[data-ui="moderna"] #app#app .panel .pnav__tab.is-on, html[data-ui="moderna"] #app#app .panel .pnav__i.is-on {
+  background: var(--m-gold); color: var(--m-on); box-shadow: 0 8px 20px -10px rgb(var(--accent-rgb) / 80%);
+}
+html[data-ui="moderna"] #app#app .panel .pnav__tab.is-on::before, html[data-ui="moderna"] #app#app .panel .pnav__i.is-on::before { display: none; }
+html[data-ui="moderna"] #app#app .panel .pnav__tab b { font-size: 14.5px; font-weight: 600; letter-spacing: 0; text-transform: none; }
+html[data-ui="moderna"] #app#app .panel .pnav__tab small { color: var(--text-faint); }
+html[data-ui="moderna"] #app#app .panel .pnav__tab.is-on b, html[data-ui="moderna"] #app#app .panel .pnav__tab.is-on small { color: var(--m-on); }
+html[data-ui="moderna"] #app#app .panel .pnav__tab.is-on small { opacity: .75; }
+html[data-ui="moderna"] #app#app .panel .pnav__ic { width: 34px; height: 34px; border-radius: 10px; background: rgb(var(--text-rgb) / 7%); box-shadow: none; }
+html[data-ui="moderna"] #app#app .panel .pnav__tab.is-on .pnav__ic { background: rgb(0 0 0 / 14%); color: var(--m-on); }
+html[data-ui="moderna"] #app#app .panel .pnav__ic svg { stroke: currentColor; }
+html[data-ui="moderna"] #app#app .panel .pnav__n { border-radius: 99px; }
+
+/* Cabecera de cada página. */
+html[data-ui="moderna"] #app#app .page .pagehead, html[data-ui="moderna"] #app#app .panel .page[data-page] .pagehead { background: none !important; border: 0 !important; box-shadow: none !important; }
+html[data-ui="moderna"] #app#app .page .pagehead h1, html[data-ui="moderna"] #app#app .panel .page[data-page] .pagehead h1 {
+  font: 600 32px/1.1 var(--font); letter-spacing: -.02em; text-transform: none;
+  color: var(--text); background: none; -webkit-text-fill-color: currentColor; text-shadow: none;
+}
+html[data-ui="moderna"] #app#app .pagehead p { color: var(--text-faint); }
+html[data-ui="moderna"] #app#app .eyebrow { color: var(--accent-text); letter-spacing: .12em; }
+
+/* Atajos de secciones: pestañas subrayadas, como en el diseño. */
+html[data-ui="moderna"] #app#app .panel .tabbar { background: var(--bg-1); padding: 0 0 2px; border-bottom: 1px solid var(--m-line); gap: 2px; }
+html[data-ui="moderna"] #app#app .panel .tabbar__chip, html[data-ui="moderna"] #app#app .panel .tabbar__fold {
+  border: 0; border-radius: 0; background: none; padding: 10px 14px; color: var(--text-faint);
+  font: 500 13.5px/1 var(--font); letter-spacing: 0; text-transform: none; box-shadow: none;
+}
+html[data-ui="moderna"] #app#app .panel .tabbar__chip:hover, html[data-ui="moderna"] #app#app .panel .tabbar__fold:hover { color: var(--text); background: none; box-shadow: inset 0 -2px 0 rgb(var(--accent-rgb) / 50%); }
+
+/* Secciones: tarjetas suaves dentro de la página. */
+html[data-ui="moderna"] #app#app .panel .page[data-page] .sec, html[data-ui="moderna"] #app#app .csec {
+  border: 1px solid var(--m-line); border-radius: 18px; background: rgb(var(--text-rgb) / 3%); box-shadow: none;
+}
+html[data-ui="moderna"] #app#app .panel .page[data-page] .sec--feature { background: radial-gradient(80% 100% at 0% 0%, rgb(var(--accent-rgb) / 10%), transparent 60%), rgb(var(--text-rgb) / 3%); }
+html[data-ui="moderna"] #app#app .panel .page[data-page] .sec::after { display: none; }
+html[data-ui="moderna"] #app#app .panel .sec__title { font: 600 18px/1.2 var(--font); letter-spacing: -.01em; text-transform: none; }
+html[data-ui="moderna"] #app#app .panel .sec__title::before {
+  border-radius: 11px; background: var(--sec-ico, none) center / 18px no-repeat, var(--m-gold);
+  box-shadow: 0 6px 14px -6px rgb(var(--accent-rgb) / 80%);
+}
+html[data-ui="moderna"] #app#app .panel .sec__desc { color: var(--text-faint); }
+html[data-ui="moderna"] #app#app .panel .sec__chev { border-radius: 50%; }
+html[data-ui="moderna"] #app#app .csec__head h2, html[data-ui="moderna"] #app#app .csec__head h3 { font: 600 13px/1.2 var(--font); letter-spacing: .1em; text-transform: uppercase; color: var(--text-faint); }
+html[data-ui="moderna"] #app#app .csec__tag { border-radius: 99px; }
+
+/* Filas: separadas por una línea fina. */
+html[data-ui="moderna"] #app#app .panel .row { border-radius: 12px; }
+html[data-ui="moderna"] #app#app .panel .row__label { font-weight: 500; }
+html[data-ui="moderna"] #app#app .panel .row__desc { color: var(--text-faint); }
+html[data-ui="moderna"] #app#app .panel .row--tog { border-radius: 16px; border: 1px solid var(--m-line); background: rgb(var(--text-rgb) / 3%); }
+html[data-ui="moderna"] #app#app .panel .row--tog:hover { transform: none; background: rgb(var(--text-rgb) / 6%); }
+html[data-ui="moderna"] #app#app .panel .row--tog.is-on { border-color: rgb(var(--accent-rgb) / 50%); background: rgb(var(--accent-rgb) / 9%); }
+
+/* Interruptor: píldora, dorado prendido. */
+html[data-ui="moderna"] #app#app :is(.switch, .mus__sw i, .mus__tg i) {
+  width: 44px; height: 26px; border: 0; border-radius: 13px; background: rgb(var(--text-rgb) / 18%); box-shadow: none;
+}
+html[data-ui="moderna"] #app#app :is(.switch, .mus__sw i, .mus__tg i)::after {
+  top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: var(--text); box-shadow: 0 2px 4px rgb(0 0 0 / 35%);
+}
+html[data-ui="moderna"] #app#app :is(.switch.is-on, .mus__sw.is-on i, .mus__tg.is-on i) { background: var(--m-gold); box-shadow: none; }
+html[data-ui="moderna"] #app#app :is(.switch.is-on, .mus__sw.is-on i, .mus__tg.is-on i)::after { transform: translateX(18px); background: #fff; }
+html[data-ui="moderna"] #app#app .mus__tg i { width: 40px; height: 24px; }
+html[data-ui="moderna"] #app#app .mus__tg i::after { width: 18px; height: 18px; }
+html[data-ui="moderna"] #app#app .mus__tg.is-on i::after { transform: translateX(16px); }
+
+/* Campos. */
+html[data-ui="moderna"] #app#app .panel :is(select, input[type="text"], input[type="number"], input[type="search"], input[type="password"], textarea),
+html[data-ui="moderna"] .modal :is(select, input[type="text"], input[type="password"], input[type="number"], textarea) {
+  border-radius: var(--m-r3); background-color: var(--m-field); border: 1px solid var(--m-line); box-shadow: none; color: var(--text);
+}
+html[data-ui="moderna"] #app#app .panel :is(select, input, textarea):focus, html[data-ui="moderna"] .modal :is(select, input, textarea):focus { border-color: rgb(var(--accent-rgb) / 70%); box-shadow: 0 0 0 3px rgb(var(--accent-rgb) / 15%); outline: 0; }
+html[data-ui="moderna"] #app#app .panel select option { background: var(--bg-2); color: var(--text); }
+html[data-ui="moderna"] #app#app :is(.searchbar, .mus__search) { border-radius: 99px; background: var(--m-field); border: 1px solid var(--m-line); }
+html[data-ui="moderna"] #app#app :is(.searchbar, .mus__search, .pnav__search) input { background: none !important; border: 0 !important; box-shadow: none !important; }
+html[data-ui="moderna"] #app#app input[type="range"]::-webkit-slider-thumb { background: var(--text); box-shadow: 0 0 0 4px rgb(var(--accent-rgb) / 25%), 0 2px 6px rgb(0 0 0 / 40%); }
+
+/* Segmentos y chips. */
+html[data-ui="moderna"] #app#app .seg { border-radius: 12px; padding: 3px; background: var(--m-field); border: 1px solid var(--m-line); }
+html[data-ui="moderna"] #app#app .seg button { border-radius: 9px; font-weight: 500; letter-spacing: 0; text-transform: none; }
+html[data-ui="moderna"] #app#app .seg button.is-on { background: var(--m-gold); color: var(--m-on); box-shadow: none; font-weight: 600; }
+html[data-ui="moderna"] #app#app .chip { border-radius: 99px; background: var(--m-card2); border: 1px solid transparent; box-shadow: none; letter-spacing: 0; text-transform: none; }
+html[data-ui="moderna"] #app#app .chip:hover { background: rgb(var(--text-rgb) / 11%); }
+html[data-ui="moderna"] #app#app .chip.is-active, html[data-ui="moderna"] #app#app .chip.is-on { background: var(--m-gold); color: var(--m-on); border-color: transparent; font-weight: 600; }
+html[data-ui="moderna"] #app#app .tag { border-radius: 6px; }
+html[data-ui="moderna"] #app#app .tag--accent { background: rgb(var(--accent-rgb) / 16%); color: var(--accent-text); box-shadow: none; }
+
+/* Botones. */
+html[data-ui="moderna"] #app#app .btn, html[data-ui="moderna"] .modal .btn, html[data-ui="moderna"] .startcard .btn, html[data-ui="moderna"] .notebar .btn { border-radius: 12px; font-weight: 600; letter-spacing: 0; text-transform: none; }
+html[data-ui="moderna"] #app#app .btn--primary, html[data-ui="moderna"] .modal .btn--primary, html[data-ui="moderna"] .startcard .btn--primary, html[data-ui="moderna"] .notebar .btn--primary {
+  background: linear-gradient(180deg, var(--accent-lift, var(--accent)), var(--accent)); color: var(--m-on); border: 0;
+  box-shadow: 0 8px 20px -10px rgb(var(--accent-rgb) / 75%);
+}
+html[data-ui="moderna"] #app#app .btn--ghost, html[data-ui="moderna"] .modal .btn--ghost, html[data-ui="moderna"] .startcard .btn--ghost, html[data-ui="moderna"] .notebar .btn--ghost { background: rgb(var(--text-rgb) / 7%); border: 1px solid transparent; }
+html[data-ui="moderna"] #app#app .btn--ghost:hover, html[data-ui="moderna"] .modal .btn--ghost:hover { background: rgb(var(--text-rgb) / 12%); }
+html[data-ui="moderna"] #app#app .iconbtn { border-radius: var(--m-r3); }
+
+/* Tarjetas para elegir: perfiles, temas, interfaz, looks. */
+html[data-ui="moderna"] #app#app .panel :is(.presetbtn, .themecard, .laycard) { border-radius: 16px; }
+html[data-ui="moderna"] #app#app .panel :is(.presetbtn.is-on, .themecard.is-on, .laycard.is-active) { box-shadow: 0 0 0 2px var(--m-gold), 0 10px 24px -14px rgb(var(--accent-rgb) / 80%); }
+html[data-ui="moderna"] #app#app .panel :is(.presetbtn, .themecard, .laycard):hover { transform: translateY(-1px); }
+html[data-ui="moderna"] #app#app :is(.themepreview, .laycard__prev) { border-radius: 10px; }
+html[data-ui="moderna"] #app#app .laycards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.laycard__prev--moderna .lp-bar { left: 30%; right: 30%; top: 6px; height: 9px; border-radius: 5px; }
+.laycard__prev--moderna .lp-main { left: 6px; right: 34%; top: 20px; bottom: 6px; border-radius: 6px; }
+.laycard__prev--moderna .lp-side { display: block; left: 69%; right: 6px; top: 20px; bottom: 6px; border-radius: 6px; opacity: .55; }
+
+/* ══ 6 · Club, Música, Replays ════════════════════════════════════════ */
+html[data-ui="moderna"] #app#app .page[data-page="club"] .club__hero, html[data-ui="moderna"] #app#app .mus__hero, html[data-ui="moderna"] #app#app .page[data-page="replays"] .pagehead {
+  border-radius: var(--m-r); border: 1px solid rgb(var(--accent-rgb) / 30%);
+  background: radial-gradient(90% 80% at 100% 0%, rgb(var(--accent-rgb) / 16%), transparent 60%), rgb(var(--text-rgb) / 4%) !important;
+  box-shadow: none !important;
+}
+html[data-ui="moderna"] #app#app .page[data-page="club"] .club__title { font-weight: 600; letter-spacing: -.02em; }
+html[data-ui="moderna"] #app#app .page[data-page="club"] .kpi { border-radius: 16px; background: rgb(var(--text-rgb) / 5%); border: 1px solid var(--m-line); box-shadow: none; }
+html[data-ui="moderna"] #app#app .page[data-page="club"] .kpi::before { display: none; }
+html[data-ui="moderna"] #app#app .page[data-page="club"] .kpi b { font-weight: 600; }
+html[data-ui="moderna"] #app#app .page[data-page="club"] :is(.pod, .cn__card, .cr__row) { border-radius: 16px; }
+html[data-ui="moderna"] #app#app .page[data-page="club"] .cr__row--head { border-radius: 0; }
+html[data-ui="moderna"] #app#app .mus__cover { border-radius: 18px; }
+html[data-ui="moderna"] #app#app .mus__title { font-weight: 600; letter-spacing: -.02em; }
+html[data-ui="moderna"] #app#app .mus__btn--main { background: linear-gradient(180deg, var(--accent-lift, var(--accent)), var(--accent)); color: var(--m-on); }
+html[data-ui="moderna"] #app#app :is(.mus__sw, .mus__row) { border-radius: 14px; }
+html[data-ui="moderna"] #app#app .mus__sw.is-on { background: rgb(var(--accent-rgb) / 10%); border-color: rgb(var(--accent-rgb) / 45%); }
+html[data-ui="moderna"] #app#app .mus__row.is-now { background: rgb(var(--accent-rgb) / 12%); border-color: rgb(var(--accent-rgb) / 50%); }
+html[data-ui="moderna"] #app#app .page[data-page="replays"] .replay { border-radius: 16px; background: rgb(var(--text-rgb) / 3%); }
+html[data-ui="moderna"] #app#app .page[data-page="replays"] .replay:hover { background: rgb(var(--accent-rgb) / 8%); border-color: rgb(var(--accent-rgb) / 45%); }
+html[data-ui="moderna"] #app#app .page[data-page="replays"] .replay__date { border-radius: 12px; }
+html[data-ui="moderna"] #app#app .page[data-page="replays"] :is(.searchbar, .sortselect) { border-radius: 99px; }
+
+/* ══ 7 · Ventanas, menús y avisos ═════════════════════════════════════ */
+html[data-ui="moderna"] :is(.modal__card, .secmodal__card, .crop__card) {
+  border-radius: var(--m-r) !important; border: 1px solid var(--m-line);
+  background: var(--m-card); box-shadow: 0 30px 70px -24px rgb(0 0 0 / 80%);
+}
+html[data-ui="moderna"] .modal__head h2 { font-weight: 600; letter-spacing: -.01em; }
+html[data-ui="moderna"] #app .memenu { border-radius: 18px; border: 1px solid var(--m-line); background: var(--m-card); box-shadow: var(--m-shadow); }
+html[data-ui="moderna"] #app .memenu__i { border-radius: 10px; }
+html[data-ui="moderna"] #app#app .nowplaying { border-radius: 18px; border: 1px solid var(--m-line); }
+html[data-ui="moderna"] .toast { border-radius: 14px; }
+html[data-ui="moderna"] .notebar { border-radius: 18px; }
+html[data-ui="moderna"] .fdock { border-left: 1px solid var(--m-line); }
+html[data-ui="moderna"] .stats-panel { border-radius: 18px; font-family: var(--font); }
+
+/* ══ 8 · Entrada: apodo ═══════════════════════════════════════════════ */
+html[data-ui="moderna"] .startcard { border-radius: var(--m-r); border: 1px solid rgb(var(--accent-rgb) / 30%); background: var(--m-card); }
+html[data-ui="moderna"] .startcard h1 { font-weight: 600; letter-spacing: -.02em; }
+html[data-ui="moderna"] .startcard input { border-radius: 14px; }
+html[data-ui="moderna"] .startcard .btn--lg, html[data-ui="moderna"] .startcard .btn--ghost { border-radius: 14px; }
+html[data-ui="moderna"] .startsummary__chip { border-radius: 99px; }
+
+/* ══ 9 · Temas claros ═════════════════════════════════════════════════ */
+html[data-ui="moderna"][data-scheme="light"] {
+  --m-card: var(--bg-1);
+  --m-field: rgb(var(--text-rgb) / 5%);
+  --m-shadow: 0 10px 30px -14px rgb(20 26 43 / 22%);
+}
+html[data-ui="moderna"][data-scheme="light"] #app:not([data-stage="game"]) #rail { background: rgb(var(--text-rgb) / 5%); }
+html[data-ui="moderna"][data-scheme="light"] .md-club__av i { border-color: var(--bg-1); }
+@media (max-width: 1180px) { html[data-ui="moderna"] #app .rcount { display: none; } }
+
+/* Ventanas angostas: filtros y buscador en menos renglones, que la lista tenga lugar. */
+@media (max-width: 1180px) {
+  html[data-ui="moderna"] #app .roommodes { flex-wrap: nowrap; gap: 6px; }
+  html[data-ui="moderna"] #app .roommodes__set, html[data-ui="moderna"] #app .roommodes__view { flex-wrap: nowrap; min-width: 0; }
+  html[data-ui="moderna"] #app .roommode { padding-inline: 11px; }
+  html[data-ui="moderna"] #app .roomviewbtn { width: 32px; }
+  html[data-ui="moderna"] #app .rtoolbar { flex-wrap: nowrap; }
+  html[data-ui="moderna"] #app .rsearch { flex: 1 1 120px; min-width: 100px; }
+  html[data-ui="moderna"] #app .filterchip__label, html[data-ui="moderna"] #app .filterchip span:not(:first-child) { display: none; }
+  html[data-ui="moderna"] #app .filterchip { padding-inline: 10px; }
+}

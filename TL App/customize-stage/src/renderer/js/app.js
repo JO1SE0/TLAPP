@@ -867,22 +867,40 @@ function applyConfig(config) {
   const rd = document.documentElement.dataset;
   rd.pageTrans = config.appearance.pageTransition || 'fade';
   { const rr = config.appearance.roomRows; const prev = rd.roomRows; if (rr === 'dense' || rr === 'large') rd.roomRows = rr; else delete rd.roomRows; if (prev !== rd.roomRows) { try { if (roomParts) paintRoomWindow(true); } catch (e) { /* aún no hay lista */ } } }
-  if (LAYOUT_IDS.includes(config.appearance.layout)) rd.layout = config.appearance.layout; else delete rd.layout;
+  /*
+   * La cara de la app. La moderna se arma sobre la disposición «arriba» (el riel
+   * pasa a ser la fila de sectores, y dentro de una sala se guarda y vuelve al
+   * acercar el mouse al borde de arriba: eso ya estaba probado). Clásica es la
+   * de siempre, con el menú a la izquierda. Las otras disposiciones se fueron.
+   */
+  const ui = config.appearance.ui === 'classic' ? 'classic' : 'moderna';
+  if (ui === 'moderna') rd.layout = 'top'; else delete rd.layout;
+  const uiChanged = rd.ui !== ui;
+  rd.ui = ui;
+  // Siempre, no sólo al cambiar: el preload ya deja puesto `data-ui` antes del
+  // primer cuadro, así que «cambió» no alcanza para saber si las piezas ya se
+  // acomodaron. `mount` no hace nada si ya está en ese estado.
+  try { if (window.TLModerna) window.TLModerna.mount(ui === 'moderna'); } catch (e) { /* adorno */ }
+  if (uiChanged) { try { if (roomParts) paintRoomWindow(true); } catch (e) { /* aún no hay lista */ } }
   if (state.layoutSeen !== rd.layout) {
     state.layoutSeen = rd.layout;
     /* Consola arranca en el Inicio; al salir de ella el Inicio se cierra. */
     try { openHub(rd.layout === 'consola'); } catch (e) { /* aún no está armado */ }
   }
   if (config.appearance.density === 'compact' || config.appearance.density === 'comfy') rd.density = config.appearance.density; else delete rd.density;
-  applyGlass(config.appearance.glass);
-  if (['narrow', 'wide'].includes(config.appearance.panelWidth)) rd.panelw = config.appearance.panelWidth; else delete rd.panelw;
-  if (['flat', 'shine', 'outline'].includes(config.appearance.btnStyle)) rd.btn = config.appearance.btnStyle; else delete rd.btn;
-  if (['square', 'check', 'thin'].includes(config.appearance.switchStyle)) rd.sw = config.appearance.switchStyle; else delete rd.sw;
-  if (['lift', 'glow', 'scale', 'none'].includes(config.appearance.hoverFx)) rd.hover = config.appearance.hoverFx; else delete rd.hover;
-  if (['compact', 'carnet', 'minimal'].includes(config.appearance.profCard)) rd.pc = config.appearance.profCard; else delete rd.pc;
-  if (['pill', 'card', 'bar'].includes(config.appearance.toastStyle)) rd.toast = config.appearance.toastStyle; else delete rd.toast;
-  if (['accent', 'glow', 'hidden'].includes(config.appearance.rosterStyle)) rd.roster = config.appearance.rosterStyle; else delete rd.roster;
-  if (['crest', 'flat'].includes(config.appearance.heroStyle)) rd.hero = config.appearance.heroStyle; else delete rd.hero;
+  /* Los estilos sueltos de la interfaz clásica (vidrio, ancho de paneles, botones,
+     interruptores, tarjeta de perfil, avisos, plantel, encabezados). La moderna
+     tiene los suyos: ahí no se aplican, y sus opciones no se muestran. */
+  const classic = ui === 'classic';
+  applyGlass(classic ? config.appearance.glass : 1);
+  if (classic && ['narrow', 'wide'].includes(config.appearance.panelWidth)) rd.panelw = config.appearance.panelWidth; else delete rd.panelw;
+  if (classic && ['flat', 'shine', 'outline'].includes(config.appearance.btnStyle)) rd.btn = config.appearance.btnStyle; else delete rd.btn;
+  if (classic && ['square', 'check', 'thin'].includes(config.appearance.switchStyle)) rd.sw = config.appearance.switchStyle; else delete rd.sw;
+  if (classic && ['lift', 'glow', 'scale', 'none'].includes(config.appearance.hoverFx)) rd.hover = config.appearance.hoverFx; else delete rd.hover;
+  if (classic && ['compact', 'carnet', 'minimal'].includes(config.appearance.profCard)) rd.pc = config.appearance.profCard; else delete rd.pc;
+  if (classic && ['pill', 'card', 'bar'].includes(config.appearance.toastStyle)) rd.toast = config.appearance.toastStyle; else delete rd.toast;
+  if (classic && ['accent', 'glow', 'hidden'].includes(config.appearance.rosterStyle)) rd.roster = config.appearance.rosterStyle; else delete rd.roster;
+  if (classic && ['crest', 'flat'].includes(config.appearance.heroStyle)) rd.hero = config.appearance.heroStyle; else delete rd.hero;
   if (config.appearance.dropdowns === 'glass') rd.dd = 'glass'; else { delete rd.dd; closeGlassSelect(); }
   if (config.appearance.tilt !== false) rd.tilt = 'on'; else delete rd.tilt;
   if (config.appearance.parallax !== false) rd.par = 'on'; else { delete rd.par; parallaxReset(); }
@@ -2310,8 +2328,15 @@ function visibleRooms() {
  * Todas las salas siguen estando: lo que cambia es cuántas hay dibujadas a la
  * vez, no cuántas se pueden ver. */
 const ROW_HEIGHTS = { dense: 26, normal: 32, large: 46 };
+/* La interfaz moderna tiene filas más altas: tienen que coincidir con el CSS (`.rrow` en moderna.css). */
+const ROW_HEIGHTS_MODERNA = { dense: 34, normal: 44, large: 52 };
 function roomViewName() { return document.documentElement.dataset.roomview || 'list'; }
-const rowH = () => (roomViewName() === 'bars' ? 40 : (ROW_HEIGHTS[document.documentElement.dataset.roomRows] || 32));
+const rowH = () => {
+  if (roomViewName() === 'bars') return 40;
+  const rd = document.documentElement.dataset;
+  if (rd.ui === 'moderna' && roomViewName() === 'list') return ROW_HEIGHTS_MODERNA[rd.roomRows] || 44;
+  return ROW_HEIGHTS[rd.roomRows] || 32;
+};
 /** Filas de más arriba y abajo del borde, para que el scroll no muestre huecos. */
 const OVERSCAN = 6;
 
@@ -2472,6 +2497,7 @@ function renderRooms() {
     rooms: state.rooms.totalRooms.toLocaleString('es-AR')
   });
   try { paintStatusBar(); if (state.hub) paintHub(); } catch (e) { /* adorno */ }
+  try { if (window.TLModerna) { window.TLModerna.board(); window.TLModerna.room(); } } catch (e) { /* adorno */ }
   paintRoomModes();
 
   const list = visibleRooms();
@@ -3000,6 +3026,7 @@ function syncJoinButton() {
   $('#actJoin').disabled = !state.selected;
   $('#actAutoJoin').disabled = !state.selected && !state.autoJoin;
   $('#actAutoJoin').classList.toggle('is-on', !!state.autoJoin);
+  try { if (window.TLModerna) window.TLModerna.room(); } catch (e) { /* adorno */ }
 }
 
 /** Antes de entrar siempre se confirma el apodo en la pantalla de inicio. */
@@ -5381,6 +5408,7 @@ function paintNowLike() {
 }
 function paintNowText() {
   $('#npTitle').textContent = npInfo.title;
+  try { if (window.TLModerna) window.TLModerna.music(); } catch (e) { /* adorno */ }
   // Títulos largos: se deslizan.
   const mq = $('#npTitle').parentElement;
   mq.classList.remove('is-marq');
@@ -11135,6 +11163,7 @@ function paintClubNow(list) {
   if (k) k.textContent = String(online.length);
   state.clubOnline = online.length;
   try { paintStatusBar(); if (state.hub) paintHub(); } catch (e) { /* adorno */ }
+  try { if (window.TLModerna) { window.TLModerna.plantel(members); window.TLModerna.board(); } } catch (e) { /* adorno */ }
 
   const nodes = [];
   for (const m of online) {
@@ -11755,7 +11784,9 @@ function renderTabBar(page) {
     if (head) head.after(bar); else inner.prepend(bar);
   }
   const cur = currentTab(page);
-  const secs = $$('.page__inner > .sec[data-tab]', el).filter((sec) => sec.dataset.tab === cur && !sec.dataset.modal && !sec.hidden);
+  const secs = $$('.page__inner > .sec[data-tab]', el).filter((sec) => sec.dataset.tab === cur && !sec.dataset.modal && !sec.hidden
+    // Lo que es sólo de la interfaz clásica no se ofrece en la moderna (ahí no se ve).
+    && !(sec.classList.contains('sec--clasica') && document.documentElement.dataset.ui === 'moderna'));
   const chips = secs.map((sec) => {
     const b = document.createElement('button');
     b.type = 'button';
@@ -11809,42 +11840,26 @@ function renderTabBar(page) {
 initCollapsibles();
 
 
-/* ── Interfaz: la estructura de todo el cliente ──────────────────────────────
- * Tres maneras de armar el mismo cliente. Es un atributo en la raíz
- * (`data-layout`) y reglas de CSS: no hay JS corriendo ni nada que repintar
- * por cuadro. «Clásico» es la de siempre y la que arranca por defecto. */
+/* ── Interfaz: la cara de todo el cliente ─────────────────────────────────────
+ * Dos: Moderna (la nueva, por defecto) y Clásica (la de antes, con el menú a la
+ * izquierda). Es un atributo en la raíz (`data-ui`) y reglas de CSS; la moderna
+ * además acomoda unas piezas en su lugar (ver moderna.js). Las disposiciones
+ * viejas (dock, isla, radial…) se sacaron: `appearance.layout` ya no se lee. */
 const LAYOUTS = [
+  { id: 'moderna', es: 'Moderna', en: 'Modern',
+    desD: 'La nueva: azul y dorado, pestañas arriba y la sala elegida al costado.', desE: 'The new one: navy and gold, tabs on top and the selected room on the side.' },
   { id: 'classic', es: 'Clásica', en: 'Classic',
-    desD: 'Menú lateral a la izquierda. La de siempre.', desE: 'Side menu on the left. The usual one.' },
-  { id: 'top', es: 'Barra superior', en: 'Top bar',
-    desD: 'Pestañas arriba y todo el ancho para el contenido.', desE: 'Tabs on top and the full width for content.' },
-  { id: 'dock', es: 'Dock flotante', en: 'Floating dock',
-    desD: 'Una píldora abajo al centro, con los íconos.', desE: 'A pill at the bottom centre, icons only.' },
-  { id: 'island', es: 'Isla', en: 'Island',
-    desD: 'Una píldora vertical flotando a la izquierda.', desE: 'A vertical pill floating on the left.' },
-  { id: 'bottom', es: 'Barra inferior', en: 'Bottom bar',
-    desD: 'Pestañas con nombre abajo, como en el celular.', desE: 'Labelled tabs at the bottom, phone style.' },
-  { id: 'mini', es: 'Íconos', en: 'Icons only',
-    desD: 'El menú de siempre pero angosto, sólo íconos.', desE: 'The usual side menu, narrow, icons only.' },
-  { id: 'right', es: 'Lateral derecho', en: 'Right side',
-    desD: 'La clásica, pero con el menú a la derecha.', desE: 'The classic, with the menu on the right.' },
-  { id: 'consola', es: 'Consola', en: 'Console',
-    desD: 'Sin menú: un Inicio con mosaicos grandes, como una consola.', desE: 'No menu: a Home with big tiles, like a console.' },
-  { id: 'comando', es: 'Comando', en: 'Command',
-    desD: 'Sin menú: una paleta (Ctrl+K) para ir a cualquier lado.', desE: 'No menu: a palette (Ctrl+K) to go anywhere.' },
-  { id: 'radial', es: 'Radial', en: 'Radial',
-    desD: 'Un botón en la esquina que abre los destinos en abanico.', desE: 'A corner button that fans the destinations out.' }
+    desD: 'La de antes, con el menú a la izquierda.', desE: 'The previous one, with the menu on the left.' }
 ];
-const LAYOUT_IDS = ['top', 'dock', 'mini', 'right', 'island', 'bottom', 'consola', 'comando', 'radial'];
 function paintLayout() {
   const host = $('#layoutCards');
   if (!host || !state.config) return;
   const en = isEn();
   $('#layTitle').textContent = en ? 'Interface layout' : 'Interfaz';
   $('#layDesc').textContent = en
-    ? 'Changes how the whole client is laid out. It starts on Classic and you can come back any time.'
-    : 'Cambia cómo se arma todo el cliente. Arranca en Clásica y podés volver cuando quieras.';
-  const cur = state.config.appearance.layout || 'classic';
+    ? 'How the whole client looks. Your colours, settings and data are the same in both.'
+    : 'Cómo se ve todo el cliente. Tus colores, ajustes y datos son los mismos en las dos.';
+  const cur = state.config.appearance.ui === 'classic' ? 'classic' : 'moderna';
   const sig = `${cur}|${en}`;
   if (host.dataset.sig !== sig) {
     host.dataset.sig = sig;
@@ -11893,12 +11908,11 @@ function paintLayout() {
   /* Los íconos del menú no dicen nada sin la etiqueta: se las damos de tooltip. */
   for (const b of $$('#rail .railitem')) { const sp = b.querySelector('span'); if (sp && sp.textContent.trim()) b.title = sp.textContent.trim(); }
   const back = $('#layReset');
-  back.textContent = en ? 'Back to Classic' : 'Volver a la clásica';
-  back.hidden = cur === 'classic';
+  back.hidden = true;
 }
 $('#layoutCards').addEventListener('click', (e) => {
   const b = e.target.closest('[data-lay]');
-  if (b) patchConfig({ appearance: { layout: b.dataset.lay } });
+  if (b) patchConfig({ appearance: { ui: b.dataset.lay } });
 });
 $('#rowsChips').addEventListener('click', (e) => {
   const b = e.target.closest('[data-rows]');
@@ -11908,7 +11922,7 @@ $('#statusChips').addEventListener('click', (e) => {
   const b = e.target.closest('[data-sb]');
   if (b) patchConfig({ appearance: { statusBar: b.dataset.sb === 'true' } });
 });
-$('#layReset').addEventListener('click', () => patchConfig({ appearance: { layout: 'classic' } }));
+
 
 
 /* ── Barra de estado ─────────────────────────────────────────────────────────
@@ -12076,10 +12090,10 @@ function cmdEntries() {
   out.push({ label: en ? 'Create a room' : 'Crear sala', hint: en ? 'Action' : 'Acción', run: () => { goView('play'); const c = $('#actCreate'); if (c) c.click(); } });
   out.push({ label: en ? 'Open replays folder' : 'Abrir carpeta de replays', hint: en ? 'Action' : 'Acción', run: () => { tvm.replays.openFolder(); } });
   out.push({ label: en ? 'Toggle full screen' : 'Pantalla completa', hint: 'F11', run: () => { tvm.window.toggleFullscreen(); } });
-  const cur = (state.config && state.config.appearance.layout) || 'classic';
+  const cur = state.config && state.config.appearance.ui === 'classic' ? 'classic' : 'moderna';
   for (const l of LAYOUTS) {
     if (l.id === cur) continue;
-    out.push({ label: `${en ? 'Interface' : 'Interfaz'}: ${en ? l.en : l.es}`, hint: en ? 'Change layout' : 'Cambiar interfaz', run: () => patchConfig({ appearance: { layout: l.id } }) });
+    out.push({ label: `${en ? 'Interface' : 'Interfaz'}: ${en ? l.en : l.es}`, hint: en ? 'Change look' : 'Cambiar interfaz', run: () => patchConfig({ appearance: { ui: l.id } }) });
   }
   return out;
 }

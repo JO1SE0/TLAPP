@@ -26,6 +26,12 @@ function paintBootTheme() {
     const vars = ipcRenderer.sendSync('theme:boot-vars');
     if (!vars) return true; // contestó que no hay nada: no se reintenta
     for (const [name, value] of Object.entries(vars)) {
+      if (name === '--boot-ui') {
+        // La cara de la app, antes del primer cuadro (ver `applyConfig` en app.js).
+        root.dataset.ui = value === 'classic' ? 'classic' : 'moderna';
+        if (root.dataset.ui === 'moderna') root.dataset.layout = 'top';
+        continue;
+      }
       if (value) root.style.setProperty(name, value);
     }
   } catch {
