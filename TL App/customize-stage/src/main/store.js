@@ -110,6 +110,8 @@ const DEFAULTS = {
     parallax: true,
     /** La tapa de la página Música late con los golpes del tema. */
     musicPulse: true,
+    /** De dónde sale la música del menú: `tl` (las canciones de la app) · `spotify` (lo que suena en tu Spotify). */
+    musicSource: 'tl',
     // Tamaño de la interfaz: 'auto' (según el monitor) o un porcentaje fijo (60–150).
     uiScale: 'auto',
     /** Estructura de la interfaz: classic | top (barra superior) | dock (dock flotante). */

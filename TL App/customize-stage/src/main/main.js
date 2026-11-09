@@ -2370,6 +2370,9 @@ handle('tracks:list', async () => {
   return [...club, ...mine];
 });
 
+/* Spotify como música del menú (lo lee de Windows; ver spotify.js). */
+require('./spotify').register(handle, app);
+
 /** Tapa embebida de una canción (club o propia), si el archivo la trae. */
 handle('tracks:cover', async (_e, name, user) => {
   const clean = path.basename(String(name || ''));

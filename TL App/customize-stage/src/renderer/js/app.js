@@ -855,7 +855,7 @@ function applyConfig(config) {
   paintMeChip();
   paintPreview();
   // Partículas del menú: dependen de su interruptor y de que las animaciones estén prendidas.
-  if (window.TLMusic) { window.TLMusic.configure(config.appearance.music !== false, config.appearance.musicVolume, config.appearance.musicClub !== false); window.TLMusic.setLists(config.appearance.musicLikes, config.appearance.musicHidden); window.TLMusic.setInGameMusic(config.appearance.musicInGame !== false); }
+  if (window.TLMusic) { window.TLMusic.configure(config.appearance.music !== false, config.appearance.musicVolume, config.appearance.musicClub !== false, config.appearance.musicSource); window.TLMusic.setLists(config.appearance.musicLikes, config.appearance.musicHidden); window.TLMusic.setInGameMusic(config.appearance.musicInGame !== false); }
   if (window.TLClubTheme) { if (config.appearance.music === false) window.TLClubTheme.stop(); else window.TLClubTheme.setVolume(config.appearance.musicVolume); }
   try { paintNowLike(); } catch (e) { /* la tarjeta todavía no se armó */ }
   try { if (state.view === 'musica') paintMusicPage(); } catch (e) { /* la página todavía no se armó */ }
@@ -5158,7 +5158,7 @@ function pulseStop() {
 }
 function pulseWanted() {
   const M = window.TLMusic;
-  return !!(M && M.playing && state.view === 'musica' && state.stage !== 'game' && !document.hidden
+  return !!(M && M.playing && !M.spotify && state.view === 'musica' && state.stage !== 'game' && !document.hidden
     && state.config && state.config.appearance.musicPulse !== false && document.documentElement.dataset.animations !== 'off');
 }
 function pulseStart() {
@@ -5184,6 +5184,7 @@ window.addEventListener('tl:musicstate', () => setTimeout(pulseStart, 30));
 document.addEventListener('visibilitychange', () => setTimeout(pulseStart, 30));
 
 function musicPageOpen() {
+  if (window.TLMusic) window.TLMusic.spotifyRefresh();
   paintMusicPage();
   setTimeout(pulseStart, 50);
   clearInterval(musTimer);
@@ -5205,6 +5206,14 @@ async function musicCoverFor(t) {
   if (!box || !t) return;
   const key = t.name;
   musCoverFor = key;
+  // Spotify: la tapa la manda Windows junto con el tema.
+  if (t.spotify) {
+    const sp = window.TLMusic && window.TLMusic.spotify;
+    const url = (sp && sp.cover) || '';
+    box.style.backgroundImage = url ? `url("${url}")` : '';
+    box.classList.toggle('has-img', !!url);
+    return;
+  }
   let url = musCovers.get(key);
   if (url === undefined) {
     try { url = await tvm.tracks.cover(t.name, !!t.user); } catch (e) { url = null; }
@@ -5226,15 +5235,33 @@ function paintMusicPage() {
   const now = M.now;
   const playing = M.playing;
 
+  const sp = M.spotify;
+  const en = isEn();
   $('#musEyebrow').textContent = T.eyebrow;
-  $('#musTitle').textContent = now ? now.title : T.idle;
+  const SP_IDLE = {
+    idle: en ? ['Spotify is quiet', 'Hit play in Spotify and it shows up here.'] : ['Spotify no está sonando', 'Dale play en Spotify y aparece acá.'],
+    closed: en ? ['Spotify is not open', 'Open the Spotify desktop app on this PC.'] : ['Spotify no está abierto', 'Abrí Spotify de escritorio en esta PC.'],
+    error: en ? ["Can't read Spotify", 'Windows did not answer. Try closing and opening Spotify.'] : ['No se pudo leer Spotify', 'Windows no respondió. Probá cerrar y abrir Spotify.'],
+    nowin: en ? ['Only on Windows', 'Spotify is read through Windows.'] : ['Sólo en Windows', 'Spotify se lee a través de Windows.']
+  };
+  const spIdle = sp && !now ? (SP_IDLE[sp.status] || SP_IDLE.idle) : null;
+  $('#musTitle').textContent = now ? now.title : (spIdle ? spIdle[0] : T.idle);
   const ar = $('#musArtist');
-  ar.textContent = now ? (now.artist || '') : T.idleSub;
+  ar.textContent = now ? (now.artist || '') : (spIdle ? spIdle[1] : T.idleSub);
+  const src = $('#musSrc');
+  src.hidden = !sp;
+  if (sp) src.textContent = en ? 'From Spotify' : 'Desde Spotify';
+  $('#musLike').hidden = !!sp;
+  $('#musBar').classList.toggle('is-locked', !!sp && !sp.canSeek);
+  $('.page[data-page="musica"]').classList.toggle('is-spotify', !!sp);
   $('#musPlay').classList.toggle('is-playing', playing);
   $('#musLike').classList.toggle('is-on', !!now && likes.has(now.name));
   $('#musCover').classList.toggle('is-playing', playing);
   const vol = typeof ap.musicVolume === 'number' ? ap.musicVolume : 0.35;
   const vr = $('#musVol');
+  // El volumen de Spotify se maneja en Spotify: esta barra es el de las canciones de la app.
+  vr.disabled = !!sp;
+  vr.title = sp ? (en ? 'Spotify volume is set in Spotify' : 'El volumen de Spotify se maneja en Spotify') : '';
   if (document.activeElement !== vr) vr.value = String(vol);
   syncRangeFill(vr);
   if (now && musCoverFor !== now.name) musicCoverFor(now);
@@ -5244,6 +5271,7 @@ function paintMusicPage() {
   const sws = $('#musSws');
   $('#musSwTitle').textContent = T.sw;
   const defs = [
+    ['musicSource', en ? 'Use Spotify' : 'Usar Spotify', en ? 'Shows and controls what plays in your Spotify instead of the app songs.' : 'Muestra y maneja lo que suena en tu Spotify en vez de las canciones de la app.', ap.musicSource === 'spotify'],
     ['music', T.music, T.musicD, ap.music !== false],
     ['musicClub', T.club, T.clubD, ap.musicClub !== false],
     ['musicInGame', T.game, T.gameD, ap.musicInGame !== false],
@@ -5261,7 +5289,14 @@ function paintMusicPage() {
     txt.append(bb, sm);
     const knob = document.createElement('i');
     b.append(txt, knob);
-    b.addEventListener('click', () => patchConfig({ appearance: { [key]: !on } }));
+    b.addEventListener('click', () => {
+      if (key === 'musicSource') {
+        // Prender Spotify prende también la música del menú: si no, no habría nada que mostrar.
+        patchConfig({ appearance: on ? { musicSource: 'tl' } : { musicSource: 'spotify', music: true } });
+        return;
+      }
+      patchConfig({ appearance: { [key]: !on } });
+    });
     return b;
   }));
 
@@ -5275,7 +5310,9 @@ function paintMusicPage() {
   $('#musSearch').placeholder = T.search;
   $('#musAdd').textContent = T.add;
   $('#musListTitle').textContent = T.list;
-  $('#musNote').textContent = T.noteA;
+  $('#musNote').textContent = sp
+    ? (en ? 'While «Use Spotify» is on, these songs do not play. Turn it off to hear them again.' : 'Con «Usar Spotify» prendido estos temas no suenan. Apagalo para volver a escucharlos.')
+    : T.noteA;
 
   // Lista
   const all = M.tracks;
@@ -5368,6 +5405,15 @@ $('#musAdd').addEventListener('click', async () => {
 });
 window.addEventListener('tl:track', () => { if (state.view === 'musica') setTimeout(paintMusicPage, 40); });
 window.addEventListener('tl:musicstate', () => { if (state.view === 'musica') paintMusicPage(); });
+window.addEventListener('tl:spotify', () => {
+  const sp = window.TLMusic && window.TLMusic.spotify;
+  $('#nowPlaying').classList.toggle('is-spotify', !!sp);
+  if (state.view === 'musica') paintMusicPage();
+});
+window.addEventListener('tl:spotifycover', () => {
+  const now = window.TLMusic && window.TLMusic.now;
+  if (now && now.spotify) { musCoverFor = ''; if (state.view === 'musica') musicCoverFor(now); }
+});
 
 /* «Ahora suena». En el menú: si a la derecha de la lista de salas hay un hueco ancho, es una tarjeta que se queda
    mientras suena la música; si no hay lugar, es una píldora que se muestra unos segundos al cambiar de tema.
@@ -5542,6 +5588,9 @@ function paintAudio() {
   $('#audMusic').setAttribute('aria-pressed', String(ap.music !== false));
   $('#audSfx').setAttribute('aria-pressed', String(ap.uiSounds !== false));
   const range = $('#audVol');
+  const spot = ap.musicSource === 'spotify' && ap.music !== false;
+  range.disabled = spot;
+  range.title = spot ? (isEn() ? 'Spotify volume is set in Spotify' : 'El volumen de Spotify se maneja en Spotify') : '';
   if (document.activeElement !== range) range.value = String(vol);
   syncRangeFill(range);
 }

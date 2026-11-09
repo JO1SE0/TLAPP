@@ -147,6 +147,13 @@ contextBridge.exposeInMainWorld('tvm', {
     onResolved: (cb) => on('avatar:resolved', cb)
   },
 
+  /** Lo que suena en Spotify y sus botones, leídos de Windows. */
+  spotify: {
+    get: () => call('spotify:get'),
+    cmd: (name, arg) => call('spotify:cmd', name, arg),
+    stop: () => call('spotify:stop')
+  },
+
   tracks: {
     list: () => call('tracks:list'),
     cover: (name, user) => call('tracks:cover', name, !!user),
