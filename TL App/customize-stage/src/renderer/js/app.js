@@ -5211,6 +5211,10 @@ async function musicCoverFor(t) {
   if (t.spotify) {
     const sp = window.TLMusic && window.TLMusic.spotify;
     const url = (sp && sp.cover) || '';
+    if (box.dataset.sp !== url) {
+      box.dataset.sp = url;
+      box.classList.remove('is-swap'); void box.offsetWidth; box.classList.add('is-swap');
+    }
     box.style.backgroundImage = url ? `url("${url}")` : '';
     box.classList.toggle('has-img', !!url);
     return;
@@ -5436,34 +5440,49 @@ window.addEventListener('tl:spotifycover', () => {
  * Con «Usar Spotify» prendido aparece una sección para conectar la cuenta.
  * Conectada: buscar temas, poner playlists, sumar a la cola, aleatorio,
  * repetir, me gusta y elegir en qué dispositivo suena. Lo que suena y los
- * botones de siempre pasan a leerse/manejarse por la cuenta (ver music.js). */
-const SP = { status: null, playlists: null, plAt: 0, searchT: 0, query: '', results: null, likedUri: '', liked: false, msgT: 0 };
+ * botones de siempre pasan a leerse/manejarse por la cuenta (ver music.js).
+ *
+ * Las animaciones son de entrada y de una sola vez (transform y opacity): no
+ * queda nada andando en bucle, y la página Música no existe durante una partida. */
+const SP = { status: null, playlists: null, plAt: 0, searchT: 0, query: '', results: null, likedUri: '', liked: false, msgT: 0, connecting: false };
+const SP_ICON = {
+  play: 'M8 5.5v13l11-6.5z',
+  plus: 'M12 5.5v13M5.5 12h13',
+  check: 'M5.5 12.5l4.2 4.2L18.5 7.8',
+  computer: 'M3.5 5h17v11h-17zM9 19.5h6M12 16v3.5',
+  phone: 'M8 3.5h8a1.5 1.5 0 0 1 1.5 1.5v14a1.5 1.5 0 0 1-1.5 1.5H8A1.5 1.5 0 0 1 6.5 19V5A1.5 1.5 0 0 1 8 3.5zM11 17.5h2',
+  speaker: 'M7 3.5h10A1.5 1.5 0 0 1 18.5 5v14a1.5 1.5 0 0 1-1.5 1.5H7A1.5 1.5 0 0 1 5.5 19V5A1.5 1.5 0 0 1 7 3.5zM12 14.6a2.6 2.6 0 1 0 0-.01M12 7.5h.01',
+  search: 'M3 12h3l3-7 6 14 3-7h3',
+  list: 'M5 7h14M5 12h14M5 17h9',
+  vol: 'M4 9.6v4.8h3.4L12 18.4V5.6L7.4 9.6zM15.4 9.2a4 4 0 0 1 0 5.6',
+  devices: 'M3.5 5h17v11h-17zM12 16v3.5M9 19.5h6'
+};
 const SP_TXT = {
   es: {
-    lead: 'Conectá tu cuenta de Spotify (Premium) para buscar temas, poner tus playlists, sumar a la cola, cambiar el volumen y elegir dónde suena. Cada uno usa su propia llave (Client ID), así nadie tiene que cargar a nadie. Sin conectar igual se ve y se maneja lo básico.',
-    connect: 'Conectar', connecting: 'Esperando a Spotify…', how: 'Cómo sacar tu Client ID (2 minutos, una sola vez)',
+    subOff: 'Tu cuenta, tus playlists, desde la app', subOn: 'Conectado',
+    perks: [['search', 'Buscá cualquier tema y ponelo al toque'], ['list', 'Tus playlists a un clic'], ['vol', 'Volumen, aleatorio y repetir'], ['devices', 'Elegí si suena en la PC o el celu']],
+    connect: 'Conectar', connecting: 'Esperando a Spotify…', how: 'Cómo sacar tu Client ID · 2 minutos, una sola vez',
     steps: ['Tocá «Abrir panel de Spotify» y entrá con TU cuenta Premium. Tocá «Create app».', 'Nombre y descripción: lo que quieras (por ejemplo «TL App»). En «Redirect URIs» pegá la dirección de abajo y tocá «Add».', 'En «Which API/SDKs are you planning to use?» marcá «Web API», aceptá y guardá.', 'Entrá a la app, pestaña «User Management», y agregá tu propio nombre y el mail de tu cuenta de Spotify.', 'Copiá el «Client ID» (pestaña «Basic Information») y pegalo acá arriba. Después «Conectar».'],
-    dash: 'Abrir panel de Spotify',
-    copy: 'Copiar', copied: 'Copiada',
-    who: (u) => (u ? `Conectado · ${u}` : 'Conectado'), logout: 'Desconectar',
-    shuffle: 'Aleatorio', repeat: { off: 'Repetir', context: 'Repetir: todo', track: 'Repetir: este' }, like: 'Me gusta', liked: 'Te gusta',
-    dev: 'Suena en', devNone: 'Ningún dispositivo', search: 'Buscar en Spotify…', pls: 'Tus playlists', noPls: 'No hay playlists.', noRes: 'Nada con eso.', queue: 'Sumar a la cola', queued: 'Sumado a la cola',
+    dash: 'Abrir panel de Spotify', copy: 'Copiar', copied: '¡Copiada!', uri: 'Redirect URI',
+    logout: 'Desconectar', shuffle: 'Aleatorio', repeat: { off: 'Repetir', context: 'Repetir', track: 'Repetir' }, like: 'Me gusta', liked: 'Te gusta',
+    dev: 'Suena en', devNone: 'Ningún dispositivo', search: 'Buscar en Spotify…', pls: 'Tus playlists', plsN: (n) => `${n} playlist${n === 1 ? '' : 's'}`, noPls: 'Todavía no tenés playlists.', noRes: 'Nada con eso. Probá con otra palabra.',
+    queue: 'Sumar a la cola', queued: 'Sumado a la cola', playing: 'Sonando', play: 'Poner',
     err: { premium: 'Para manejar Spotify desde la app hace falta Premium.', nodevice: 'Spotify no está abierto en ningún lado: abrilo en la PC o en el celu, o elegí un dispositivo.', forbidden: 'Spotify no lo permitió. Revisá que tu mail esté en «User Management» de tu app de Spotify (paso 4).', rate: 'Demasiados pedidos seguidos: esperá unos segundos.', login: 'Se cerró la sesión de Spotify: conectá de nuevo.', error: 'Spotify no respondió. Probá de nuevo.' }
   },
   en: {
-    lead: 'Connect your Spotify account (Premium) to search songs, play your playlists, add to queue, change volume and pick where it plays. Everyone uses their own key (Client ID), so nobody has to add anyone. Without connecting, the basics still work.',
-    connect: 'Connect', connecting: 'Waiting for Spotify…', how: 'How to get your Client ID (2 minutes, once)',
+    subOff: 'Your account, your playlists, from the app', subOn: 'Connected',
+    perks: [['search', 'Search any song and play it right away'], ['list', 'Your playlists one click away'], ['vol', 'Volume, shuffle and repeat'], ['devices', 'Pick PC or phone to play on']],
+    connect: 'Connect', connecting: 'Waiting for Spotify…', how: 'How to get your Client ID · 2 minutes, once',
     steps: ['Click «Open Spotify dashboard» and sign in with YOUR Premium account. Click «Create app».', 'Name and description: anything (e.g. «TL App»). In «Redirect URIs» paste the address below and click «Add».', 'Under «Which API/SDKs are you planning to use?» tick «Web API», accept and save.', 'Open the app, «User Management» tab, and add your own name and your Spotify account email.', 'Copy the «Client ID» («Basic Information» tab) and paste it above. Then «Connect».'],
-    dash: 'Open Spotify dashboard',
-    copy: 'Copy', copied: 'Copied',
-    who: (u) => (u ? `Connected · ${u}` : 'Connected'), logout: 'Disconnect',
-    shuffle: 'Shuffle', repeat: { off: 'Repeat', context: 'Repeat: all', track: 'Repeat: one' }, like: 'Like', liked: 'Liked',
-    dev: 'Playing on', devNone: 'No device', search: 'Search Spotify…', pls: 'Your playlists', noPls: 'No playlists.', noRes: 'Nothing found.', queue: 'Add to queue', queued: 'Added to queue',
+    dash: 'Open Spotify dashboard', copy: 'Copy', copied: 'Copied!', uri: 'Redirect URI',
+    logout: 'Disconnect', shuffle: 'Shuffle', repeat: { off: 'Repeat', context: 'Repeat', track: 'Repeat' }, like: 'Like', liked: 'Liked',
+    dev: 'Playing on', devNone: 'No device', search: 'Search Spotify…', pls: 'Your playlists', plsN: (n) => `${n} playlist${n === 1 ? '' : 's'}`, noPls: 'You have no playlists yet.', noRes: 'Nothing found. Try another word.',
+    queue: 'Add to queue', queued: 'Added to queue', playing: 'Playing', play: 'Play',
     err: { premium: 'Controlling Spotify from the app needs Premium.', nodevice: 'Spotify is not open anywhere: open it on your PC or phone, or pick a device.', forbidden: 'Spotify refused. Check that your email is under «User Management» in your Spotify app (step 4).', rate: 'Too many requests: wait a few seconds.', login: 'Your Spotify session ended: connect again.', error: 'Spotify did not answer. Try again.' }
   }
 };
 const spT = () => SP_TXT[isEn() ? 'en' : 'es'];
-const fmtMs = (s) => fmtT(s);
+const spSvg = (d, cls) => { const s = musIcon(d); if (cls) s.setAttribute('class', cls); return s; };
 
 async function spStatus(force) {
   if (!window.tvm.spotifyApi) return { connected: false };
@@ -5479,67 +5498,116 @@ function spMsg(text) {
   const m = $('#spMsg');
   if (!m) return;
   clearTimeout(SP.msgT);
+  if (text && m.textContent === text && !m.hidden) { SP.msgT = setTimeout(() => { m.hidden = true; }, 7000); return; }
   m.textContent = text || '';
   m.hidden = !text;
-  if (text) SP.msgT = setTimeout(() => { m.hidden = true; }, 7000);
+  // Que vuelva a entrar con su animación.
+  if (text) { m.classList.remove('is-in'); void m.offsetWidth; m.classList.add('is-in'); SP.msgT = setTimeout(() => { m.hidden = true; }, 7000); }
 }
 window.addEventListener('tl:spotifyerr', (e) => { const c = e.detail && e.detail.code; if (c) spMsg(spT().err[c] || spT().err.error); });
 window.addEventListener('tl:spotifyapi', () => { spStatus(true).then(() => { if (state.view === 'musica') paintSpotify(); }); });
 
-function spImg(url) {
-  if (!url) { const d = document.createElement('span'); d.className = 'sp__ph'; return d; }
-  const i = document.createElement('img');
-  i.src = url; i.alt = ''; i.loading = 'lazy'; i.decoding = 'async';
-  return i;
+function spCover(url, cls) {
+  const box = document.createElement('span');
+  box.className = cls;
+  if (url) {
+    const i = document.createElement('img');
+    i.alt = ''; i.loading = 'lazy'; i.decoding = 'async';
+    // Aparece cuando terminó de bajar, sin saltos.
+    i.addEventListener('load', () => box.classList.add('is-loaded'), { once: true });
+    i.src = url;
+    box.append(i);
+  } else box.append(spSvg('M9 17.5V6.2l10-2v11.3M6.6 20a2.4 2.4 0 1 0 0-4.8 2.4 2.4 0 0 0 0 4.8zM16.6 18a2.4 2.4 0 1 0 0-4.8 2.4 2.4 0 0 0 0 4.8z', 'sp__note'));
+  return box;
 }
+const spEq = () => { const e = document.createElement('span'); e.className = 'sp__eq'; e.append(document.createElement('i'), document.createElement('i'), document.createElement('i')); return e; };
 
 async function spLoadPlaylists(force) {
   if (!force && SP.playlists && Date.now() - SP.plAt < 5 * 60000) return;
   let r = null;
   try { r = await tvm.spotifyApi.playlists(); } catch (e) { r = null; }
-  if (r && r.ok) { SP.playlists = r.data || []; SP.plAt = Date.now(); paintSpotifyLists(); }
+  if (r && r.ok) { SP.playlists = r.data || []; SP.plAt = Date.now(); SP.plFresh = true; paintSpotifyLists(); }
 }
 
-function paintSpotifyLists() {
+function paintSpotifyResults() {
   const T = spT();
   const sp = window.TLMusic && window.TLMusic.spotify;
   const res = $('#spResults');
-  if (res) {
-    if (!SP.results) res.replaceChildren();
-    else if (!SP.results.length) { const p = document.createElement('p'); p.className = 'sp__empty'; p.textContent = T.noRes; res.replaceChildren(p); }
-    else res.replaceChildren(...SP.results.map((t) => {
+  if (!res) return;
+  res.classList.toggle('is-open', !!SP.results);
+  if (!SP.results) { res.replaceChildren(); return; }
+  if (!SP.results.length) { const p = document.createElement('p'); p.className = 'sp__empty'; p.textContent = T.noRes; res.replaceChildren(p); return; }
+  // Sólo se rearma si cambió la búsqueda; si no, se marca el que suena.
+  if (res.dataset.q !== SP.resQ) {
+    res.dataset.q = SP.resQ;
+    res.replaceChildren(...SP.results.map((t, i) => {
       const row = document.createElement('div');
       row.className = 'sp__res';
-      const tx = document.createElement('span');
+      row.dataset.uri = t.uri;
+      row.style.setProperty('--i', i);
+      row.title = T.play;
+      const cov = spCover(t.cover, 'sp__rcov');
+      const hover = document.createElement('span'); hover.className = 'sp__rplay'; hover.append(spSvg(SP_ICON.play));
+      cov.append(hover, spEq());
+      const tx = document.createElement('span'); tx.className = 'sp__rtx';
       const b = document.createElement('b'); b.textContent = t.title;
       const sm = document.createElement('small'); sm.textContent = [t.artist, t.album].filter(Boolean).join(' · ');
       tx.append(b, sm);
-      const dur = document.createElement('span'); dur.className = 'sp__t'; dur.textContent = fmtMs(t.dur);
-      const q = document.createElement('button'); q.type = 'button'; q.className = 'sp__q'; q.textContent = '+'; q.title = T.queue;
+      const dur = document.createElement('span'); dur.className = 'sp__t'; dur.textContent = fmtT(t.dur);
+      const q = document.createElement('button'); q.type = 'button'; q.className = 'sp__q'; q.title = T.queue; q.setAttribute('aria-label', T.queue);
+      q.append(spSvg(SP_ICON.plus, 'sp__qa'), spSvg(SP_ICON.check, 'sp__qb'));
       q.addEventListener('click', async (ev) => {
         ev.stopPropagation();
-        if (await window.TLMusic.spotifyApi('queue', t.uri)) toast(`${T.queued}: ${t.title}`, 'ok');
+        if (await window.TLMusic.spotifyApi('queue', t.uri)) {
+          q.classList.add('is-done');
+          setTimeout(() => q.classList.remove('is-done'), 1600);
+          toast(`${T.queued}: ${t.title}`, 'ok');
+        }
       });
-      row.append(spImg(t.cover), tx, dur, q);
+      row.append(cov, tx, dur, q);
       row.addEventListener('click', () => window.TLMusic.spotifyApi('playUri', { uri: t.uri }));
       return row;
     }));
   }
+  const now = sp && sp.uri;
+  for (const row of res.querySelectorAll('.sp__res')) row.classList.toggle('is-now', row.dataset.uri === now);
+}
+
+function paintSpotifyPlaylists() {
+  const T = spT();
+  const sp = window.TLMusic && window.TLMusic.spotify;
   const pl = $('#spPlaylists');
-  if (pl) {
-    if (!SP.playlists) pl.replaceChildren();
-    else if (!SP.playlists.length) { const p = document.createElement('p'); p.className = 'sp__empty'; p.textContent = T.noPls; pl.replaceChildren(p); }
-    else pl.replaceChildren(...SP.playlists.map((p) => {
+  if (!pl) return;
+  $('#spPlCount').textContent = SP.playlists && SP.playlists.length ? T.plsN(SP.playlists.length) : '';
+  if (!SP.playlists) { pl.replaceChildren(); return; }
+  if (!SP.playlists.length) { const p = document.createElement('p'); p.className = 'sp__empty'; p.textContent = T.noPls; pl.replaceChildren(p); return; }
+  if (SP.plFresh) {
+    SP.plFresh = false;
+    pl.replaceChildren(...SP.playlists.map((p, i) => {
       const b = document.createElement('button');
       b.type = 'button';
-      b.className = 'sp__pl' + (sp && sp.context === p.uri ? ' is-now' : '');
+      b.className = 'sp__pl';
+      b.dataset.uri = p.uri;
+      b.style.setProperty('--i', Math.min(i, 12));
+      const cov = spCover(p.cover, 'sp__pcov');
+      const go = document.createElement('span'); go.className = 'sp__pgo'; go.append(spSvg(SP_ICON.play));
+      const badge = document.createElement('span'); badge.className = 'sp__pnow'; badge.append(spEq(), document.createTextNode(T.playing));
+      cov.append(go, badge);
       const n = document.createElement('b'); n.textContent = p.name;
       const o = document.createElement('small'); o.textContent = p.owner;
-      b.append(spImg(p.cover), n, o);
+      b.append(cov, n, o);
       b.addEventListener('click', () => window.TLMusic.spotifyApi('playUri', { context: p.uri }));
       return b;
     }));
   }
+  const ctx = sp && sp.context;
+  for (const b of pl.querySelectorAll('.sp__pl')) b.classList.toggle('is-now', b.dataset.uri === ctx);
+}
+function paintSpotifyLists() { paintSpotifyResults(); paintSpotifyPlaylists(); }
+
+function spDevIcon(type) {
+  const t = String(type || '').toLowerCase();
+  return t === 'smartphone' || t === 'tablet' ? SP_ICON.phone : t === 'speaker' || t === 'tv' || t === 'castvideo' || t === 'castaudio' ? SP_ICON.speaker : SP_ICON.computer;
 }
 
 async function paintSpotify() {
@@ -5550,37 +5618,61 @@ async function paintSpotify() {
   if (sec.hidden) return;
   const T = spT();
   const st = await spStatus();
-  $('#spLogin').hidden = !!st.connected;
-  $('#spMain').hidden = !st.connected;
-  $('#spWho').textContent = st.connected ? T.who(st.user) : '';
-  if (!st.connected) {
-    $('#spLead').textContent = T.lead;
+  const on = !!st.connected;
+  // Cambio de estado (conectar / desconectar): la parte nueva entra animada.
+  if (sec.dataset.mode !== (on ? 'on' : 'off')) {
+    sec.dataset.mode = on ? 'on' : 'off';
+    sec.classList.remove('is-enter'); void sec.offsetWidth; sec.classList.add('is-enter');
+  }
+  $('#spLogin').hidden = on;
+  $('#spMain').hidden = !on;
+  $('#spSub').textContent = on ? T.subOn : T.subOff;
+  const who = $('#spWho');
+  who.hidden = !on;
+  if (on) {
+    const name = st.user || 'Spotify';
+    $('#spWhoName').textContent = name;
+    $('#spWhoInit').textContent = name.trim().charAt(0).toUpperCase();
+  }
+  if (!on) {
+    const perks = $('#spPerks');
+    if (perks.dataset.lang !== (isEn() ? 'en' : 'es')) {
+      perks.dataset.lang = isEn() ? 'en' : 'es';
+      perks.replaceChildren(...T.perks.map(([ic, tx], i) => {
+        const d = document.createElement('div'); d.className = 'sp__perk'; d.style.setProperty('--i', i);
+        const icon = document.createElement('span'); icon.append(spSvg(SP_ICON[ic]));
+        const s = document.createElement('small'); s.textContent = tx;
+        d.append(icon, s);
+        return d;
+      }));
+    }
     const inp = $('#spClient');
     if (!inp.value && st.clientId) inp.value = st.clientId;
-    if (!SP.connecting) $('#spConnect').textContent = T.connect;
+    $('#spConnectTx').textContent = SP.connecting ? T.connecting : T.connect;
     $('#spHowTitle').textContent = T.how;
     const ol = $('#spHow');
-    if (ol.children.length !== T.steps.length || ol.dataset.lang !== (isEn() ? 'en' : 'es')) {
+    if (ol.dataset.lang !== (isEn() ? 'en' : 'es')) {
       ol.dataset.lang = isEn() ? 'en' : 'es';
-      ol.replaceChildren(...T.steps.map((s) => { const li = document.createElement('li'); li.textContent = s; return li; }));
+      ol.replaceChildren(...T.steps.map((s, i) => { const li = document.createElement('li'); const n = document.createElement('i'); n.textContent = String(i + 1); const tx = document.createElement('span'); tx.textContent = s; li.append(n, tx); return li; }));
     }
+    $('#spUriLabel').textContent = T.uri;
     $('#spRedirect').textContent = st.redirect || 'http://127.0.0.1:43827/callback';
-    $('#spCopy').textContent = T.copy;
+    if (!$('#spCopy').classList.contains('is-done')) $('#spCopy').textContent = T.copy;
     $('#spDash').textContent = T.dash;
     return;
   }
   // Conectada
-  $('#spLogout').textContent = T.logout;
+  $('#spLogout').title = T.logout;
+  $('#spLogout').setAttribute('aria-label', T.logout);
   $('#spDevLabel').textContent = T.dev;
   $('#spQuery').placeholder = T.search;
   $('#spPlTitle').textContent = T.pls;
-  const sh = $('#spShuffle');
-  sh.textContent = T.shuffle;
-  sh.classList.toggle('is-on', !!(sp && sp.shuffle));
-  const rp = $('#spRepeat');
+  $('#spShuffleTx').textContent = T.shuffle;
+  $('#spShuffle').classList.toggle('is-on', !!(sp && sp.shuffle));
   const rep = (sp && sp.repeat) || 'off';
-  rp.textContent = T.repeat[rep] || T.repeat.off;
-  rp.classList.toggle('is-on', rep !== 'off');
+  $('#spRepeatTx').textContent = T.repeat[rep] || T.repeat.off;
+  $('#spRepeat').classList.toggle('is-on', rep !== 'off');
+  $('#spRepeat').classList.toggle('is-one', rep === 'track');
   // Me gusta: se pregunta una vez por tema.
   const lk = $('#spLike');
   const uri = (sp && sp.uri) || '';
@@ -5590,11 +5682,12 @@ async function paintSpotify() {
     SP.liked = false;
     tvm.spotifyApi.liked(uri).then((r) => { if (r && r.ok && SP.likedUri === uri) { SP.liked = !!r.data; paintSpotify(); } }).catch(() => {});
   }
-  lk.textContent = SP.liked ? `♥ ${T.liked}` : `♡ ${T.like}`;
+  $('#spLikeTx').textContent = SP.liked ? T.liked : T.like;
   lk.classList.toggle('is-on', SP.liked);
   // Dispositivo: el actual en la lista; la lista entera se pide al abrirla.
   const sel = $('#spDevice');
   const dev = sp && sp.device;
+  $('#spDevPath').setAttribute('d', spDevIcon(dev && dev.type));
   if (document.activeElement !== sel) {
     if (!sel.options.length || sel.dataset.cur !== (dev ? dev.id : '')) {
       sel.dataset.cur = dev ? dev.id : '';
@@ -5614,41 +5707,56 @@ $('#spConnect').addEventListener('click', async () => {
   const btn = $('#spConnect');
   SP.connecting = true;
   btn.disabled = true;
-  btn.textContent = T.connecting;
+  btn.classList.add('is-busy');
+  $('#spConnectTx').textContent = T.connecting;
   try {
     SP.status = await tvm.spotifyApi.login($('#spClient').value);
     if (window.TLMusic) window.TLMusic.setSpotifyApi(!!SP.status.connected);
-    toast(T.who(SP.status.user), 'ok');
+    toast(`${T.subOn} · ${SP.status.user || 'Spotify'}`, 'ok');
   } catch (e) {
     toast(e.message, 'err');
+    const f = $('.sp__field');
+    f.classList.remove('is-shake'); void f.offsetWidth; f.classList.add('is-shake');
   } finally {
     SP.connecting = false;
     btn.disabled = false;
+    btn.classList.remove('is-busy');
     paintSpotify();
   }
 });
+$('#spClient').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('#spConnect').click(); });
 $('#spDash').addEventListener('click', () => { tvm.app.openExternal('https://developer.spotify.com/dashboard').catch(() => {}); });
 $('#spCopy').addEventListener('click', () => {
-  try { navigator.clipboard.writeText($('#spRedirect').textContent); $('#spCopy').textContent = spT().copied; } catch (e) { /* sin portapapeles */ }
+  const b = $('#spCopy');
+  try { navigator.clipboard.writeText($('#spRedirect').textContent); } catch (e) { /* sin portapapeles */ }
+  b.textContent = spT().copied;
+  b.classList.add('is-done');
+  setTimeout(() => { b.classList.remove('is-done'); b.textContent = spT().copy; }, 1600);
 });
 $('#spLogout').addEventListener('click', async () => {
   try { SP.status = await tvm.spotifyApi.logout(); } catch (e) { /* nada */ }
   SP.playlists = null; SP.results = null; SP.likedUri = '';
+  $('#spQuery').value = ''; $('#spClear').hidden = true;
   if (window.TLMusic) window.TLMusic.setSpotifyApi(false);
   paintSpotify();
 });
-$('#spShuffle').addEventListener('click', () => { const sp = window.TLMusic.spotify; window.TLMusic.spotifyApi('shuffle', !(sp && sp.shuffle)); });
-$('#spRepeat').addEventListener('click', () => {
+const spPop = (el) => { el.classList.remove('is-pop'); void el.offsetWidth; el.classList.add('is-pop'); };
+$('#spShuffle').addEventListener('click', (e) => { spPop(e.currentTarget); const sp = window.TLMusic.spotify; window.TLMusic.spotifyApi('shuffle', !(sp && sp.shuffle)); });
+$('#spRepeat').addEventListener('click', (e) => {
+  spPop(e.currentTarget);
   const sp = window.TLMusic.spotify;
   const order = ['off', 'context', 'track'];
   const next = order[(order.indexOf((sp && sp.repeat) || 'off') + 1) % order.length];
   window.TLMusic.spotifyApi('repeat', next);
 });
-$('#spLike').addEventListener('click', async () => {
+$('#spLike').addEventListener('click', async (e) => {
+  spPop(e.currentTarget);
   const uri = SP.likedUri;
   if (!uri) return;
   const on = !SP.liked;
-  if (await window.TLMusic.spotifyApi('like', { uri, on })) { SP.liked = on; paintSpotify(); }
+  SP.liked = on;
+  paintSpotify();
+  if (!(await window.TLMusic.spotifyApi('like', { uri, on }))) { SP.liked = !on; paintSpotify(); }
 });
 async function spFillDevices() {
   let r = null;
@@ -5663,18 +5771,23 @@ async function spFillDevices() {
 $('#spDevice').addEventListener('mousedown', spFillDevices);
 $('#spDevice').addEventListener('focus', spFillDevices);
 $('#spDevice').addEventListener('change', (e) => { if (e.target.value) window.TLMusic.spotifyApi('transfer', e.target.value); e.target.blur(); });
-$('#spQuery').addEventListener('input', (e) => {
+function spSearch(q) {
   clearTimeout(SP.searchT);
-  const q = e.target.value.trim();
   SP.query = q;
-  if (!q) { SP.results = null; paintSpotifyLists(); return; }
+  $('#spClear').hidden = !q;
+  $('.sp__search').classList.toggle('is-busy', !!q);
+  if (!q) { SP.results = null; $('.sp__search').classList.remove('is-busy'); paintSpotifyLists(); return; }
   SP.searchT = setTimeout(async () => {
     let r = null;
     try { r = await tvm.spotifyApi.search(q); } catch (e2) { r = null; }
     if (SP.query !== q) return;
-    if (r && r.ok) { SP.results = r.data || []; paintSpotifyLists(); } else if (r && r.code) spMsg(spT().err[r.code] || spT().err.error);
+    $('.sp__search').classList.remove('is-busy');
+    if (r && r.ok) { SP.results = r.data || []; SP.resQ = q; paintSpotifyLists(); } else if (r && r.code) spMsg(spT().err[r.code] || spT().err.error);
   }, 380);
-});
+}
+$('#spQuery').addEventListener('input', (e) => spSearch(e.target.value.trim()));
+$('#spQuery').addEventListener('keydown', (e) => { if (e.key === 'Escape') { e.target.value = ''; spSearch(''); } });
+$('#spClear').addEventListener('click', () => { $('#spQuery').value = ''; spSearch(''); $('#spQuery').focus(); });
 window.addEventListener('tl:spotify', () => { if (state.view === 'musica') paintSpotify(); });
 window.addEventListener('tl:track', () => { if (state.view === 'musica' && window.TLMusic && window.TLMusic.spotify) setTimeout(paintSpotify, 60); });
 
