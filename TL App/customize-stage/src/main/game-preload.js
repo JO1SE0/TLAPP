@@ -6816,9 +6816,34 @@ function installTracking(view) {
     }
     return null;
   };
-  const rememberKick = (p, now, used) => {
-    earlyKicks.push({ x: p.x, y: p.y, first: now, last: now, used });
-    if (earlyKicks.length > 10) earlyKicks.shift();
+  const rememberKick = (p, now, used, played) => {
+    const e = { x: p.x, y: p.y, first: now, last: now, used, played: !!played, timer: 0 };
+    earlyKicks.push(e);
+    if (earlyKicks.length > 10) { const old = earlyKicks.shift(); if (old.timer) clearTimeout(old.timer); }
+    return e;
+  };
+  /*
+   * La extrapolación de HaxBall (`!extrapolation`, o el ajuste). Con un valor
+   * positivo la copia que se dibuja va ADELANTADA respecto del presente: simula
+   * esos milisegundos de más suponiendo que seguís apretando lo que apretás
+   * ahora. Si tocás patear un instante cerca de la pelota (falsear), esa copia
+   * «ve» una patada que nunca pasa, porque soltaste antes del contacto. Por eso
+   * con extrapolación la patada temprana espera exactamente esos milisegundos
+   * —el momento en que el contacto llega al presente— y suena sólo si la copia
+   * la sigue mostrando. Se lee cada 2 s, no en cada patada.
+   */
+  let extrapMs = 0;
+  let extrapReadAt = -1e9;
+  const extrapolation = (now) => {
+    if (now - extrapReadAt < 2000) return extrapMs;
+    extrapReadAt = now;
+    try {
+      const idx = liveSettings(view.document);
+      const opt = idx && idx.get('extrapolation');
+      const v = Number(opt ? opt.get() : view.localStorage.getItem('extrapolation'));
+      extrapMs = Number.isFinite(v) ? Math.max(0, Math.min(1000, v)) : 0;
+    } catch (e) { extrapMs = 0; }
+    return extrapMs;
   };
   /** Suena la patada propia: la elegida, o la de fábrica si no hay otra. */
   const ownKickSound = () => {
@@ -6839,8 +6864,23 @@ function installTracking(view) {
       const now = performance.now();
       const same = nearKick(p, 8, (e) => now - e.last < 400);
       if (same) { same.last = now; return; }
-      rememberKick(p, now, false);
-      ownKickSound();
+      const ahead = extrapolation(now);
+      if (ahead < 8) {
+        rememberKick(p, now, false, true);
+        ownKickSound();
+        return;
+      }
+      // Copia adelantada: espera a que el contacto sea presente. Mientras tanto,
+      // cada cuadro la vuelve a simular y actualiza `last`; si soltaste antes del
+      // contacto (falseo), la patada desaparece de la copia y no suena nada.
+      const e = rememberKick(p, now, false, false);
+      e.timer = setTimeout(() => {
+        e.timer = 0;
+        if (e.used || e.played) return;
+        if (performance.now() - e.last > 100) return;
+        e.played = true;
+        ownKickSound();
+      }, ahead);
     } catch (e) { /* una patada sin sonido adelantado suena igual al confirmarse */ }
   };
 
@@ -6865,10 +6905,19 @@ function installTracking(view) {
         if (p) {
           const now = performance.now();
           const hit = nearKick(p, 14, (e) => !e.used && now - e.first < 2500);
-          if (hit) { hit.used = true; hit.last = now; return true; }
+          if (hit) {
+            hit.used = true;
+            hit.last = now;
+            if (hit.timer) { clearTimeout(hit.timer); hit.timer = 0; }
+            // Ya sonó al verse: la confirmada se calla. Si todavía estaba
+            // esperando (o la copia la había perdido), suena ahora, una vez.
+            if (hit.played) return true;
+            hit.played = true;
+            return playHitSound();
+          }
           // No se vio antes (sos el host, o la copia no llegó a simularla): suena
           // ahora y queda anotada para que la copia no la repita.
-          rememberKick(p, now, true);
+          rememberKick(p, now, true, true);
         }
       }
     } catch (e) { /* sigue el camino de siempre */ }
