@@ -5259,10 +5259,11 @@ function paintMusicPage() {
   $('#musCover').classList.toggle('is-playing', playing);
   const vol = typeof ap.musicVolume === 'number' ? ap.musicVolume : 0.35;
   const vr = $('#musVol');
-  // El volumen de Spotify se maneja en Spotify: esta barra es el de las canciones de la app.
-  vr.disabled = !!sp;
-  vr.title = sp ? (en ? 'Spotify volume is set in Spotify' : 'El volumen de Spotify se maneja en Spotify') : '';
-  if (document.activeElement !== vr) vr.value = String(vol);
+  // Con Spotify, la barra maneja el volumen de Spotify (el del mezclador de Windows).
+  // Hasta que Spotify suena por primera vez Windows no tiene su volumen: queda apagada.
+  vr.disabled = !!sp && !(sp.vol >= 0);
+  vr.title = sp ? (sp.vol >= 0 ? (en ? 'Spotify volume' : 'Volumen de Spotify') : (en ? 'Play something in Spotify to set its volume' : 'Poné algo en Spotify para manejar su volumen')) : '';
+  if (document.activeElement !== vr) vr.value = String(sp ? Math.max(0, sp.vol) : vol);
   syncRangeFill(vr);
   if (now && musCoverFor !== now.name) musicCoverFor(now);
   musicPageTick();
@@ -5389,9 +5390,13 @@ $('#musBar').addEventListener('click', (e) => {
 });
 $('#musVol').addEventListener('input', (e) => {
   syncRangeFill(e.target);
+  if (window.TLMusic && window.TLMusic.spotify) { window.TLMusic.spotifyVolume(Number(e.target.value)); return; }
   if (window.TLMusic) window.TLMusic.configure(state.config.appearance.music !== false, Number(e.target.value), state.config.appearance.musicClub !== false);
 });
-$('#musVol').addEventListener('change', (e) => patchConfig({ appearance: { musicVolume: Number(e.target.value), music: true } }));
+$('#musVol').addEventListener('change', (e) => {
+  if (window.TLMusic && window.TLMusic.spotify) return;
+  patchConfig({ appearance: { musicVolume: Number(e.target.value), music: true } });
+});
 $('#musSearch').addEventListener('input', (e) => { musQuery = e.target.value; paintMusicPage(); });
 $('#musAdd').addEventListener('click', async () => {
   const en = isEn();
@@ -5408,6 +5413,15 @@ window.addEventListener('tl:musicstate', () => { if (state.view === 'musica') pa
 window.addEventListener('tl:spotify', () => {
   const sp = window.TLMusic && window.TLMusic.spotify;
   $('#nowPlaying').classList.toggle('is-spotify', !!sp);
+  // La barra de volumen de arriba también pasa a ser la de Spotify.
+  const range = $('#audVol');
+  if (range && document.activeElement !== range) {
+    const ap = (state.config && state.config.appearance) || {};
+    range.disabled = !!sp && !(sp.vol >= 0);
+    range.title = sp ? (isEn() ? 'Spotify volume' : 'Volumen de Spotify') : '';
+    range.value = String(sp ? Math.max(0, sp.vol) : (typeof ap.musicVolume === 'number' ? ap.musicVolume : 0.35));
+    syncRangeFill(range);
+  }
   if (state.view === 'musica') paintMusicPage();
 });
 window.addEventListener('tl:spotifycover', () => {
@@ -5588,10 +5602,10 @@ function paintAudio() {
   $('#audMusic').setAttribute('aria-pressed', String(ap.music !== false));
   $('#audSfx').setAttribute('aria-pressed', String(ap.uiSounds !== false));
   const range = $('#audVol');
-  const spot = ap.musicSource === 'spotify' && ap.music !== false;
-  range.disabled = spot;
-  range.title = spot ? (isEn() ? 'Spotify volume is set in Spotify' : 'El volumen de Spotify se maneja en Spotify') : '';
-  if (document.activeElement !== range) range.value = String(vol);
+  const spot = window.TLMusic && window.TLMusic.spotify;
+  range.disabled = !!spot && !(spot.vol >= 0);
+  range.title = spot ? (isEn() ? 'Spotify volume' : 'Volumen de Spotify') : '';
+  if (document.activeElement !== range) range.value = String(spot ? Math.max(0, spot.vol) : vol);
   syncRangeFill(range);
 }
 $('#audMusic').addEventListener('click', () => patchConfig({ appearance: { music: state.config.appearance.music === false } }));
@@ -5605,9 +5619,13 @@ document.querySelectorAll('#audSfxMenu .chip').forEach((chip) => {
 });
 $('#audVol').addEventListener('input', (e) => {
   syncRangeFill(e.target);
+  if (window.TLMusic && window.TLMusic.spotify) { window.TLMusic.spotifyVolume(Number(e.target.value)); return; }
   if (window.TLMusic) window.TLMusic.configure(state.config.appearance.music !== false, Number(e.target.value), state.config.appearance.musicClub !== false);
 });
-$('#audVol').addEventListener('change', (e) => patchConfig({ appearance: { musicVolume: Number(e.target.value), music: true } }));
+$('#audVol').addEventListener('change', (e) => {
+  if (window.TLMusic && window.TLMusic.spotify) return;
+  patchConfig({ appearance: { musicVolume: Number(e.target.value), music: true } });
+});
 
 
 

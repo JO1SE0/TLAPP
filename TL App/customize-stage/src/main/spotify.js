@@ -58,6 +58,86 @@ function Get-Session {
   return $null
 }
 
+
+# Volumen de Spotify: el mismo control que «Mezclador de volumen» de Windows,
+# sesión por sesión. No pide cuenta ni Premium.
+try {
+Add-Type -ErrorAction Stop -TypeDefinition @'
+using System;
+using System.Diagnostics;
+using System.Runtime.InteropServices;
+namespace TLAudio {
+  [ComImport, Guid("BCDE0395-E52F-467C-8E3D-C4579291692E")] class MMDeviceEnumerator { }
+  [ComImport, Guid("A95664D2-9614-4F35-A746-DE8DB63617E6"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+  interface IMMDeviceEnumerator { int NotImpl1(); [PreserveSig] int GetDefaultAudioEndpoint(int dataFlow, int role, out IMMDevice ppDevice); }
+  [ComImport, Guid("D666063F-1587-4E43-81F1-B948E807363F"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+  interface IMMDevice { [PreserveSig] int Activate(ref Guid iid, int dwClsCtx, IntPtr pActivationParams, [MarshalAs(UnmanagedType.IUnknown)] out object ppInterface); }
+  [ComImport, Guid("77AA99A0-1BD6-484F-8BC7-2C654C9A9B6F"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+  interface IAudioSessionManager2 { int NotImpl1(); int NotImpl2(); [PreserveSig] int GetSessionEnumerator(out IAudioSessionEnumerator SessionEnum); }
+  [ComImport, Guid("E2F5BB11-0570-40CA-ACDD-3AA01277DEE8"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+  interface IAudioSessionEnumerator { [PreserveSig] int GetCount(out int SessionCount); [PreserveSig] int GetSession(int SessionCount, out IAudioSessionControl2 Session); }
+  [ComImport, Guid("bfb7ff88-7239-4fc9-8fa2-07c950be9c6d"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+  interface IAudioSessionControl2 {
+    [PreserveSig] int NotImpl0();
+    [PreserveSig] int GetDisplayName([MarshalAs(UnmanagedType.LPWStr)] out string pRetVal);
+    [PreserveSig] int SetDisplayName([MarshalAs(UnmanagedType.LPWStr)] string Value, [MarshalAs(UnmanagedType.LPStruct)] Guid EventContext);
+    [PreserveSig] int GetIconPath([MarshalAs(UnmanagedType.LPWStr)] out string pRetVal);
+    [PreserveSig] int SetIconPath([MarshalAs(UnmanagedType.LPWStr)] string Value, [MarshalAs(UnmanagedType.LPStruct)] Guid EventContext);
+    [PreserveSig] int GetGroupingParam(out Guid pRetVal);
+    [PreserveSig] int SetGroupingParam([MarshalAs(UnmanagedType.LPStruct)] Guid Override, [MarshalAs(UnmanagedType.LPStruct)] Guid EventContext);
+    [PreserveSig] int NotImpl1();
+    [PreserveSig] int NotImpl2();
+    [PreserveSig] int GetSessionIdentifier([MarshalAs(UnmanagedType.LPWStr)] out string pRetVal);
+    [PreserveSig] int GetSessionInstanceIdentifier([MarshalAs(UnmanagedType.LPWStr)] out string pRetVal);
+    [PreserveSig] int GetProcessId(out int pRetVal);
+    [PreserveSig] int IsSystemSoundsSession();
+    [PreserveSig] int SetDuckingPreference(bool optOut);
+  }
+  [ComImport, Guid("87CE5498-68D6-44E5-9215-6DA47EF883D8"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+  interface ISimpleAudioVolume {
+    [PreserveSig] int SetMasterVolume(float fLevel, ref Guid EventContext);
+    [PreserveSig] int GetMasterVolume(out float pfLevel);
+    [PreserveSig] int SetMute(bool bMute, ref Guid EventContext);
+    [PreserveSig] int GetMute(out bool pbMute);
+  }
+  public static class Vol {
+    static void Each(Func<ISimpleAudioVolume, bool> fn) {
+      IMMDeviceEnumerator en = (IMMDeviceEnumerator)(new MMDeviceEnumerator());
+      IMMDevice dev;
+      if (en.GetDefaultAudioEndpoint(0, 1, out dev) != 0 || dev == null) return;
+      Guid iid = typeof(IAudioSessionManager2).GUID;
+      object o;
+      if (dev.Activate(ref iid, 23, IntPtr.Zero, out o) != 0) return;
+      IAudioSessionEnumerator se;
+      if (((IAudioSessionManager2)o).GetSessionEnumerator(out se) != 0) return;
+      int n; se.GetCount(out n);
+      for (int i = 0; i < n; i++) {
+        IAudioSessionControl2 s; if (se.GetSession(i, out s) != 0 || s == null) continue;
+        int pid; if (s.GetProcessId(out pid) != 0 || pid == 0) continue;
+        string name = "";
+        try { name = Process.GetProcessById(pid).ProcessName; } catch { continue; }
+        if (!name.Equals("Spotify", StringComparison.OrdinalIgnoreCase)) continue;
+        if (!fn((ISimpleAudioVolume)s)) return;
+      }
+    }
+    public static float Get() {
+      float best = -1;
+      Each(v => { float f; if (v.GetMasterVolume(out f) == 0 && f > best) best = f; return true; });
+      return best;
+    }
+    public static bool Set(float level) {
+      bool any = false;
+      Guid g = Guid.Empty;
+      float l = Math.Max(0f, Math.Min(1f, level));
+      Each(v => { if (v.SetMasterVolume(l, ref g) == 0) any = true; return true; });
+      return any;
+    }
+  }
+}
+'@
+} catch { }
+function Spot-Vol { try { return [double][TLAudio.Vol]::Get() } catch { return -1 } }
+
 $lastKey = ''
 $lastCover = ''
 
@@ -82,7 +162,7 @@ function Window-State {
   $t = $p.MainWindowTitle
   if ($t -like 'Spotify*' -or $t -notlike '* - *') { return @{ ok = $true; mode = 'window'; running = $true; playing = $false } }
   $i = $t.IndexOf(' - ')
-  return @{ ok = $true; mode = 'window'; running = $true; playing = $true; artist = $t.Substring(0, $i); title = $t.Substring($i + 3) }
+  return @{ ok = $true; mode = 'window'; running = $true; playing = $true; artist = $t.Substring(0, $i); title = $t.Substring($i + 3); vol = (Spot-Vol) }
 }
 
 function Get-State {
@@ -112,6 +192,7 @@ function Get-State {
     title = $title; artist = $artist; album = $album
     pos = $tl.Position.TotalSeconds; dur = $tl.EndTime.TotalSeconds; age = $age
     canSeek = [bool]$info.Controls.IsPlaybackPositionEnabled
+    vol = (Spot-Vol)
     key = $key; cover = $cover
   }
 }
@@ -122,6 +203,11 @@ function Press([byte]$vk) { [TL.Keys]::keybd_event($vk, 0, 0, [UIntPtr]::Zero); 
 function Run-Cmd([string]$cmd, [string]$arg) {
   $s = Get-Session
   if ($cmd -eq 'cover') { $script:lastKey = ''; return (Get-State) }
+  if ($cmd -eq 'setvol') {
+    $ok = $false
+    try { $ok = [TLAudio.Vol]::Set([float]([double]::Parse($arg, [Globalization.CultureInfo]::InvariantCulture))) } catch { }
+    return @{ ok = [bool]$ok; vol = (Spot-Vol) }
+  }
   if (-not $s) {
     # Sin las APIs de Windows: teclas multimedia (las toma la app que esté sonando).
     switch ($cmd) { 'toggle' { Press 0xB3 } 'next' { Press 0xB0 } 'prev' { Press 0xB1 } }
@@ -235,14 +321,16 @@ function send(line) {
   });
 }
 
-const CMDS = new Set(['toggle', 'next', 'prev', 'seek', 'cover']);
+const CMDS = new Set(['toggle', 'next', 'prev', 'seek', 'cover', 'setvol']);
 
 function register(handle, app) {
   handle('spotify:get', () => send('get'));
   handle('spotify:cmd', (_e, cmd, arg) => {
     const c = String(cmd || '');
     if (!CMDS.has(c)) return { ok: false, error: 'bad cmd' };
-    const a = c === 'seek' ? String(Math.max(0, Number(arg) || 0)) : '';
+    let a = '';
+    if (c === 'seek') a = String(Math.max(0, Number(arg) || 0));
+    if (c === 'setvol') a = String(Math.min(1, Math.max(0, Number(arg) || 0)).toFixed(3));
     return send(a ? `${c} ${a}` : c);
   });
   handle('spotify:stop', () => { stop(); failures = 0; return true; });

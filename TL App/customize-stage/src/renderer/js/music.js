@@ -207,7 +207,8 @@
    * piden una sola lectura al tocarlos). */
   const S = {
     on: false, playing: false, title: '', artist: '', album: '', key: '', cover: '',
-    pos: 0, dur: 0, at: 0, canSeek: false, status: 'idle', timer: 0, busy: false, heldPause: false
+    pos: 0, dur: 0, at: 0, canSeek: false, status: 'idle', timer: 0, busy: false, heldPause: false,
+    vol: -1, volAt: 0, volWant: null, volBusy: false
   };
   const sNow = () => (S.title ? { title: S.title, artist: S.artist, name: `spotify:${S.key}`, user: false, spotify: true } : null);
   const sCur = () => {
@@ -221,7 +222,9 @@
       window.dispatchEvent(new CustomEvent('tl:track', { detail: n ? { ...n, playing: S.playing } : { playing: false } }));
     }
     if (changedPlay) window.dispatchEvent(new CustomEvent('tl:musicstate', { detail: { paused: !S.playing } }));
-    window.dispatchEvent(new CustomEvent('tl:spotify', { detail: { status: S.status } }));
+    // Estado o volumen nuevos: sólo cuando cambian, para no redibujar en cada lectura.
+    const sig = `${S.status}|${S.vol >= 0 ? S.vol.toFixed(2) : '-'}`;
+    if (sig !== S.sig) { S.sig = sig; window.dispatchEvent(new CustomEvent('tl:spotify', { detail: { status: S.status } })); }
   }
   async function sRead() {
     if (!S.on || S.busy || !window.tvm || !window.tvm.spotify) return;
@@ -251,6 +254,8 @@
     S.pos = (Number(r.pos) || 0) + (playing ? Math.max(0, Number(r.age) || 0) : 0);
     S.at = performance.now();
     S.canSeek = !!r.canSeek && S.dur > 0;
+    // Mientras se arrastra la barra no se pisa con lo que dice Windows.
+    if (typeof r.vol === 'number' && performance.now() - S.volAt > 1500) S.vol = r.vol;
     sEmit(changedTrack, changedPlay);
     if (changedTrack) window.dispatchEvent(new CustomEvent('tl:spotifycover'));
   }
@@ -268,6 +273,20 @@
     setTimeout(sRead, 350);
     setTimeout(sRead, 1100);
   }
+  /** Volumen de Spotify (0–1), el del mezclador de Windows. Manda el último valor, uno a la vez. */
+  async function sVolume(v) {
+    S.vol = Math.min(1, Math.max(0, Number(v) || 0));
+    S.volAt = performance.now();
+    S.volWant = S.vol;
+    if (S.volBusy || !window.tvm || !window.tvm.spotify) return;
+    S.volBusy = true;
+    while (S.volWant !== null) {
+      const want = S.volWant;
+      S.volWant = null;
+      try { await window.tvm.spotify.cmd('setvol', want); } catch (e) { /* sin Spotify */ }
+    }
+    S.volBusy = false;
+  }
   function setSpotify(on) {
     if (on === S.on) return;
     S.on = on;
@@ -281,6 +300,8 @@
       Object.assign(S, { playing: false, title: '', artist: '', album: '', key: '', cover: '', dur: 0, pos: 0, heldPause: false });
       try { window.tvm.spotify.stop(); } catch (e) { /* nada */ }
       window.dispatchEvent(new CustomEvent('tl:track', { detail: { playing: false } }));
+      S.sig = '';
+      S.vol = -1;
       window.dispatchEvent(new CustomEvent('tl:spotify', { detail: { status: 'off' } }));
       sync();
     }
@@ -437,7 +458,9 @@
     prev() { if (S.on) sCmd('prev'); else step(-1, false); },
     skip() { if (S.on) sCmd('next'); else step(1, false); },
     /** Spotify: si está elegido, en qué anda (`ok` · `idle` · `closed` · `error` · `nowin`) y la tapa (data URL). */
-    get spotify() { return S.on ? { status: S.status, cover: S.cover, canSeek: S.canSeek, album: S.album } : null; },
+    get spotify() { return S.on ? { status: S.status, cover: S.cover, canSeek: S.canSeek, album: S.album, vol: S.vol } : null; },
+    /** Cambia el volumen de Spotify (0–1). */
+    spotifyVolume(v) { if (S.on) sVolume(v); },
     /** Una lectura ya (por ejemplo, al abrir la página Música dentro de una sala). */
     spotifyRefresh() { if (S.on) sRead(); },
     /** Sólo para pruebas: duración del fundido. */
