@@ -7,12 +7,10 @@
  * mismo, nadie vuelve a ver el cartel.
  */
 window.TL_NEWS = {
-  id: 'v1.0.59',
+  id: 'v1.0.58',
   title: { es: 'Qué hay de nuevo', en: "What's new" },
   items: {
     es: [
-      'App nueva: interfaz «Estadio». Las secciones van arriba como sectores (01 Salas, 02 Replays…) con un reflector en la que estás. Salas tiene tres columnas: tu ficha y el plantel con quién está conectado, el tablero con la ocupación de cada sala en luces, y la sala elegida en grande con el botón Entrar. Abajo corre un cartel LED con la gente conectada y el tema que suena. Las demás pantallas ocupan todo el ancho, con índices numerados e interruptores ON/OFF de marcador. Colores, datos y funciones son los mismos de siempre. Dentro de una sala no se anima nada.',
-      'La interfaz de antes sigue disponible: Personalización → Interfaz → Clásica. Las disposiciones viejas del menú (dock, isla, radial, barra abajo…) se sacaron.',
       'Patada sin demora: tu patada suena en el momento en que se ve, no cuando la confirma la sala (eso llegaba un ping tarde). La confirmada se calla, así que no suena doble. Además el audio usa la ruta de Windows con menos demora (WASAPI); antes «Audio de baja latencia» forzaba la ruta vieja, que era más lenta.',
       'Cinco sonidos de patada nuevos con grabaciones de verdad, cada uno para elegir por separado: Pelotazo real, Golpe seco, Patada real, Toque rápido y Bombazo. Se cargan al entrar a la sala, así que no agregan demora al patear. En Personalización → Sonidos.',
       'Página Club con su tema: al abrirla suena bajito, en loop, «Timeless» desde donde entra el beat. La música del menú se pausa mientras tanto y al salir sigue desde donde estaba. Los números de arriba entran uno por golpe y el escudo late con el tema.',
@@ -133,8 +131,6 @@ window.TL_NEWS = {
       'Cada clave se usa en una sola PC: si cambiás de computadora, pedile a miclo que te la libere.'
     ],
     en: [
-      'Brand-new app: the «Stadium» interface. Sections sit on top as stadium sectors (01 Rooms, 02 Replays…) with a floodlight on the open one. Rooms has three columns: your card and the squad with who is online, the board with each room\'s occupancy as lights, and the selected room in big with the Join button. A LED sign runs along the bottom with who is online and the song playing. Other screens use the full width, with numbered indexes and scoreboard ON/OFF switches. Colours, data and features are the same as always. Nothing animates inside a room.',
-      'The previous interface is still there: Personalize → Interface → Classic. The old menu layouts (dock, island, radial, bottom bar…) were removed.',
       'No kick delay: your kick sounds the moment you see it, not when the room confirms it (that came one ping late). The confirmed one stays silent, so it never doubles. Audio also uses the Windows path with the least delay (WASAPI); «Low latency audio» used to force the old, slower path.',
       'Five new kick sounds from real recordings, each one selectable on its own: Real strike, Dry punch, Real kick, Quick touch and Thump. Loaded when you join the room, so no extra delay when kicking. In Customization → Sounds.',
       'Club page theme: when you open it, «Timeless» plays softly on loop from where the beat drops. Menu music pauses meanwhile and resumes where it was when you leave. The top numbers come in one per beat and the crest pulses with the song.',
