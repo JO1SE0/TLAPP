@@ -4985,10 +4985,16 @@ function myNick() {
  * ── Llegada del club ────────────────────────────────────────────────────
  *
  * Con tres o más socios verificados en la sala sale, una vez por sala, un
- * cartel arriba con el escudo y los nombres. Es un único elemento que baja,
- * se queda un rato y se va con transform y opacity; después se borra entero.
+ * cartel arriba con el escudo y los nombres. Es un único elemento que entra,
+ * se queda un rato y se va; después se borra entero.
+ *
+ * La entrada tiene pasos (tarjeta → escudo → título → nombres de a uno →
+ * brillo que cruza → línea dorada) pero todo es transform y opacity, una sola
+ * vez por sala: lo resuelve el compositor y no toca el dibujo de la cancha.
+ * Con «Animaciones» apagado aparece quieto y se va igual.
  */
 const arrival = { room: '', shown: false };
+const ARRIVAL_MS = 5200;
 function clubArrival(doc, names) {
   const room = String(state.roomName || engineRoomName || '');
   if (room !== arrival.room) { arrival.room = room; arrival.shown = false; }
@@ -5000,44 +5006,109 @@ function clubArrival(doc, names) {
     const st = doc.createElement('style');
     st.id = 'tvm-arrival-css';
     st.textContent = `
-      #tvm-arrival { position: fixed; left: 50%; top: 68px; z-index: 2147482500; pointer-events: none;
-        display: flex; align-items: center; gap: 14px; padding: 12px 22px 12px 14px; border-radius: 18px;
-        transform: translate(-50%, -140%); opacity: 0;
-        background: linear-gradient(135deg, #152a52, #0c1834); border: 1px solid rgba(208,184,120,.55);
-        box-shadow: 0 14px 34px -14px rgba(0,0,0,.85), inset 0 1px 0 rgba(255,255,255,.12);
+      #tvm-arrival { position: fixed; left: 50%; top: 64px; z-index: 2147482500; pointer-events: none;
+        transform: translate(-50%, -24px) scale(.9); opacity: 0;
         font-family: Outfit, Bahnschrift, 'Segoe UI', sans-serif; color: #f4f0df; }
-      #tvm-arrival.is-on { animation: tvmArrival 4.2s cubic-bezier(.2,.8,.2,1) both; }
-      #tvm-arrival img { width: 46px; height: 46px; object-fit: contain; }
-      #tvm-arrival b { display: block; font-size: 11px; font-weight: 800; letter-spacing: .32em; color: #d0b878; }
-      #tvm-arrival span { display: block; margin-top: 3px; font-size: 15px; font-weight: 700; white-space: nowrap; max-width: 52vw; overflow: hidden; text-overflow: ellipsis; }
-      #tvm-arrival i { position: absolute; left: 14px; right: 14px; bottom: -1px; height: 2px; border-radius: 2px;
-        background: linear-gradient(90deg, transparent, #d0b878, transparent); transform-origin: center; transform: scaleX(0);
-        animation: tvmArrivalLine 4.2s ease both; }
-      @keyframes tvmArrival { 0% { transform: translate(-50%, -140%); opacity: 0; } 10% { transform: translate(-50%, 0); opacity: 1; }
-        84% { transform: translate(-50%, 0); opacity: 1; } 100% { transform: translate(-50%, -60%); opacity: 0; } }
-      @keyframes tvmArrivalLine { 0%, 10% { transform: scaleX(0); } 30% { transform: scaleX(1); } 100% { transform: scaleX(1); } }
-      html.tvm-noanim #tvm-arrival.is-on { animation: none; transform: translate(-50%, 0); opacity: 1; }`;
+      #tvm-arrival .a-card { position: relative; display: flex; align-items: center; gap: 16px;
+        padding: 12px 22px 14px 14px; border-radius: 20px; overflow: hidden;
+        background: radial-gradient(120% 140% at 0% 0%, rgba(208,184,120,.20), transparent 55%), linear-gradient(135deg, #18305d, #0c1834 70%);
+        border: 1px solid rgba(208,184,120,.6);
+        box-shadow: 0 18px 40px -16px rgba(0,0,0,.9), 0 0 0 1px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.14); }
+      #tvm-arrival .a-crest { position: relative; flex: none; width: 52px; height: 52px; }
+      #tvm-arrival .a-crest img { position: relative; width: 52px; height: 52px; object-fit: contain;
+        transform: translateY(-14px) scale(.4) rotate(-14deg); opacity: 0; }
+      #tvm-arrival .a-ring { position: absolute; left: 50%; top: 50%; width: 60px; height: 60px; margin: -30px 0 0 -30px;
+        border-radius: 50%; border: 2px solid rgba(208,184,120,.85); transform: scale(.5); opacity: 0; }
+      #tvm-arrival .a-text { min-width: 0; }
+      #tvm-arrival .a-top { display: flex; align-items: center; gap: 10px; transform: translateX(-10px); opacity: 0; }
+      #tvm-arrival .a-top b { font-size: 11px; font-weight: 800; letter-spacing: .3em; color: #d0b878; white-space: nowrap; }
+      #tvm-arrival .a-top em { font-style: normal; font-size: 10px; font-weight: 800; letter-spacing: .08em; color: #0c1834;
+        background: linear-gradient(180deg, #ecd593, #c9a85c); border-radius: 999px; padding: 2px 8px; white-space: nowrap; }
+      #tvm-arrival .a-names { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 7px; max-width: 54vw; }
+      #tvm-arrival .a-names span { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 700;
+        white-space: nowrap; padding: 3px 10px 3px 8px; border-radius: 999px;
+        background: rgba(255,255,255,.07); border: 1px solid rgba(208,184,120,.28);
+        transform: translateY(8px) scale(.9); opacity: 0; }
+      #tvm-arrival .a-names span::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: #d0b878;
+        box-shadow: 0 0 6px rgba(208,184,120,.9); }
+      #tvm-arrival .a-shine { position: absolute; top: -20%; bottom: -20%; left: 0; width: 38%;
+        background: linear-gradient(100deg, transparent, rgba(255,240,200,.22), transparent);
+        transform: translateX(-140%) skewX(-18deg); opacity: 0; }
+      #tvm-arrival .a-line { position: absolute; left: 16px; right: 16px; bottom: 0; height: 2px; border-radius: 2px;
+        background: linear-gradient(90deg, transparent, #ecd593, transparent); transform: scaleX(0); }
+
+      #tvm-arrival.is-on { animation: tvmArrIn ${ARRIVAL_MS}ms cubic-bezier(.2,.8,.2,1) both; }
+      #tvm-arrival.is-on .a-crest img { animation: tvmArrCrest .7s cubic-bezier(.3,1.5,.5,1) .18s both; }
+      #tvm-arrival.is-on .a-ring { animation: tvmArrRing 1s ease-out .55s both; }
+      #tvm-arrival.is-on .a-top { animation: tvmArrUp .45s cubic-bezier(.2,.8,.2,1) .4s both; }
+      #tvm-arrival.is-on .a-names span { animation: tvmArrName .45s cubic-bezier(.3,1.4,.5,1) both; }
+      #tvm-arrival.is-on .a-shine { animation: tvmArrShine 1.1s ease-in-out 1.15s both; }
+      #tvm-arrival.is-on .a-line { animation: tvmArrLine .9s cubic-bezier(.2,.8,.2,1) .5s both; }
+
+      @keyframes tvmArrIn {
+        0% { transform: translate(-50%, -24px) scale(.9); opacity: 0; }
+        7% { transform: translate(-50%, 3px) scale(1.02); opacity: 1; }
+        11% { transform: translate(-50%, 0) scale(1); opacity: 1; }
+        88% { transform: translate(-50%, 0) scale(1); opacity: 1; }
+        100% { transform: translate(-50%, -16px) scale(.96); opacity: 0; } }
+      @keyframes tvmArrCrest { 0% { transform: translateY(-14px) scale(.4) rotate(-14deg); opacity: 0; }
+        100% { transform: none; opacity: 1; } }
+      @keyframes tvmArrRing { 0% { transform: scale(.5); opacity: 0; } 1% { transform: scale(.5); opacity: .9; } 100% { transform: scale(1.5); opacity: 0; } }
+      @keyframes tvmArrUp { to { transform: none; opacity: 1; } }
+      @keyframes tvmArrName { to { transform: none; opacity: 1; } }
+      @keyframes tvmArrShine { 0% { transform: translateX(-140%) skewX(-18deg); opacity: 1; }
+        100% { transform: translateX(380%) skewX(-18deg); opacity: 1; } }
+      @keyframes tvmArrLine { to { transform: scaleX(1); } }
+
+      html.tvm-noanim #tvm-arrival.is-on { animation: tvmArrFade ${ARRIVAL_MS}ms linear both; }
+      html.tvm-noanim #tvm-arrival.is-on * { animation: none !important; }
+      html.tvm-noanim #tvm-arrival .a-crest img, html.tvm-noanim #tvm-arrival .a-top,
+      html.tvm-noanim #tvm-arrival .a-names span { transform: none; opacity: 1; }
+      html.tvm-noanim #tvm-arrival .a-line { transform: scaleX(1); }
+      @keyframes tvmArrFade { 0%, 90% { transform: translate(-50%, 0); opacity: 1; } 100% { transform: translate(-50%, 0); opacity: 0; } }`;
     (doc.head || doc.documentElement).append(st);
   }
   doc.getElementById('tvm-arrival')?.remove();
-  const box = doc.createElement('div');
+  const el = (tag, cls) => { const n = doc.createElement(tag); if (cls) n.className = cls; return n; };
+  const box = el('div');
   box.id = 'tvm-arrival';
   box.setAttribute('aria-hidden', 'true');
-  const img = doc.createElement('img');
+  const card = el('div', 'a-card');
+  const crest = el('div', 'a-crest');
+  const img = el('img');
   img.src = assetUrl('crest');
   img.alt = '';
-  const txt = doc.createElement('div');
-  const title = doc.createElement('b');
+  crest.append(el('div', 'a-ring'), img);
+  const txt = el('div', 'a-text');
+  const top = el('div', 'a-top');
+  const title = el('b');
   title.textContent = 'TODA LA LECCE EN LA SALA';
-  const list = doc.createElement('span');
-  list.textContent = names.slice(0, 6).join(' · ') + (names.length > 6 ? ` +${names.length - 6}` : '');
-  txt.append(title, list);
-  box.append(img, txt, doc.createElement('i'));
+  const count = el('em');
+  count.textContent = `${names.length} SOCIOS`;
+  top.append(title, count);
+  const list = el('div', 'a-names');
+  const shown = names.slice(0, 6);
+  shown.forEach((n, i) => {
+    const chip = el('span');
+    chip.textContent = n;
+    // De a uno, después del título.
+    chip.style.animationDelay = `${620 + i * 110}ms`;
+    list.append(chip);
+  });
+  if (names.length > shown.length) {
+    const more = el('span');
+    more.textContent = `+${names.length - shown.length}`;
+    more.style.animationDelay = `${620 + shown.length * 110}ms`;
+    list.append(more);
+  }
+  txt.append(top, list);
+  card.append(el('div', 'a-shine'), crest, txt, el('div', 'a-line'));
+  box.append(card);
   doc.body.append(box);
   if (state.config.appearance && state.config.appearance.animations === false) doc.documentElement.classList.add('tvm-noanim');
   else doc.documentElement.classList.remove('tvm-noanim');
   box.classList.add('is-on');
-  setTimeout(() => box.remove(), 4300);
+  setTimeout(() => box.remove(), ARRIVAL_MS + 100);
 }
 
 function paintPeers(doc) {

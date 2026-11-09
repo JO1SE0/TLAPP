@@ -11,6 +11,7 @@ window.TL_NEWS = {
   title: { es: 'Qué hay de nuevo', en: "What's new" },
   items: {
     es: [
+      'Llegada del club renovada: la tarjeta baja con un rebote, el escudo cae girando con un aro que se abre, arriba dice cuántos socios hay y los nombres entran de a uno como fichas doradas; cruza un brillo y se subraya en dorado. Todo con movimientos livianos, una sola vez por sala.',
       'Ajustes ordenados: todo el sonido junto en Configuración → Sonido (mezclador arriba, los sonidos de HaxBall y los tuyos abajo, sin volúmenes repetidos). «Red y latencia» pasa a «Latencia y sistema» y se ve abierto. En Personalización: «Densidad» se separa en «Tamaño y espaciado» y «Detalles de la interfaz»; animaciones, bienvenida, partículas y fondo del menú quedan juntos; clima y marcador del piso tienen su sección; los aros van con las fichas, el aspecto de la pelota con la pelota, y los festejos de gol y del club en «En partida». La música se maneja sólo desde la página Música. No se sacó ninguna opción.',
       'Patada sin demora: si jugás con extrapolación, falsear (tocar patear un instante cerca de la pelota sin pegarle) ya no hace sonar la patada. Con extrapolación el sonido espera esos milisegundos y suena sólo si la patada de verdad pasa.',
       'Patada sin demora: tu patada suena en el momento en que se ve, no cuando la confirma la sala (eso llegaba un ping tarde). La confirmada se calla, así que no suena doble. Además el audio usa la ruta de Windows con menos demora (WASAPI); antes «Audio de baja latencia» forzaba la ruta vieja, que era más lenta.',
@@ -133,6 +134,7 @@ window.TL_NEWS = {
       'Cada clave se usa en una sola PC: si cambiás de computadora, pedile a miclo que te la libere.'
     ],
     en: [
+      'Club arrival redone: the card drops in with a bounce, the crest spins in with an opening ring, it shows how many members are in and the names pop in one by one as gold chips; a shine sweeps across and a gold underline grows. All lightweight motion, once per room.',
       'Tidier settings: all sound together in Settings → Sound (mixer on top, HaxBall sounds and your own below, no repeated volumes). «Network & latency» becomes «Latency & system» and shows open. In Personalize: «Density» splits into «Size and spacing» and «Interface details»; animations, welcome, particles and menu background sit together; weather and on-pitch score get their own section; rings go with discs, ball looks with the ball, and goal and club celebrations under «In game». Music is handled only from the Music page. No option was removed.',
       'Instant kick: with extrapolation on, faking (tapping kick for an instant near the ball without hitting it) no longer plays the kick sound. With extrapolation the sound waits those milliseconds and only plays if the kick really happens.',
       'No kick delay: your kick sounds the moment you see it, not when the room confirms it (that came one ping late). The confirmed one stays silent, so it never doubles. Audio also uses the Windows path with the least delay (WASAPI); «Low latency audio» used to force the old, slower path.',
