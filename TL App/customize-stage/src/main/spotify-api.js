@@ -252,7 +252,16 @@ async function search(q) {
 
 async function playlists() {
   const r = await api('GET', '/me/playlists', { query: { limit: '30' } });
-  return ((r && r.items) || []).filter(Boolean).map((p) => ({ uri: p.uri, name: p.name || '', owner: (p.owner && p.owner.display_name) || '', cover: img(p.images, 120) }));
+  return ((r && r.items) || []).filter(Boolean).map((p) => ({
+    uri: p.uri, name: p.name || '', owner: (p.owner && p.owner.display_name) || '', cover: img(p.images, 120),
+    // Spotify renombró `tracks` a `items` en las playlists (febrero 2026): se aceptan las dos.
+    total: (p.items && p.items.total) || (p.tracks && p.tracks.total) || 0
+  }));
+}
+
+async function queueList() {
+  const r = await api('GET', '/me/player/queue');
+  return ((r && r.queue) || []).slice(0, 20).map(trackOut).filter(Boolean);
 }
 
 async function devices() {
@@ -291,6 +300,7 @@ function register(handle, shell) {
   handle('spapi:search', wrap((_e, q) => search(q)));
   handle('spapi:playlists', wrap(() => playlists()));
   handle('spapi:devices', wrap(() => devices()));
+  handle('spapi:queue', wrap(() => queueList()));
   handle('spapi:liked', wrap((_e, uri) => liked(uri)));
 }
 

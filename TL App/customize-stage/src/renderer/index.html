@@ -1657,6 +1657,11 @@
       <section class="page" data-page="musica">
         <div class="page__inner mus">
           <header class="mus__hero">
+            <div class="mus__bg" id="musBg" aria-hidden="true"></div>
+            <div class="mus__srcsw" id="musSrcSw" role="tablist">
+              <button type="button" data-src="tl" id="musSrcTl">TL App</button>
+              <button type="button" data-src="spotify" id="musSrcSp"><i aria-hidden="true"></i>Spotify</button>
+            </div>
             <div class="mus__cover" id="musCover"><svg viewBox="0 0 24 24"><path d="M9 17.5V6.2l10-2v11.3"/><circle cx="6.6" cy="17.6" r="2.4"/><circle cx="16.6" cy="15.6" r="2.4"/></svg></div>
             <div class="mus__info">
               <span class="club__eyebrow" id="musEyebrow">Ahora suena</span>
@@ -1666,11 +1671,18 @@
               <div class="mus__bar" id="musBar"><i id="musBarFill"></i></div>
               <div class="mus__times"><span id="musCur">0:00</span><span id="musDur">-0:00</span></div>
               <div class="mus__ctl">
+                <button class="mus__btn mus__btn--sp" id="spShuffle" type="button" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h3.2c2.4 0 3.6 1.4 4.8 5s2.4 5 4.8 5H20M17 14l3 3-3 3M4 17h3.2c1.1 0 2-.3 2.7-1M14.1 8c.7-.7 1.6-1 2.7-1H20M17 4l3 3-3 3"/></svg></button>
                 <button class="mus__btn" id="musPrev" type="button" aria-label="Anterior"><svg viewBox="0 0 24 24"><path d="M7 5.5v13M18 6v12l-8.5-6z"/></svg></button>
                 <button class="mus__btn mus__btn--main" id="musPlay" type="button" aria-label="Pausa / reproducir"><svg class="mus__ico-play" viewBox="0 0 24 24"><path d="M8 5.5v13l11-6.5z"/></svg><svg class="mus__ico-pause" viewBox="0 0 24 24"><path d="M8 5.5v13M16 5.5v13"/></svg></button>
                 <button class="mus__btn" id="musNext" type="button" aria-label="Siguiente"><svg viewBox="0 0 24 24"><path d="M17 5.5v13M6 6v12l8.5-6z"/></svg></button>
+                <button class="mus__btn mus__btn--sp" id="spRepeat" type="button" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 11V9.5A2.5 2.5 0 0 1 7.5 7H19l-3-3M19 13v1.5a2.5 2.5 0 0 1-2.5 2.5H5l3 3"/></svg><em class="sp__one" aria-hidden="true">1</em></button>
+                <button class="mus__btn mus__btn--sp mus__btn--like" id="spLike" type="button" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20s-7.5-4.4-7.5-10A4.2 4.2 0 0 1 12 7.6 4.2 4.2 0 0 1 19.5 10c0 5.6-7.5 10-7.5 10z"/></svg></button>
                 <button class="mus__btn mus__btn--like" id="musLike" type="button" aria-label="Favorito"><svg viewBox="0 0 24 24"><path d="M12 20s-7.5-4.4-7.5-10A4.2 4.2 0 0 1 12 7.6 4.2 4.2 0 0 1 19.5 10c0 5.6-7.5 10-7.5 10z"/></svg></button>
                 <div class="mus__vol"><svg viewBox="0 0 24 24"><path d="M4 9.6v4.8h3.4L12 18.4V5.6L7.4 9.6H4z"/><path d="M15.4 9.2a4 4 0 0 1 0 5.6"/></svg><input type="range" id="musVol" min="0" max="1" step="0.01" aria-label="Volumen" /></div>
+              </div>
+              <div class="spdev" id="spDevWrap" hidden>
+                <button class="spdev__chip" id="spDevChip" type="button" aria-haspopup="listbox"><svg viewBox="0 0 24 24" aria-hidden="true"><path id="spDevPath" d="M3.5 5h17v11h-17zM9 19.5h6M12 16v3.5"/></svg><span id="spDevName"></span><svg class="spdev__chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m7 10 5 5 5-5"/></svg></button>
+                <div class="spdev__menu" id="spDevMenu" role="listbox" hidden></div>
               </div>
             </div>
           </header>
@@ -1680,16 +1692,15 @@
             <div class="mus__sws" id="musSws"></div>
           </section>
 
-          <!-- Spotify con cuenta: conectar, buscar, playlists, dispositivo. Sólo con «Usar Spotify». -->
-          <section class="csec sp" id="musSpotify" hidden>
-            <header class="sp__head">
-              <span class="sp__mark" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 10v4M8 7v10M12 4.5v15M16 8v8M20 10.5v3"/></svg></span>
-              <div class="sp__headtx"><h2 id="spTitle">Spotify</h2><small id="spSub"></small></div>
-              <span class="sp__who" id="spWho" hidden><i id="spWhoInit"></i><b id="spWhoName"></b></span>
-            </header>
-
+          <!-- Spotify con cuenta. Sólo con la fuente «Spotify». -->
+          <section class="sp" id="musSpotify" hidden>
             <!-- Sin conectar -->
             <div class="sp__login" id="spLogin">
+              <div class="sp__lhero">
+                <span class="sp__mark" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 10v4M8 7v10M12 4.5v15M16 8v8M20 10.5v3"/></svg></span>
+                <h2 id="spTitle">Conectá tu Spotify</h2>
+                <p id="spSub"></p>
+              </div>
               <div class="sp__perks" id="spPerks"></div>
               <div class="sp__connect">
                 <div class="sp__field">
@@ -1710,32 +1721,34 @@
 
             <!-- Conectada -->
             <div class="sp__main" id="spMain" hidden>
-              <div class="sp__bar">
-                <div class="sp__toggles">
-                  <button class="sp__tg" id="spShuffle" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h3.2c2.4 0 3.6 1.4 4.8 5s2.4 5 4.8 5H20M17 14l3 3-3 3M4 17h3.2c1.1 0 2-.3 2.7-1M14.1 8c.7-.7 1.6-1 2.7-1H20M17 4l3 3-3 3"/></svg><span id="spShuffleTx"></span></button>
-                  <button class="sp__tg" id="spRepeat" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 11V9.5A2.5 2.5 0 0 1 7.5 7H19l-3-3M19 13v1.5a2.5 2.5 0 0 1-2.5 2.5H5l3 3"/></svg><span id="spRepeatTx"></span><em class="sp__one" aria-hidden="true">1</em></button>
-                  <button class="sp__tg sp__tg--heart" id="spLike" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20s-7.5-4.4-7.5-10A4.2 4.2 0 0 1 12 7.6 4.2 4.2 0 0 1 19.5 10c0 5.6-7.5 10-7.5 10z"/></svg><span id="spLikeTx"></span></button>
-                </div>
-                <label class="sp__dev" title="">
-                  <svg class="sp__devico" viewBox="0 0 24 24" aria-hidden="true"><path id="spDevPath" d="M3.5 5h17v11h-17zM9 19.5h6M12 16v3.5"/></svg>
-                  <span class="sp__devtx"><small id="spDevLabel">Suena en</small><select id="spDevice"></select></span>
-                  <svg class="sp__chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m7 10 5 5 5-5"/></svg>
-                </label>
-                <button class="sp__out" id="spLogout" type="button" title=""><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 5h3.5A1.5 1.5 0 0 1 19 6.5v11a1.5 1.5 0 0 1-1.5 1.5H14M10 16l-4-4 4-4M6 12h9"/></svg></button>
-              </div>
               <p class="sp__msg" id="spMsg" hidden></p>
-              <div class="sp__search">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.8"/><path d="M16.1 16.1 20.2 20.2"/></svg>
-                <input type="text" id="spQuery" placeholder="Buscar en Spotify…" />
-                <button class="sp__clear" id="spClear" type="button" hidden aria-label="Borrar"><svg viewBox="0 0 24 24"><path d="M7 7l10 10M17 7 7 17"/></svg></button>
+              <div class="sp__grid">
+                <div class="sp__panel sp__panel--l">
+                  <div class="sp__tabs" role="tablist">
+                    <button type="button" class="is-on" data-sptab="search" id="spTabSearch"></button>
+                    <button type="button" data-sptab="queue" id="spTabQueue"></button>
+                    <span class="sp__tabpill" aria-hidden="true"></span>
+                  </div>
+                  <div class="sp__search" id="spSearchBox">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.8"/><path d="M16.1 16.1 20.2 20.2"/></svg>
+                    <input type="text" id="spQuery" placeholder="Buscar en Spotify…" />
+                    <button class="sp__clear" id="spClear" type="button" hidden aria-label="Borrar"><svg viewBox="0 0 24 24"><path d="M7 7l10 10M17 7 7 17"/></svg></button>
+                  </div>
+                  <div class="sp__list" id="spResults"></div>
+                </div>
+                <div class="sp__panel sp__panel--r">
+                  <div class="sp__phead"><h3 id="spPlTitle">Tus playlists</h3><small id="spPlCount"></small></div>
+                  <div class="sp__pls" id="spPlaylists"></div>
+                </div>
               </div>
-              <div class="sp__results" id="spResults"></div>
-              <div class="sp__plhead"><h3 id="spPlTitle">Tus playlists</h3><small id="spPlCount"></small></div>
-              <div class="sp__pls" id="spPlaylists"></div>
+              <footer class="sp__foot">
+                <span class="sp__who"><i id="spWhoInit"></i><span><small id="spWhoLabel">Conectado como</small><b id="spWhoName"></b></span></span>
+                <button class="sp__out" id="spLogout" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 5h3.5A1.5 1.5 0 0 1 19 6.5v11a1.5 1.5 0 0 1-1.5 1.5H14M10 16l-4-4 4-4M6 12h9"/></svg><span id="spLogoutTx"></span></button>
+              </footer>
             </div>
           </section>
 
-          <section class="csec">
+          <section class="csec" id="musLibrary">
             <header class="csec__head"><h2 id="musListTitle">Tus temas</h2><span class="csec__tag" id="musCount">—</span></header>
             <div class="mus__bartools">
               <div class="seg" id="musFilter" role="tablist"></div>

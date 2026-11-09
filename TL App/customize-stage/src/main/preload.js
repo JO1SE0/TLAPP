@@ -164,6 +164,7 @@ contextBridge.exposeInMainWorld('tvm', {
     search: (q) => call('spapi:search', q),
     playlists: () => call('spapi:playlists'),
     devices: () => call('spapi:devices'),
+    queue: () => call('spapi:queue'),
     liked: (uri) => call('spapi:liked', uri)
   },
 
