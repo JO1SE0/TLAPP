@@ -5440,24 +5440,26 @@ window.addEventListener('tl:spotifycover', () => {
 const SP = { status: null, playlists: null, plAt: 0, searchT: 0, query: '', results: null, likedUri: '', liked: false, msgT: 0 };
 const SP_TXT = {
   es: {
-    lead: 'Conectá tu cuenta de Spotify (Premium) para buscar temas, poner tus playlists, sumar a la cola, cambiar el volumen y elegir dónde suena. Sin conectar igual se ve y se maneja lo básico.',
-    connect: 'Conectar', connecting: 'Esperando a Spotify…', how: 'Cómo sacar el Client ID (una vez)',
-    steps: ['Entrá a developer.spotify.com/dashboard con tu cuenta Premium y tocá «Create app».', 'Nombre y descripción: lo que quieras (por ejemplo «TL App»). En «Redirect URIs» pegá la dirección de abajo y tocá «Add».', 'En «Which API/SDKs are you planning to use?» marcá «Web API» y guardá.', 'En «User Management» agregá el mail de Spotify de cada uno que lo vaya a usar (hasta 5).', 'Copiá el «Client ID» de la app y pegalo acá arriba.'],
+    lead: 'Conectá tu cuenta de Spotify (Premium) para buscar temas, poner tus playlists, sumar a la cola, cambiar el volumen y elegir dónde suena. Cada uno usa su propia llave (Client ID), así nadie tiene que cargar a nadie. Sin conectar igual se ve y se maneja lo básico.',
+    connect: 'Conectar', connecting: 'Esperando a Spotify…', how: 'Cómo sacar tu Client ID (2 minutos, una sola vez)',
+    steps: ['Tocá «Abrir panel de Spotify» y entrá con TU cuenta Premium. Tocá «Create app».', 'Nombre y descripción: lo que quieras (por ejemplo «TL App»). En «Redirect URIs» pegá la dirección de abajo y tocá «Add».', 'En «Which API/SDKs are you planning to use?» marcá «Web API», aceptá y guardá.', 'Entrá a la app, pestaña «User Management», y agregá tu propio nombre y el mail de tu cuenta de Spotify.', 'Copiá el «Client ID» (pestaña «Basic Information») y pegalo acá arriba. Después «Conectar».'],
+    dash: 'Abrir panel de Spotify',
     copy: 'Copiar', copied: 'Copiada',
     who: (u) => (u ? `Conectado · ${u}` : 'Conectado'), logout: 'Desconectar',
     shuffle: 'Aleatorio', repeat: { off: 'Repetir', context: 'Repetir: todo', track: 'Repetir: este' }, like: 'Me gusta', liked: 'Te gusta',
     dev: 'Suena en', devNone: 'Ningún dispositivo', search: 'Buscar en Spotify…', pls: 'Tus playlists', noPls: 'No hay playlists.', noRes: 'Nada con eso.', queue: 'Sumar a la cola', queued: 'Sumado a la cola',
-    err: { premium: 'Para manejar Spotify desde la app hace falta Premium.', nodevice: 'Spotify no está abierto en ningún lado: abrilo en la PC o en el celu, o elegí un dispositivo.', forbidden: 'Spotify no lo permitió. ¿Tu mail está agregado en «User Management» de tu app?', rate: 'Demasiados pedidos seguidos: esperá unos segundos.', login: 'Se cerró la sesión de Spotify: conectá de nuevo.', error: 'Spotify no respondió. Probá de nuevo.' }
+    err: { premium: 'Para manejar Spotify desde la app hace falta Premium.', nodevice: 'Spotify no está abierto en ningún lado: abrilo en la PC o en el celu, o elegí un dispositivo.', forbidden: 'Spotify no lo permitió. Revisá que tu mail esté en «User Management» de tu app de Spotify (paso 4).', rate: 'Demasiados pedidos seguidos: esperá unos segundos.', login: 'Se cerró la sesión de Spotify: conectá de nuevo.', error: 'Spotify no respondió. Probá de nuevo.' }
   },
   en: {
-    lead: 'Connect your Spotify account (Premium) to search songs, play your playlists, add to queue, change volume and pick where it plays. Without connecting, the basics still work.',
-    connect: 'Connect', connecting: 'Waiting for Spotify…', how: 'How to get the Client ID (once)',
-    steps: ['Go to developer.spotify.com/dashboard with your Premium account and click «Create app».', 'Name and description: anything (e.g. «TL App»). In «Redirect URIs» paste the address below and click «Add».', 'Under «Which API/SDKs are you planning to use?» tick «Web API» and save.', 'In «User Management» add the Spotify email of everyone who will use it (up to 5).', 'Copy the app «Client ID» and paste it above.'],
+    lead: 'Connect your Spotify account (Premium) to search songs, play your playlists, add to queue, change volume and pick where it plays. Everyone uses their own key (Client ID), so nobody has to add anyone. Without connecting, the basics still work.',
+    connect: 'Connect', connecting: 'Waiting for Spotify…', how: 'How to get your Client ID (2 minutes, once)',
+    steps: ['Click «Open Spotify dashboard» and sign in with YOUR Premium account. Click «Create app».', 'Name and description: anything (e.g. «TL App»). In «Redirect URIs» paste the address below and click «Add».', 'Under «Which API/SDKs are you planning to use?» tick «Web API», accept and save.', 'Open the app, «User Management» tab, and add your own name and your Spotify account email.', 'Copy the «Client ID» («Basic Information» tab) and paste it above. Then «Connect».'],
+    dash: 'Open Spotify dashboard',
     copy: 'Copy', copied: 'Copied',
     who: (u) => (u ? `Connected · ${u}` : 'Connected'), logout: 'Disconnect',
     shuffle: 'Shuffle', repeat: { off: 'Repeat', context: 'Repeat: all', track: 'Repeat: one' }, like: 'Like', liked: 'Liked',
     dev: 'Playing on', devNone: 'No device', search: 'Search Spotify…', pls: 'Your playlists', noPls: 'No playlists.', noRes: 'Nothing found.', queue: 'Add to queue', queued: 'Added to queue',
-    err: { premium: 'Controlling Spotify from the app needs Premium.', nodevice: 'Spotify is not open anywhere: open it on your PC or phone, or pick a device.', forbidden: 'Spotify refused. Is your email added under «User Management» in your app?', rate: 'Too many requests: wait a few seconds.', login: 'Your Spotify session ended: connect again.', error: 'Spotify did not answer. Try again.' }
+    err: { premium: 'Controlling Spotify from the app needs Premium.', nodevice: 'Spotify is not open anywhere: open it on your PC or phone, or pick a device.', forbidden: 'Spotify refused. Check that your email is under «User Management» in your Spotify app (step 4).', rate: 'Too many requests: wait a few seconds.', login: 'Your Spotify session ended: connect again.', error: 'Spotify did not answer. Try again.' }
   }
 };
 const spT = () => SP_TXT[isEn() ? 'en' : 'es'];
@@ -5564,6 +5566,7 @@ async function paintSpotify() {
     }
     $('#spRedirect').textContent = st.redirect || 'http://127.0.0.1:43827/callback';
     $('#spCopy').textContent = T.copy;
+    $('#spDash').textContent = T.dash;
     return;
   }
   // Conectada
@@ -5624,6 +5627,7 @@ $('#spConnect').addEventListener('click', async () => {
     paintSpotify();
   }
 });
+$('#spDash').addEventListener('click', () => { tvm.app.openExternal('https://developer.spotify.com/dashboard').catch(() => {}); });
 $('#spCopy').addEventListener('click', () => {
   try { navigator.clipboard.writeText($('#spRedirect').textContent); $('#spCopy').textContent = spT().copied; } catch (e) { /* sin portapapeles */ }
 });

@@ -7243,3 +7243,4 @@ html[data-animations="off"] .upd, html[data-animations="off"] .upd *, html[data-
 .sp__pl b { font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .sp__pl small { font-size: 11px; color: var(--text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .sp__empty { font-size: 13px; color: var(--text-faint); margin: 0; }
+.sp__dash { margin-top: 10px; }
