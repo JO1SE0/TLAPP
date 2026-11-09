@@ -6175,6 +6175,11 @@ html[data-roomview="board"] .rtable, html[data-roomview="map"] .rtable { overflo
 .sec[data-sec="audio"] { --sec-ico: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%20fill='none'%20stroke='%2314161f'%20stroke-width='2'%20stroke-linecap='round'%20stroke-linejoin='round'%3E%3Cpath%20d='M5%2014v-2a7%207%200%200%201%2014%200v2'/%3E%3Crect%20x='3.500'%20y='13.500'%20width='4'%20height='6'%20rx='1.500'/%3E%3Crect%20x='16.500'%20y='13.500'%20width='4'%20height='6'%20rx='1.500'/%3E%3C/svg%3E"); }
 .sec[data-sec="actualizaciones"] { --sec-ico: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%20fill='none'%20stroke='%2314161f'%20stroke-width='2'%20stroke-linecap='round'%20stroke-linejoin='round'%3E%3Cpath%20d='M19.500%2012a7.500%207.500%200%201%201-2.300-5.400l2.800%202.600M20%204.500v5.200h-5.200'/%3E%3C/svg%3E"); }
 .sec[data-sec="config"] { --sec-ico: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%20fill='none'%20stroke='%2314161f'%20stroke-width='2'%20stroke-linecap='round'%20stroke-linejoin='round'%3E%3Ccircle%20cx='12'%20cy='12'%20r='3'/%3E%3Cpath%20d='M12%203.500v2.200M12%2018.300v2.200M3.500%2012h2.200M18.300%2012h2.200M6%206l1.500%201.500M16.500%2016.500%2018%2018M18%206l-1.500%201.500M7.500%2016.500%206%2018'/%3E%3C/svg%3E"); }
+.sec[data-sec="latencia"] { --sec-ico: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%20fill='none'%20stroke='%2314161f'%20stroke-width='2'%20stroke-linecap='round'%20stroke-linejoin='round'%3E%3Ccircle%20cx='12'%20cy='13'%20r='7.5'/%3E%3Cpath%20d='M12%209.5V13l2.4%201.6M9.5%203h5'/%3E%3C/svg%3E"); }
+.sec[data-sec="sistemaperf"] { --sec-ico: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%20fill='none'%20stroke='%2314161f'%20stroke-width='2'%20stroke-linecap='round'%20stroke-linejoin='round'%3E%3Crect%20x='4'%20y='4'%20width='16'%20height='12'%20rx='2'/%3E%3Cpath%20d='M8%2020h8M12%2016v4'/%3E%3C/svg%3E"); }
+.sec[data-sec="detalles"] { --sec-ico: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%20fill='none'%20stroke='%2314161f'%20stroke-width='2'%20stroke-linecap='round'%20stroke-linejoin='round'%3E%3Cpath%20d='M4%207h10M18%207h2M4%2017h4M12%2017h8'/%3E%3Ccircle%20cx='16'%20cy='7'%20r='2'/%3E%3Ccircle%20cx='10'%20cy='17'%20r='2'/%3E%3C/svg%3E"); }
+.sec[data-sec="pisofx"] { --sec-ico: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%20fill='none'%20stroke='%2314161f'%20stroke-width='2'%20stroke-linecap='round'%20stroke-linejoin='round'%3E%3Cpath%20d='M7%2016.5a4%204%200%200%201%20.4-8%205%205%200%200%201%209.6%201.4%203.3%203.3%200%200%201-.5%206.6z'/%3E%3Cpath%20d='M9%2020l1-1.5M14%2020l1-1.5'/%3E%3C/svg%3E"); }
+.sec[data-sec="goles"] { --sec-ico: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%20fill='none'%20stroke='%2314161f'%20stroke-width='2'%20stroke-linecap='round'%20stroke-linejoin='round'%3E%3Cpath%20d='M3.5%2019V6.5h17V19'/%3E%3Cpath%20d='M3.5%2010.5h17M8%206.5v12.5M12%206.5v12.5M16%206.5v12.5'/%3E%3C/svg%3E"); }
 
 /* ══════════════════════════════════════════════════════════════════════
    Ajustes · Vidrio
@@ -6223,6 +6228,8 @@ html[data-roomview="board"] .rtable, html[data-roomview="map"] .rtable { overflo
 
 /* Atajos. */
 :is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .tabbar { background: linear-gradient(var(--bg-1) 78%, transparent); padding: 4px 0 8px; }
+/* Pegada arriba, la barra pasaba por debajo de la ✕ del panel: se le deja su lugar. */
+:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .tabbar { padding-right: 18px; }
 :is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .tabbar__chip, :is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .tabbar__fold { background: rgb(var(--text-rgb) / 7%); border: 1px solid rgb(var(--text-rgb) / 10%); color: var(--text-dim); border-radius: 999px; font-size: 12.5px; padding: 6px 14px; }
 :is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .tabbar__chip:hover, :is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .tabbar__fold:hover { background: rgb(var(--accent-rgb) / 18%); color: var(--text); border-color: rgb(var(--accent-rgb) / 45%); transform: none; box-shadow: none; }
 
@@ -6244,7 +6251,7 @@ html[data-roomview="board"] .rtable, html[data-roomview="map"] .rtable { overflo
   box-shadow: 0 8px 16px -8px rgb(var(--accent-rgb) / 90%), 0 1px 0 rgb(255 255 255 / 35%) inset;
 }
 :is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .sec__desc { color: var(--text-dim); font-size: 12px; }
-:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .sec__chev { background: rgb(var(--text-rgb) / 8%); color: var(--text-dim); width: 24px; height: 24px; }
+:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .sec__chev { background: rgb(var(--text-rgb) / 8%); color: var(--text-dim); width: 24px; height: 24px; top: 6px; }
 
 /* Filas. */
 :is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .row { border-radius: 14px; min-height: 54px; padding: 11px 14px; transition: background-color .16s ease; }

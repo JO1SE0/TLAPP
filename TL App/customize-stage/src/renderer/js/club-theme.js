@@ -10,8 +10,8 @@
  * Web Audio y no con <audio loop>: el loop de un <audio> deja un huequito al
  * volver al principio, y con un beat se nota.
  *
- * Al ritmo: los cuatro números de arriba entran uno por golpe con su cuenta, y
- * el escudo late en cada tiempo. Todo eso es sólo opacity/transform, y sólo con
+ * Al ritmo: los cuatro números de arriba entran uno por golpe con su cuenta. El
+ * escudo sigue con su animación de siempre, no con el tema. Todo eso es sólo opacity/transform, y sólo con
  * la página abierta y en el menú: jugando no existe.
  */
 (function () {
@@ -105,31 +105,18 @@
     for (let i = 0; i < KPIS.length; i++) showKpi(i);
   }
 
-  /* ── El escudo late ─────────────────────────────────────────────────── */
-  function pulse(strong) {
-    if (!animOn()) return;
-    const crest = document.querySelector('.club__crest img');
-    if (crest) {
-      crest.animate([
-        { transform: `scale(${strong ? 1.09 : 1.045})` },
-        { transform: 'scale(1)' }
-      ], { duration: strong ? 420 : 300, easing: 'cubic-bezier(.2,.7,.3,1)' });
-    }
-    if (strong) {
-      const ring = document.querySelector('.club__crest .club__ring');
-      if (ring) ring.animate([{ opacity: 0.9, transform: 'scale(.9)' }, { opacity: 0, transform: 'scale(1.35)' }], { duration: 700, easing: 'ease-out' });
-    }
-  }
-
   function tick() {
     raf = 0;
     if (!on || !ctx || !src) return;
     const beat = Math.floor(Math.max(0, ctx.currentTime - t0) / BEAT);
     if (beat !== lastBeat) {
       lastBeat = beat;
+      // El escudo NO sigue el tema: mantiene su animación de siempre (crestFloat
+      // en app.css). Al ritmo sólo entran los cuatro números del club.
       if (beat >= 1 && beat <= 4) showKpi(beat - 1);
-      pulse(beat % 4 === 0);
     }
+    // Entrados los cuatro números ya no hay nada que seguir: se corta el bucle.
+    if (lastBeat >= 4) return;
     raf = requestAnimationFrame(tick);
   }
 

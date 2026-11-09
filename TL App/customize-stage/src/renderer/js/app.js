@@ -16,10 +16,10 @@ if (!appearancePage || !settingsPage) throw new Error('No se encontraron las pá
  * se reparten acá, y el orden va de lo que más se toca a lo que menos.
  *
  *   Aspecto:  tema · acento · tu jugador · la pelota · la cancha · replays ·
- *             en partida · cartel de teclas · overlay · música · sonidos ·
- *             lista de jugadores
- *   Ajustes:  cliente · audio · identidades · discord · actualizaciones ·
- *             configuración
+ *             en partida · cartel de teclas · overlay · lista de jugadores
+ *   Ajustes:  cliente · sonido (mezclador, sonidos de HaxBall y propios) ·
+ *             identidades · discord · actualizaciones · configuración
+ *   (El orden real en pantalla lo manda PANEL_TABS, más abajo.)
  */
 const accountSection = (sel) => {
   const section = $(`.page[data-page="cuenta"] ${sel}`);
@@ -58,9 +58,10 @@ const TAB_ICONS = {
   partida: 'M8.7 5.9v12.2l10-6.1z',
   rapido: 'M13 3 5 13.5h6L10 21l8-10.5h-6z',
   graficos: 'M4 5h16v11H4zM9 20h6M12 16v4',
-  red: 'M3.5 9.2a12.5 12.5 0 0 1 17 0M6.6 12.4a8 8 0 0 1 10.8 0M9.7 15.5a3.6 3.6 0 0 1 4.6 0M12 18.8h.01',
+  red: 'M12 5.5a7.5 7.5 0 1 0 0 15 7.5 7.5 0 0 0 0-15zM12 9.5V13l2.4 1.6M9.5 2.8h5',
   controles: 'M7.5 8h9a4.5 4.5 0 0 1 4.5 4.5v.5a3 3 0 0 1-5.1 2.1L14.6 14h-5.2l-1.3 1.1A3 3 0 0 1 3 13v-.5A4.5 4.5 0 0 1 7.5 8zM8 10.6v2.8M6.6 12h2.8',
   cliente: 'M4 5h16v14H4zM4 9.5h16M7 7.2h.01M9.6 7.2h.01',
+  sonido: 'M4 9.6v4.8h3.4L12 18.4V5.6L7.4 9.6zM15.4 9.2a4 4 0 0 1 0 5.6M17.9 6.7a7.5 7.5 0 0 1 0 10.6',
   cuentas: 'M12 4a4 4 0 1 0 0 8 4 4 0 0 0 0-8zM5 20c0-3.5 3-6 7-6s7 2.5 7 6',
   sistema: 'M20 12a8 8 0 1 1-2.4-5.7M20 4v5h-5'
 };
@@ -68,20 +69,21 @@ const TAB_ICONS = {
 const PANEL_TABS = {
   aspecto: [
     { id: 'estilo', label: 'tab.style', hint: 'tab.styleHint',
-      secs: ['tema', 'acento', 'interfaz', 'densidad', 'animaciones', 'looks', 'menubg'] },
+      secs: ['tema', 'acento', 'interfaz', 'densidad', 'detalles', 'animaciones', 'looks'] },
     { id: 'cancha', label: 'tab.pitch', hint: 'tab.pitchHint',
-      secs: ['cancha', 'acabado', 'trazos', 'replays'] },
+      secs: ['cancha', 'acabado', 'pisofx', 'trazos', 'replays'] },
     { id: 'fichas', label: 'tab.discs', hint: 'tab.discsHint',
       secs: ['jugador', 'pelota', 'fichaslook', 'nombres'] },
     { id: 'partida', label: 'tab.ingame', hint: 'tab.ingameHint',
-      secs: ['chatlook', 'statslook', 'partida', 'teclashud', 'overlay', 'sonidos', 'lista'] }
+      secs: ['partida', 'goles', 'statslook', 'teclashud', 'overlay', 'lista'] }
   ],
   ajustes: [
     { id: 'rapido', group: 'tabg.perf', label: 'tab.quick', hint: 'tab.quickHint', secs: ['perfil', 'respuesta'] },
     { id: 'graficos', group: 'tabg.perf', label: 'tab.gfx', hint: 'tab.gfxHint', secs: ['graficos'] },
-    { id: 'red', group: 'tabg.perf', label: 'tab.net', hint: 'tab.netHint', secs: ['red', 'avanzado'] },
+    { id: 'red', group: 'tabg.perf', label: 'tab.net', hint: 'tab.netHint', secs: ['latencia', 'sistemaperf', 'red'] },
     { id: 'controles', group: 'tabg.game', label: 'tab.controls', hint: 'tab.controlsHint', secs: ['teclas'] },
-    { id: 'cliente', group: 'tabg.game', label: 'tab.client', hint: 'tab.clientHint', secs: ['cliente', 'mezclador', 'audio'] },
+    { id: 'cliente', group: 'tabg.game', label: 'tab.client', hint: 'tab.clientHint', secs: ['cliente'] },
+    { id: 'sonido', group: 'tabg.game', label: 'tab.sound', hint: 'tab.soundHint', secs: ['mezclador', 'audio', 'sonidos'] },
     { id: 'cuentas', group: 'tabg.game', label: 'tab.accounts', hint: 'tab.accountsHint', secs: ['identidades', 'discord'] },
     { id: 'sistema', group: 'tabg.game', label: 'tab.system', hint: 'tab.systemHint', secs: ['actualizaciones', 'config'] }
   ]
@@ -101,7 +103,7 @@ const MODAL_SECS = {
 
   // Lo de Rendimiento se muda a Configuración; las líneas y tamaños, a la cancha.
   if (perfPage) {
-    for (const id of ['perfil', 'respuesta', 'graficos', 'red', 'teclas', 'avanzado']) {
+    for (const id of ['perfil', 'respuesta', 'graficos', 'red', 'teclas', 'latencia', 'sistemaperf']) {
       const sec = $(`[data-sec="${id}"]`, perfPage);
       if (sec) settingsPage.append(sec);
     }
@@ -1539,6 +1541,10 @@ function buildPanelNav() {
  */
 function goToSection(page, sec) {
   const target = $(`[data-sec="${sec}"]`);
+  // Algunas secciones cambiaron de página (los sonidos pasaron a Configuración):
+  // manda dónde vive hoy, no lo que diga un favorito o un enlace viejo.
+  const home = target && target.closest('.page[data-page]');
+  if (home && PANEL_TABS[home.dataset.page]) page = home.dataset.page;
   if (target && target.dataset.tab) panelTab[page] = target.dataset.tab;
   setView(page);
   requestAnimationFrame(() => {
@@ -2161,7 +2167,7 @@ $('#meMenu').addEventListener('click', (e) => {
   if (que === 'perfil') openProfile(null);
   else if (que === 'nick') showStart(null);
   else if (que === 'aspecto') goToSection('aspecto', 'jugador');
-  else if (que === 'vip') goToSection('aspecto', 'sonidos');
+  else if (que === 'vip') goToSection('ajustes', 'sonidos');
   else if (que === 'ajustes') goToTab('ajustes', 'juego');
 });
 
@@ -4502,11 +4508,31 @@ function renderAspect() {
   });
   swatches.append(picker);
 
+  /*
+   * Una lista, tres lugares: lo del tema queda en Tema; animaciones, bienvenida
+   * y partículas van arriba de «Animaciones y fondo». Los tres de música no se
+   * dibujan acá: son los mismos interruptores de la página Música, que es donde
+   * se maneja todo lo de la música (antes estaban repetidos en los dos lados).
+   */
+  const LOOK_ANIM_KEYS = ['animations', 'welcome', 'welcomeSound', 'sparks'];
+  const LOOK_MUSIC_KEYS = ['music', 'musicClub', 'musicInGame'];
+  const lookSwitch = (i) => ({ ...i, value: () => state.config.appearance[i.key] });
+  const lookSave = (item, value) => patchConfig({ appearance: { [item.key]: value } });
   buildSwitches(
     $('#lookSwitches'),
-    LOOK_SWITCHES[lang].map((i) => ({ ...i, value: () => state.config.appearance[i.key] })),
-    (item, value) => patchConfig({ appearance: { [item.key]: value } })
+    LOOK_SWITCHES[lang].filter((i) => !LOOK_ANIM_KEYS.includes(i.key) && !LOOK_MUSIC_KEYS.includes(i.key)).map(lookSwitch),
+    lookSave
   );
+  buildSwitches(
+    $('#animMaster'),
+    LOOK_SWITCHES[lang].filter((i) => LOOK_ANIM_KEYS.includes(i.key)).map(lookSwitch),
+    lookSave
+  );
+  $('#musicMovedLabel').textContent = lang === 'en' ? 'Menu music' : 'Música del menú';
+  $('#musicMovedDesc').textContent = lang === 'en'
+    ? 'Turning it on and off and adding songs: it is all on the Music page.'
+    : 'Prender, apagar y sumar canciones: está todo en la página Música.';
+  $('#musicMovedGo').textContent = lang === 'en' ? 'Open Music' : 'Abrir Música';
 
   renderMusicOwn();
   renderAvatar();
@@ -4934,11 +4960,19 @@ function renderPitch() {
    */
   const live = (key) => !!(state.config.pitch || {})[key];
 
+  // Los aros van con las fichas y los festejos con lo de la partida; la cancha
+  // se queda con lo que es de la cancha.
+  const RING_KEYS = ['selfRing', 'teamRings'];
+  const GOAL_KEYS = ['goalFlash', 'goalShake', 'goalClub', 'clubKit', 'clubArrival'];
+  const pitchSwitch = (i) => ({ ...i, value: () => live(i.key) });
+  const pitchSave = (item, value) => patchConfig({ pitch: { [item.key]: value } });
   buildSwitches(
     $('#pitchSwitches'),
-    PITCH_SWITCHES[lang].map((i) => ({ ...i, value: () => live(i.key) })),
-    (item, value) => patchConfig({ pitch: { [item.key]: value } })
+    PITCH_SWITCHES[lang].filter((i) => !RING_KEYS.includes(i.key) && !GOAL_KEYS.includes(i.key)).map(pitchSwitch),
+    pitchSave
   );
+  buildSwitches($('#ringSwitches'), PITCH_SWITCHES[lang].filter((i) => RING_KEYS.includes(i.key)).map(pitchSwitch), pitchSave);
+  buildSwitches($('#goalSwitches'), PITCH_SWITCHES[lang].filter((i) => GOAL_KEYS.includes(i.key)).map(pitchSwitch), pitchSave);
 
   buildSwitches(
     $('#pitchReplaySwitches'),
@@ -4977,6 +5011,9 @@ $('#overlayOpacity').addEventListener('input', (e) => {
   $('#overlayOpacityValue').textContent = `${Math.round(Number(e.target.value) * 100)}%`;
 });
 $('#overlayOpacity').addEventListener('change', (e) => patchConfig({ overlay: { opacity: Number(e.target.value) } }));
+
+/* La música se maneja en su página: desde Tema sólo queda el acceso. */
+$('#musicMovedGo').addEventListener('click', () => setView('musica'));
 
 /* Mis canciones: las suma cada jugador desde su PC (se guardan en su carpeta de datos). */
 async function renderMusicOwn() {
@@ -5557,7 +5594,7 @@ function paintAnimations() {
   if (!host || !state.config) return;
   const lang = isEn() ? 'en' : 'es';
   const ap = state.config.appearance;
-  $('#animTitle').textContent = lang === 'en' ? 'Menu animations' : 'Animaciones del menú';
+  $('#animTitle').textContent = lang === 'en' ? 'Animations and background' : 'Animaciones y fondo';
   $('#animDesc').textContent = lang === 'en'
     ? 'Cheap motion only. Everything stops with “Animations” off.'
     : 'Sólo movimiento barato. Todo se apaga con «Animaciones» apagado.';
@@ -9875,11 +9912,15 @@ const LOOK_SECTIONS = {
   lookPitch: [
     { key: 'texture', type: 'select', label: 'look.texture', options: [['none', 'look.opt.none'], ['wood', 'look.tex.wood'], ['ice', 'look.tex.ice'], ['sand', 'look.tex.sand'], ['concrete', 'look.tex.concrete'], ['night', 'look.tex.night'], ['clay', 'look.tex.clay'], ['checker', 'look.tex.checker'], ['carbon', 'look.tex.carbon'], ['marble', 'look.tex.marble'], ['hex', 'look.tex.hex'], ['stars', 'look.tex.stars'], ['brick', 'look.tex.brick'], ['snow', 'look.tex.snow'], ['neon', 'look.tex.neon'], ['lava', 'look.tex.lava'], ['waves', 'look.tex.waves']] },
     { key: 'pitchLight', type: 'select', label: 'look.pitchLight', desc: 'look.pitchLightHelp', options: [['none', 'look.opt.none'], ['vignette', 'look.light.vignette'], ['spot', 'look.light.spot'], ['corners', 'look.light.corners'], ['stadium', 'look.light.stadium'], ['sunset', 'look.light.sunset'], ['night', 'look.light.night'], ['stripes', 'look.light.stripes'], ['cinema', 'look.light.cinema']] },
-    { key: 'ownRingColor', type: 'color', label: 'look.ownRingColor', desc: 'look.ownRingHelp' },
-    { key: 'ownRingAlpha', type: 'range', label: 'look.ownRingAlpha', min: 0.05, max: 1, step: 0.01 },
-    { key: 'ownRingRadius', type: 'range', label: 'look.ownRingRadius', min: 18, max: 70, step: 1, raw: true },
-    { type: 'reset', key: '_ringReset', label: 'look.resetRing', keys: ['ownRingColor', 'ownRingAlpha', 'ownRingRadius', 'ownRingSoft'] },
-    { key: 'ownRingSoft', type: 'range', label: 'look.ownRingSoft', min: 0, max: 1, step: 0.05 },
+    { key: 'lineColor', type: 'color', label: 'look.lineColor', desc: 'look.lineColorHelp' },
+    { key: 'lineGlow', type: 'switch', label: 'look.lineGlow', desc: 'look.lineGlowHelp' },
+    { key: 'postColor', type: 'color', label: 'look.postColor' },
+    { key: 'postStyle', type: 'select', label: 'look.postStyle', desc: 'look.postStyleHelp', options: [['default', 'look.opt.none'], ['metal', 'look.post.metal'], ['gold', 'look.post.gold'], ['neon', 'look.post.neon'], ['wood', 'look.post.wood'], ['glass', 'look.post.glass'], ['ball', 'look.post.ball']] },
+    { key: 'crest', type: 'switch', label: 'look.crest', desc: 'look.crestHelp' },
+    { key: 'crestOpacity', type: 'range', label: 'look.crestOpacity', min: 0.05, max: 0.6, step: 0.01, showIf: (v) => v.crest },
+    { key: 'crestSize', type: 'range', label: 'look.crestSize', min: 0.2, max: 1, step: 0.01, showIf: (v) => v.crest }
+  ],
+  lookPitchFx: [
     { key: 'pitchWeather', type: 'select', label: 'look.weather', desc: 'look.weatherHelp', options: [['none', 'look.opt.none'], ['rain', 'look.wx.rain'], ['storm', 'look.wx.storm'], ['snow', 'look.wx.snow'], ['fog', 'look.wx.fog'], ['dust', 'look.wx.dust'], ['leaves', 'look.wx.leaves'], ['embers', 'look.wx.embers'], ['fireflies', 'look.wx.fireflies'], ['blizzard', 'look.wx.blizzard']] },
     { key: 'pitchWeatherAmount', type: 'range', label: 'look.weatherAmount', min: 0.2, max: 1, step: 0.05, showIf: (v) => v.pitchWeather && v.pitchWeather !== 'none' },
     { key: 'pitchScore', type: 'select', label: 'look.pitchScore', desc: 'look.pitchScoreHelp', options: [['none', 'look.opt.none'], ['white', 'look.ps.white'], ['team', 'look.ps.team']] },
@@ -9893,30 +9934,30 @@ const LOOK_SECTIONS = {
     { key: 'pitchScoreBurst', type: 'switch', label: 'look.psBurst', desc: 'look.psBurstHelp', showIf: (v) => v.pitchScore && v.pitchScore !== 'none' },
     { key: 'pitchScoreColorR', type: 'color', label: 'look.psColorR', desc: 'look.psColorHelp', showIf: (v) => v.pitchScore && v.pitchScore !== 'none' },
     { key: 'pitchScoreColorB', type: 'color', label: 'look.psColorB', showIf: (v) => v.pitchScore && v.pitchScore !== 'none' },
-    { type: 'reset', key: '_wxReset', label: 'look.resetWeather', keys: ['pitchWeather', 'pitchWeatherAmount', 'pitchScore', 'pitchScoreOpacity', 'pitchScoreStyle', 'pitchScoreFont', 'pitchScoreSize', 'pitchScorePos', 'pitchScoreMode', 'pitchScoreAnim', 'pitchScoreBurst', 'pitchScoreColorR', 'pitchScoreColorB'] },
-    { key: 'crest', type: 'switch', label: 'look.crest', desc: 'look.crestHelp' },
-    { key: 'crestOpacity', type: 'range', label: 'look.crestOpacity', min: 0.05, max: 0.6, step: 0.01, showIf: (v) => v.crest },
-    { key: 'crestSize', type: 'range', label: 'look.crestSize', min: 0.2, max: 1, step: 0.01, showIf: (v) => v.crest },
-    { key: 'lineColor', type: 'color', label: 'look.lineColor', desc: 'look.lineColorHelp' },
-    { key: 'lineGlow', type: 'switch', label: 'look.lineGlow', desc: 'look.lineGlowHelp' },
-    { key: 'postColor', type: 'color', label: 'look.postColor' },
-    { key: 'postStyle', type: 'select', label: 'look.postStyle', desc: 'look.postStyleHelp', options: [['default', 'look.opt.none'], ['metal', 'look.post.metal'], ['gold', 'look.post.gold'], ['neon', 'look.post.neon'], ['wood', 'look.post.wood'], ['glass', 'look.post.glass'], ['ball', 'look.post.ball']] }
+    { type: 'reset', key: '_wxReset', label: 'look.resetWeather', keys: ['pitchWeather', 'pitchWeatherAmount', 'pitchScore', 'pitchScoreOpacity', 'pitchScoreStyle', 'pitchScoreFont', 'pitchScoreSize', 'pitchScorePos', 'pitchScoreMode', 'pitchScoreAnim', 'pitchScoreBurst', 'pitchScoreColorR', 'pitchScoreColorB'] }
   ],
   lookDiscs: [
     { key: 'discStyle', type: 'select', label: 'look.discStyle', options: [['default', 'look.opt.none'], ['sphere', 'look.ds.sphere'], ['glass', 'look.ds.glass'], ['neon', 'look.ds.neon'], ['metal', 'look.ds.metal'], ['bubble', 'look.ds.bubble'], ['target', 'look.ds.target'], ['stripes', 'look.ds.stripes'], ['gem', 'look.ds.gem'], ['cartoon', 'look.ds.cartoon'], ['dots', 'look.ds.dots']] },
     { key: 'softShadows', type: 'switch', label: 'look.softShadows', desc: 'look.softShadowsHelp' },
     { key: 'discOutline', type: 'color', label: 'look.discOutline' },
-    { key: 'ballStyle', type: 'select', label: 'look.ballStyle', options: [['default', 'look.opt.none'], ['soccer', 'look.bs.soccer'], ['neon', 'look.bs.neon'], ['gold', 'look.bs.gold'], ['beach', 'look.bs.beach'], ['eight', 'look.bs.eight'], ['star', 'look.bs.star'], ['panels', 'look.bs.panels'], ['triangles', 'look.bs.triangles'], ['vintage', 'look.bs.vintage'], ['tennis', 'look.bs.tennis'], ['basket', 'look.bs.basket'], ['volley', 'look.bs.volley'], ['baseball', 'look.bs.baseball'], ['golf', 'look.bs.golf'], ['bowling', 'look.bs.bowling'], ['earth', 'look.bs.earth'], ['moon', 'look.bs.moon'], ['disco', 'look.bs.disco'], ['orb', 'look.bs.orb'], ['pumpkin', 'look.bs.pumpkin'], ['melon', 'look.bs.melon'], ['eye', 'look.bs.eye']] },
-    { key: 'ballColor', type: 'color', label: 'look.ballColor' },
-    { key: 'ballOutline', type: 'color', label: 'look.ballOutline' },
     { key: 'ringStyle', type: 'select', label: 'look.ringStyle', desc: 'look.ringHelp', options: [['default', 'look.opt.simple'], ['double', 'look.ring.double'], ['dashed', 'look.ring.dashed'], ['crown', 'look.ring.crown'], ['glow', 'look.ring.glow'], ['dots', 'look.ring.dots'], ['arrow', 'look.ring.arrow']] },
     { key: 'ringColor', type: 'color', label: 'look.ringColor' },
+    { key: 'ownRingColor', type: 'color', label: 'look.ownRingColor', desc: 'look.ownRingHelp' },
+    { key: 'ownRingAlpha', type: 'range', label: 'look.ownRingAlpha', min: 0.05, max: 1, step: 0.01 },
+    { key: 'ownRingRadius', type: 'range', label: 'look.ownRingRadius', min: 18, max: 70, step: 1, raw: true },
+    { key: 'ownRingSoft', type: 'range', label: 'look.ownRingSoft', min: 0, max: 1, step: 0.05 },
+    { type: 'reset', key: '_ringReset', label: 'look.resetRing', keys: ['ownRingColor', 'ownRingAlpha', 'ownRingRadius', 'ownRingSoft'] },
     { key: 'selfTrail', type: 'switch', label: 'look.selfTrail', desc: 'look.selfTrailHelp' },
     { key: 'selfTrailColor', type: 'color', label: 'look.selfTrailColor', showIf: (v) => v.selfTrail },
     { key: 'teamColors', type: 'select', label: 'look.teamColors', desc: 'look.teamColorsHelp', options: [['room', 'look.tc.room'], ['mine', 'look.tc.mine']] },
     { key: 'teamRed', type: 'color', label: 'look.teamRed', showIf: (v) => v.teamColors === 'mine' },
     { key: 'teamBlue', type: 'color', label: 'look.teamBlue', showIf: (v) => v.teamColors === 'mine' },
     { key: 'teamKeepKits', type: 'switch', label: 'look.teamKeep', desc: 'look.teamKeepHelp', showIf: (v) => v.teamColors === 'mine' }
+  ],
+  lookBall: [
+    { key: 'ballStyle', type: 'select', label: 'look.ballStyle', options: [['default', 'look.opt.none'], ['soccer', 'look.bs.soccer'], ['neon', 'look.bs.neon'], ['gold', 'look.bs.gold'], ['beach', 'look.bs.beach'], ['eight', 'look.bs.eight'], ['star', 'look.bs.star'], ['panels', 'look.bs.panels'], ['triangles', 'look.bs.triangles'], ['vintage', 'look.bs.vintage'], ['tennis', 'look.bs.tennis'], ['basket', 'look.bs.basket'], ['volley', 'look.bs.volley'], ['baseball', 'look.bs.baseball'], ['golf', 'look.bs.golf'], ['bowling', 'look.bs.bowling'], ['earth', 'look.bs.earth'], ['moon', 'look.bs.moon'], ['disco', 'look.bs.disco'], ['orb', 'look.bs.orb'], ['pumpkin', 'look.bs.pumpkin'], ['melon', 'look.bs.melon'], ['eye', 'look.bs.eye']] },
+    { key: 'ballColor', type: 'color', label: 'look.ballColor' },
+    { key: 'ballOutline', type: 'color', label: 'look.ballOutline' }
   ],
   lookNames: [
     { key: 'nameScale', type: 'range', label: 'look.nameScale', min: 0.6, max: 2, step: 0.05 },
@@ -12478,7 +12519,11 @@ function paintDensity() {
   paintGlass();
   paintPanelLook();
   const en = isEn();
-  $('#denTitle').textContent = en ? 'Interface density' : 'Densidad de la interfaz';
+  $('#denTitle').textContent = en ? 'Size and spacing' : 'Tamaño y espaciado';
+  $('#detTitle').textContent = en ? 'Interface details' : 'Detalles de la interfaz';
+  $('#detDesc').textContent = en
+    ? 'Buttons, switches, notices and the other pieces of the menu.'
+    : 'Botones, interruptores, avisos y las demás piezas del menú.';
   $('#denDesc').textContent = en
     ? 'Tighter or roomier menus. Compact fits more settings on screen. The game is not affected.'
     : 'Menús más apretados o más aireados. Compacta muestra más ajustes por pantalla. No afecta al juego.';
@@ -12530,13 +12575,17 @@ const MIX_CHANNELS = [
     get: (c) => c.appearance.musicVolume,
     live: (v) => { const c = state.config.appearance; if (window.TLMusic) window.TLMusic.configure(c.music !== false, v, c.musicClub !== false); },
     set: (v) => ({ appearance: { musicVolume: v, music: true } }) },
-  { id: 'goalsfx', es: 'Sonido de gol incluido', en: 'Built-in goal sound', def: 0.7,
-    get: (c) => c.appearance.goalSfxVolume, set: (v) => ({ appearance: { goalSfxVolume: v } }) },
-  { id: 'kicksfx', es: 'Patada incluida', en: 'Built-in kick sound', def: 0.7,
-    get: (c) => c.appearance.kickSfxVolume, set: (v) => ({ appearance: { kickSfxVolume: v } }) },
-  { id: 'goalown', es: 'Tu sonido de gol', en: 'Your goal sound', def: 0.7,
+  // Al soltar suena el elegido con el volumen nuevo, como hacían los
+  // deslizadores que había en «Sonidos propios» (ahora viven sólo acá).
+  { id: 'goalsfx', es: 'Gol · sonido incluido', en: 'Goal · built-in sound', def: 0.7,
+    get: (c) => c.appearance.goalSfxVolume, set: (v) => ({ appearance: { goalSfxVolume: v } }),
+    onSet: (v) => { const st = state.config.appearance.goalSfx; if (window.TLGoalSfx && st && st !== 'default') window.TLGoalSfx.play(st, v); } },
+  { id: 'kicksfx', es: 'Patada · sonido incluido', en: 'Kick · built-in sound', def: 0.7,
+    get: (c) => c.appearance.kickSfxVolume, set: (v) => ({ appearance: { kickSfxVolume: v } }),
+    onSet: (v) => { const st = state.config.appearance.kickSfx; if (window.TLGoalSfx && st && st !== 'default') window.TLGoalSfx.playKick(st, v); } },
+  { id: 'goalown', es: 'Gol · tu archivo', en: 'Goal · your file', def: 0.7,
     get: (c) => c.vip && c.vip.goalVolume, set: (v) => ({ vip: { goalVolume: v } }) },
-  { id: 'hit', es: 'Sonido de golpe', en: 'Kick sound', def: 0.7,
+  { id: 'hit', es: 'Patada · tu archivo', en: 'Kick · your file', def: 0.7,
     get: (c) => c.vip && c.vip.hitVolume, set: (v) => ({ vip: { hitVolume: v } }) }
 ];
 
@@ -12546,8 +12595,8 @@ function paintMixer() {
   const en = isEn();
   $('#mixTitle').textContent = en ? 'Volume mixer' : 'Mezclador de volúmenes';
   $('#mixDesc').textContent = en
-    ? 'Every volume in one place. They are the same values as in each section.'
-    : 'Todos los volúmenes en un solo lugar. Son los mismos valores que en cada sección.';
+    ? 'Every volume in one place. Built-in sounds play when you let go of the slider.'
+    : 'Todos los volúmenes en un solo lugar. Los sonidos incluidos suenan al soltar la barra.';
   if (!host.children.length) {
     for (const ch of MIX_CHANNELS) {
       const row = document.createElement('div');
@@ -12561,7 +12610,11 @@ function paintMixer() {
         val.textContent = `${Math.round(Number(input.value) * 100)}%`;
         if (ch.live) ch.live(Number(input.value));
       });
-      input.addEventListener('change', () => { if (ch.set) patchConfig(ch.set(Number(input.value))); });
+      input.addEventListener('change', () => {
+        const v = Number(input.value);
+        if (ch.set) patchConfig(ch.set(v));
+        if (ch.onSet) ch.onSet(v);
+      });
       if (ch.preview) {
         const play = document.createElement('button');
         play.type = 'button';

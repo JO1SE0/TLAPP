@@ -25,9 +25,35 @@
   };
   const keyOf = (sec, label) => `${sec}|${label}`;
 
+  /*
+   * Si un ajuste se mudó de sección (o de página), el favorito guardado sigue
+   * apuntando a la vieja. Se lo busca por nombre y, si aparece una sola vez en
+   * otro lado, se corrige ahí mismo: la estrella queda prendida y el atajo lleva
+   * al lugar nuevo.
+   */
+  function relocate(root) {
+    let changed = false;
+    const rows = [...root.querySelectorAll('.page .sec[data-sec] .row')];
+    for (const f of favs) {
+      const here = rows.some((r) => r.closest('[data-sec]').dataset.sec === f.sec && labelOf(r) === f.label);
+      if (here) continue;
+      const found = rows.filter((r) => labelOf(r) === f.label);
+      if (found.length !== 1) continue;
+      const sec = found[0].closest('[data-sec]');
+      const page = found[0].closest('[data-page]');
+      f.sec = sec.dataset.sec;
+      f.k = keyOf(f.sec, f.label);
+      f.page = page ? page.dataset.page : f.page;
+      f.secTitle = secTitleOf(sec);
+      changed = true;
+    }
+    if (changed) { save(); paint(); }
+  }
+
   function decorate() {
     const root = document.getElementById('panel');
     if (!root) return;
+    relocate(root);
     for (const row of root.querySelectorAll('.page .sec[data-sec] .row')) {
       if (row.querySelector(':scope > .row__text > .favstar, :scope .favstar')) continue;
       const text = row.querySelector('.row__text');

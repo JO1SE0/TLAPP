@@ -937,22 +937,14 @@
                Banderas de Chromium: casi todas piden reinicio, ninguna se ve al
                instante y ya vienen puestas como corresponde. Plegadas por
                defecto — el que las busca sabe que están. -->
-          <details class="adv" data-sec="avanzado" data-sec-label="group.advanced">
-            <summary>
-              <svg data-icon class="adv__chev" viewBox="0 0 24 24"><path d="M9.5 6.4 15 12l-5.5 5.6"/></svg>
-              <span data-i18n="group.advanced">Avanzado</span>
-            </summary>
-            <div class="adv__body">
-              <section class="sec">
-                <header class="sec__head"><h2 class="sec__title" data-i18n="perf.latency">Latencia</h2></header>
-                <div class="sec__body" id="perfLatency"></div>
-              </section>
-              <section class="sec">
-                <header class="sec__head"><h2 class="sec__title" data-i18n="perf.system">Sistema</h2></header>
-                <div class="sec__body" id="perfSystem"></div>
-              </section>
-            </div>
-          </details>
+          <section class="sec" data-sec="latencia">
+            <header class="sec__head"><h2 class="sec__title" data-i18n="perf.latency">Latencia</h2></header>
+            <div class="sec__body" id="perfLatency"></div>
+          </section>
+          <section class="sec" data-sec="sistemaperf">
+            <header class="sec__head"><h2 class="sec__title" data-i18n="perf.system">Sistema</h2></header>
+            <div class="sec__body" id="perfSystem"></div>
+          </section>
 
           <!-- El aviso de reinicio no vive acá: es una barra fija arriba de la
                ventana (ver #restartNotice al principio del documento). -->
@@ -986,7 +978,10 @@
                 <div class="row__ctl"><div class="themes" id="themes"></div></div>
               </div>
               <div class="rows" id="lookSwitches"></div>
-              <div class="rows" id="musicOwn"></div>
+              <div class="row" id="musicMovedRow">
+                <div class="row__text"><span class="row__label" id="musicMovedLabel">Música del menú</span><span class="row__desc" id="musicMovedDesc">Prender, apagar y sumar canciones: está todo en la página Música.</span></div>
+                <div class="row__ctl"><button class="btn btn--ghost btn--sm" id="musicMovedGo" type="button">Abrir Música</button></div>
+              </div>
             </div>
           </section>
 
@@ -995,10 +990,6 @@
             <p class="sec__desc" id="layDesc"></p>
             <div class="sec__body">
               <div class="laycards" id="layoutCards"></div>
-              <div class="row">
-                <div class="row__text"><span class="row__label" id="rowsLabel">Filas de la lista de salas</span></div>
-                <div class="row__ctl"><div class="chips" id="rowsChips"></div></div>
-              </div>
               <div class="row">
                 <div class="row__text"><span class="row__label" id="statusLabel">Barra de estado</span></div>
                 <div class="row__ctl"><div class="chips" id="statusChips"></div></div>
@@ -1020,12 +1011,23 @@
                 <div class="row__ctl"><div class="chips" id="scaleChips"></div></div>
               </div>
               <div class="row">
-                <div class="row__text"><span class="row__label" id="glassLabel">Opacidad del vidrio</span><span class="row__desc" id="glassDesc"></span></div>
-                <div class="row__ctl"><input type="range" id="glassRange" min="50" max="100" step="1" value="100" /><b class="row__val" id="glassValue">100%</b></div>
-              </div>
-              <div class="row">
                 <div class="row__text"><span class="row__label" id="pwLabel">Ancho de los paneles</span></div>
                 <div class="row__ctl"><div class="chips" id="pwChips"></div></div>
+              </div>
+              <div class="row">
+                <div class="row__text"><span class="row__label" id="rowsLabel">Filas de la lista de salas</span></div>
+                <div class="row__ctl"><div class="chips" id="rowsChips"></div></div>
+              </div>
+            </div>
+          </section>
+
+          <section class="sec" data-sec="detalles">
+            <header class="sec__head"><h2 class="sec__title" id="detTitle">Detalles de la interfaz</h2></header>
+            <p class="sec__desc" id="detDesc">Botones, interruptores, avisos y otras piezas del menú.</p>
+            <div class="sec__body">
+              <div class="row">
+                <div class="row__text"><span class="row__label" id="glassLabel">Opacidad del vidrio</span><span class="row__desc" id="glassDesc"></span></div>
+                <div class="row__ctl"><input type="range" id="glassRange" min="50" max="100" step="1" value="100" /><b class="row__val" id="glassValue">100%</b></div>
               </div>
               <div class="row">
                 <div class="row__text"><span class="row__label" id="btnLabel">Estilo de botones</span><span class="row__desc" id="btnDesc"></span></div>
@@ -1063,10 +1065,6 @@
                 <div class="row__text"><span class="row__label" id="tiltLabel">Inclinación 3D</span><span class="row__desc" id="tiltDesc"></span></div>
                 <div class="row__ctl"><div class="chips" id="tiltChips"></div></div>
               </div>
-              <div class="row">
-                <div class="row__text"><span class="row__label" id="parLabel">Fondo con profundidad</span><span class="row__desc" id="parDesc"></span></div>
-                <div class="row__ctl"><div class="chips" id="parChips"></div></div>
-              </div>
             </div>
           </section>
 
@@ -1074,18 +1072,24 @@
             <header class="sec__head"><h2 class="sec__title" id="animTitle">Animaciones del menú</h2></header>
             <p class="sec__desc" id="animDesc">Todo usa movimiento barato y se apaga con «Animaciones» en Estilo.</p>
             <div class="sec__body">
+              <div class="rows" id="animMaster"></div>
               <div class="rows" id="animSwitches"></div>
               <div class="row">
                 <div class="row__text"><span class="row__label" id="pageTransLabel">Transición entre pantallas</span></div>
                 <div class="row__ctl"><div class="chips" id="pageTransChips"></div></div>
               </div>
-              <div class="row">
+              <div class="row row--block">
                 <div class="row__text"><span class="row__label" id="sparkStyleLabel">Partículas del menú</span></div>
                 <div class="row__ctl"><div class="chips" id="sparkStyleChips"></div></div>
               </div>
               <div class="row">
                 <div class="row__text"><span class="row__label" id="sparkDensLabel">Cantidad de partículas</span></div>
                 <div class="row__ctl"><div class="chips" id="sparkDensChips"></div></div>
+              </div>
+              <div class="rows" id="lookMenu"></div>
+              <div class="row">
+                <div class="row__text"><span class="row__label" id="parLabel">Fondo con profundidad</span><span class="row__desc" id="parDesc"></span></div>
+                <div class="row__ctl"><div class="chips" id="parChips"></div></div>
               </div>
             </div>
           </section>
@@ -1144,6 +1148,26 @@
             </div>
           </section>
 
+          <section class="sec" data-sec="pisofx">
+            <header class="sec__head">
+              <h2 class="sec__title" data-i18n="look.pitchFx.title">Clima y marcador en el piso</h2>
+              <span class="tag" data-i18n="skin.tag">Sólo lo ves vos</span>
+            </header>
+            <div class="sec__body">
+              <div class="rows" id="lookPitchFx"></div>
+            </div>
+          </section>
+
+          <section class="sec" data-sec="goles">
+            <header class="sec__head">
+              <h2 class="sec__title" data-i18n="pitch.goals.title">Goles y club</h2>
+              <span class="tag" data-i18n="skin.tag">Sólo lo ves vos</span>
+            </header>
+            <div class="sec__body">
+              <div class="rows" id="goalSwitches"></div>
+            </div>
+          </section>
+
           <section class="sec" data-sec="fichaslook">
             <header class="sec__head">
               <h2 class="sec__title" data-i18n="look.discs.title">Fichas y aro</h2>
@@ -1151,6 +1175,7 @@
             </header>
             <div class="sec__body">
               <div class="rows" id="lookDiscs"></div>
+              <div class="rows" id="ringSwitches"></div>
             </div>
           </section>
 
@@ -1164,16 +1189,6 @@
             </div>
           </section>
 
-          <section class="sec" data-sec="chatlook">
-            <header class="sec__head">
-              <h2 class="sec__title" data-i18n="look.chat.title">Chat del juego</h2>
-              <span class="tag" data-i18n="skin.tag">Sólo lo ves vos</span>
-            </header>
-            <div class="sec__body">
-              <div class="rows" id="lookChat"></div>
-            </div>
-          </section>
-
           <section class="sec" data-sec="statslook">
             <header class="sec__head">
               <h2 class="sec__title" data-i18n="look.stats.title">Cuadro de FPS y ping</h2>
@@ -1181,16 +1196,6 @@
             </header>
             <div class="sec__body">
               <div class="rows" id="lookStats"></div>
-            </div>
-          </section>
-
-          <section class="sec" data-sec="menubg">
-            <header class="sec__head">
-              <h2 class="sec__title" data-i18n="look.menu.title">Fondo del menú</h2>
-              <span class="tag" data-i18n="skin.tag">Sólo lo ves vos</span>
-            </header>
-            <div class="sec__body">
-              <div class="rows" id="lookMenu"></div>
             </div>
           </section>
 
@@ -1218,6 +1223,7 @@
             <header class="sec__head"><h2 class="sec__title" data-i18n="group.inGame">En partida</h2></header>
             <div class="sec__body">
               <div class="rows" id="gameChat"></div>
+              <div class="rows" id="lookChat"></div>
               <div class="row">
                 <div class="row__text"><span class="row__label" id="scoreboardLabel">Cartel de marcador</span></div>
                 <div class="row__ctl"><div class="chips" id="scoreboardChips"></div></div>
@@ -1415,6 +1421,7 @@
                 </div>
               </div>
 
+              <div class="rows" id="lookBall"></div>
               <div class="rows" id="ball3dSwitch"></div>
             </div>
           </section>
@@ -1427,11 +1434,11 @@
             </header>
             <div class="sec__body">
               <div class="rows" id="lookSound"></div>
-              <div class="row">
+              <div class="row row--block">
                 <div class="row__text"><span class="row__label" id="goalSfxLabel">Sonido de gol incluido</span></div>
                 <div class="row__ctl"><div class="chips" id="goalSfxChips"></div></div>
               </div>
-              <div class="row">
+              <div class="row" hidden>
                 <div class="row__text"><span class="row__label" id="goalSfxVolLabel">Volumen del incluido</span></div>
                 <div class="row__ctl">
                   <input type="range" id="goalSfxVolume" min="0" max="1" step="0.01" />
@@ -1445,7 +1452,7 @@
                 </div>
                 <div class="row__ctl"><div class="chips" id="kickSfxChips"></div></div>
               </div>
-              <div class="row">
+              <div class="row" hidden>
                 <div class="row__text"><span class="row__label" id="kickSfxVolLabel">Volumen de la patada</span></div>
                 <div class="row__ctl">
                   <input type="range" id="kickSfxVolume" min="0" max="1" step="0.01" />
@@ -1460,7 +1467,7 @@
                   <button class="btn btn--ghost btn--sm" id="vipClearGoal" data-i18n="vip.clear"><svg data-icon viewBox="0 0 24 24"><path d="M6.4 6.4l11.2 11.2M17.6 6.4 6.4 17.6"/></svg>Quitar</button>
                 </div>
               </div>
-              <div class="row">
+              <div class="row" hidden>
                 <div class="row__text"><span class="row__label" data-i18n="vip.volume">Volumen</span></div>
                 <div class="row__ctl">
                   <input type="range" id="vipGoalVolume" min="0" max="1" step="0.01" />
@@ -1478,7 +1485,7 @@
                   <button class="btn btn--ghost btn--sm" id="vipClearHit" data-i18n="vip.clear"><svg data-icon viewBox="0 0 24 24"><path d="M6.4 6.4l11.2 11.2M17.6 6.4 6.4 17.6"/></svg>Quitar</button>
                 </div>
               </div>
-              <div class="row">
+              <div class="row" hidden>
                 <div class="row__text"><span class="row__label" data-i18n="vip.volume">Volumen</span></div>
                 <div class="row__ctl">
                   <input type="range" id="vipHitVolume" min="0" max="1" step="0.01" />
