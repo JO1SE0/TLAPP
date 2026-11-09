@@ -7,12 +7,10 @@
  * mismo, nadie vuelve a ver el cartel.
  */
 window.TL_NEWS = {
-  id: 'v1.0.59',
+  id: 'v1.0.58',
   title: { es: 'Qué hay de nuevo', en: "What's new" },
   items: {
     es: [
-      'Cara nueva de la app, en azul y dorado: pestañas arriba, la lista de salas en una tarjeta y a la derecha la sala elegida con Entrar, Favorita y Auto-entrar, tu ficha y el club en línea. Configuración, Personalización, Club, Música y Replays con el mismo estilo. Las partículas y demás detalles siguen igual, y nada nuevo corre durante la partida.',
-      'La interfaz de antes sigue disponible en Personalización → Interfaz → Clásica. Se sacaron las disposiciones viejas del menú (dock, isla, radial…).',
       'Patada sin demora: tu patada suena en el momento en que se ve, no cuando la confirma la sala (eso llegaba un ping tarde). La confirmada se calla, así que no suena doble. Además el audio usa la ruta de Windows con menos demora (WASAPI); antes «Audio de baja latencia» forzaba la ruta vieja, que era más lenta.',
       'Cinco sonidos de patada nuevos con grabaciones de verdad, cada uno para elegir por separado: Pelotazo real, Golpe seco, Patada real, Toque rápido y Bombazo. Se cargan al entrar a la sala, así que no agregan demora al patear. En Personalización → Sonidos.',
       'Página Club con su tema: al abrirla suena bajito, en loop, «Timeless» desde donde entra el beat. La música del menú se pausa mientras tanto y al salir sigue desde donde estaba. Los números de arriba entran uno por golpe y el escudo late con el tema.',
@@ -133,8 +131,6 @@ window.TL_NEWS = {
       'Cada clave se usa en una sola PC: si cambiás de computadora, pedile a miclo que te la libere.'
     ],
     en: [
-      'New look for the app, in navy and gold: tabs on top, the room list in a card and, on the right, the selected room with Join, Favourite and Auto-join, your card and the club online. Settings, Personalize, Club, Music and Replays in the same style. Particles and the other effects stay the same, and nothing new runs during a match.',
-      'The previous interface is still there: Personalize → Interface → Classic. The old menu layouts (dock, island, radial…) were removed.',
       'No kick delay: your kick sounds the moment you see it, not when the room confirms it (that came one ping late). The confirmed one stays silent, so it never doubles. Audio also uses the Windows path with the least delay (WASAPI); «Low latency audio» used to force the old, slower path.',
       'Five new kick sounds from real recordings, each one selectable on its own: Real strike, Dry punch, Real kick, Quick touch and Thump. Loaded when you join the room, so no extra delay when kicking. In Customization → Sounds.',
       'Club page theme: when you open it, «Timeless» plays softly on loop from where the beat drops. Menu music pauses meanwhile and resumes where it was when you leave. The top numbers come in one per beat and the crest pulses with the song.',
