@@ -9031,7 +9031,10 @@ function ensurePitchFxStyle(doc) {
     #tvm-goal-flash .tvm-gr {
       width: 30vmin; height: 30vmin; margin: -15vmin 0 0 -15vmin;
       border-radius: 50%; border: 3px solid #d0b878;
-      box-shadow: 0 0 26px rgb(208 184 120 / 60%), inset 0 0 26px rgb(208 184 120 / 35%);
+      /* El resplandor es un degradé y no una sombra difuminada: la sombra se
+         volvía a calcular en el cuadro de cada gol (medido: era la mitad del
+         tirón). El degradé no cuesta nada y se ve igual sobre el aro. */
+      background: radial-gradient(closest-side, transparent 72%, rgb(208 184 120 / 34%) 94%, rgb(208 184 120 / 8%) 100%);
     }
     #tvm-goal-flash.is-on .tvm-gr { animation: tvmGoalRing .95s cubic-bezier(.15,.7,.3,1) both; }
     #tvm-goal-flash.is-on .tvm-gr + .tvm-gr { animation-delay: .14s; border-color: #f4f0df; }
@@ -9045,9 +9048,16 @@ function ensurePitchFxStyle(doc) {
     #tvm-goal-flash .tvm-gl {
       width: clamp(104px, 21vmin, 240px); height: auto;
       margin: calc(clamp(104px, 21vmin, 240px) / -2 - 4vmin) 0 0 calc(clamp(104px, 21vmin, 240px) / -2);
-      filter: drop-shadow(0 0 14px rgb(208 184 120 / 85%)) drop-shadow(0 0 40px rgb(32 56 96 / 90%));
     }
-    #tvm-goal-flash.is-on .tvm-gl { animation: tvmGoalLogo 1.1s cubic-bezier(.2,.75,.25,1) both; }
+    /* El halo del escudo: un degradé detrás, en vez de dos drop-shadow que se
+       difuminaban de cero en cada gol. Se mueve con la misma animación. */
+    #tvm-goal-flash .tvm-gg {
+      width: clamp(190px, 38vmin, 440px); height: clamp(190px, 38vmin, 440px);
+      margin: calc(clamp(190px, 38vmin, 440px) / -2 - 4vmin) 0 0 calc(clamp(190px, 38vmin, 440px) / -2);
+      border-radius: 50%;
+      background: radial-gradient(closest-side, rgb(208 184 120 / 55%) 0%, rgb(208 184 120 / 30%) 38%, rgb(32 56 96 / 55%) 62%, rgb(32 56 96 / 0%) 100%);
+    }
+    #tvm-goal-flash.is-on .tvm-gl, #tvm-goal-flash.is-on .tvm-gg { animation: tvmGoalLogo 1.1s cubic-bezier(.2,.75,.25,1) both; }
     @keyframes tvmGoalText {
       0%   { opacity: 0; transform: translate(-50%, 30%) scale(.7, .7); }
       11%  { opacity: 1; transform: translate(-50%, 0) scale(1.08); }
@@ -9060,7 +9070,7 @@ function ensurePitchFxStyle(doc) {
       font: 900 clamp(32px, 9vmin, 92px)/1 Impact, "Arial Black", sans-serif;
       letter-spacing: .1em; white-space: nowrap;
       color: #e9d49a; -webkit-text-stroke: 2px #0c1630; paint-order: stroke fill;
-      text-shadow: 0 4px 0 #0c1630, 0 0 22px rgb(208 184 120 / 55%);
+      text-shadow: 0 4px 0 #0c1630;
       transform: translate(-50%, 0);
     }
     #tvm-goal-flash.is-on .tvm-gt { animation: tvmGoalText 2.2s cubic-bezier(.2,.75,.25,1) both; }
@@ -9075,11 +9085,11 @@ function ensurePitchFxStyle(doc) {
       font-size: clamp(18px, 4.4vmin, 44px); font-weight: 900; letter-spacing: .06em;
       text-transform: uppercase; color: #f4f0df;
       -webkit-text-stroke: 1.5px #0c1630; paint-order: stroke fill;
-      text-shadow: 0 3px 0 #0c1630, 0 0 16px rgb(208 184 120 / 45%);
+      text-shadow: 0 3px 0 #0c1630;
     }
     #tvm-goal-flash .tvm-gn > span:last-child {
       font-size: clamp(12px, 2.5vmin, 24px); font-weight: 700; letter-spacing: .08em;
-      color: #d0b878; text-shadow: 0 2px 0 #0c1630, 0 0 10px rgb(12 22 48 / 80%);
+      color: #d0b878; text-shadow: 0 2px 0 #0c1630;
     }
     #tvm-goal-flash.is-on .tvm-gn { animation: tvmGoalText 2.2s cubic-bezier(.2,.75,.25,1) .08s both; }
     @keyframes tvmGoalSpark {
@@ -9334,6 +9344,7 @@ function buildGoalFlash(doc) {
     spark.style.setProperty('--dy', `${(Math.sin(angle) * dist).toFixed(1)}vmin`);
     spark.style.setProperty('--rot', `${Math.round(angle * 57.3)}deg`);
   }
+  add('tvm-gg');
   const crest = add('tvm-gl', 'img');
   crest.alt = '';
   crest.src = assetUrl('crest');
@@ -10664,6 +10675,52 @@ function syncCanvasHotFlags() {
   visual.discFx = visual.shadows || visual.discStyle !== 'default' || visual.ballStyle !== 'default' || !!visual.ballColor || !!visual.discOutline || !!visual.ballOutline;
   visual.names = visual.nameScale !== 1 || !!visual.nameColor || visual.nameOutline || visual.nameFont !== 'default';
   syncProtoHooks();
+  // Los nombres ya dibujados se rehacen con el aspecto nuevo (ver `refreshNameTextures`).
+  const nameSig = `${visual.nameScale}|${visual.nameColor}|${visual.nameOutline}|${visual.nameFont}`;
+  if (nameSig !== lastNameSig) {
+    const first = lastNameSig === null;
+    lastNameSig = nameSig;
+    if (!first) safe(refreshNameTextures);
+  }
+}
+
+/*
+ * Los nombres en tiempo real.
+ *
+ * HaxBall no escribe el nombre en cada cuadro: lo dibuja UNA vez en un lienzo
+ * propio de cada jugador y después pega ese lienzo. Sólo lo rehace si el nombre
+ * cambia:
+ *
+ *   a.w != this.w && (this.w = a.w, this.jp())     // jp() = dibujar el nombre
+ *
+ * Por eso cambiar el color, el tamaño o la fuente no se veía hasta que el
+ * jugador salía y volvía a entrar: nuestro gancho de `fillText` no tenía quién
+ * lo llamara. Acá se le borra a cada ficha el nombre que tiene anotado, así en
+ * el cuadro siguiente el propio juego lo vuelve a dibujar — pasando por el
+ * gancho, ya con el aspecto nuevo. Corre sólo cuando cambia el ajuste.
+ *
+ * Las fichas están en un Map del renderer. Se reconocen por la forma: tienen
+ * lienzos propios y NO son los jugadores de la sala (a esos no se les toca nada).
+ */
+let lastNameSig = null;
+function refreshNameTextures() {
+  const renderer = lastRenderer;
+  const f = tracker.fields;
+  if (!renderer || !f || !f.name) return;
+  const players = new Set((tracker.room && tracker.room[f.players]) || []);
+  if (real.room && real.room[f.players]) for (const p of real.room[f.players]) players.add(p);
+  const isCtx = (v) => !!v && typeof v === 'object' && typeof v.fillText === 'function' && !!v.canvas;
+  for (const key of Object.keys(renderer)) {
+    const map = renderer[key];
+    if (!(map instanceof Map) && !(map && typeof map.forEach === 'function' && typeof map.get === 'function')) continue;
+    map.forEach((deco) => {
+      if (!deco || typeof deco !== 'object' || players.has(deco)) return;
+      if (typeof deco[f.name] !== 'string') return;
+      let hasCanvas = false;
+      for (const k of Object.keys(deco)) { if (isCtx(deco[k])) { hasCanvas = true; break; } }
+      if (hasCanvas) deco[f.name] = null;
+    });
+  }
 }
 
 function flatOn() {

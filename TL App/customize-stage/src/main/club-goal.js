@@ -32,22 +32,27 @@
     /* destello inicial, rayos de luz y barras al costado del GOL */
     '.cg-flash{position:absolute;inset:0;opacity:0;background:radial-gradient(circle at 50% 46%,rgba(244,240,223,.85),rgba(233,212,154,.35) 28%,rgba(233,212,154,0) 60%);animation:cgFlash .7s ease-out both;will-change:opacity}',
     '@keyframes cgFlash{0%{opacity:0}12%{opacity:1}100%{opacity:0}}',
-    '.cg-rays{position:absolute;left:50%;top:46%;width:80vmax;height:80vmax;margin:-40vmax 0 0 -40vmax;opacity:0;background:repeating-conic-gradient(from 0deg,rgba(233,212,154,.14) 0 5deg,rgba(233,212,154,0) 5deg 15deg);-webkit-mask-image:radial-gradient(circle,#000 0,rgba(0,0,0,.45) 16%,transparent 47%);mask-image:radial-gradient(circle,#000 0,rgba(0,0,0,.45) 16%,transparent 47%);animation:cgRays 3.1s ease both;will-change:transform,opacity}',
+    /* Los rayos son un lienzo dibujado una sola vez (ver `raysCanvas`): antes era un
+       degradé cónico de pantalla entera con máscara, que se rehacía en cada gol y
+       obligaba a componer una capa enmascarada en cada cuadro (medido: lo más caro del festejo). */
+    '.cg-rays{position:absolute;left:50%;top:46%;width:80vmax;height:80vmax;margin:-40vmax 0 0 -40vmax;opacity:0;animation:cgRays 3.1s ease both;will-change:transform,opacity}',
     '@keyframes cgRays{0%{opacity:0;transform:rotate(0) scale(.6)}15%{opacity:1}80%{opacity:.8}100%{opacity:0;transform:rotate(40deg) scale(1.15)}}',
-    '.cg-bar{position:absolute;top:calc(36% + 8.2vmin);height:.55vmin;width:30vw;opacity:0;background:linear-gradient(90deg,transparent,#e9d49a 55%,#f4f0df);box-shadow:0 0 2vmin rgba(233,212,154,.8);animation:cgBar 3s cubic-bezier(.2,.8,.2,1) .15s both;will-change:transform,opacity;transform-origin:right center;right:calc(50% + 24vmin)}',
+    '.cg-bar{position:absolute;top:calc(36% + 8.2vmin);height:.55vmin;width:30vw;opacity:0;background:linear-gradient(90deg,transparent,#e9d49a 55%,#f4f0df);animation:cgBar 3s cubic-bezier(.2,.8,.2,1) .15s both;will-change:transform,opacity;transform-origin:right center;right:calc(50% + 24vmin)}',
     '.cg-bar.r{right:auto;left:calc(50% + 24vmin);transform-origin:left center;background:linear-gradient(270deg,transparent,#e9d49a 55%,#f4f0df)}',
     '@keyframes cgBar{0%{opacity:0;transform:scaleX(0)}18%{opacity:1;transform:scaleX(1)}80%{opacity:.9;transform:scaleX(1)}100%{opacity:0;transform:scaleX(1)}}',
     /* marco dorado en los bordes */
     '.cg-frame{position:absolute;inset:0;opacity:0;box-shadow:inset 0 0 0 .35vmin rgba(233,212,154,.6);background:linear-gradient(90deg,rgba(233,212,154,.5),transparent 7vmin,transparent calc(100% - 7vmin),rgba(233,212,154,.5)),linear-gradient(180deg,rgba(233,212,154,.5),transparent 7vmin,transparent calc(100% - 7vmin),rgba(233,212,154,.5));animation:cgFrame 3s ease both;will-change:opacity}',
     '@keyframes cgFrame{0%{opacity:0}10%{opacity:1}30%{opacity:.5}45%{opacity:.9}80%{opacity:.5}100%{opacity:0}}',
     /* ondas */
-    '.cg-ring{position:absolute;left:50%;top:46%;width:30vmin;height:30vmin;margin:-15vmin 0 0 -15vmin;border-radius:50%;border:.55vmin solid #e9d49a;box-shadow:0 0 3vmin rgba(208,184,120,.5);opacity:0;animation:cgRing 1.35s cubic-bezier(.16,.8,.3,1) both;will-change:transform,opacity}',
+    '.cg-ring{position:absolute;left:50%;top:46%;width:30vmin;height:30vmin;margin:-15vmin 0 0 -15vmin;border-radius:50%;border:.55vmin solid #e9d49a;background:radial-gradient(closest-side,transparent 74%,rgba(208,184,120,.3) 95%,rgba(208,184,120,.06) 100%);opacity:0;animation:cgRing 1.35s cubic-bezier(.16,.8,.3,1) both;will-change:transform,opacity}',
     '.cg-ring.r2{border-width:.25vmin;border-color:#f4f0df;animation-delay:.16s}',
     '.cg-ring.r3{border-color:#3a5a9a;animation-delay:.34s}',
     '.cg-ring.lite{width:22vmin;height:22vmin;margin:-11vmin 0 0 -11vmin;border-width:.35vmin;animation-duration:1.1s}',
     '@keyframes cgRing{0%{transform:scale(.15);opacity:.95}100%{transform:scale(3.3);opacity:0}}',
     /* escudo */
-    '.cg-crest{position:absolute;left:50%;top:15%;width:15vmin;height:auto;margin-left:-7.5vmin;opacity:0;filter:drop-shadow(0 0 2.2vmin rgba(208,184,120,.65));animation:cgCrest 3.1s cubic-bezier(.2,.9,.25,1) both;will-change:transform,opacity}',
+    '.cg-crest{position:absolute;left:50%;top:15%;width:15vmin;height:auto;margin-left:-7.5vmin;opacity:0;animation:cgCrest 3.1s cubic-bezier(.2,.9,.25,1) both;will-change:transform,opacity}',
+    /* halo del escudo: degradé en vez de una sombra difuminada por gol */
+    '.cg-halo{position:absolute;left:50%;top:15%;width:23vmin;height:23vmin;margin:-4vmin 0 0 -11.5vmin;border-radius:50%;opacity:0;background:radial-gradient(closest-side,rgba(208,184,120,.5) 0%,rgba(208,184,120,.28) 45%,rgba(208,184,120,0) 100%);animation:cgCrest 3.1s cubic-bezier(.2,.9,.25,1) both;will-change:transform,opacity}',
     '@keyframes cgCrest{0%{opacity:0;transform:translateY(3vmin) scale(.45)}13%{opacity:1;transform:translateY(-.6vmin) scale(1.1)}22%{transform:translateY(0) scale(1)}80%{opacity:1;transform:translateY(0) scale(1)}100%{opacity:0;transform:translateY(-2vmin) scale(1.04)}}',
     /* GOL */
     '.cg-word{position:absolute;left:0;right:0;top:36%;text-align:center;font:900 17vmin/1 ' + FONT + ';letter-spacing:.12em;text-indent:.12em;white-space:nowrap}',
@@ -55,13 +60,13 @@
     '@keyframes cgLetter{0%{opacity:0;transform:translateY(6vmin) scale(.82)}16%{opacity:1;transform:translateY(-1vmin) scale(1.05)}24%{transform:translateY(0) scale(1)}80%{opacity:1;transform:translateY(0) scale(1)}100%{opacity:0;transform:translateY(-3.5vmin) scale(1.02)}}',
     '@keyframes cgShine{from{background-position:160% 0,0 0}to{background-position:-60% 0,0 0}}',
     /* nombre y asistencia */
-    '.cg-name{position:absolute;left:0;right:0;top:60%;display:flex;justify-content:center;align-items:center;gap:2.2vmin;font:700 3.6vmin/1 ' + FONT + ';letter-spacing:.24em;text-transform:uppercase;color:#f4f0df;text-shadow:0 .3vmin 1vmin rgba(10,20,40,.8)}',
+    '.cg-name{position:absolute;left:0;right:0;top:60%;display:flex;justify-content:center;align-items:center;gap:2.2vmin;font:700 3.6vmin/1 ' + FONT + ';letter-spacing:.24em;text-transform:uppercase;color:#f4f0df;text-shadow:0 .3vmin 0 rgba(10,20,40,.8)}',
     '.cg-name b{font-weight:700;opacity:0;animation:cgUp 3s ease .35s both}',
     '.cg-name i{display:block;height:.28vmin;width:11vmin;opacity:0;transform:scaleX(0);transform-origin:right center;background:linear-gradient(90deg,transparent,#e9d49a);animation:cgLine 3s ease .35s both}',
     '.cg-name i:last-child{transform-origin:left center;background:linear-gradient(270deg,transparent,#e9d49a)}',
     '@keyframes cgLine{0%{transform:scaleX(0);opacity:0}20%{transform:scaleX(1);opacity:1}80%{transform:scaleX(1);opacity:1}100%{transform:scaleX(1);opacity:0}}',
     '@keyframes cgUp{0%{opacity:0;transform:translateY(1.6vmin)}16%{opacity:1;transform:translateY(0)}80%{opacity:1}100%{opacity:0;transform:translateY(-1vmin)}}',
-    '.cg-sub{position:absolute;left:0;right:0;top:66%;text-align:center;font:600 2.3vmin/1 ' + FONT + ';letter-spacing:.2em;text-transform:uppercase;color:#d0b878;opacity:0;animation:cgUp 3s ease .55s both;text-shadow:0 .2vmin .8vmin rgba(10,20,40,.8)}',
+    '.cg-sub{position:absolute;left:0;right:0;top:66%;text-align:center;font:600 2.3vmin/1 ' + FONT + ';letter-spacing:.2em;text-transform:uppercase;color:#d0b878;opacity:0;animation:cgUp 3s ease .55s both;text-shadow:0 .2vmin 0 rgba(10,20,40,.8)}',
     '.cg-pill{position:absolute;left:50%;top:71%;transform:translateX(-50%);padding:.9vmin 2.6vmin;border-radius:99px;background:linear-gradient(180deg,#e9d49a,#c9a95c);color:#13243f;font:800 2.3vmin/1 ' + FONT + ';letter-spacing:.2em;opacity:0;animation:cgPill 3s cubic-bezier(.2,.9,.25,1.2) .7s both;will-change:transform,opacity}',
     '@keyframes cgPill{0%{opacity:0;transform:translateX(-50%) scale(.6)}14%{opacity:1;transform:translateX(-50%) scale(1.08)}22%{transform:translateX(-50%) scale(1)}78%{opacity:1}100%{opacity:0;transform:translateX(-50%) scale(1)}}',
     /* franja del club */
@@ -74,7 +79,7 @@
     '.cg-rb{position:absolute;top:-5vmin;width:.8vmin;height:2.6vmin;border-radius:1px;opacity:0;animation:cgFall var(--d) cubic-bezier(.3,.1,.55,1) var(--w) both}',
     '@keyframes cgFall{0%{opacity:0;transform:translate3d(0,0,0) rotate(0)}8%{opacity:1}100%{opacity:.9;transform:translate3d(var(--sx),118vh,0) rotate(var(--r))}}',
     /* versión corta */
-    '.cgl{position:absolute;left:50%;top:11%;display:flex;align-items:center;gap:1.8vmin;padding:1.2vmin 3.2vmin 1.2vmin 2.4vmin;border-radius:.8vmin;background:linear-gradient(90deg,rgba(19,36,63,.92),rgba(19,36,63,.78));border-left:.7vmin solid #d0b878;box-shadow:0 1vmin 3vmin rgba(10,20,40,.5);opacity:0;animation:cgLite 2.1s cubic-bezier(.2,.9,.25,1) both;will-change:transform,opacity;overflow:hidden}',
+    '.cgl{position:absolute;left:50%;top:11%;display:flex;align-items:center;gap:1.8vmin;padding:1.2vmin 3.2vmin 1.2vmin 2.4vmin;border-radius:.8vmin;background:linear-gradient(90deg,rgba(19,36,63,.92),rgba(19,36,63,.78));border-left:.7vmin solid #d0b878;box-shadow:0 .4vmin 0 rgba(10,20,40,.35);opacity:0;animation:cgLite 2.1s cubic-bezier(.2,.9,.25,1) both;will-change:transform,opacity;overflow:hidden}',
     '.cgl::after{content:"";position:absolute;inset:0;background:linear-gradient(105deg,transparent 35%,rgba(244,240,223,.28) 50%,transparent 65%);transform:translateX(-120%);animation:cgLiteShine 1.1s ease .25s both}',
     '@keyframes cgLiteShine{to{transform:translateX(120%)}}',
     '.cgl b{font:900 4.2vmin/1 ' + FONT + ';letter-spacing:.14em;background:linear-gradient(180deg,#f4f0df,#d0b878);-webkit-background-clip:text;background-clip:text;color:transparent}',
@@ -109,6 +114,40 @@
   var warmed = null;
 
   /**
+   * Los rayos de luz, dibujados una vez por documento en un lienzo chico que el
+   * CSS estira: 24 gajos dorados que se apagan hacia afuera. El mismo lienzo se
+   * reusa en cada festejo (al terminar sale del documento con la caja y vuelve
+   * a entrar en el próximo).
+   */
+  var rays = null;
+  function raysCanvas(doc) {
+    if (rays && rays.ownerDocument === doc) { rays.className = 'cg-rays'; return rays; }
+    var c = doc.createElement('canvas');
+    c.className = 'cg-rays';
+    c.width = 512; c.height = 512;
+    try {
+      var g = c.getContext('2d');
+      var R = 256;
+      var grad = g.createRadialGradient(R, R, 0, R, R, R * 0.665);
+      grad.addColorStop(0, 'rgba(233,212,154,0.14)');
+      grad.addColorStop(0.34, 'rgba(233,212,154,0.063)');
+      grad.addColorStop(1, 'rgba(233,212,154,0)');
+      g.fillStyle = grad;
+      var step = Math.PI / 12;
+      for (var k = 0; k < 24; k++) {
+        var a0 = k * step - Math.PI / 2;
+        g.beginPath();
+        g.moveTo(R, R);
+        g.arc(R, R, R, a0, a0 + step / 3);
+        g.closePath();
+        g.fill();
+      }
+    } catch (e) { /* sin rayos: el resto del festejo sigue */ }
+    rays = c;
+    return c;
+  }
+
+  /**
    * Se llama al entrar a la sala, no al primer gol: deja el estilo puesto y el escudo
    * ya decodificado, así el primer festejo no tiene que hacer nada de eso en el
    * mismo cuadro en que aparece.
@@ -117,6 +156,7 @@
     try {
       if (!doc || !doc.head) return;
       ensureStyle(doc);
+      raysCanvas(doc);
       if (crestUrl && warmed !== crestUrl) {
         warmed = crestUrl;
         var img = new doc.defaultView.Image();
@@ -162,7 +202,7 @@
       return true;
     }
 
-    box.append(el(doc, 'cg-flash'), el(doc, 'cg-rays'), el(doc, 'cg-frame'));
+    box.append(el(doc, 'cg-flash'), raysCanvas(doc), el(doc, 'cg-frame'));
     // Cintas: de tres tamaños, con vaivén.
     var i;
     for (i = 0; i < 20; i++) {
@@ -195,6 +235,7 @@
     }
 
     if (o.crest) {
+      box.append(el(doc, 'cg-halo'));
       var img = el(doc, 'cg-crest', 'img');
       img.alt = '';
       img.src = o.crest;

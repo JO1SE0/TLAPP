@@ -3080,6 +3080,7 @@ async function doJoin(tokenOrLink) {
 /* ── Auto-entrar ────────────────────────────────────────── */
 function toggleAutoJoin() {
   if (state.autoJoin) {
+    autoJoinArmed = null;
     state.autoJoin = null;
     stopAutoJoinPoll();
     toast(t('rooms.autoJoinOff'), 'ok');
@@ -3118,7 +3119,33 @@ function checkAutoJoin() {
   state.autoJoin = null;
   stopAutoJoinPoll();
   syncJoinButton();
-  doJoin(token);
+  /*
+   * El intento queda anotado hasta estar ADENTRO de la sala. La lista de
+   * HaxBall viene con unos segundos de atraso: el lugar que muestra libre muchas
+   * veces ya lo ocupó otro, la sala contesta «llena» y antes el auto-entrar se
+   * daba por cumplido con ese único intento. Ahora, si no se pudo entrar, se
+   * vuelve a la lista y se sigue mirando (ver `autoJoinRetry`).
+   */
+  autoJoinArmed = token;
+  doJoin(token).then((ok) => { if (!ok) autoJoinRetry(); }, () => autoJoinRetry());
+}
+
+/** El intento de entrar no llegó a la sala: se vuelve a esperar lugar. */
+let autoJoinArmed = null;
+function autoJoinRetry() {
+  const token = autoJoinArmed;
+  if (!token) return;
+  autoJoinArmed = null;
+  state.autoJoin = token;
+  state.pendingJoin = null;
+  hideLoading();
+  setStage('browser');
+  setView('play');
+  syncJoinButton();
+  tvm.rooms.leave().catch(() => {});
+  dismissToast(state.joiningToast);
+  state.joiningToast = toast(t('rooms.autoJoinRetry'), '');
+  scheduleAutoJoin();
 }
 
 function stopAutoJoinPoll() {
@@ -3152,6 +3179,8 @@ async function pollAutoJoin() {
   if (state.stage === 'game') { scheduleAutoJoin(); return; }
   // renderRooms vuelve a llamar a checkAutoJoin: entra o agenda la próxima.
   renderRooms();
+  // `renderRooms` sale antes de tiempo si los filtros dejan la lista vacía: se mira igual.
+  checkAutoJoin();
   scheduleAutoJoin();
 }
 
@@ -10089,6 +10118,7 @@ function isLoadingVisible() {
  * pantalla trabada, que es de lo que se trata.
  */
 function cancelConnecting() {
+  autoJoinArmed = null;
   state.autoJoin = null;
   stopAutoJoinPoll();
   state.pendingJoin = null;
@@ -10238,6 +10268,12 @@ function onGameView(kind) {
     dismissToast(state.joiningToast);
   } else if (state.themed && (SETTLED.has(kind) || kind === 'connecting')) hideLoading();
   else if (kind === 'connecting') showLoading(t('game.connecting'));
+  // Auto-entrar: adentro de la sala, cumplido; si la sala lo rechazó (llena), se
+  // sigue esperando lugar. Con contraseña no se insiste: hay que escribirla.
+  if (autoJoinArmed) {
+    if (kind === 'room' || kind === 'game' || kind === 'password') autoJoinArmed = null;
+    else if (kind === 'disconnected') autoJoinRetry();
+  }
   pushPresence();
   /*
    * Salió de la sala: lo que estaba esperando para no interrumpir, ahora sí.
