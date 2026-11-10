@@ -56,6 +56,7 @@ const TAB_ICONS = {
   cancha: 'M3 6h18v12H3zM12 6v12M3 10.5h3v3H3zM18 10.5h3v3h-3z',
   fichas: 'M12 4a8 8 0 1 0 0 16 8 8 0 0 0 0-16zM12 8.6l3.2 2.3-1.2 3.7h-4l-1.2-3.7z',
   partida: 'M8.7 5.9v12.2l10-6.1z',
+  entreno: 'M12 4.5a7.5 7.5 0 1 0 0 15 7.5 7.5 0 0 0 0-15zM12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6zM12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3',
   rapido: 'M13 3 5 13.5h6L10 21l8-10.5h-6z',
   graficos: 'M4 5h16v11H4zM9 20h6M12 16v4',
   red: 'M12 5.5a7.5 7.5 0 1 0 0 15 7.5 7.5 0 0 0 0-15zM12 9.5V13l2.4 1.6M9.5 2.8h5',
@@ -72,6 +73,7 @@ const PANEL_TABS = {
       secs: ['tema', 'acento', 'interfaz', 'densidad', 'detalles', 'animaciones', 'looks'] },
     { id: 'cancha', label: 'tab.pitch', hint: 'tab.pitchHint',
       secs: ['cancha', 'acabado', 'pisofx', 'trazos', 'replays'] },
+    { id: 'entreno', label: 'tab.training', hint: 'tab.trainingHint', secs: ['entrenamiento'] },
     { id: 'fichas', label: 'tab.discs', hint: 'tab.discsHint',
       secs: ['jugador', 'pelota', 'fichaslook', 'nombres'] },
     { id: 'partida', label: 'tab.ingame', hint: 'tab.ingameHint',
@@ -265,7 +267,7 @@ function splashStep(key) {
  */
 const SPLASH_TIPS = {
   es: [
-    'Presioná F8 para abrir los ajustes en cualquier momento.',
+    'En tu sala de práctica, F8 muestra la zona de patada, la línea de tiro y la trayectoria.',
     'Guardá tus salas favoritas haciendo clic en la estrella.',
     'Usá Auto-entrar para unirte automáticamente cuando haya un lugar libre.',
     'Pegá un link de sala directamente en la barra superior.',
@@ -274,7 +276,7 @@ const SPLASH_TIPS = {
     'Guardá y revisá tus partidas grabadas desde la sección de Replays.'
   ],
   en: [
-    'Press F8 to open the settings at any time.',
+    'In your practice room, F8 shows the kick zone, shot line and trajectory.',
     'Save your favourite rooms by clicking the star.',
     'Use Auto-join to get in automatically as soon as a slot frees up.',
     'Paste a room link straight into the top bar.',
@@ -4037,7 +4039,7 @@ let capturingFor = null;
  * el resumen, y el que juega con el chat abierto se quedaba sin chat.
  *
  * Las opciones esquivan a propósito F8, F9 y F11, que ya tienen dueño en el
- * preload (overlay, amigos y pantalla completa).
+ * preload (entrenamiento, overlay y pantalla completa).
  */
 const SUMMARY_KEYS = [
   { value: 'Tab', label: 'Tab', note: { es: 'le saca el chat a HaxBall', en: 'takes chat away from HaxBall' } },
@@ -4307,6 +4309,24 @@ const PITCH_REPLAY_SWITCHES = {
     { key: 'replayLastTouch', label: 'Mark the last touch', description: 'A ring on whoever touched it last.' },
     { key: 'replayFreeCam', label: 'Free camera', description: 'Drag to move the view.', hint: 'Double click puts it back on the game camera.' },
     { key: 'replayHeatmap', label: 'Heatmap over the pitch', description: 'Paints the pitch with the ball path.', hint: 'With the trail on, the two blend together. The map of a match you played always shows up in the summary, without touching this.' }
+  ]
+};
+
+/*
+ * Entrenamiento: qué ayuda se ve al apretar F8. Sólo con vos solo en la cancha.
+ */
+const TRAIN_SWITCHES = {
+  es: [
+    { key: 'trainZone', label: 'Zona de patada', description: 'Un aro alrededor de tu ficha: si la pelota lo toca, la patada llega.', hint: 'Se pone verde cuando la tenés al alcance. Sirve para dejar de falsear patadas de lejos.' },
+    { key: 'trainLine', label: 'Línea de tiro', description: 'Hacia dónde sale la pelota si pateás ahora, hasta el primer pique.', hint: 'La dirección va de tu centro al de la pelota y se suma a cómo ya venía moviéndose.' },
+    { key: 'trainPath', label: 'Trayectoria completa', description: 'El recorrido entero con los rebotes en las paredes y dónde se frena.', hint: 'Usa el frenado y el rebote reales del estadio, leídos del juego.' },
+    { key: 'trainCone', label: 'Cono de efecto', description: 'Cuánto cambia el tiro si le pegás un poco más de costado.', hint: 'En HaxBall el efecto sale del ángulo con el que tocás la pelota: el cono muestra los dos extremos.' }
+  ],
+  en: [
+    { key: 'trainZone', label: 'Kick zone', description: 'A ring around your disc: if the ball touches it, the kick connects.', hint: 'It turns green when the ball is in reach. Helps you stop whiffing kicks from too far.' },
+    { key: 'trainLine', label: 'Shot line', description: 'Where the ball goes if you kick now, up to the first bounce.', hint: 'The direction goes from your centre to the ball centre and adds to how it was already moving.' },
+    { key: 'trainPath', label: 'Full trajectory', description: 'The whole path with wall bounces and where it stops.', hint: 'Uses the real damping and bounce of the stadium, read from the game.' },
+    { key: 'trainCone', label: 'Spin cone', description: 'How much the shot changes if you hit it a bit more from the side.', hint: 'In HaxBall spin comes from the angle you touch the ball at: the cone shows both extremes.' }
   ]
 };
 
@@ -4975,6 +4995,8 @@ function renderPitch() {
   );
   buildSwitches($('#ringSwitches'), PITCH_SWITCHES[lang].filter((i) => RING_KEYS.includes(i.key)).map(pitchSwitch), pitchSave);
   buildSwitches($('#goalSwitches'), PITCH_SWITCHES[lang].filter((i) => GOAL_KEYS.includes(i.key)).map(pitchSwitch), pitchSave);
+
+  if ($('#trainSwitches')) buildSwitches($('#trainSwitches'), TRAIN_SWITCHES[lang].map(pitchSwitch), pitchSave);
 
   buildSwitches(
     $('#pitchReplaySwitches'),

@@ -22,6 +22,7 @@ const zoomControl = require('./game-zoom');
 const themes = require('./themes');
 const roomUi = require('./room-ui');
 const clubGoal = require('./club-goal');
+const training = require('./training');
 let goalSfx = null;
 try { goalSfx = require('../renderer/js/goal-sfx.js'); } catch { /* sin sonidos incluidos */ }
 /* Las grabaciones de «Pelota real» se leen del disco acá mismo (assets/sfx). */
@@ -93,6 +94,8 @@ const state = {
   fps: 0,
   ping: null,
   overlayVisible: true,
+  /** Ayudas de entrenamiento (F8). No se guarda: cada vez que abrís la app arrancan apagadas. */
+  trainOn: false,
   playing: false,
   view: null,
   /** Nombre de la sala en la que estás, o null. Último recurso para identificarla. */
@@ -3171,7 +3174,15 @@ function onKeyDown(event) {
     return;
   }
 
+  /* F8: ayudas de entrenamiento. Sólo se ven estando solo en la cancha. */
   if (event.key === 'F8') {
+    event.preventDefault();
+    safe(toggleTraining);
+    return;
+  }
+
+  /* F9: el overlay de FPS y ping (antes estaba en F8). */
+  if (event.key === 'F9') {
     state.overlayVisible = !state.overlayVisible;
     paintOverlayVisibility();
     notify(state.overlayVisible ? 'Overlay visible' : 'Overlay oculto');
@@ -6494,6 +6505,7 @@ function ballWasHit(into, f, match, advanced) {
 
 /** Radios de fábrica, por si el parche no pudo capturar el campo del radio. */
 const DEFAULT_PLAYER_RADIUS = 15;
+const DEFAULT_PLAYER_RADIUS_T = DEFAULT_PLAYER_RADIUS;
 const DEFAULT_BALL_RADIUS = 10;
 
 const tracker = {
@@ -7963,7 +7975,8 @@ function paintPitch(ctx, renderer, zoom) {
   const wantSelfTrail = visual.selfTrail && !replay;
   const wantWeather = !!visual.weather;
   const wantScore = !!visual.score;
-  if (!wantTrail && !wantTeams && !wantSelf && !wantTouch && !wantHeat && !wantSelfTrail && !wantWeather && !wantScore) return;
+  const wantTrain = state.trainOn && !replay;
+  if (!wantTrail && !wantTeams && !wantSelf && !wantTouch && !wantHeat && !wantSelfTrail && !wantWeather && !wantScore && !wantTrain) return;
 
   // El velo plano va en el cache de la cancha (`skinPitch`): acá sólo lo que se mueve.
   if (wantWeather) lookfx.paintWeather(ctx, visual.weather, visual.weatherAmount, performance.now(), true);
@@ -8017,6 +8030,119 @@ function paintPitch(ctx, renderer, zoom) {
     ringOpts.self = wantSelf; ringOpts.teams = wantTeams; ringOpts.touch = wantTouch; ringOpts.selfTrail = wantSelfTrail;
     paintRings(ctx, renderer, f, px, ringOpts);
   }
+  if (wantTrain) paintTraining(ctx, renderer, f, px);
+}
+
+/* ── Entrenamiento (F8) ──────────────────────────────────────────────────── *
+ *
+ * Zona de patada, línea de tiro, trayectoria y cono de efecto. Predicen, así
+ * que van SOLAMENTE con vos solo en la cancha: la regla de `pitch` en store.js
+ * («nada que un rival con HaxBall pelado no tenga») se cumple porque no hay
+ * rival. Los cálculos están en training.js.
+ */
+const trainMe = { x: 0, y: 0, r: DEFAULT_PLAYER_RADIUS_T };
+const trainBall = { x: 0, y: 0, vx: 0, vy: 0, r: 10 };
+const trainWant = { zone: false, line: false, path: false, cone: false };
+const trainOpts = { me: trainMe, ball: trainBall, want: trainWant, walls: null, px: 1, accent: '', damp: 0.99, gx: 0, gy: 0 };
+const trainPlayers = [];
+const trainDiscs = [];
+const trainMine = [null];
+
+function trainingWanted(cfg) {
+  return !!(cfg && (cfg.trainZone || cfg.trainLine || cfg.trainPath || cfg.trainCone));
+}
+
+/** ¿Estás solo en la cancha? Los espectadores no tienen disco y no cuentan. */
+function aloneOnPitch(room, f, me) {
+  const players = room && room[f.players];
+  if (!players || !me) return false;
+  let n = 0;
+  for (let i = 0; i < players.length; i++) {
+    const p = players[i];
+    if (p && p[f.disc]) { if (p !== me) return false; n++; }
+  }
+  return n === 1;
+}
+
+function toggleTraining() {
+  const cfg = state.config && state.config.pitch;
+  if (!state.trainOn && !trainingWanted(cfg)) {
+    notify('Entrenamiento: no hay ninguna ayuda elegida. Prendelas en Personalización → Entrenamiento.', 'err');
+    return;
+  }
+  state.trainOn = !state.trainOn;
+  if (!state.trainOn) { notify('Entrenamiento apagado'); return; }
+  training.resetLearning();
+  const f = tracker.fields;
+  const me = lastRenderer && lastRenderer.__tvmMe;
+  const alone = !!(f && tracker.room && aloneOnPitch(tracker.room, f, me));
+  notify(alone
+    ? (training.ready() ? 'Entrenamiento prendido (F8)' : 'Entrenamiento prendido: pateá la pelota una vez y se calibra solo')
+    : 'Entrenamiento prendido: se ve cuando estés solo en la cancha (tu sala de práctica)');
+}
+
+/** Un paso de física de la sala real con el entrenamiento prendido: se aprende y se mide la patada. */
+function trainStep(f, room, match) {
+  const world = match[f.world];
+  const discs = world && world[f.discs];
+  const ball = discs && discs[0];
+  if (!ball) return;
+  const players = room[f.players];
+  trainPlayers.length = 0;
+  if (players) {
+    for (let i = 0; i < players.length; i++) {
+      const d = players[i] && players[i][f.disc];
+      const at = d && d[f.pos];
+      if (!at) continue;
+      let slot = trainDiscs[i];
+      if (!slot) slot = trainDiscs[i] = { at: null, r: DEFAULT_PLAYER_RADIUS_T };
+      slot.at = at;
+      slot.r = (f.radius && Number(d[f.radius])) || DEFAULT_PLAYER_RADIUS_T;
+      trainPlayers.push(slot);
+    }
+  }
+  training.step(ball, f.pos, f.radius, trainPlayers);
+}
+
+function paintTraining(ctx, renderer, f, px) {
+  const cfg = state.config.pitch;
+  if (!trainingWanted(cfg)) return;
+  const room = tracker.room;
+  const me = renderer && renderer.__tvmMe;
+  if (!room || !aloneOnPitch(room, f, me)) return;
+  const match = room[f.game];
+  const world = match && match[f.world];
+  const discs = world && world[f.discs];
+  const ball = discs && discs[0];
+  const md = me[f.disc];
+  const bp = ball && ball[f.pos];
+  const mp = md && md[f.pos];
+  if (!bp || !mp) return;
+
+  trainMe.x = mp.x; trainMe.y = mp.y;
+  trainMe.r = (f.radius && Number(md[f.radius])) || DEFAULT_PLAYER_RADIUS_T;
+  trainBall.x = bp.x; trainBall.y = bp.y;
+  trainBall.r = (f.radius && Number(ball[f.radius])) || 10;
+  const ph = training.phys;
+  const v = ph.vel && ball[ph.vel];
+  trainBall.vx = v ? v.x : 0;
+  trainBall.vy = v ? v.y : 0;
+  trainOpts.damp = ph.damp ? Number(ball[ph.damp]) || 0.99 : 0.99;
+  const g = ph.grav && ball[ph.grav];
+  trainOpts.gx = g ? g.x : 0;
+  trainOpts.gy = g ? g.y : 0;
+
+  trainWant.zone = !!cfg.trainZone;
+  trainWant.line = !!cfg.trainLine;
+  trainWant.path = !!cfg.trainPath;
+  trainWant.cone = !!cfg.trainCone;
+  if (trainWant.line || trainWant.path || trainWant.cone) {
+    trainMine[0] = md;
+    trainOpts.walls = training.wallsOf(world, currentStadium || world, f.discs, f.pos, f.radius, ball, trainMine, performance.now());
+  }
+  trainOpts.px = px;
+  trainOpts.accent = pitchAccent();
+  training.paint(ctx, trainOpts);
 }
 
 /**
@@ -9745,6 +9871,8 @@ function onRealStep(view, room) {
     real.match = match;
   }
   real.clock += STEP_MS;
+
+  if (state.trainOn) trainStep(f, room, match);
 
   const at = ballPos(f, match);
   if (at) {
