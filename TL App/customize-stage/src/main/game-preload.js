@@ -3916,6 +3916,15 @@ function watchRoomPanel(doc) {
    * en el mismo cuadro y el resto sigue agrupado.
    */
   roomObserver = new MutationObserver((records) => {
+    // Jugando, HaxBall saca la sala de la pantalla pero sigue reescribiendo los
+    // pings de esa lista suelta: sin este corte, el repaso corría cuatro veces
+    // por segundo en pleno partido sobre algo que no se ve.
+    if (!watched || !watched.isConnected) {
+      // Lo único que no espera: si entró alguien, se piden sus datos ya, así al
+      // volver a la sala su fila sale con las marcas puestas.
+      if (records.some(changesPlayerList)) safe(askForPeers);
+      return;
+    }
     if (records.some(changesPlayerList)) {
       safe(paintPeers, doc);
       safe(injectPlayerActions, doc);
@@ -11828,6 +11837,8 @@ function paintOverlayVisibility() {
   const visible = state.overlayVisible && state.config.overlay.enabled;
   overlayEl.style.opacity = visible ? String(state.config.overlay.opacity) : '0';
   overlayEl.style.transform = visible ? 'scale(1)' : 'scale(.94)';
+  // Al aparecer sale con los números del momento, no con los de cuando se escondió.
+  if (visible) paintOverlay();
 }
 
 /** Escribe sólo si el texto cambió: un write igual también invalida pintura. */
@@ -11837,7 +11848,8 @@ function setValue(key, text) {
 }
 
 function paintOverlay() {
-  if (!overlayEl) return;
+  // Escondido no se escribe nada: cada texto nuevo es trabajo para el hilo del juego.
+  if (!overlayEl || !(state.overlayVisible && state.config.overlay.enabled)) return;
   setValue('fps', state.fps ? String(state.fps) : '—');
   setValue('ping', state.ping == null ? '—' : `${state.ping} ms`);
   setValue('latency', latency.text);

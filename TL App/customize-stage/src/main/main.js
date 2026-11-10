@@ -595,6 +595,8 @@ const HEALTH_RECHECK_MS = 15000;
  * segundos en vez de en toda la sesión.
  */
 const HEALTH_IDLE_MS = 60000;
+/** Hay un partido andando (lo avisa la telemetría del juego, una vez por segundo). */
+let matchLive = false;
 /** Si no contesta en este tiempo, se lo da por caído. */
 const HEALTH_TIMEOUT_MS = 8000;
 
@@ -727,7 +729,9 @@ function startHealthWatch() {
   if (healthTimer && healthEvery === every) return;
   stopHealthWatch();
   healthEvery = every;
-  healthTimer = setInterval(() => { probeHaxball().catch(() => {}); }, every);
+  // Jugando no se pregunta: bajar la página de HaxBall en medio de un partido es
+  // tráfico que compite con el de la cancha, y si el juego anda, el sitio anda.
+  healthTimer = setInterval(() => { if (matchLive && !haxballDown) return; probeHaxball().catch(() => {}); }, every);
 }
 
 function stopHealthWatch() {
@@ -3810,7 +3814,10 @@ handle('game:reload', () => {
 /** Muestra el avatar fijo sin esperar a la próxima recarga. */
 listen('game:avatar-preview', () => sendToGame('game:avatar-preview'));
 
-listen('game:telemetry', (_e, payload) => send('game:telemetry', payload));
+listen('game:telemetry', (_e, payload) => {
+  matchLive = !!(payload && payload.playing);
+  send('game:telemetry', payload);
+});
 listen('game:viewport', (_e, layout) => {
   const width = Math.min(10000, Math.max(1, Number(layout && layout.width) || 16));
   const height = Math.min(10000, Math.max(1, Number(layout && layout.height) || 9));

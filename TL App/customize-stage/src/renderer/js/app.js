@@ -3290,6 +3290,8 @@ $('#actAutoJoin').addEventListener('click', toggleAutoJoin);
 async function refreshCaptainDot() {
   const btn = $('#captainBtn');
   if (!btn || btn.hidden || !window.TLCaptain) return;
+  // Jugando o con la ventana escondida no se ve el punto: no se consulta.
+  if (state.stage === 'game' || document.hidden) return;
   try {
     const p = await tvm.admin.pending();
     btn.classList.toggle('has-alert', window.TLCaptain.pendingCount(p) > 0 && !$('.cap'));

@@ -31,9 +31,13 @@
    * otro lado, se corrige ahí mismo: la estrella queda prendida y el atajo lleva
    * al lugar nuevo.
    */
-  function relocate(root) {
+  let seenRows = -1;
+  function relocate(root, rows) {
+    // Sólo cuando aparecen filas nuevas: el panel muta a cada rato (un deslizador
+    // que reescribe su valor) y esto clona la etiqueta de cada fila.
+    if (!favs.length || rows.length === seenRows) return;
+    seenRows = rows.length;
     let changed = false;
-    const rows = [...root.querySelectorAll('.page .sec[data-sec] .row')];
     for (const f of favs) {
       const here = rows.some((r) => r.closest('[data-sec]').dataset.sec === f.sec && labelOf(r) === f.label);
       if (here) continue;
@@ -53,9 +57,10 @@
   function decorate() {
     const root = document.getElementById('panel');
     if (!root) return;
-    relocate(root);
-    for (const row of root.querySelectorAll('.page .sec[data-sec] .row')) {
-      if (row.querySelector(':scope > .row__text > .favstar, :scope .favstar')) continue;
+    const rows = [...root.querySelectorAll('.page .sec[data-sec] .row')];
+    relocate(root, rows);
+    for (const row of rows) {
+      if (row.querySelector('.favstar')) continue;
       const text = row.querySelector('.row__text');
       const label = labelOf(row);
       if (!text || !label) continue;
