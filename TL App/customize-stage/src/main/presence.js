@@ -109,9 +109,10 @@ async function beat(ctx) {
     call(`${base}/rooms/${old}/${id.pid}.json`, 'DELETE').catch(() => {});
   }
     const meEntry = (ctx.roster || []).find((u) => u && u.pub && /^[0-9a-f]{64}$/i.test(u.pub) && identity.pidOf(u.pub) === id.pid);
-  // Los socios no dejan casillero: nadie los ve con la insignia. Sí miran la sala, así ven las insignias
-  // y el recuadro dorado de los del club, y ellos mismos se ven con su recuadro (sin el logo).
-  const iAmSocio = !!(meEntry && (meEntry.soc || meEntry.ext));
+  // Los ajenos al club (ext) no dejan casillero: nadie los ve. Los SOCIOS sí: el plantel los ve en la
+  // sala con su propio distintivo (no el escudo ni el aura dorada, que son del plantel).
+  const iAmExternal = !!(meEntry && meEntry.ext);
+  const iAmSocio = !!(meEntry && meEntry.soc && !meEntry.ext);
   if (!ctx.fp || !ctx.nick) { why = `sin sala o sin nick (sala=${ctx.fp ? 'sí' : 'no'}, nick=${ctx.nick ? 'sí' : 'no'})`; return null; }
   why = '';
   lastFp = ctx.fp;
@@ -120,8 +121,11 @@ async function beat(ctx) {
   const nick = String(ctx.nick).slice(0, 40);
   const mine = cleanLooks({ g: ctx.cosmetics && ctx.cosmetics.gradient, f: ctx.cosmetics && ctx.cosmetics.font });
   const mine2 = cleanLooks2({ y: ctx.cosmetics && ctx.cosmetics.style, i: ctx.cosmetics && ctx.cosmetics.icon });
-  if (iAmSocio) {
+  if (iAmExternal) {
     call(`${base}/rooms/${ctx.fp}/${id.pid}.json`, 'DELETE').catch(() => {});
+  } else if (iAmSocio) {
+    // Casillero simple, sin aspecto. Si la base no lo acepta, la sala se lee igual.
+    try { await call(`${base}/rooms/${ctx.fp}/${id.pid}.json`, 'PUT', { n: nick, t, s: id.sign(signedText(ctx.fp, nick, t)) }); } catch { /* sigue sin casillero */ }
   } else {
     const slot = { n: nick, t, s: id.sign(signedText(ctx.fp, nick, t)) };
     if (noLooks && Date.now() > noLooksUntil) noLooks = false; // se vuelve a probar cada tanto
@@ -159,8 +163,8 @@ async function beat(ctx) {
       continue;
     }
     const member = byPid.get(pid);
-    // Las claves de prueba no son del plantel: no llevan insignia ni aura.
-    if (!member || member.trial || member.ext || member.soc) continue;
+    // Las claves de prueba no son del plantel: no llevan insignia ni aura. Los ajenos tampoco.
+    if (!member || member.trial || member.ext) continue;
     if (typeof entry.n !== 'string' || typeof entry.t !== 'number' || typeof entry.s !== 'string') continue;
     if (!identity.verify(member.pub, signedText(ctx.fp, entry.n, entry.t), entry.s)) continue;
     const k = `${ctx.fp}|${pid}`;
@@ -180,6 +184,8 @@ async function beat(ctx) {
         }
       }
     }
+    // Socio: se lo marca con su distintivo, sin el aura ni el escudo del plantel.
+    if (member.soc) { peers.push({ nick: entry.n, name: member.name, soc: true, noLogo: true, vip: false, cosmetics: { gradient: 'medianoche' } }); continue; }
     peers.push({ nick: entry.n, name: member.name, vip: false, cosmetics: look });
   }
   // Se olvidan los que ya no aparecen.
@@ -187,7 +193,8 @@ async function beat(ctx) {
 
   // Uno mismo, para que la fila propia también lleve el aura del plantel.
   const selfEntry = byPid.get(id.pid);
-  if (iAmSocio) peers.push({ nick, self: true, name: '', noLogo: true, vip: false, cosmetics: { gradient: 'oro' } });
+  if (iAmExternal) peers.push({ nick, self: true, name: '', noLogo: true, vip: false, cosmetics: { gradient: 'oro' } });
+  else if (iAmSocio) peers.push({ nick, self: true, name: (selfEntry && selfEntry.name) || ctx.selfName || '', soc: true, noLogo: true, vip: false, cosmetics: { gradient: 'medianoche' } });
   else if (!(selfEntry && selfEntry.trial)) peers.push({ nick, self: true, name: ctx.selfName || '', vip: false, cosmetics: { gradient: 'oro' } });
   return { everyMs: EVERY_MS, peers };
 }
@@ -271,11 +278,12 @@ async function online(ctx) {
     out.push({ name: u.name, room: '', lastRoom: '', version: self ? clean(ctx.version, 20) : '', lastSeen: self ? Date.now() : 0, online: self, self, trial: !!u.trial, rep: !!u.rep, host: !!u.host, ext: !!u.ext, soc: !!u.soc });
   }
   // Los ajenos al club los ve sólo el admin; y ellos no ven a nadie más que a sí mismos.
+  // Los socios los ve todo el plantel.
   const mineEntry = (ctx.roster || []).find((u) => u && /^[0-9a-f]{64}$/i.test(u.pub || '') && identity.pidOf(u.pub) === id.pid);
   const iAmExternal = !!(mineEntry && mineEntry.ext);
   for (let i = out.length - 1; i >= 0; i--) {
     const m = out[i];
-    if (iAmExternal ? !m.self : ((m.ext || m.soc) && !m.self && !ctx.captain)) out.splice(i, 1);
+    if (iAmExternal ? !m.self : (m.ext && !m.soc && !m.self && !ctx.captain)) out.splice(i, 1);
   }
   out.sort((a, b) => (b.self - a.self) || (b.online - a.online) || a.name.localeCompare(b.name, 'es'));
   out.prevSelf = prevSelf;

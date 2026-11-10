@@ -603,7 +603,7 @@ function syncClubKit(f, room, now) {
       if (!id) continue;
       const nick = String(p[f.name] || '').trim();
       const peer = nick ? peers.get(nick) : null;
-      if ((peer && peer.name) || (selfClub && selfClub.name && nick && nick === me)) count[id]++;
+      if ((peer && peer.name && !peer.soc) || (selfClub && selfClub.name && !selfClub.soc && nick && nick === me)) count[id]++;
     }
   }
   const both = count[1] >= 2 && count[2] >= 2;
@@ -4927,7 +4927,7 @@ function setPeers(list) {
   selfClub = null;
   for (const peer of list || []) {
     const nick = String((peer && peer.nick) || '').trim();
-    if (peer && peer.self) { selfClub = { name: String(peer.name || ''), noLogo: !!peer.noLogo }; continue; }
+    if (peer && peer.self) { selfClub = { name: String(peer.name || ''), noLogo: !!peer.noLogo, soc: !!peer.soc }; continue; }
     if (nick) peers.set(nick, peer);
   }
   const doc = gameDocument();
@@ -4948,10 +4948,12 @@ function selfPeer() {
   const looks = (state.config.vip && state.config.vip.cosmetics) || null;
   // Si el plantel te verificó, tu fila lleva el aura dorada (salvo que un VIP elija otra).
   // Sin degradado elegido, el aura del plantel es la dorada (igual que en la fila de los demás).
+  // Un socio lleva el recuadro plateado de socio (el dorado es del plantel).
+  const base = selfClub && selfClub.soc ? 'medianoche' : 'oro';
   const cosmetics = (isVipNow() || selfClub) && looks
-    ? { ...looks, gradient: looks.gradient || (selfClub ? 'oro' : '') }
-    : selfClub ? { gradient: 'oro' } : null;
-  return { nick, vip: isVipNow(), cosmetics, name: selfClub ? selfClub.name : '', noLogo: !!(selfClub && selfClub.noLogo) };
+    ? { ...looks, gradient: looks.gradient || (selfClub ? base : '') }
+    : selfClub ? { gradient: base } : null;
+  return { nick, vip: isVipNow(), cosmetics, name: selfClub ? selfClub.name : '', noLogo: !!(selfClub && selfClub.noLogo), soc: !!(selfClub && selfClub.soc) };
 }
 
 /**
@@ -5125,7 +5127,8 @@ function paintPeers(doc) {
     const nick = (name.textContent || '').trim();
     const peer = nick ? (me && nick === me.nick ? me : peers.get(nick)) : null;
 
-    if (peer && peer.name && !socios.includes(peer.name)) socios.push(peer.name);
+    // (La llegada es del plantel: los socios no cuentan.)
+    if (peer && peer.name && !peer.soc && !socios.includes(peer.name)) socios.push(peer.name);
     const marks = ensureMarks(doc, row, !!peer);
     if (!peer) {
       applyPeerLook(row, name, null);
@@ -5135,10 +5138,13 @@ function paintPeers(doc) {
     // Un socio se ve con su recuadro, pero sin el logo de TL.
     marks.logo.hidden = !!peer.noLogo;
     marks.logo.style.display = peer.noLogo ? 'none' : '';
-    const tip = peer.name ? `Toda la Lecce · ${peer.name}` : 'Está jugando con TL App';
+    const tip = peer.soc ? `Socio de Toda la Lecce${peer.name ? ` · ${peer.name}` : ''}` : peer.name ? `Toda la Lecce · ${peer.name}` : 'Está jugando con TL App';
     marks.logo.title = tip;
     marks.logo.dataset.tvmTip = tip;
-    if (peer.name) { name.title = tip; name.dataset.tvmTip = tip; } else delete name.dataset.tvmTip;
+    if (peer.name || peer.soc) { name.title = tip; name.dataset.tvmTip = tip; } else delete name.dataset.tvmTip;
+    // Distintivo de socio: una chapita plateada «SOCIO», distinta del escudo del plantel.
+    marks.socio.hidden = !peer.soc;
+    marks.socio.dataset.tvmTip = tip;
     installTip(doc);
     /*
      * Quién de los que están en la cancha es amigo tuyo.
@@ -5153,7 +5159,7 @@ function paintPeers(doc) {
      */
     marks.friend.hidden = !peer.friend;
     const box = row.querySelector('.tvm-marks');
-    if (box) box.style.display = (marks.logo.hidden && marks.friend.hidden) ? 'none' : '';
+    if (box) box.style.display = (marks.logo.hidden && marks.friend.hidden && marks.socio.hidden) ? 'none' : '';
     applyPeerLook(row, name, peer.cosmetics);
   }
   safe(clubArrival, doc, socios);
@@ -5202,7 +5208,9 @@ function ensureMarks(doc, row, wanted) {
   // El diamante del VIP de la app vieja ya no existe: se limpia si quedó de antes.
   if (vip) vip.remove();
   if (!friend) box.append(friend = friendMark(doc));
-  return { logo, friend };
+  let socio = box.querySelector('.tvm-mark--socio');
+  if (!socio) box.prepend(socio = socioMark(doc));
+  return { logo, friend, socio };
 }
 
 /** El escudo del club, servido por el proceso principal (la página es https). */
@@ -5251,6 +5259,14 @@ function vipMark(doc) {
  * VIP, que está a dos píxeles. A 14 px lo único que separa dos insignias es el
  * color, así que la tercera tenía que ser un tono que no estuviera en juego.
  */
+function socioMark(doc) {
+  const mark = doc.createElement('span');
+  mark.className = 'tvm-mark tvm-mark--socio';
+  mark.textContent = 'SOCIO';
+  mark.hidden = true;
+  return mark;
+}
+
 function friendMark(doc) {
   const mark = doc.createElement('span');
   mark.className = 'tvm-mark tvm-mark--friend';
@@ -9025,7 +9041,7 @@ function sparkleJoiners(doc, rows) {
     if (!name) continue;
     const nick = (name.textContent || '').trim();
     const peer = nick && nick !== me ? peers.get(nick) : null;
-    if (peer && peer.name) now.push([nick, name]);
+    if (peer && peer.name && !peer.soc) now.push([nick, name]);
   }
   if (!rows.length) { sparkleSeen.clear(); sparkleSeedAt = 0; return; }
   if (!sparkleSeedAt) sparkleSeedAt = Date.now();
@@ -9072,7 +9088,7 @@ function isClubScorer(nick) {
   if (!n) return false;
   const peer = peers.get(n);
   const me = myNick();
-  return !!((peer && peer.name) || (selfClub && selfClub.name && me && n === me));
+  return !!((peer && peer.name && !peer.soc) || (selfClub && selfClub.name && !selfClub.soc && me && n === me));
 }
 
 function playGoalFx(doc, club) {

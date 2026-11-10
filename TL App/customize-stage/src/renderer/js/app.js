@@ -11725,9 +11725,11 @@ function paintClubNow(list) {
     const txt = document.createElement('div');
     txt.className = 'cn__txt';
     const name = document.createElement('b');
-    name.textContent = m.name + (m.self ? (en ? ' (you)' : ' (vos)') : '') + ((m.ext || m.soc) ? (en ? ' · partner' : ' · socio') : '');
+    name.textContent = m.name + (m.self ? (en ? ' (you)' : ' (vos)') : '');
+    // Socio: la misma chapita plateada que lleva en la sala.
+    if (m.soc || m.ext) { const s = document.createElement('i'); s.className = 'cn__soc'; s.textContent = en ? 'PARTNER' : 'SOCIO'; name.append(s); card.classList.add('is-soc'); }
     const where = document.createElement('span');
-    where.textContent = m.room ? (en ? `in “${m.room}”` : `en «${m.room}»`) : (en ? 'in the menu' : 'en el menú');
+    where.textContent = m.room ? (en ? `Playing in “${m.room}”` : `Jugando en «${m.room}»`) : (en ? 'In the menu' : 'En el menú');
     if (m.room) where.classList.add('is-room');
     txt.append(name, where);
     card.append(av, txt);
@@ -11756,7 +11758,8 @@ function paintClubNow(list) {
     wrap.append(label);
     for (const m of off) {
       const chip = document.createElement('em');
-      chip.textContent = m.name + ((m.ext || m.soc) ? (en ? ' · partner' : ' · socio') : '');
+      chip.textContent = m.name;
+      if (m.ext || m.soc) { const s = document.createElement('i'); s.className = 'cn__soc'; s.textContent = en ? 'PARTNER' : 'SOCIO'; chip.append(s); }
       chip.title = m.lastSeen ? (en ? 'last seen ' : 'visto ') + new Date(m.lastSeen).toLocaleDateString(en ? 'en' : 'es', { day: 'numeric', month: 'short' }) : (en ? 'never seen' : 'sin conexión');
       wrap.append(chip);
     }

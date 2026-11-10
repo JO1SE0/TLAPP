@@ -7500,3 +7500,9 @@ html:not([data-glass="on"]) .panel__scrim,
 html:not([data-glass="on"]) :is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel__scrim {
   background: radial-gradient(90% 60% at 50% 0%, rgb(var(--accent-rgb) / 7%), transparent 65%), var(--bg-0);
 }
+
+/* Socios en «Club conectado»: la chapita plateada, igual que en la sala. */
+.cn__soc { display: inline-block; margin-left: 7px; padding: 0 5px; height: 15px; border-radius: 5px; vertical-align: 2px;
+  font: 800 9px/15px var(--font, system-ui), sans-serif; font-style: normal; letter-spacing: .08em; color: #eef2f8;
+  background: linear-gradient(180deg, #a9b6c9, #66748a); box-shadow: inset 0 1px 0 rgb(255 255 255 / 40%); }
+.cn__card.is-soc .cn__av { background: linear-gradient(145deg, #c3cede, #66748a); color: #1b2436; }

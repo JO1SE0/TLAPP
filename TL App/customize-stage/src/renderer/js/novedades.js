@@ -11,6 +11,7 @@ window.TL_NEWS = {
   title: { es: 'Qué hay de nuevo', en: "What's new" },
   items: {
     es: [
+      'Socios a la vista: en la sala los socios del club se ven con su propio distintivo, una chapita plateada «SOCIO» y el recuadro plateado (el dorado y el escudo siguen siendo del plantel). En Club → «Club conectado» todo el plantel ve a los socios, con su chapita y si están jugando y en qué sala. Los socios no cuentan para los festejos del plantel, la camiseta ni la llegada del club.',
       'Las ventanas que se abren (Música, Club, Replays, Configuración, Personalización…) ya no dejan ver detrás la lista de salas con sus bordes asomando por los costados: detrás queda el fondo liso de la app. Con «Opacidad del vidrio» bajo se sigue viendo lo de atrás.',
       'Spotify rehecho como reproductor: arriba elegís la fuente (TL App o Spotify); con Spotify la portada toma la tapa de fondo y el reproductor trae aleatorio, repetir, me gusta y «dónde suena» con menú propio. Abajo, Buscar y Tu cola en pestañas, y tus playlists en lista con cuántos temas tienen. Mientras tanto se esconden los ajustes y la lista de canciones de la app. Animaciones livianas y de una vez.',
       'Spotify con tu cuenta (Premium): en Música → «Usar Spotify» conectás tu cuenta y desde la app buscás temas, ponés tus playlists, sumás a la cola, prendés aleatorio o repetir, marcás «me gusta», cambiás el volumen y elegís en qué dispositivo suena (PC o celu). Cada uno se conecta con su propia cuenta y su propia llave (Client ID), una sola vez; la sección explica cómo sacarla en 2 minutos.',
@@ -138,6 +139,7 @@ window.TL_NEWS = {
       'Cada clave se usa en una sola PC: si cambiás de computadora, pedile a miclo que te la libere.'
     ],
     en: [
+      'Partners visible: in rooms the club partners show their own badge, a silver «PARTNER» tag and a silver row (gold and the crest stay for the squad). In Club → «Club online» the whole squad sees partners, with their tag and whether they are playing and in which room. Partners do not count for squad celebrations, the kit or the club arrival.',
       'Windows that open (Music, Club, Replays, Settings, Personalize…) no longer show the room list behind them with its edges poking out: the plain app background sits behind instead. With low «Glass opacity» the back still shows.',
       'Spotify rebuilt as a player: pick the source at the top (TL App or Spotify); with Spotify the header uses the cover as background and the player has shuffle, repeat, like and «playing on» with its own menu. Below, Search and Your queue in tabs, and your playlists as a list with their song count. The app music settings and song list hide meanwhile. Light one-shot animations.',
       'Spotify with your account (Premium): in Music → «Use Spotify» connect your account and from the app search songs, play your playlists, add to queue, toggle shuffle or repeat, like songs, change volume and pick which device plays (PC or phone). Everyone connects their own account with their own key (Client ID), once; the section explains how to get it in 2 minutes.',

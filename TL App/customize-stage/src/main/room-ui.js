@@ -421,6 +421,15 @@ function css(p, opts = {}) {
   width: 100%; height: 100%; display: block;
   filter: drop-shadow(0 1px 1px rgba(0, 0, 0, .5));
 }
+/* Socio: chapita plateada con texto, para que no se confunda con el escudo
+   dorado del plantel ni con los íconos de VIP y amigo. */
+.player-list-item .tvm-mark--socio {
+  width: auto; height: 15px; padding: 0 5px; border-radius: 5px;
+  font: 800 9px/15px system-ui, sans-serif; letter-spacing: .08em;
+  color: #e6edf8; background: linear-gradient(180deg, #a9b6c9, #66748a);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .45), 0 1px 2px rgba(0, 0, 0, .5);
+  text-shadow: 0 1px 0 rgba(0, 0, 0, .35);
+}
 /* Verde: el celeste ya es el VIP y está pegado al lado. */
 .player-list-item .tvm-mark--friend { color: #6ee7a8; }
 .player-list-item .tvm-mark--friend svg {
