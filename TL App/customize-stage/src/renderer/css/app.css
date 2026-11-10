@@ -7491,24 +7491,12 @@ html[data-animations="off"] .page[data-page="musica"] :is(.sp, .sp *, .spdev *, 
 .nowplaying.is-spotify .np__play { color: #06240f; background: linear-gradient(180deg, #3ef07f, #1db954); box-shadow: 0 6px 18px rgb(30 215 96 / 35%); }
 @keyframes spSwap { from { opacity: .4; transform: scale(.94); } to { opacity: 1; transform: none; } }
 
-/* ═══ Paneles sin «ventana encima» ═══
-   Antes el panel era una tarjeta con borde, esquinas y sombra flotando sobre
-   la lista de salas oscurecida: se veía una ventana sobre otra, con bordes de
-   la de atrás asomando. Ahora el fondo del panel es la página misma (opaco,
-   del color de la app) y la tarjeta no tiene marco: el contenido queda en el
-   medio con el ancho de siempre («Ancho de los paneles» lo sigue eligiendo).
-   Con «Opacidad del vidrio» por debajo de 100 % se respeta el vidrio. */
+/* ═══ Detrás del panel, nada asomando ═══
+   El panel sigue siendo una ventana con su marco, pero detrás ya no se ve la
+   lista de salas oscurecida con sus bordes asomando por los costados: el velo
+   es el fondo liso de la app. Con «Opacidad del vidrio» por debajo de 100 % se
+   respeta el vidrio (ahí la idea es justamente ver lo de atrás). */
 html:not([data-glass="on"]) .panel__scrim,
 html:not([data-glass="on"]) :is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel__scrim {
-  background: radial-gradient(90% 60% at 50% 0%, rgb(var(--accent-rgb) / 9%), transparent 65%), var(--bg-0);
+  background: radial-gradient(90% 60% at 50% 0%, rgb(var(--accent-rgb) / 7%), transparent 65%), var(--bg-0);
 }
-html:not([data-glass="on"]) #app .panel__card {
-  border: 0;
-  border-radius: 0;
-  box-shadow: none;
-  background: transparent;
-}
-/* Sin marco, el panel arranca arriba (centrado en alto quedaba flotando) y la
-   barra de solapas pegada arriba usa el mismo fondo que la página. */
-html:not([data-glass="on"]) .panel { align-items: stretch; }
-html:not([data-glass="on"]) :is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .tabbar { background: linear-gradient(var(--bg-0) 78%, transparent); }
