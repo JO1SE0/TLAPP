@@ -8332,3 +8332,5 @@ html[data-layout="comando"] :is(#app[data-view="ajustes"], #app[data-view="aspec
   backdrop-filter: none;
 }
 html[data-lowend="on"] .panel__scrim, html[data-animations="off"] .panel__scrim { -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
+.badge.badge--warn { color: var(--warn); background: rgb(var(--warn-rgb) / 14%); border-color: rgb(var(--warn-rgb) / 35%); }
+#authNew svg[data-icon] { width: 14px; height: 14px; }

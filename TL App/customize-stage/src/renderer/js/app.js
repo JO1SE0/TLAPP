@@ -281,6 +281,9 @@ function splashStep(key) {
 
 let splashHidden = false;
 async function hideSplash() {
+  document.documentElement.dataset.booted = '1';
+  // Si arrancó bien, un cartel de error que quedó del arranque se va solo.
+  setTimeout(() => { const b = document.getElementById('bootError'); if (b) b.remove(); }, 6000);
   if (splashHidden) return;
   splashHidden = true;
   const splash = $('#splash');
@@ -686,8 +689,12 @@ setTimeout(hideSplash, SPLASH_MIN_MS + 200);
  */
 window.addEventListener('error', (event) => {
   const detail = event.error && event.error.message ? event.error.message : event.message;
+  // Avisos del navegador que no rompen nada (el ResizeObserver que tardó un
+  // cuadro más): no son errores de la app y no merecen un cartel.
+  if (/ResizeObserver loop/i.test(String(detail || ''))) { event.preventDefault && event.preventDefault(); return; }
+  const booted = document.documentElement.dataset.booted === '1';
   const where = event.filename ? ` (${String(event.filename).split('/').pop()}:${event.lineno})` : '';
-  const text = `Error al arrancar: ${detail}${where}`;
+  const text = `${booted ? 'Error' : 'Error al arrancar'}: ${detail}${where}`;
   console.error('[TL App] el renderer falló:', event.error || event.message);
 
   const status = document.querySelector('#splashStatus');
@@ -707,6 +714,11 @@ window.addEventListener('error', (event) => {
   ].join(';');
   const put = () => document.body && document.body.append(bar);
   document.body ? put() : window.addEventListener('DOMContentLoaded', put);
+  // Con la app ya andando el cartel se va solo a los 6 segundos (o al tocarlo);
+  // si la app no llegó a arrancar se queda, porque es lo único que se ve.
+  bar.style.cursor = 'pointer';
+  bar.addEventListener('click', () => bar.remove());
+  if (booted) setTimeout(() => bar.remove(), 6000);
 });
 
 /* ── Formatos ───────────────────────────────────────────── */
@@ -1014,7 +1026,7 @@ var pvLayout = () => {};
     try { localStorage.setItem('tl_pv_min', min ? '1' : '0'); } catch (e) { /* sin storage */ }
     if (!min) paintPreview();
   });
-  if (typeof ResizeObserver === 'function') new ResizeObserver(layout).observe(card);
+  if (typeof ResizeObserver === 'function') new ResizeObserver(() => requestAnimationFrame(layout)).observe(card);
   pvLayout = layout;
   set(min);
 })();
@@ -9081,6 +9093,18 @@ function renderAuth() {
       badge.className = 'badge';
       badge.textContent = t('auth.inUse');
       name.append(badge);
+      // Elegida pero el juego todavía tiene otra: se aplica al recargarlo.
+      if (state.auth.liveAvailable && state.auth.liveId !== item.id) {
+        const wait = document.createElement('span');
+        wait.className = 'badge badge--warn';
+        wait.textContent = t('auth.pending');
+        name.append(wait);
+      }
+    } else if (state.auth.liveId === item.id) {
+      const badge = document.createElement('span');
+      badge.className = 'badge';
+      badge.textContent = t('auth.liveNow');
+      name.append(badge);
     }
 
     const meta = document.createElement('div');
@@ -9119,6 +9143,7 @@ async function activateAuth(id) {
   renderAuth();
   // HaxBall lee la identidad al arrancar: salir a la sala (lobby) fuerza una
   // recarga en blanco que inyecta la nueva Auth sin reconectarte al host.
+  state.authSwitching = true;
   await guard(tvm.rooms.leave(), 'Error');
   toast(t('auth.switched'), 'ok');
 }
@@ -9166,7 +9191,45 @@ $('#authAdd').addEventListener('click', async () => {
   if (name === null) return;
 
   const next = await guard(tvm.auth.add({ name: name.trim(), key: key.trim() }), 'Error');
-  if (next) { await loadAuth(); toast(t('auth.saved'), 'ok'); }
+  if (!next) return;
+  // Pegarla la deja elegida: el juego la toma al volver a la lista de salas.
+  await loadAuth();
+  state.authSwitching = true;
+  await guard(tvm.rooms.leave(), 'Error');
+  toast(t('auth.saved'), 'ok');
+});
+
+/*
+ * Identidad nueva: la misma clave que HaxBall genera la primera vez (ECDSA
+ * P-256, «idkey.x.y.d»), hecha acá con WebCrypto. Antes de cambiar, si la que
+ * está puesta no está guardada, se ofrece guardarla para no perderla.
+ */
+async function newAuthKey() {
+  const pair = await crypto.subtle.generateKey({ name: 'ECDSA', namedCurve: 'P-256' }, true, ['sign', 'verify']);
+  const jwk = await crypto.subtle.exportKey('jwk', pair.privateKey);
+  return `idkey.${jwk.x}.${jwk.y}.${jwk.d}`;
+}
+$('#authNew').addEventListener('click', async () => {
+  if (state.auth.liveAvailable && !state.auth.liveKnown) {
+    const keep = await ask({
+      title: t('auth.saveCurrent'),
+      label: t('auth.nameLabel'),
+      value: state.config.general.nickname || '',
+      hint: t('auth.saveHint'),
+      maxLength: 32
+    });
+    if (keep !== null) await guard(tvm.auth.saveCurrent(keep.trim()), 'Error');
+  }
+  const name = await ask({ title: t('auth.new'), label: t('auth.nameLabel'), hint: t('auth.newHint'), maxLength: 32 });
+  if (name === null) return;
+  let key;
+  try { key = await newAuthKey(); } catch (e) { toast(e.message || 'Error', 'err'); return; }
+  const next = await guard(tvm.auth.add({ name: name.trim(), key }), 'Error');
+  if (!next) return;
+  await loadAuth();
+  state.authSwitching = true;
+  await guard(tvm.rooms.leave(), 'Error');
+  toast(t('auth.created'), 'ok');
 });
 
 /* ══════════════════════════════════════════════════════════
@@ -11972,6 +12035,14 @@ async function boot() {
   refreshLastRoom();
   tvm.rooms.onFlags(applyFlags);
   tvm.auth.onLive(() => loadAuth());
+  // El juego avisa en cada carga si se quedó con la identidad elegida: el «ok»
+  // se dice sólo justo después de cambiarla; el rechazo, siempre.
+  if (tvm.auth.onCheck) tvm.auth.onCheck(({ ok }) => {
+    if (!ok) toast(t('auth.rejected'), 'err');
+    else if (state.authSwitching) toast(t('auth.applied'), 'ok');
+    state.authSwitching = false;
+    loadAuth();
+  });
   tvm.avatar.onLive(({ face }) => {
     state.liveAvatar = face || '';
     renderAvatar();
@@ -13569,7 +13640,7 @@ let rosterFit = () => {};
     const order = [...items.filter((li) => !li.classList.contains('is-on')).reverse(), ...items.filter((li) => li.classList.contains('is-on')).reverse()];
     for (let i = 0; i < order.length - 1 && box.scrollHeight > box.clientHeight + 1; i++) order[i].hidden = true;
   };
-  new ResizeObserver(() => rosterFit(false)).observe(box);
+  new ResizeObserver(() => requestAnimationFrame(() => rosterFit(false))).observe(box);
 })();
 
 /* Interruptores en grilla de a dos: si una tanda entre filas anchas es impar,
@@ -13583,8 +13654,20 @@ let rosterFit = () => {};
  * Sólo con ventana ancha y sin vista previa; si no, todo vuelve a una columna.
  */
 const MASONRY_ROW = 4;
+// Se recalcula en el cuadro siguiente, no adentro del aviso: cambiar el alto
+// de la grilla desde el mismo aviso del ResizeObserver lo hacía avisar de
+// nuevo («ResizeObserver loop limit exceeded»).
+const masonryPending = new Set();
+let masonryFrame = 0;
 const masonryRO = typeof ResizeObserver === 'function' ? new ResizeObserver((entries) => {
-  for (const e of entries) spanOf(e.target);
+  for (const e of entries) masonryPending.add(e.target);
+  if (masonryFrame) return;
+  masonryFrame = requestAnimationFrame(() => {
+    masonryFrame = 0;
+    const els = [...masonryPending];
+    masonryPending.clear();
+    for (const el of els) spanOf(el);
+  });
 }) : null;
 const masonryWatched = new WeakSet();
 function spanOf(el) {

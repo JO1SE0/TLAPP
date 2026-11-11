@@ -113,7 +113,8 @@ contextBridge.exposeInMainWorld('tvm', {
     remove: (id) => call('auth:delete', id),
     activate: (id) => call('auth:activate', id),
     export: (id) => call('auth:export', id),
-    onLive: (cb) => on('auth:live', cb)
+    onLive: (cb) => on('auth:live', cb),
+    onCheck: (cb) => on('auth:check', cb)
   },
 
   replays: {

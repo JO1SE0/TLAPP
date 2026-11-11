@@ -2689,6 +2689,8 @@ handle('themes:delete', (_e, id) => {
  */
 handle('auth:state', () => ({
   ...store.get().auth,
+  // Cuál de las guardadas es la que el juego tiene puesta de verdad ahora.
+  liveId: (() => { const hit = liveAuthKey && (store.get().auth.items || []).find((a) => a.key === liveAuthKey); return hit ? hit.id : null; })(),
   // Si la que está puesta no coincide con ninguna guardada, la interfaz ofrece
   // guardarla en vez de dejar que se pierda al cambiar de identidad.
   liveKnown: !!liveAuthKey && (store.get().auth.items || []).some((a) => a.key === liveAuthKey),
@@ -4003,6 +4005,11 @@ listen('game:adopt-settings', (_e, payload) => {
 listen('game:auth', (_e, payload) => {
   liveAuthKey = payload && payload.key ? String(payload.key) : null;
   send('auth:live', { available: !!liveAuthKey });
+});
+
+/** Si HaxBall no se quedó con la identidad elegida, la interfaz lo dice. */
+listen('game:auth-check', (_e, payload) => {
+  send('auth:check', { ok: !!(payload && payload.ok) });
 });
 
 /**

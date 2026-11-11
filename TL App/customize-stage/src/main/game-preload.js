@@ -1265,23 +1265,16 @@ function onNewGameDocument(doc) {
   // interfaz tiene que saberlo para volver a ofrecer la recarga.
   ipcRenderer.send('game:live-settings', { available: liveSettings(doc) !== null });
 
-  // Verificar si HaxBall rechazó la clave de Auth
+  // ¿HaxBall se quedó con la identidad elegida? Se avisa a la interfaz (sin
+  // carteles del navegador, que frenan el juego hasta que alguien los cierra).
   setTimeout(() => {
     try {
-      const expectedAuth = activeAuthKey();
-      // Use the top-level window localStorage since it shares the same origin and partition
-      const actualAuth = window.localStorage.getItem('player_auth_key');
-      if (expectedAuth && actualAuth && expectedAuth !== actualAuth) {
-        alert(`ATENCIÓN: HaxBall rechazó tu Auth Key pegado y generó una nueva porque es inválida o incompatible.\nEsperado: ${expectedAuth.substring(0, 15)}...\nGenerado: ${actualAuth.substring(0, 15)}...`);
-      } else if (!expectedAuth) {
-        // No hay auth esperado en la config, no alertamos.
-      } else if (expectedAuth === actualAuth) {
-        // Si coinciden, mandamos un aviso IPC para loguearlo
-        ipcRenderer.send('tvm:debug-log', 'HaxBall aceptó el Auth Key correctamente.');
-      }
-    } catch(e) {
-      alert('Error en diagnóstico de Auth: ' + e.message);
-    }
+      const expected = activeAuthKey();
+      if (!expected) return;
+      const actual = readStorage(haxball.AUTH_KEY);
+      ipcRenderer.send('game:auth-check', { ok: !actual || actual === expected });
+      reportAuth();
+    } catch { /* sin storage */ }
   }, 2000);
 }
 
