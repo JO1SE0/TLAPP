@@ -642,8 +642,7 @@ function onAccess(st) {
   paintTrialChip(st);
   const clubBtn = $('#rail [data-view="club"]');
   if (clubBtn) {
-    // Los socios también entran: ven las estadísticas y los reyes del plantel.
-    // Lo que no ven es quién está conectado (eso sigue siendo sólo del plantel).
+    // Los socios también entran: ven quién está conectado, las estadísticas y los reyes del plantel.
     clubBtn.hidden = false;
     const clubPage = $('.page[data-page="club"]');
     if (clubPage) clubPage.classList.toggle('is-socio', !!(st && st.external));

@@ -3076,7 +3076,7 @@ async function beatOnline() {
   } catch { /* sin red o sin permisos: se queda lo último que se supo */ }
   onlineBusy = false;
 }
-handle('presence:roster', async () => (access.isExternal() ? [] : liveRoster));
+handle('presence:roster', async () => liveRoster);
 
 /* Ranking del club: cada app sube sus números y todos leen la carpeta entera. */
 let lastClubPush = 0;

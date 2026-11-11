@@ -148,7 +148,9 @@ function rebuild(list) {
       legacyNotice: cleanNotice(base.announcement), seq: 0, source: 'github', removed: [], forceUpdate: false, history: []
     };
   }
-  roster = eff.users.filter((u) => u && HEX64.test(String(u.pub || ''))).map((u) => ({ name: String(u.name || '').slice(0, 40), pub: String(u.pub).toLowerCase(), trial: Number(u.trial) > 0, rep: u.rep === true, host: u.host === true, ext: u.ext === true || u.soc === true, soc: u.soc === true || u.ext === true }));
+  roster = eff.users.filter((u) => u && HEX64.test(String(u.pub || ''))).map((u) => ({ name: String(u.name || '').slice(0, 40), pub: String(u.pub).toLowerCase(), trial: Number(u.trial) > 0, rep: u.rep === true, host: u.host === true, ext: u.ext === true || u.soc === true, soc: u.soc === true || u.ext === true,
+    // Voz: el plantel la tiene salvo que el admin se la saque; los socios, sólo si el admin se la da.
+    voz: (u.soc === true || u.ext === true) ? u.voz === true : u.voz !== false }));
   presence = typeof base.presence === 'string' ? base.presence : '';
   voiceIce = (Array.isArray(base.voiceIce) ? base.voiceIce : []).slice(0, 6).map((x) => {
     const urls = [].concat(x && x.urls || []).map(String).filter((u) => /^(stun|turns?):[^\s]{3,200}$/i.test(u)).slice(0, 4);

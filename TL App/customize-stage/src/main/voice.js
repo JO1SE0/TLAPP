@@ -108,10 +108,11 @@ function createVoice(opts) {
     }
     const byPid = new Map();
     for (const u of c.roster || []) {
-      if (!u || !/^[0-9a-f]{64}$/i.test(u.pub || '') || u.trial || (u.ext && !u.soc)) continue;
+      // Sólo quien tiene la voz habilitada (el admin la maneja por persona; ver `voz` en access.js).
+      if (!u || !/^[0-9a-f]{64}$/i.test(u.pub || '') || u.trial || (u.ext && !u.soc) || u.voz === false) continue;
       byPid.set(identity.pidOf(u.pub), u);
     }
-    if (!byPid.has(me.id.pid)) return { err: 'fuera-del-plantel' };
+    if (!byPid.has(me.id.pid)) return { err: 'sin-permiso' };
     return { base, id: me.id, byPid, name: cleanName(c.name || (byPid.get(me.id.pid) || {}).name) || 'Jugador' };
   }
 

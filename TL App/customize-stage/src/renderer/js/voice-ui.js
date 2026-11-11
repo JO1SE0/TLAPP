@@ -159,7 +159,7 @@
       case 'reglas': return T('La base del club todavía no acepta la voz: falta habilitar la carpeta «voice» en las reglas de Firebase.', 'The club database does not accept voice yet: the «voice» folder must be allowed in the Firebase rules.');
       case 'sin-clave': return T('Para usar la voz tenés que entrar con tu clave del club.', 'You need to sign in with your club key to use voice.');
       case 'sin-base': return T('Todavía no se bajó la dirección del club. Probá en unos segundos.', 'The club address has not loaded yet. Try again in a few seconds.');
-      case 'fuera-del-plantel': return T('La voz es sólo para el plantel y los socios.', 'Voice is only for the squad and members.');
+      case 'sin-permiso': return T('El admin todavía no te habilitó la voz.', 'The admin has not enabled voice for you yet.');
       case 'sin-sala': return T('Entrá a una sala para usar su canal de voz.', 'Join a room to use its voice channel.');
       case 'red': return T('Sin conexión con la base del club. Se reintenta solo.', 'No connection to the club database. Retrying.');
       case 'permiso': return T('Windows no deja usar el micrófono. Revisá Configuración → Privacidad → Micrófono. Mientras tanto escuchás igual.', 'Windows blocks the microphone. Check Settings → Privacy → Microphone. You can still listen.');

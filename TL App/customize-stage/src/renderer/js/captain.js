@@ -246,11 +246,15 @@
       host.addEventListener('click', async () => { if (await act({ type: 'setHost', name: m.name, value: !m.host })) flash(m.host ? `${m.name} ya no hostea.` : `${m.name} ahora puede hostear.`); });
       const soc = el('button', 'cap__btn cap__btn--ghost cap__btn--sm', (m.soc || m.ext) ? 'Socio: sí' : 'Socio: no');
       soc.type = 'button'; soc.disabled = m.self || busy;
-      soc.title = 'Socio: queda aparte del equipo. Nadie lo ve con la insignia ni el recuadro dorado (él sí ve los de los demás y se ve a sí mismo con su recuadro, sin el logo). No suma stats, no se ve conectado y no ve conectados ni el panel Club. Sólo lo ves vos.';
+      soc.title = 'Socio: queda aparte del equipo. Nadie lo ve con la insignia ni el recuadro dorado (él sí ve los de los demás y se ve a sí mismo con su recuadro, sin el logo). No suma stats. Ve el panel Club y quién está conectado. La voz la tiene apagada hasta que se la habilites.';
       soc.addEventListener('click', async () => { if (await act({ type: 'setSocio', name: m.name, value: !(m.soc || m.ext) })) flash((m.soc || m.ext) ? `${m.name} ya no es socio.` : `${m.name} quedó catalogado como socio.`); });
-      for (const [b, on] of [[soc, !!(m.soc || m.ext)], [host, !!m.host], [rep, !!m.rep]]) b.classList.add('cap__chip', ...(on ? ['is-on'] : []));
+      const voz = el('button', 'cap__btn cap__btn--ghost cap__btn--sm', m.voz ? 'Voz: sí' : 'Voz: no');
+      voz.type = 'button'; voz.disabled = m.self || busy;
+      voz.title = 'Que pueda entrar a la voz del club y de las salas. El plantel la tiene de entrada; los socios, sólo si se la das.';
+      voz.addEventListener('click', async () => { if (await act({ type: 'setVoice', name: m.name, value: !m.voz })) flash(m.voz ? `${m.name} ya no puede usar la voz.` : `${m.name} ahora puede usar la voz.`); });
+      for (const [b, on] of [[soc, !!(m.soc || m.ext)], [host, !!m.host], [rep, !!m.rep], [voz, !!m.voz]]) b.classList.add('cap__chip', ...(on ? ['is-on'] : []));
       const who = el('div', 'cap__who'); who.append(name, state);
-      acts.append(soc, host, rep, free, nk, del);
+      acts.append(soc, host, rep, voz, free, nk, del);
       if (m.online && m.room && !m.self) who.append(goBtn(m, 'cap__btn cap__btn--sm cap__go'));
       row.append(av, who, ver, acts);
       table.append(row);
@@ -453,6 +457,7 @@
       mk(isSoc ? 'Socio: sí' : 'Socio: no', async () => { if (await act({ type: 'setSocio', name: m.name, value: !isSoc })) flash(isSoc ? `${m.name} ya no es socio.` : `${m.name} quedó como socio.`); }, isSoc);
       mk(m.rep ? 'Informes: sí' : 'Informes: no', async () => { if (await act({ type: 'setReports', name: m.name, value: !m.rep })) flash('Listo.'); }, m.rep);
       if (!isSoc) mk(m.host ? 'Hostea: sí' : 'Hostea: no', async () => { if (await act({ type: 'setHost', name: m.name, value: !m.host })) flash('Listo.'); }, m.host);
+      mk(m.voz ? 'Voz: sí' : 'Voz: no', async () => { if (await act({ type: 'setVoice', name: m.name, value: !m.voz })) flash('Listo.'); }, m.voz);
       mk('Liberar PC', async () => { if (await act({ type: 'resetDevice', name: m.name })) { flash(`PC de ${m.name} liberada.`); loadPerson(m.name); } });
       mk('Clave nueva', () => newKey(m.name));
       q.append(acts);

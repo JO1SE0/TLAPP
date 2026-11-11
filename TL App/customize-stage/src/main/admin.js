@@ -34,6 +34,7 @@ function describe(action, extra) {
     case 'setReports': return { text: action.value === true ? `Le dio acceso a los informes a ${n}` : `Le sacó el acceso a los informes a ${n}`, who: n };
     case 'setHost': return { text: action.value === true ? `Le dio permiso para hostear internos a ${n}` : `Le sacó el permiso para hostear internos a ${n}`, who: n };
     case 'setExternal': return { text: action.value === true ? `Marcó a ${n} como ajeno al club` : `Marcó a ${n} como parte del club`, who: n };
+    case 'setVoice': return { text: action.value === true ? `Le habilitó la voz a ${n}` : `Le sacó la voz a ${n}`, who: n };
     case 'setSocio': return { text: action.value === true ? `Catalogó a ${n} como socio` : `Sacó a ${n} de socios`, who: n };
     case 'addTrial': return { text: `Creó una clave de prueba para ${extra ? extra.name : n} (${fmtMin(Math.round(Number(action.minutes)) || 0)})`, who: extra ? extra.name : n };
     case 'setTrial': return { text: Math.round(Number(action.minutes)) === 0 ? `Pasó a ${n} de prueba a acceso común` : `Cambió la prueba de ${n} a ${fmtMin(Math.round(Number(action.minutes)) || 0)}`, who: n };
@@ -65,7 +66,7 @@ const undoInfo = () => (undoSnap && Date.now() - undoSnap.at < UNDO_MS ? { label
 function applyAction(cur, action, myPub) {
   const doc = {
     enabled: cur.enabled === true,
-    users: cur.users.map((u) => ({ name: u.name, hash: u.hash, pub: u.pub, epoch: Number(u.epoch) || 0, banned: Array.isArray(u.banned) ? u.banned.slice(-5) : [], ...(Number(u.trial) > 0 ? { trial: Number(u.trial) } : {}), ...(u.rep === true ? { rep: true } : {}), ...(u.host === true ? { host: true } : {}), ...(u.ext === true ? { ext: true } : {}), ...(u.soc === true ? { soc: true } : {}) })),
+    users: cur.users.map((u) => ({ name: u.name, hash: u.hash, pub: u.pub, epoch: Number(u.epoch) || 0, banned: Array.isArray(u.banned) ? u.banned.slice(-5) : [], ...(Number(u.trial) > 0 ? { trial: Number(u.trial) } : {}), ...(u.rep === true ? { rep: true } : {}), ...(u.host === true ? { host: true } : {}), ...(u.ext === true ? { ext: true } : {}), ...(u.soc === true ? { soc: true } : {}), ...(typeof u.voz === 'boolean' ? { voz: u.voz } : {}) })),
     removed: (cur.removed || []).slice(),
     notices: cur.notices.slice(),
     minVersion: cur.minVersion || '',
@@ -109,6 +110,13 @@ function applyAction(cur, action, myPub) {
       if (!target) throw new Error('No encontré a esa persona.');
       if (target.pub === myPub) throw new Error('Vos sos el admin, no podés marcarte como socio.');
       if (action.value === true) { target.soc = true; delete target.rep; delete target.host; } else { delete target.soc; delete target.ext; }
+      delete target.voz; // vuelve a lo de fábrica: con voz si es del plantel, sin voz si es socio
+      break;
+    }
+    case 'setVoice': {
+      const target = doc.users.find((u) => String(u.name).toLowerCase() === String(action.name || '').toLowerCase());
+      if (!target) throw new Error('No encontré a esa persona.');
+      target.voz = action.value === true;
       break;
     }
     case 'setReports': {
@@ -140,14 +148,14 @@ function applyAction(cur, action, myPub) {
       if (!target) throw new Error('No encontré a esa persona.');
       if (target.pub === myPub) throw new Error('No podés sacarte a vos mismo.');
       doc.users = doc.users.filter((u) => u !== target);
-      doc.removed = [...doc.removed.filter((u) => u.name !== target.name), { name: target.name, hash: target.hash, pub: target.pub, epoch: target.epoch, banned: target.banned || [], trial: target.trial || 0, rep: target.rep === true, host: target.host === true, ext: target.ext === true, soc: target.soc === true, at: Date.now() }].slice(-100);
+      doc.removed = [...doc.removed.filter((u) => u.name !== target.name), { name: target.name, hash: target.hash, pub: target.pub, epoch: target.epoch, banned: target.banned || [], trial: target.trial || 0, rep: target.rep === true, host: target.host === true, ext: target.ext === true, soc: target.soc === true, ...(typeof target.voz === 'boolean' ? { voz: target.voz } : {}), at: Date.now() }].slice(-100);
       break;
     }
     case 'restoreUser': {
       const back = doc.removed.find((u) => String(u.name).toLowerCase() === String(action.name || '').toLowerCase());
       if (!back) throw new Error('No encontré a esa persona entre los quitados.');
       doc.removed = doc.removed.filter((u) => u !== back);
-      doc.users.push({ name: back.name, hash: back.hash, pub: back.pub, epoch: (Number(back.epoch) || 0) + 1, banned: back.banned || [], ...(Number(back.trial) > 0 ? { trial: Number(back.trial) } : {}), ...(back.rep === true ? { rep: true } : {}), ...(back.host === true ? { host: true } : {}), ...(back.ext === true ? { ext: true } : {}), ...(back.soc === true ? { soc: true } : {}) });
+      doc.users.push({ name: back.name, hash: back.hash, pub: back.pub, epoch: (Number(back.epoch) || 0) + 1, banned: back.banned || [], ...(Number(back.trial) > 0 ? { trial: Number(back.trial) } : {}), ...(back.rep === true ? { rep: true } : {}), ...(back.host === true ? { host: true } : {}), ...(back.ext === true ? { ext: true } : {}), ...(back.soc === true ? { soc: true } : {}), ...(typeof back.voz === 'boolean' ? { voz: back.voz } : {}) });
       break;
     }
     case 'changeKey': {

@@ -8578,7 +8578,3 @@ html[data-animations="off"] .chatpv { transition: none; }
 .vmeter b { position: absolute; top: -2px; bottom: -2px; left: var(--thr); width: 2px; background: var(--text); border-radius: 1px; }
 html[data-scheme="light"] .vhud__p, html[data-scheme="light"] .vhud__me { color: rgb(255 255 255 / 80%); }
 
-/* Socios en Club: ven estadísticas y reyes, no quién está conectado. */
-.page[data-page="club"].is-socio #clubNowSec,
-.page[data-page="club"].is-socio .club__kpis > .kpi:first-child { display: none; }
-#app .page[data-page="club"].is-socio .club { grid-template-columns: minmax(0, 1fr); grid-template-areas: "hero" "rank" "kings"; }

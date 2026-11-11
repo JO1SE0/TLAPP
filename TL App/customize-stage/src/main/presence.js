@@ -271,19 +271,19 @@ async function online(ctx) {
       ok = identity.verify(u.pub, onlineText(r, v, x, e.t), e.s);
       if (ok) {
         const alive = self || (!x && Math.abs(now - e.t) <= ONLINE_ALIVE_MS);
-        out.push({ name: u.name, room: alive ? r : '', lastRoom: r, version: self ? clean(ctx.version, 20) : v, lastSeen: self ? Date.now() : e.t, online: alive, self, trial: !!u.trial, rep: !!u.rep, host: !!u.host, ext: !!u.ext, soc: !!u.soc });
+        out.push({ name: u.name, room: alive ? r : '', lastRoom: r, version: self ? clean(ctx.version, 20) : v, lastSeen: self ? Date.now() : e.t, online: alive, self, trial: !!u.trial, rep: !!u.rep, host: !!u.host, ext: !!u.ext, soc: !!u.soc, voz: !!u.voz });
         continue;
       }
     }
-    out.push({ name: u.name, room: '', lastRoom: '', version: self ? clean(ctx.version, 20) : '', lastSeen: self ? Date.now() : 0, online: self, self, trial: !!u.trial, rep: !!u.rep, host: !!u.host, ext: !!u.ext, soc: !!u.soc });
+    out.push({ name: u.name, room: '', lastRoom: '', version: self ? clean(ctx.version, 20) : '', lastSeen: self ? Date.now() : 0, online: self, self, trial: !!u.trial, rep: !!u.rep, host: !!u.host, ext: !!u.ext, soc: !!u.soc, voz: !!u.voz });
   }
   // Los ajenos al club los ve sólo el admin; y ellos no ven a nadie más que a sí mismos.
   // Los socios los ve todo el plantel.
   const mineEntry = (ctx.roster || []).find((u) => u && /^[0-9a-f]{64}$/i.test(u.pub || '') && identity.pidOf(u.pub) === id.pid);
-  const iAmExternal = !!(mineEntry && mineEntry.ext);
   for (let i = out.length - 1; i >= 0; i--) {
     const m = out[i];
-    if (iAmExternal ? !m.self : (m.ext && !m.soc && !m.self && !ctx.captain)) out.splice(i, 1);
+    // Los socios ahora ven al plantel conectado (y el plantel a ellos, con su marca de socio).
+    if (m.ext && !m.soc && !m.self && !ctx.captain) out.splice(i, 1);
   }
   out.sort((a, b) => (b.self - a.self) || (b.online - a.online) || a.name.localeCompare(b.name, 'es'));
   out.prevSelf = prevSelf;
