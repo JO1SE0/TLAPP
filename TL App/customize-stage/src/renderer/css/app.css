@@ -7742,3 +7742,151 @@ html:not([data-glass="on"]) :is(#app[data-view="ajustes"], #app[data-view="aspec
 .panel.only-changed .page .sec .row:not(.is-changed) { display: none; }
 .panel.only-changed .page .sec .row--block:not(.is-changed) { display: none; }
 .panel.only-changed .page__inner > :not(.sec):not(.pagehead) { display: none; }
+
+
+/* ═══════════════════════════════════════════════════════════════
+   Pulido de la interfaz (sólo pintura estática: ni filtros, ni blur,
+   ni nada que corra solo). Va al final para ganarle a lo de arriba.
+   ═══════════════════════════════════════════════════════════════ */
+
+/* Radios: tres medidas y nada más. Ventana 22 · tarjeta 18 · pieza 12. */
+:root { --r-card: 18px; --r-tile: 12px; }
+.rpanel, .club__hero, .csec, .page[data-page="club"] .pod, .pod, .nickcard, .rep__card,
+.page[data-page="replays"] .pagehead, .mus__hero, .cap__mcard, .cap__hero, .rpt__drop { border-radius: var(--r-card); }
+html:not([data-layout="bottom"]):not([data-layout="comando"]):not([data-layout="consola"]):not([data-layout="dock"]):not([data-layout="island"]):not([data-layout="mini"]):not([data-layout="radial"]):not([data-layout="top"]) .profcard, html:not([data-layout="bottom"]):not([data-layout="comando"]):not([data-layout="consola"]):not([data-layout="dock"]):not([data-layout="island"]):not([data-layout="mini"]):not([data-layout="radial"]):not([data-layout="top"]) .roster { border-radius: var(--r-card); }
+:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .page[data-page] .sec { border-radius: var(--r-card); }
+:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .row--tog, :is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .presetbtn, .cn__card, .page[data-page="club"] .kpi, .mus__sw, .hcard, .hostlive, .cap__sec { border-radius: var(--r-tile); }
+:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .pnav { border-radius: var(--r-card); }
+:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .pnav__tab, :is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .pnav__i { border-radius: var(--r-tile); }
+
+/* #2 · Jugadores de la sala: color más marcado y una barrita de cuánto se llenó. */
+.rrow__players {
+  position: relative;
+  min-width: 48px;
+  padding: 3px 10px 6px;
+  font-weight: 800;
+  color: var(--text);
+  background: rgb(var(--text-rgb) / 7%);
+  border: 1px solid rgb(var(--text-rgb) / 10%);
+}
+.rrow__players::after {
+  content: "";
+  position: absolute;
+  left: 9px; right: 9px; bottom: 2px;
+  height: 2px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, currentColor var(--fill, 0%), rgb(var(--text-rgb) / 14%) var(--fill, 0%));
+  opacity: .85;
+}
+.rrow.is-full .rrow__players { color: #ff7b86; background: rgb(var(--danger-rgb) / 20%); border-color: rgb(var(--danger-rgb) / 45%); }
+.rrow.is-almost-full .rrow__players { color: #ffc861; background: rgb(var(--warn-rgb) / 20%); border-color: rgb(var(--warn-rgb) / 45%); }
+.rrow.is-open-room .rrow__players { color: #4be3a2; background: rgba(61, 220, 151, 0.18); border-color: rgba(61, 220, 151, 0.42); }
+.rrow.is-empty .rrow__players { color: var(--text-dim); }
+/* Barras: la fila ya es la barra; acá la del número sobra. Y la barra se corta
+   antes del número para no taparlo (#5 de la lista vieja, de paso). */
+html[data-roomview="bars"] .rrow__players::after { display: none; }
+html[data-roomview="bars"] .rrow__players { position: relative; z-index: 1; }
+
+/* #3 · Filtros: prendido se tiene que notar de un vistazo. */
+.filterchip { transition: background-color .15s ease, border-color .15s ease, color .15s ease; }
+.filterchip.is-on, .rtoolbar .filterchip.is-on {
+  color: var(--text);
+  border-color: rgb(var(--accent-rgb) / 70%);
+  background: rgb(var(--accent-rgb) / 24%);
+  box-shadow: inset 0 0 0 1px rgb(var(--accent-rgb) / 35%);
+}
+.filterchip.is-on .filterchip__ico { opacity: 1; }
+.filterchip.is-on::after {
+  content: "✓";
+  margin-left: 2px;
+  font-size: 11px;
+  font-weight: 900;
+  color: var(--accent-text, var(--accent));
+}
+.sortselect { transition: border-color .15s ease, background-color .15s ease; cursor: pointer; }
+.sortselect:hover { border-color: var(--accent-line); background-color: rgb(var(--text-rgb) / 8%); }
+
+/* #4 · Botones de abajo apagados: que se lea «elegí una sala», no «roto». */
+.rpanel__foot .ghostbtn:disabled { opacity: .55; pointer-events: auto; cursor: help; }
+.rpanel__foot .ghostbtn:disabled:hover { background: none; filter: none; }
+#actJoin:disabled { pointer-events: auto; cursor: help; }
+
+/* #6 · Riel: aire parejo arriba y abajo de la tarjeta de perfil. */
+html:not([data-layout="bottom"]):not([data-layout="comando"]):not([data-layout="consola"]):not([data-layout="dock"]):not([data-layout="island"]):not([data-layout="mini"]):not([data-layout="radial"]):not([data-layout="top"]) .profcard { margin: 12px 0 8px; }
+html:not([data-layout="bottom"]):not([data-layout="comando"]):not([data-layout="consola"]):not([data-layout="dock"]):not([data-layout="island"]):not([data-layout="mini"]):not([data-layout="radial"]):not([data-layout="top"]) .rail__hr { margin: 8px 8px; }
+
+/* #7 · Ítem activo del riel: la línea dorada al costado y un fondo suave. Sin recuadro. */
+html:not([data-layout="bottom"]):not([data-layout="comando"]):not([data-layout="consola"]):not([data-layout="dock"]):not([data-layout="island"]):not([data-layout="mini"]):not([data-layout="radial"]):not([data-layout="top"]) .railitem.is-active {
+  border-color: transparent;
+  background: rgb(var(--accent-rgb) / 13%);
+  box-shadow: none;
+}
+html:not([data-layout="bottom"]):not([data-layout="comando"]):not([data-layout="consola"]):not([data-layout="dock"]):not([data-layout="island"]):not([data-layout="mini"]):not([data-layout="radial"]):not([data-layout="top"]) .railitem.is-active::before { top: 11px; bottom: 11px; width: 3px; box-shadow: none; }
+
+/* #8 · Cabecera de Personalización y Configuración: más chica, el contenido sube. */
+:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .page[data-page] .pagehead { margin-bottom: 8px; padding-top: 0; }
+:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .page[data-page] .pagehead h1 { font-size: 26px; letter-spacing: -.03em; }
+:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .page[data-page] .pagehead p { font-size: 12.5px; }
+:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .page .page__inner { padding-top: 22px; }
+
+/* #10 · «Sólo lo ves vos»: un ojito; el texto, al pasar el mouse. */
+.sec__head .tag[data-i18n="skin.tag"] {
+  position: relative;
+  width: 24px; height: 24px;
+  padding: 0;
+  font-size: 0;
+  border-radius: 50%;
+  flex: none;
+  background: rgb(var(--text-rgb) / 7%);
+  border: 1px solid rgb(var(--text-rgb) / 12%);
+  cursor: help;
+}
+.sec__head .tag[data-i18n="skin.tag"]::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: 14px; height: 14px;
+  background: var(--text-dim);
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z'/%3E%3Ccircle cx='12' cy='12' r='3'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+.sec__head .tag[data-i18n="skin.tag"]:hover { border-color: var(--accent-line); }
+.sec__head .tag[data-i18n="skin.tag"]:hover::before { background: var(--accent-text, var(--accent)); }
+
+/* #11 · Interruptores y controles centrados con su texto, siempre. */
+:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .row:not(.row--block) { align-items: center; }
+:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .row:not(.row--block) > .row__ctl { align-self: center; }
+:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .row__label { display: inline-flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+
+/* #16 · Textos secundarios: un poco más de luz sobre el azul. */
+.row__desc, .sec__desc, .pagehead p, .pnav__tx small, .note, .rcount { color: rgb(var(--text-rgb) / 70%); }
+.rtable__head span, .rrow__dist, .profcard__lvl, .roomtip__sub { color: rgb(var(--text-rgb) / 58%); }
+
+/* #17 · Mismo aviso al pasar el mouse en todo lo que se puede tocar. */
+:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .sec[data-tab] > .sec__head { cursor: pointer; }
+:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .sec__head:hover .sec__title { color: var(--accent-text, var(--text)); }
+.rrow__fav:hover { color: var(--warn); opacity: 1; }
+.tabbar__chip:hover, .tabbar__fold:hover { border-color: var(--accent-line); }
+.pnav__tab:not(.is-on):hover { background: rgb(var(--text-rgb) / 7%); }
+html:not([data-roomview="bars"]) .rrow:not(.is-selected):hover { background-color: rgb(var(--text-rgb) / 5%); }
+
+/* Extra · El fondo pegajoso de los atajos dejaba asomar las tarjetas por debajo. */
+:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .tabbar { background: var(--bg-1); box-shadow: 0 10px 14px -10px var(--bg-1); }
+/* Barras: la barra llena termina antes del número de jugadores, no lo tapa. */
+html[data-roomview="bars"] .rrow { background-size: calc(100% - 118px) 100%; background-repeat: no-repeat; }
+/* El botón «Sólo lo que cambié» suma un renglón al índice: en ventanas bajas
+   se aprieta un poco para que la última solapa siga entrando entera. */
+@media (max-height: 820px) {
+  :is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .pnav { gap: 8px; padding-top: 12px; padding-bottom: 10px; }
+  .pnav__only { padding: 5px 10px; }
+  .pnav__group { padding-top: 6px; }
+  html:not([data-density="comfy"]) .pnav__tab { padding-top: 6px; padding-bottom: 6px; }
+}
+/* La ficha de Tu jugador apila sus filas: ahí el centrado general no va. */
+#panel .pcard .pcard__row.pcard__row.pcard__row { align-items: stretch; text-align: left; }
+#panel .pcard .pcard__row.pcard__row .row__ctl.row__ctl { align-self: stretch; }
+/* Música: los cuatro interruptores en 2 × 2, sin uno suelto con un hueco al lado. */
+.mus__sws { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+@media (min-width: 1500px) { .mus__sws { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+/* Club: «Club conectado» del mismo alto que «Estadísticas», sin escalón. */
+.page[data-page="club"] #clubNowSec { align-self: stretch; justify-content: flex-start; align-content: start; }

@@ -3126,6 +3126,10 @@ function syncJoinButton() {
   $('#actJoin').disabled = !state.selected;
   $('#actAutoJoin').disabled = !state.selected && !state.autoJoin;
   $('#actAutoJoin').classList.toggle('is-on', !!state.autoJoin);
+  // Apagados se ven grises: el cartelito dice por qué, para que no parezcan rotos.
+  const pick = isEn() ? 'Pick a room in the list first' : 'Primero elegí una sala de la lista';
+  $('#actJoin').title = state.selected ? '' : pick;
+  $('#actAutoJoin').title = $('#actAutoJoin').disabled ? pick : '';
 }
 
 /** Antes de entrar siempre se confirma el apodo en la pantalla de inicio. */
@@ -13573,6 +13577,7 @@ function markChanged() {
   btn.className = 'pnav__only';
   btn.setAttribute('aria-pressed', 'false');
   btn.innerHTML = '<i aria-hidden="true"></i><span></span><b>0</b>';
+  btn.querySelector('span').textContent = isEn() ? 'Only what I changed' : 'Sólo lo que cambié';
   favs.before(btn);
   btn.addEventListener('click', () => {
     const panel = $('#panel');
@@ -13594,3 +13599,10 @@ function markChanged() {
     if (!panel.hidden) markChanged();
   }).observe(panel, { attributes: true, attributeFilter: ['hidden'] });
 })();
+
+
+/* «Sólo lo ves vos» quedó como un ojito: el texto va de cartelito al pasar el mouse. */
+document.addEventListener('mouseover', (e) => {
+  const tag = e.target.closest && e.target.closest('.sec__head .tag[data-i18n="skin.tag"]');
+  if (tag && tag.title !== tag.textContent) { tag.title = tag.textContent; tag.setAttribute('aria-label', tag.textContent); }
+});
