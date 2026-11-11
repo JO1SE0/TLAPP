@@ -1326,33 +1326,43 @@
           <section class="sec" data-sec="jugador">
             <header class="sec__head"><h2 class="sec__title" data-i18n="group.yourPlayer">Tu jugador</h2></header>
             <div class="sec__body">
-              <div class="row">
-                <div class="row__text">
-                  <span class="row__label" data-i18n="settings.name">Tu nombre</span>
-                  <span class="row__desc" data-i18n="settings.nameHint">Se guarda en HaxBall.</span>
+              <!-- Ficha: a la izquierda tu disco como se ve en la cancha (nombre
+                   arriba, avatar adentro); a la derecha lo que lo cambia. Las
+                   filas siguen siendo filas: buscador y favoritos las ven igual. -->
+              <div class="pcard">
+                <div class="pcard__pitch" aria-hidden="true">
+                  <span class="pcard__nick" id="pcardNick"></span>
+                  <span class="pcard__disc"><span class="avatarpreview" id="avatarPreview">—</span></span>
                 </div>
-                <div class="row__ctl">
-                  <input type="text" id="nickname" maxlength="25" data-i18n-placeholder="nick.placeholder" placeholder="Tu nombre" />
-                </div>
-              </div>
-
-              <div class="row">
-                <div class="row__text">
-                  <span class="row__label" data-i18n="flag.title">Tu bandera<i class="hint" tabindex="0" data-hint="flag.help" aria-label="Más información">i</i></span>
-                </div>
-                <div class="row__ctl flagrow">
-                  <span class="flagrow__flag" id="countryFlag"></span>
-                  <select id="countrySelect"></select>
-                </div>
-              </div>
-
-              <div class="row">
-                <div class="row__text">
-                  <span class="row__label" data-i18n="avatar.static">Avatar<i class="hint" tabindex="0" data-hint="avatar.help" aria-label="Más información">i</i></span>
-                </div>
-                <div class="row__ctl">
-                  <div class="avatarpreview" id="avatarPreview">—</div>
-                  <input type="text" id="avatarStatic" maxlength="2" spellcheck="false" placeholder="⚽" />
+                <div class="pcard__fields">
+                  <div class="row pcard__row pcard__row--name">
+                    <div class="row__text">
+                      <span class="row__label" data-i18n="settings.name">Tu nombre</span>
+                      <span class="row__desc" data-i18n="settings.nameHint">Se guarda en HaxBall.</span>
+                    </div>
+                    <div class="row__ctl">
+                      <input type="text" id="nickname" maxlength="25" data-i18n-placeholder="nick.placeholder" placeholder="Tu nombre" />
+                    </div>
+                  </div>
+                  <div class="pcard__pair">
+                    <div class="row pcard__row">
+                      <div class="row__text">
+                        <span class="row__label" data-i18n="flag.title">Tu bandera<i class="hint" tabindex="0" data-hint="flag.help" aria-label="Más información">i</i></span>
+                      </div>
+                      <div class="row__ctl flagrow">
+                        <span class="flagrow__flag" id="countryFlag"></span>
+                        <select id="countrySelect"></select>
+                      </div>
+                    </div>
+                    <div class="row pcard__row">
+                      <div class="row__text">
+                        <span class="row__label" data-i18n="avatar.static">Avatar<i class="hint" tabindex="0" data-hint="avatar.help" aria-label="Más información">i</i></span>
+                      </div>
+                      <div class="row__ctl">
+                        <input type="text" id="avatarStatic" maxlength="2" spellcheck="false" placeholder="⚽" />
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
 

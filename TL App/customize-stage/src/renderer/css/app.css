@@ -7523,3 +7523,144 @@ html:not([data-glass="on"]) :is(#app[data-view="ajustes"], #app[data-view="aspec
    responde al clic llega a 28 px (antes 20×17 y 23×14: costaba acertarles). */
 .rrow__fav, .favstar { position: relative; }
 .rrow__fav::after, .favstar::after { content: ''; position: absolute; left: 50%; top: 50%; width: 28px; height: 28px; transform: translate(-50%, -50%); }
+
+/* ═══ Tu jugador: la ficha ═══
+   A la izquierda un pedazo de cancha con tu disco como lo ve la sala (nombre
+   arriba, avatar adentro); a la derecha lo que lo cambia. Todo estático: ni
+   animación ni filtros, no cuesta nada. */
+.pcard {
+  display: grid;
+  grid-template-columns: 200px minmax(0, 1fr);
+  gap: 18px;
+  align-items: stretch;
+  margin-bottom: 10px;
+}
+.pcard__pitch {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 176px;
+  border-radius: 16px;
+  overflow: hidden;
+  background:
+    linear-gradient(90deg, transparent 49.6%, rgb(255 255 255 / 30%) 49.6%, rgb(255 255 255 / 30%) 50.4%, transparent 50.4%),
+    repeating-linear-gradient(90deg, #718c5a 0 34px, #6a8655 34px 68px);
+  box-shadow: inset 0 0 0 1px rgb(0 0 0 / 25%), 0 14px 30px -20px rgb(0 0 0 / 80%);
+}
+/* El círculo central, cortado por los bordes como en la cancha. */
+.pcard__pitch::before {
+  content: "";
+  position: absolute;
+  left: 50%; top: 50%;
+  width: 150px; height: 150px;
+  margin: -75px 0 0 -75px;
+  border-radius: 50%;
+  border: 2px solid rgb(255 255 255 / 30%);
+}
+.pcard__nick {
+  position: relative;
+  max-width: 90%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font);
+  font-size: 15px;
+  font-weight: 800;
+  color: #fff;
+  text-shadow: 0 1px 0 rgb(0 0 0 / 55%);
+}
+.pcard__nick.is-empty { opacity: .55; font-weight: 600; }
+.pcard__disc {
+  position: relative;
+  width: 78px; height: 78px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: #e56e56;
+  box-shadow: 0 0 0 4px #000, 0 0 0 11px rgb(255 255 255 / 22%);
+}
+.pcard .avatarpreview {
+  width: 100%; height: 100%;
+  border: 0;
+  background: none;
+  font-size: 34px;
+  color: #fff;
+  font-weight: 800;
+  text-shadow: 0 1px 0 rgb(0 0 0 / 35%);
+}
+/* Sin avatar el disco va liso, igual que en el juego. */
+.pcard .avatarpreview.is-empty { font-size: 0; }
+
+.pcard__fields { min-width: 0; display: flex; flex-direction: column; gap: 10px; justify-content: center; }
+.pcard__pair { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 10px; }
+.pcard .pcard__row {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  min-height: 0;
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid rgb(var(--text-rgb) / 9%);
+  background: rgb(var(--text-rgb) / 4%);
+}
+.pcard .pcard__row::before, .pcard .pcard__row::after { display: none; }
+.pcard .pcard__row .row__ctl { width: 100%; justify-content: flex-start; }
+.pcard .pcard__row .row__ctl > input, .pcard .pcard__row .row__ctl > select { width: 100%; max-width: none; }
+#panel .pcard .pcard__row .row__label { font-size: 10.5px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: var(--text-dim); }
+#panel .pcard .pcard__row--name .row__desc { font-size: 11.5px; color: var(--text-faint); }
+/* El nombre es lo que más se toca: campo grande, como un título. */
+#panel .pcard #nickname {
+  height: 46px;
+  padding: 0 14px;
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: -.01em;
+}
+#panel .pcard #avatarStatic { height: 34px; text-align: center; font-size: 18px; font-family: "Segoe UI Emoji", "Segoe UI Symbol", var(--font); }
+
+@media (max-width: 1100px) {
+  .pcard { grid-template-columns: 160px minmax(0, 1fr); gap: 14px; }
+  .pcard__pitch::before { width: 120px; height: 120px; margin: -60px 0 0 -60px; }
+}
+
+/* ═══ Vista previa flotante (Personalización › Cancha y Fichas) ═══
+   Vive en la esquina de abajo a la derecha de la ventana del panel, encima de
+   las opciones; con «–» queda una pestañita. Las opciones ganan relleno abajo
+   para que la última fila nunca quede tapada. */
+.panel__card > #pv {
+  position: absolute;
+  top: auto;
+  right: 20px;
+  bottom: 20px;
+  z-index: 12;
+  width: clamp(280px, 27vw, 400px);
+  margin: 0;
+  padding: 8px 10px 10px;
+  border-radius: 14px;
+  box-shadow: 0 18px 40px -8px rgb(0 0 0 / 60%), 0 0 0 1px rgb(var(--text-rgb) / 6%);
+}
+.panel__card > #pv .pv__head { align-items: center; gap: 10px; margin-bottom: 7px; cursor: pointer; user-select: none; }
+.panel__card > #pv .pv__head small { flex: 1; min-width: 0; text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pv__min {
+  flex: none;
+  width: 24px; height: 22px;
+  display: grid; place-items: center;
+  padding: 0;
+  border: 1px solid var(--line-hi);
+  border-radius: 7px;
+  background: rgb(var(--text-rgb) / 7%);
+  color: var(--text);
+  font: 700 14px/1 var(--font);
+  cursor: pointer;
+}
+.pv__min:hover { background: rgb(var(--text-rgb) / 14%); }
+.panel__card > #pv.is-min { width: auto; padding: 6px 8px 6px 12px; }
+.panel__card > #pv.is-min .pv__head { margin: 0; }
+.panel__card > #pv.is-min .pv__head small, .panel__card > #pv.is-min canvas { display: none; }
+.panel.has-pv .page[data-page="aspecto"] .page__inner { padding-bottom: calc(clamp(280px, 27vw, 400px) / 2.4 + 90px); }
+.panel.has-pv.pv-min .page[data-page="aspecto"] .page__inner { padding-bottom: 76px; }

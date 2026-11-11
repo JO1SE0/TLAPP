@@ -914,12 +914,47 @@ function paintPreview() {
     && ['cancha', 'fichas'].includes(currentTab('aspecto'))
     && !(panel && panel.classList.contains('is-searching'));
   box.hidden = !on;
+  if (panel) panel.classList.toggle('has-pv', on);
   if (!on || !window.TLPreview || !state.config) return;
   cancelAnimationFrame(previewFrame);
   previewFrame = requestAnimationFrame(() => {
     try { window.TLPreview.draw(document.getElementById('pvCanvas'), state.config); } catch (e) { box.hidden = true; }
   });
 }
+
+/* La vista previa flota en la esquina de abajo a la derecha de la ventana de
+   Personalización, en vez de ocupar todo el ancho arriba de las opciones. Se
+   puede achicar a una pestañita; eso se recuerda en esta PC. */
+(function floatPreview() {
+  const box = document.getElementById('pv');
+  const card = $('#panel .panel__card');
+  if (!box || !card) return;
+  card.append(box);
+  const head = $('.pv__head', box);
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'pv__min';
+  head.append(btn);
+  const set = (min) => {
+    box.classList.toggle('is-min', min);
+    card.closest('.panel').classList.toggle('pv-min', min);
+    btn.textContent = min ? '+' : '–';
+    const label = min ? (isEn() ? 'Show preview' : 'Mostrar vista previa') : (isEn() ? 'Hide preview' : 'Achicar vista previa');
+    btn.title = label;
+    btn.setAttribute('aria-label', label);
+  };
+  let min = false;
+  // El texto del botón sigue al idioma aunque se cambie con el panel abierto.
+  btn.addEventListener('mouseenter', () => set(min));
+  try { min = localStorage.getItem('tl_pv_min') === '1'; } catch (e) {}
+  set(min);
+  head.addEventListener('click', () => {
+    min = !min;
+    set(min);
+    try { localStorage.setItem('tl_pv_min', min ? '1' : '0'); } catch (e) {}
+    if (!min) paintPreview();
+  });
+})();
 
 /**
  * El tema ya no vive sólo dentro del juego: el main resuelve la paleta y manda
@@ -8944,6 +8979,7 @@ $('#countrySelect').addEventListener('change', async (e) => {
 function renderSettings() {
   const lang = isEn() ? 'en' : 'es';
   $('#nickname').value = state.config.general.nickname;
+  paintCardNick();
   $('#langSelect').value = state.config.appearance.language || 'es';
   
   // La lista, la opción elegida y las casillas del tamaño a mano salen todas
@@ -9532,6 +9568,15 @@ $('#resCustomApply').addEventListener('click', async (e) => {
   await patchConfig({ general: { resolution: `${fixed.w}x${fixed.h}` } });
   if (state.applyResolution) await state.applyResolution();
 });
+
+/* El nombre arriba del disco de la ficha, como en la cancha: sigue lo que se
+   va escribiendo, aunque se guarde recién al salir del campo. */
+function paintCardNick() {
+  const v = $('#nickname').value.trim();
+  $('#pcardNick').textContent = v || (isEn() ? 'Your name' : 'Tu nombre');
+  $('#pcardNick').classList.toggle('is-empty', !v);
+}
+$('#nickname').addEventListener('input', paintCardNick);
 
 $('#nickname').addEventListener('change', async (e) => {
   await patchConfig({ general: { nickname: e.target.value.trim() } });
