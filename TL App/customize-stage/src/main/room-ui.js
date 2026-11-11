@@ -397,6 +397,24 @@ function css(p, opts = {}) {
    de las insignias se mete entre el nombre y el ping: como el nombre se
    lleva todo el ancho, quedan contra el borde derecho y alineadas entre
    todas las filas. */
+/* El avatar del jugador, al lado del nombre: un disquito como el de la
+   cancha. Hermano del nombre, nunca adentro (ver las insignias). */
+.player-list-item .tvm-av {
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  width: 20px; height: 20px;
+  margin: 0 6px 0 2px;
+  border-radius: 50%;
+  background: ${rgba(p.text, light ? 0.1 : 0.12)};
+  box-shadow: inset 0 0 0 1px ${rgba(p.text, light ? 0.16 : 0.18)};
+  color: ${p.text};
+  font: 700 10.5px/1 "Segoe UI Emoji", "Segoe UI Symbol", sans-serif;
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+  overflow: hidden;
+  vertical-align: middle;
+}
 .player-list-item .tvm-marks {
   flex: none;
   display: inline-flex;

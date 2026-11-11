@@ -1097,7 +1097,7 @@ function patchSelf(source) {
     // el aviso llegaría un cuadro tarde y siempre con la respuesta anterior.
     return full.replace(
       new RegExp(`${L}\\.${A}\\(\\s*${z}\\s*,\\s*${sala}\\s*\\)\\s*;$`),
-      `${L}.__tvmMine=null!=this.__tvmMe?${z}===this.__tvmMe:null;${L}.${A}(${z},${sala});`
+      `${L}.__tvmMine=null!=this.__tvmMe?${z}===this.__tvmMe:null;${L}.__tvmP=${z};${L}.${A}(${z},${sala});`
     );
   });
 

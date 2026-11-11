@@ -4273,7 +4273,6 @@ $('#restartNow').addEventListener('click', async () => {
    ══════════════════════════════════════════════════════════ */
 const ACCENTS = ['#7B3FE4', '#9B5CFF', '#5B2BC4', '#B14CFF', '#4F46E5', '#00C2A8', '#FF4D6D', '#F0A422'];
 
-const AVATAR_PRESETS = ['⚽', '🔥', '⭐', '💀', '👑', '🐐', '🚀', '🧊', '⚡', '🍀', '🎯', '😎'];
 
 /*
  * «Fondo animado» se fue: ya no hay ningún fondo que animar. Los blobs estaban
@@ -6402,17 +6401,6 @@ function renderAvatar() {
   $('#avatarSpeedValue').textContent = `${avatar.intervalMs || 700} ms`;
   syncRangeFill($('#avatarSpeed'));
   paintAvatarPreview();
-
-  const presets = $('#avatarPresets');
-  presets.replaceChildren();
-  for (const emoji of AVATAR_PRESETS) {
-    const button = document.createElement('button');
-    button.type = 'button';
-    button.className = 'emojibtn';
-    button.textContent = emoji;
-    button.addEventListener('click', () => setStaticAvatar(emoji));
-    presets.append(button);
-  }
 
   buildSwitches($('#avatarSwitch'), [{
     ...AVATAR_SWITCH[lang],

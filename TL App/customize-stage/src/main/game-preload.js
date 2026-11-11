@@ -1199,7 +1199,10 @@ function onNewGameDocument(doc) {
    * disco. Se cuelga de la ventana del JUEGO, que es donde corre el bundle.
    */
   if (doc.defaultView) {
-    doc.defaultView.__tvmAvatar = (obj, texto, prop) => safe(onAvatarTexture, obj, texto, prop);
+    doc.defaultView.__tvmAvatar = (obj, texto, prop) => {
+      if (obj && obj.__tvmP && !avatarFieldSure) safe(learnAvatarField, obj.__tvmP, texto);
+      safe(onAvatarTexture, obj, texto, prop);
+    };
     /*
      * Llega un instante antes que el anterior, con la textura todavía en
      * blanco, y es el único momento en que se sabe de quién es antes de que el
@@ -3894,6 +3897,7 @@ function watchRoomPanel(doc) {
     // La lista se rehace sola cuando entra o sale gente: las marcas se vuelven
     // a poner acá, y no cuando llega el latido, que es cada treinta segundos.
     safe(paintPeers, doc);
+    safe(paintRowAvatars, doc);
   };
 
   /*
@@ -3927,6 +3931,7 @@ function watchRoomPanel(doc) {
     }
     if (records.some(changesPlayerList)) {
       safe(paintPeers, doc);
+      safe(paintRowAvatars, doc);
       safe(injectPlayerActions, doc);
       // Puede haber entrado alguien con el cliente: `peers` es de la respuesta
       // del latido anterior y no lo incluye todavía.
@@ -3964,6 +3969,7 @@ function watchRoomPanel(doc) {
       // Sólo con la sala a la vista: jugando no hay lista que repintar, y esto
       // corre en el proceso del juego mientras se está jugando.
       safe(paintPeers, doc);
+      safe(paintRowAvatars, doc);
     }
     roomPollTimer = setTimeout(tick, 1000);
   };
@@ -5187,6 +5193,89 @@ function paintPeers(doc) {
  *
  * @returns {{logo: Element, vip: Element, friend: Element}|null}
  */
+/* ── El avatar de cada jugador en la lista de la sala ──────────────── *
+ *
+ * HaxBall sabe el avatar de todos (lo dibuja en los discos) pero no lo muestra
+ * en la lista. Acá se pone al lado del nombre.
+ *
+ * El dato vive en el objeto del jugador, en un campo con nombre minificado que
+ * cambia entre versiones del bundle. Se aprende solo, comparando un texto de
+ * avatar conocido contra los campos del jugador dueño:
+ *   · el tuyo, en la sala: tu nombre + el avatar que HaxBall tiene guardado;
+ *   · el de cualquiera, jugando: el texto que se escribe en la textura de su
+ *     disco junto con su jugador (ver `__tvmP` en game-patch.js).
+ * Sólo se acepta si encaja en UN campo: con dos (alguien llamado «SG» con avatar
+ * «SG») no se adivina. Lo aprendido se guarda para la próxima vez.
+ *
+ * Corre en las mismas pasadas que las insignias: con la sala a la vista, nunca
+ * jugando.
+ */
+const AVATAR_FIELD_KEY = 'tvm_avatar_field';
+let avatarField = null;
+let avatarFieldSure = false;
+try { avatarField = localStorage.getItem(AVATAR_FIELD_KEY) || null; } catch { /* sin storage */ }
+
+function learnAvatarField(player, text) {
+  if (!player || typeof player !== 'object' || typeof text !== 'string' || !text) return;
+  let found = null;
+  for (const k of Object.keys(player)) {
+    if (player[k] !== text) continue;
+    if (found) return;
+    found = k;
+  }
+  if (!found) return;
+  avatarFieldSure = true;
+  if (found === avatarField) return;
+  avatarField = found;
+  try { localStorage.setItem(AVATAR_FIELD_KEY, found); } catch { /* sin storage */ }
+}
+
+function paintRowAvatars(doc) {
+  const room = real.room || tracker.room;
+  const f = tracker.fields || (doc.defaultView && doc.defaultView.__tvmF);
+  const players = room && f && f.players && f.name ? room[f.players] : null;
+  const rows = playerRows(doc);
+  if (!players || !rows.length) return;
+
+  const byName = new Map();
+  for (let i = 0; i < players.length; i++) {
+    const n = String(players[i][f.name] || '');
+    if (n && !byName.has(n)) byName.set(n, players[i]);
+  }
+
+  if (!avatarFieldSure) {
+    const me = byName.get(myNick());
+    const face = String(readStorage(haxball.AVATAR_KEY) || '');
+    if (me && face) learnAvatarField(me, face);
+  }
+  // Un campo guardado de otra versión del bundle: si apunta a algo que no es
+  // texto, se olvida y no se pinta nada hasta volver a aprenderlo.
+  if (avatarField && !avatarFieldSure) {
+    for (const p of byName.values()) {
+      const v = p[avatarField];
+      if (v != null && typeof v !== 'string') { avatarField = null; break; }
+    }
+  }
+
+  for (const row of rows) {
+    const name = row.querySelector('[data-hook="name"]');
+    if (!name) continue;
+    const player = byName.get((name.textContent || '').trim());
+    const face = avatarField && player ? player[avatarField] : null;
+    let chip = row.querySelector('.tvm-av');
+    if (typeof face !== 'string' || !face) {
+      if (chip) chip.remove();
+      continue;
+    }
+    if (!chip) {
+      chip = doc.createElement('span');
+      chip.className = 'tvm-av';
+      name.before(chip);
+    }
+    if (chip.textContent !== face) chip.textContent = face;
+  }
+}
+
 function ensureMarks(doc, row, wanted) {
   let box = row.querySelector('.tvm-marks');
   if (!wanted) {
