@@ -990,11 +990,16 @@ var pvLayout = () => {};
   const layout = () => {
     const nav = $('#panelNav');
     const navW = nav && nav.offsetParent ? nav.offsetWidth : 0;
-    const free = card.clientWidth - navW - 48 - 820 - 40 - 32;
-    const docked = free >= 380;
+    // Ancho para opciones + vista previa: se reparte 55/45 y se usa todo.
+    const room = card.clientWidth - navW - 40 - 32 - 32;
+    const pvW = Math.floor(Math.min(1000, room * 0.45));
+    const docked = pvW >= 380 && room - pvW >= 640;
     box.classList.toggle('is-docked', docked);
     panel.classList.toggle('pv-docked', docked);
-    if (docked) card.style.setProperty('--pv-w', `${Math.min(900, Math.floor(free))}px`);
+    if (docked) {
+      card.style.setProperty('--pv-w', `${pvW}px`);
+      card.style.setProperty('--pv-cw', `${Math.floor(room - pvW)}px`);
+    }
   };
   const set = (m) => {
     min = m;

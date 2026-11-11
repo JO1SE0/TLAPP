@@ -8261,8 +8261,9 @@ html[data-layout="comando"] :is(#app[data-view="ajustes"], #app[data-view="aspec
 #app .panel.pv-docked.has-pv .page[data-page="aspecto"] .page__inner {
   margin-left: 0;
   margin-right: auto;
-  max-width: 868px;
-  padding-left: 48px;
+  max-width: calc(var(--pv-cw, 820px) + 40px);
+  padding-left: 40px;
+  padding-right: 0;
   padding-bottom: 64px;
 }
 /* Vistas sueltas de tu ficha y de la pelota (sólo en «Fichas y pelota»). */
