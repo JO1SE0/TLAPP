@@ -11,6 +11,7 @@ window.TL_NEWS = {
   title: { es: 'Qué hay de nuevo', en: "What's new" },
   items: {
     es: [
+      'Interfaz nueva: «Vitrina». El menú es un riel flotante de íconos (el nombre de cada lugar aparece al pasar el mouse), las salas se ven en tarjetas grandes con su medidor de cupo, arriba te saluda y abajo una barra te dice qué sala elegiste y tiene Entrar, Auto-entrar y Crear sala. Todo lo demás sigue donde estaba: dentro de una sala el riel se guarda y vuelve al acercar el mouse al borde izquierdo, la barra de arriba baja sola en pantalla completa, y amigos, perfil, música y avisos andan igual. Si preferís la de antes, está en Personalización → Interfaz → Clásica, junto con las otras.',
       'Auto-entrar ahora insiste: la lista de HaxBall llega con unos segundos de atraso, así que muchas veces el lugar «libre» ya estaba ocupado, la sala contestaba «llena» y el auto-entrar se daba por terminado con ese único intento. Ahora, si no pudo entrar, vuelve a la lista y sigue mirando cada 3 segundos hasta estar adentro (o hasta que lo apagues).',
       'Nombres en tiempo real: cambiar el color, el tamaño, el contorno o la fuente de los nombres se ve al instante en la cancha, sin esperar a que cada jugador salga y vuelva a entrar.',
       'Goles sin tirón: el destello de gol y el festejo del club ya no recalculan sombras difuminadas en el cuadro del gol (eran la mitad del tirón, medido); los resplandores ahora son degradés y los rayos de luz se dibujan una sola vez. Se ve igual.',
@@ -143,6 +144,7 @@ window.TL_NEWS = {
       'Cada clave se usa en una sola PC: si cambiás de computadora, pedile a miclo que te la libere.'
     ],
     en: [
+      'New interface: “Showcase”. The menu is a floating icon rail (each name shows on hover), rooms are big cards with a fill meter, a greeting sits on top and a bottom bar tells you which room you picked and holds Join, Auto-join and Create room. Everything else stays put: in a room the rail tucks away and comes back when you move the mouse to the left edge, the top bar drops down by itself in full screen, and friends, profile, music and notices work the same. If you prefer the old one, it is in Customization → Interface → Classic, with the others.',
       'Auto-join now keeps trying: the HaxBall list is a few seconds late, so the “free” slot was often already taken, the room answered “full” and auto-join gave up after that single attempt. Now, if it could not get in, it goes back to the list and keeps checking every 3 seconds until you are in (or you turn it off).',
       'Names in real time: changing the colour, size, outline or font of player names shows instantly on the pitch, without waiting for each player to leave and rejoin.',
       'Goals without the hitch: the goal flash and the club celebration no longer recompute blurred shadows on the goal frame (measured: half of the hitch); glows are gradients now and the light rays are drawn once. Looks the same.',

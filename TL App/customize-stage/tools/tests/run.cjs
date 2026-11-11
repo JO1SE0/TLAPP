@@ -27,11 +27,12 @@ const tidy = ';setInterval(()=>{for(const s of ["#news","#backcard"]){const e=do
 const results = [];
 const check = (name, ok, detail) => { results.push({ name, ok: !!ok, detail }); console.log(`${ok ? 'OK  ' : 'FALLA'} ${name}${detail ? ' — ' + detail : ''}`); };
 
-async function open(browser) {
+async function open(browser, layout) {
   const p = await browser.newPage({ viewport: { width: 1280, height: 800 } });
   const errs = [];
   p.on('pageerror', (e) => errs.push(e.message));
-  await p.addInitScript({ content: fixture + mock + tidy });
+  const cfg = layout ? fixture.replace(/"layout":"[a-z]*"/, `"layout":"${layout}"`) : fixture;
+  await p.addInitScript({ content: cfg + mock + tidy });
   await p.goto(page);
   await p.waitForTimeout(1500);
   await p.evaluate(() => { const s = document.querySelector('#splash'); if (s) s.remove(); document.querySelector('#startForm').requestSubmit(); });
@@ -64,6 +65,31 @@ async function open(browser) {
       return [...new Set(out)];
     });
     check('botones con nombre', unnamed.length === 0, unnamed.join(', '));
+    await p.close();
+  }
+
+  // 5 · Interfaz «Vitrina»: tarjetas altas, saludo, y el riel no tapa los paneles
+  {
+    const { p, errs } = await open(browser, 'vitrina');
+    const v = await p.evaluate(() => {
+      const row = document.querySelector('#roomList .rrow');
+      const hero = document.querySelector('#vHero');
+      return { view: document.documentElement.dataset.roomview, h: row ? row.offsetHeight : 0, hero: !!(hero && hero.offsetParent), hi: document.querySelector('#vHeroHi').textContent };
+    });
+    check('vitrina: salas en tarjetas con saludo', v.view === 'cards' && v.h === 136 && v.hero && /Jefe/.test(v.hi), JSON.stringify(v));
+    await p.evaluate(() => { document.querySelector('#roomList .rrow').click(); });
+    await p.waitForTimeout(200);
+    const sel = await p.evaluate(() => document.querySelector('#vSelName').textContent);
+    check('vitrina: la barra de abajo nombra la sala elegida', sel.length > 3 && !/Eleg/.test(sel), sel);
+    await p.evaluate(() => document.querySelector('#rail [data-view="ajustes"]').click());
+    await p.waitForTimeout(600);
+    const gap = await p.evaluate(() => document.querySelector('.panel__card').getBoundingClientRect().left - document.querySelector('.rail').getBoundingClientRect().right);
+    check('vitrina: el riel no tapa el panel', gap >= 8, `separación ${Math.round(gap)} px`);
+    await p.evaluate(() => { onGameView('room'); });
+    await p.waitForTimeout(600);
+    const hidden = await p.evaluate(() => document.querySelector('.rail').getBoundingClientRect().right);
+    check('vitrina: en la sala el riel se guarda', hidden <= 0, `borde derecho ${Math.round(hidden)}`);
+    check('vitrina sin errores', errs.length === 0, errs.join(' | '));
     await p.close();
   }
 
