@@ -926,6 +926,19 @@ function applyConfig(config) {
  * al cambiar de solapa; fuera de esas dos solapas se esconde.
  */
 let previewFrame = 0;
+/* «Comparar»: mientras se mantiene apretado, la vista previa muestra todo
+   de fábrica para ver de un vistazo qué cambiaste. Tu apodo y tu avatar se
+   quedan, que no son «estilo». */
+let pvCompare = false;
+function factoryLook() {
+  const def = state.schema && state.schema.defaults;
+  if (!def) return state.config;
+  const out = JSON.parse(JSON.stringify(def));
+  const c = state.config || {};
+  out.general = Object.assign({}, out.general, { nickname: c.general && c.general.nickname });
+  out.avatar = Object.assign({}, out.avatar, c.avatar);
+  return out;
+}
 function paintPreview() {
   const box = document.getElementById('pv');
   if (!box) return;
@@ -944,6 +957,9 @@ function paintPreview() {
   markChanged();
   if (!on || !window.TLPreview || !state.config) return;
   cancelAnimationFrame(previewFrame);
+  // Con «Comparar» apretado se dibuja lo de fábrica (con tu apodo y tu avatar).
+  const cfg = pvCompare ? factoryLook() : state.config;
+  box.classList.toggle('is-comparing', pvCompare);
   // En «Fichas y pelota» además van tu ficha y la pelota de cerca, cada una
   // con su cámara: misma escena, dibujada a su tamaño (no un recorte estirado).
   const solo = currentTab('aspecto') === 'fichas';
@@ -958,11 +974,11 @@ function paintPreview() {
       const cv = document.getElementById('pvCanvas');
       const tall = solo ? 500 : 620;
       if (cv.height !== tall) cv.height = tall;
-      window.TLPreview.draw(cv, state.config, solo ? undefined : { w: 690, cx: 0 });
+      window.TLPreview.draw(cv, cfg, solo ? undefined : { w: 690, cx: 0 });
       const spots = window.TLPreview.SPOTS;
       if (solo && spots) {
-        window.TLPreview.draw(document.getElementById('pvMe'), state.config, { w: 96, cx: spots.me.x, cy: spots.me.y - 8 });
-        window.TLPreview.draw(document.getElementById('pvBall'), state.config, { w: 56, cx: spots.ball.x, cy: spots.ball.y });
+        window.TLPreview.draw(document.getElementById('pvMe'), cfg, { w: 96, cx: spots.me.x, cy: spots.me.y - 8 });
+        window.TLPreview.draw(document.getElementById('pvBall'), cfg, { w: 56, cx: spots.ball.x, cy: spots.ball.y });
       }
     } catch (e) { box.hidden = true; }
   });
@@ -987,6 +1003,31 @@ var pvLayout = () => {};
   const btn = document.createElement('button');
   btn.type = 'button';
   btn.className = 'pv__min';
+  // «Comparar»: apretado = de fábrica; al soltar vuelve a lo tuyo.
+  const cmp = document.createElement('button');
+  cmp.type = 'button';
+  cmp.className = 'pv__cmp';
+  const cmpLabel = () => {
+    const en = isEn();
+    cmp.textContent = en ? 'Compare' : 'Comparar';
+    cmp.title = en ? 'Hold to see the factory look' : 'Mantené apretado para ver cómo era de fábrica';
+  };
+  cmpLabel();
+  const cmpSet = (on) => {
+    if (pvCompare === on) return;
+    pvCompare = on;
+    cmp.classList.toggle('is-on', on);
+    cmpLabel();
+    if (on) cmp.textContent = isEn() ? 'Factory' : 'De fábrica';
+    paintPreview();
+  };
+  cmp.addEventListener('pointerdown', (e) => { e.preventDefault(); try { cmp.setPointerCapture(e.pointerId); } catch (_) {} cmpSet(true); });
+  for (const ev of ['pointerup', 'pointercancel', 'lostpointercapture']) cmp.addEventListener(ev, () => cmpSet(false));
+  cmp.addEventListener('keydown', (e) => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); cmpSet(true); } });
+  cmp.addEventListener('keyup', () => cmpSet(false));
+  cmp.addEventListener('blur', () => cmpSet(false));
+  cmp.addEventListener('click', (e) => e.stopPropagation());
+  head.append(cmp);
   head.append(btn);
   try { localStorage.removeItem('tl_pv_spot'); } catch (e) { /* sin storage */ }
   let min = false;
@@ -1121,10 +1162,116 @@ async function refreshThemeVars() {
 }
 
 async function patchConfig(patch) {
+  recordUndo(patch);
   const next = await guard(tvm.config.set(patch), 'Error');
   if (next) applyConfig(next);
   return next;
 }
+
+/* ═══ Deshacer (Personalización y Configuración) ═══════════════════════
+ * Antes de cada cambio hecho desde el panel se arma el «patch al revés» con
+ * los valores que había. Los cambios seguidos (arrastrar una barra) se juntan
+ * en uno solo si pasan menos de 0,8 s entre sí. Ctrl+Z o el botón flotante
+ * deshacen el último. Hasta 20 pasos; nada de esto corre jugando.
+ */
+const undoStack = [];
+let undoBusy = false;
+let undoLast = 0;
+function undoClone(v) { return v === undefined ? undefined : JSON.parse(JSON.stringify(v)); }
+function undoInverse(patch, cur, def) {
+  const out = {};
+  for (const k of Object.keys(patch)) {
+    const pv = patch[k];
+    if (pv && typeof pv === 'object' && !Array.isArray(pv)) {
+      out[k] = undoInverse(pv, cur ? cur[k] : undefined, def ? def[k] : undefined);
+    } else if (cur && typeof cur === 'object' && k in cur) {
+      out[k] = undoClone(cur[k]);
+    } else if (def && typeof def === 'object' && k in def) {
+      out[k] = undoClone(def[k]);
+    } else {
+      out[k] = null;
+    }
+  }
+  return out;
+}
+function undoMergeKeep(base, extra) {
+  for (const k of Object.keys(extra)) {
+    if (!(k in base)) base[k] = extra[k];
+    else if (base[k] && typeof base[k] === 'object' && !Array.isArray(base[k]) && extra[k] && typeof extra[k] === 'object') undoMergeKeep(base[k], extra[k]);
+  }
+  return base;
+}
+function recordUndo(patch) {
+  if (undoBusy || !state.config || !patch || typeof patch !== 'object') return;
+  const panel = $('#panel');
+  if (!panel || panel.hidden || !['aspecto', 'ajustes'].includes(state.view)) return;
+  if (patch.vip && ('discord' in patch.vip || '__replace' in patch.vip)) return;
+  const defs = (state.schema && state.schema.defaults) || null;
+  const inv = undoInverse(patch, state.config, defs);
+  const now = Date.now();
+  if (undoStack.length && now - undoLast < 800) undoMergeKeep(undoStack[undoStack.length - 1], inv);
+  else { undoStack.push(inv); if (undoStack.length > 20) undoStack.shift(); }
+  undoLast = now;
+  showUndoPill();
+}
+async function undoLastChange() {
+  const inv = undoStack.pop();
+  if (!inv) return;
+  undoBusy = true;
+  try {
+    const next = await guard(tvm.config.set(inv), 'Error');
+    if (next) {
+      applyConfig(next);
+      // Los controles se dibujan una vez y sólo se repintan con su propio clic:
+      // para que muestren el valor vuelto atrás se arma todo de nuevo, como al
+      // importar. Se guarda el scroll para que no salte arriba.
+      const sc = $('.page:not([hidden]) .page__inner') || $('.page:not([hidden])');
+      const top = sc ? sc.scrollTop : 0;
+      try { await refreshThemeVars(); } catch (e) { /* sin variables nuevas */ }
+      renderAll();
+      if (sc) sc.scrollTop = top;
+    }
+  } finally {
+    undoBusy = false;
+  }
+  if (undoStack.length) showUndoPill(); else hideUndoPill();
+}
+let undoPillTimer = 0;
+function undoPill() {
+  let el = document.getElementById('undoPill');
+  if (el) return el;
+  el = document.createElement('div');
+  el.id = 'undoPill';
+  el.className = 'undopill';
+  el.innerHTML = '<span></span><button type="button" class="btn btn--sm"></button>';
+  el.querySelector('button').addEventListener('click', undoLastChange);
+  const card = $('#panel .panel__card');
+  (card || document.body).append(el);
+  return el;
+}
+function showUndoPill() {
+  const el = undoPill();
+  const en = isEn();
+  el.querySelector('span').textContent = en ? 'Setting changed' : 'Ajuste cambiado';
+  el.querySelector('button').textContent = en ? 'Undo · Ctrl+Z' : 'Deshacer · Ctrl+Z';
+  el.classList.add('is-on');
+  clearTimeout(undoPillTimer);
+  undoPillTimer = setTimeout(hideUndoPill, 6000);
+}
+function hideUndoPill() {
+  const el = document.getElementById('undoPill');
+  if (el) el.classList.remove('is-on');
+}
+document.addEventListener('keydown', (e) => {
+  if (!(e.ctrlKey || e.metaKey) || e.shiftKey || e.altKey || e.key.toLowerCase() !== 'z') return;
+  const panel = $('#panel');
+  if (!panel || panel.hidden || !['aspecto', 'ajustes'].includes(state.view)) return;
+  const tag = (e.target && e.target.tagName) || '';
+  if (/^(INPUT|TEXTAREA)$/.test(tag) && e.target.type !== 'range' && e.target.type !== 'checkbox') return;
+  if (!undoStack.length) return;
+  e.preventDefault();
+  undoLastChange();
+});
 
 /* ══════════════════════════════════════════════════════════
    Fábrica de filas

@@ -8334,3 +8334,41 @@ html[data-layout="comando"] :is(#app[data-view="ajustes"], #app[data-view="aspec
 html[data-lowend="on"] .panel__scrim, html[data-animations="off"] .panel__scrim { -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
 .badge.badge--warn { color: var(--warn); background: rgb(var(--warn-rgb) / 14%); border-color: rgb(var(--warn-rgb) / 35%); }
 #authNew svg[data-icon] { width: 14px; height: 14px; }
+
+/* Deshacer flotante del panel. */
+.undopill {
+  position: absolute;
+  left: 50%; bottom: 24px;
+  z-index: 30;
+  display: flex; align-items: center; gap: 12px;
+  padding: 8px 8px 8px 16px;
+  border-radius: 99px;
+  background: var(--bg-1);
+  border: 1px solid rgb(var(--text-rgb) / 14%);
+  box-shadow: 0 14px 32px -10px rgb(0 0 0 / 65%);
+  font-size: var(--fs-detail); font-weight: 600; color: var(--text-dim);
+  opacity: 0; pointer-events: none;
+  transform: translate(-50%, 8px);
+  transition: opacity var(--t-ui) var(--ease-ui), transform var(--t-ui) var(--ease-ui);
+}
+.undopill.is-on { opacity: 1; pointer-events: auto; transform: translate(-50%, 0); }
+:root[data-stage="game"] .undopill { transition: none; }
+
+/* «Comparar» en la vista previa: mantener apretado = de fábrica. */
+.pv__cmp {
+  flex: none;
+  height: 22px;
+  padding: 0 9px;
+  border: 1px solid var(--line-hi);
+  border-radius: 7px;
+  background: rgb(var(--text-rgb) / 7%);
+  color: var(--text-dim, var(--text));
+  font: 700 var(--fs-micro)/1 var(--font);
+  cursor: pointer;
+  touch-action: none;
+  transition: background var(--t-ui) var(--ease-ui), color var(--t-ui) var(--ease-ui);
+}
+.pv__cmp:hover { background: rgb(var(--text-rgb) / 14%); color: var(--text); }
+.pv__cmp.is-on { background: var(--accent); border-color: var(--accent); color: var(--on-accent, #111); }
+#pv.is-min .pv__cmp { display: none; }
+#pv.is-comparing canvas { outline: 2px dashed rgb(var(--text-rgb) / 35%); outline-offset: -2px; }
