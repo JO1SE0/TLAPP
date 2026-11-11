@@ -3953,6 +3953,7 @@ function renderLowEnd() {
   sw.className = 'switch' + (on ? ' is-on' : '');
   sw.type = 'button';
   sw.setAttribute('role', 'switch');
+  sw.setAttribute('aria-label', en ? 'Low-end PC mode' : 'Modo PC lenta');
   sw.setAttribute('aria-checked', String(on));
   sw.addEventListener('click', () => { sw.disabled = true; setLowEnd(!on); });
   const row = settingRow({

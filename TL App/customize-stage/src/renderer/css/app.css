@@ -7506,3 +7506,8 @@ html:not([data-glass="on"]) :is(#app[data-view="ajustes"], #app[data-view="aspec
   font: 800 9px/15px var(--font, system-ui), sans-serif; font-style: normal; letter-spacing: .08em; color: #eef2f8;
   background: linear-gradient(180deg, #a9b6c9, #66748a); box-shadow: inset 0 1px 0 rgb(255 255 255 / 40%); }
 .cn__card.is-soc .cn__av { background: linear-gradient(145deg, #c3cede, #66748a); color: #1b2436; }
+
+/* Zona de clic de las estrellitas: el dibujo queda igual de chico, pero el área que
+   responde al clic llega a 28 px (antes 20×17 y 23×14: costaba acertarles). */
+.rrow__fav, .favstar { position: relative; }
+.rrow__fav::after, .favstar::after { content: ''; position: absolute; left: 50%; top: 50%; width: 28px; height: 28px; transform: translate(-50%, -50%); }

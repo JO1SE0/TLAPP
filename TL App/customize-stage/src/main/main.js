@@ -3506,7 +3506,16 @@ handle('shell:openExternal', (_e, url) => {
   if (!/^https?:/.test(url)) throw new Error('URL no permitida');
   return shell.openExternal(url);
 });
-handle('shell:openPath', (_e, target) => shell.openPath(target));
+// Sólo carpetas: abrir una carpeta la muestra en el Explorador, abrir un archivo
+// lo EJECUTA. La interfaz no necesita lo segundo, y así un pedido raro desde el
+// renderer no puede lanzar un programa.
+handle('shell:openPath', (_e, target) => {
+  const dir = String(target || '');
+  let ok = false;
+  try { ok = fs.statSync(dir).isDirectory(); } catch { ok = false; }
+  if (!ok) throw new Error('Sólo se pueden abrir carpetas.');
+  return shell.openPath(dir);
+});
 
 /* Respuesta de teclas: ¿Windows tiene las «Teclas filtro» prendidas? Agregan un
    retardo real entre que apretás y que el juego se entera. Sólo se LEE el
