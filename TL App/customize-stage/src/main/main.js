@@ -2558,7 +2558,9 @@ handle('cfg:schema', () => ({
   avatarMax: haxball.AVATAR_MAX,
   actions: haxball.ACTIONS,
   defaultKeys: haxball.DEFAULT_KEYS,
-  countries: countries.COUNTRIES
+  countries: countries.COUNTRIES,
+  // Los valores de fábrica: el panel marca lo que cambiaste comparando contra esto.
+  defaults: JSON.parse(JSON.stringify(store.DEFAULTS))
 }));
 
 handle('theme:vars', (_e, accent, themeId) => themeVars(accent, themeId));

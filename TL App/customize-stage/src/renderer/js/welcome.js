@@ -1,7 +1,7 @@
 /*
  * Bienvenida del club: intro corta y moderna. Una línea de luz se abre en dos
  * paneles, el escudo cae con onda de choque, "TODA LA LECCE" sube letra por letra
- * y aparece una frase. Sonido sintetizado (sin archivos: Web Audio).
+ * y te da la bienvenida. Sonido sintetizado (sin archivos: Web Audio).
  *
  * Se muestra una vez por arranque, después de la pantalla de carga. Se salta con
  * un clic o cualquier tecla. Sólo anima `opacity` y `transform`, y desaparece del
@@ -13,16 +13,6 @@
   /** Cuándo (en segundos) pasa cada cosa. Lo comparten la imagen (CSS) y el sonido. */
   const T = { impact: 1.15, title: 1.3, hello: 2.2, phrase: 2.65, end: 5.8, fade: 0.8 };
 
-  const PHRASES_ES = [
-    'Acá se juega con el corazón', 'Del barrio al mundo', 'La pasión no se negocia',
-    'Siempre juntos, siempre Lecce', 'Hoy se sale a ganar', 'Pura garra, puro club',
-    'El que juega acá, juega por todos', 'Que ruede la pelota',
-  ];
-  const PHRASES_EN = [
-    'We play with heart', 'From the block to the world', 'Passion is not negotiable',
-    'Always together, always Lecce', 'Today we play to win', 'Pure grit, pure club',
-    'Play for everyone', 'Let the ball roll',
-  ];
 
   function noiseBuffer(ac, seconds) {
     const len = Math.max(1, Math.floor(ac.sampleRate * seconds));
@@ -244,13 +234,6 @@
     });
 
     const hello = el('div', 'wl__hello', eng ? `Welcome${o.nick ? `, ${o.nick}` : ''}` : `Bienvenido${o.nick ? `, ${o.nick}` : ''}`);
-    const list = eng ? PHRASES_EN : PHRASES_ES;
-    const phrase = el('div', 'wl__phrase');
-    list[Math.floor(Math.random() * list.length)].split(' ').forEach((w, i) => {
-      const sp = el('span', '', w);
-      sp.style.animationDelay = `${(T.phrase + i * 0.09).toFixed(3)}s`;
-      phrase.append(sp);
-    });
     // Chispas que salen del escudo al impacto (posiciones al azar, una sola vez).
     for (let i = 0; i < 18; i++) {
       const sp = el('i', 'wl__spark');
@@ -268,7 +251,7 @@
     const track = el('div', 'wl__track');
     track.append(el('i', 'wl__trackline'), el('i', 'wl__ball'));
 
-    center.append(crestWrap, title, track, hello, phrase);
+    center.append(crestWrap, title, track, hello);
 
     // La cancha dibujándose en perspectiva, dos haces de luz y polvo dorado.
     const pitch = el('div', 'wl__pitch');

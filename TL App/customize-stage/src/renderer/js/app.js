@@ -255,48 +255,6 @@ function splashStep(key) {
   if (node) node.textContent = t(key);
 }
 
-/**
- * Una sola frase al azar por arranque, como el «¿Sabías que…?» de Discord.
- *
- * No rotan: la pantalla dura tres segundos y cambiar el texto en el medio se lee
- * como un error, no como una segunda frase. Por eso el sorteo es del ÍNDICE y se
- * hace una sola vez: `splashTip()` se llama dos veces —al principio y de nuevo
- * cuando ya se sabe el idioma— y las dos tienen que decir lo mismo.
- */
-const SPLASH_TIPS = {
-  es: [
-    'Presioná F8 para abrir los ajustes en cualquier momento.',
-    'Guardá tus salas favoritas haciendo clic en la estrella.',
-    'Usá Auto-entrar para unirte automáticamente cuando haya un lugar libre.',
-    'Pegá un link de sala directamente en la barra superior.',
-    'Los beneficios de personalización para el club ya están habilitados.',
-    'Configurá tus teclas en Ajustes para una respuesta óptima.',
-    'Guardá y revisá tus partidas grabadas desde la sección de Replays.'
-  ],
-  en: [
-    'Press F8 to open the settings at any time.',
-    'Save your favourite rooms by clicking the star.',
-    'Use Auto-join to get in automatically as soon as a slot frees up.',
-    'Paste a room link straight into the top bar.',
-    'Club customisation perks are already enabled.',
-    'Set up your keys in Settings for the best response.',
-    'Save and rewatch your recorded matches from the Replays section.'
-  ]
-};
-
-const splashTipIndex = Math.floor(Math.random() * SPLASH_TIPS.es.length);
-
-function splashTip() {
-  const node = $('#splashTip');
-  if (!node) return;
-  const english = isEn();
-  const list = english ? SPLASH_TIPS.en : SPLASH_TIPS.es;
-  node.replaceChildren();
-  const label = document.createElement('b');
-  label.textContent = english ? 'Did you know? ' : '¿Sabías que? ';
-  node.append(label, document.createTextNode(list[splashTipIndex % list.length]));
-}
-
 let splashHidden = false;
 async function hideSplash() {
   if (splashHidden) return;
@@ -691,12 +649,9 @@ function startWelcome() {
 }
 
 /*
- * Red de seguridad: la pantalla se va SIEMPRE, pase lo que pase más abajo. El
- * consejo se escribe enseguida, no al final del arranque, así que se lee durante
- * los tres segundos en vez de aparecer justo cuando la pantalla se está yendo.
+ * Red de seguridad: la pantalla se va SIEMPRE, pase lo que pase más abajo.
  */
 setTimeout(hideSplash, SPLASH_MIN_MS + 200);
-setTimeout(splashTip, 20);
 
 /**
  * Un error que corta el arranque tiene que VERSE.
@@ -915,6 +870,7 @@ function paintPreview() {
     && !(panel && panel.classList.contains('is-searching'));
   box.hidden = !on;
   if (panel) panel.classList.toggle('has-pv', on);
+  markChanged();
   if (!on || !window.TLPreview || !state.config) return;
   cancelAnimationFrame(previewFrame);
   previewFrame = requestAnimationFrame(() => {
@@ -1160,6 +1116,8 @@ function switchRow(item, onToggle) {
   });
   // Tarjeta de interruptor: la fila misma se ilumina cuando está prendido.
   rowEl = row;
+  // Para «lo que cambiaste»: con el ítem se puede preguntar qué valdría de fábrica.
+  row.__tvmItem = item;
   row.classList.add('row--tog');
   row.classList.toggle('is-on', !!item.value());
 
@@ -2120,6 +2078,43 @@ function paintMeChip() {
   paintProfCard();
 }
 
+/**
+ * La cara de la tarjeta del riel. Antes era siempre la inicial («J») salvo con
+ * foto de Discord. Ahora es lo que llevás puesto, en este orden: la foto de la
+ * cuenta, tu avatar con imagen, el avatar de HaxBall (emoji o letras) y recién
+ * al final la inicial.
+ */
+let profFaceKey = '';
+function paintProfFace(profile, nick) {
+  const el = $('#profCardAv');
+  if (!el) return;
+  if (profile && profile.avatar && state.avatars.get(profile.avatar)) {
+    profFaceKey = '';
+    el.classList.remove('is-hax');
+    paintFace(el, { name: profile.username, avatar: profile.avatar });
+    return;
+  }
+  const file = (state.config.vip || {}).avatarImage || '';
+  const avatar = state.config.avatar || {};
+  const text = String(avatar.static || state.liveAvatar || '').trim();
+  const key = file ? `f:${file}` : text ? `t:${text}` : `n:${nick}`;
+  if (key === profFaceKey && el.firstChild) return;
+  profFaceKey = key;
+  el.classList.toggle('is-hax', !file && !!text);
+  if (file) {
+    el.classList.add('is-photo');
+    const img = document.createElement('img');
+    img.src = fileUrl(file);
+    img.alt = '';
+    el.replaceChildren(img);
+  } else if (text) {
+    el.classList.remove('is-photo');
+    el.replaceChildren(document.createTextNode(text));
+  } else {
+    paintFace(el, { name: nick });
+  }
+}
+
 /** La tarjeta del riel: nombre, foto, nivel con su barra y partidos / goles / asistencias. */
 function paintProfCard() {
   const card = $('#profCard');
@@ -2129,7 +2124,7 @@ function paintProfCard() {
   const name = profile ? profile.username : nick;
   const lv = withLevel(state.config.stats || {});
   $('#profCardName').textContent = name;
-  paintFace($('#profCardAv'), profile ? { name: profile.username, avatar: profile.avatar } : { name: nick });
+  paintProfFace(profile, nick);
   $('#profCardLvl').textContent = (isEn() ? 'Level ' : 'Nivel ') + lv.level;
   const pct = Math.max(3, Math.min(100, Math.round((lv.levelInto / Math.max(1, lv.levelNeed)) * 100)));
   $('#profCardBar').style.width = `${pct}%`;
@@ -2995,6 +2990,96 @@ $('#roomList').addEventListener('dblclick', (e) => {
   if (row && !e.target.closest('[data-fav]')) joinRoom(row.dataset.token);
 });
 
+/* ── Detalle de la sala al pasar el mouse ───────────────────────────── *
+ *
+ * Una tarjetita con lo que la fila no dice: el ping que se puede esperar y quién
+ * del club está adentro. Una sola tarjeta para toda la lista, un solo manejador
+ * delegado, y aparece con un poco de demora para que barrer la lista con el
+ * mouse no la haga titilar. Se mueve y se muestra sólo con transform y opacity.
+ *
+ * El ping es una ESTIMACIÓN por distancia: HaxBall no da el ping de una sala
+ * hasta que entrás. Ida y vuelta por fibra son ~1 ms cada 100 km, más un 50 %
+ * de rodeos de la red y unos 12 ms fijos. Por eso la tarjeta dice «estimado».
+ */
+const roomTip = { el: null, timer: 0, token: '' };
+function estimatePing(km) {
+  if (km == null || !Number.isFinite(Number(km))) return null;
+  return Math.round(12 + Number(km) * 0.015);
+}
+function roomTipEl() {
+  if (roomTip.el) return roomTip.el;
+  const el = document.createElement('div');
+  el.className = 'roomtip';
+  el.setAttribute('role', 'tooltip');
+  document.body.append(el);
+  roomTip.el = el;
+  return el;
+}
+function hideRoomTip() {
+  clearTimeout(roomTip.timer);
+  roomTip.timer = 0;
+  roomTip.token = '';
+  if (roomTip.el) roomTip.el.classList.remove('is-on');
+}
+function showRoomTip(row, x) {
+  const room = (state.rooms.list || []).find((r) => r.token === row.dataset.token);
+  if (!room) return hideRoomTip();
+  const en = isEn();
+  const el = roomTipEl();
+  const mk = (tag, cls, text) => { const n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; };
+
+  const head = mk('div', 'roomtip__head');
+  head.append(flagElement(room.country), mk('b', 'roomtip__name', room.name));
+
+  const ms = estimatePing(room.distance);
+  const pingRow = mk('div', 'roomtip__row');
+  const pingVal = mk('span', 'roomtip__ping', ms == null ? '—' : `~${ms} ms`);
+  if (ms != null) pingVal.classList.add(ms < 60 ? 'is-good' : ms < 120 ? 'is-mid' : 'is-bad');
+  pingRow.append(mk('span', 'roomtip__k', en ? 'Estimated ping' : 'Ping estimado'), pingVal);
+  if (room.distance != null) pingRow.append(mk('small', 'roomtip__sub', `${room.distance.toLocaleString(en ? 'en-US' : 'es-AR')} km`));
+
+  const mates = clubRoomMap.get(String(room.name || '').trim().slice(0, 40).toLowerCase()) || [];
+  const clubRow = mk('div', 'roomtip__row roomtip__row--club');
+  clubRow.append(mk('span', 'roomtip__k', en ? 'From the club' : 'Del club'));
+  if (mates.length) {
+    const list = mk('span', 'roomtip__mates');
+    for (const n of mates.slice(0, 8)) list.append(mk('i', 'roomtip__mate', n));
+    if (mates.length > 8) list.append(mk('i', 'roomtip__mate roomtip__mate--more', `+${mates.length - 8}`));
+    clubRow.append(list);
+    clubRow.classList.add('is-on');
+  } else {
+    clubRow.append(mk('span', 'roomtip__none', en ? 'Nobody right now' : 'Nadie ahora'));
+  }
+
+  el.replaceChildren(head, pingRow, clubRow);
+  el.classList.add('is-on');
+  // Al lado del mouse y debajo de la fila; si no entra, arriba o más a la izquierda.
+  const r = row.getBoundingClientRect();
+  const w = el.offsetWidth;
+  const h = el.offsetHeight;
+  const left = Math.max(8, Math.min(x + 18, window.innerWidth - w - 8));
+  const top = r.bottom + 6 + h > window.innerHeight - 8 ? r.top - h - 6 : r.bottom + 6;
+  el.style.transform = `translate(${Math.round(left)}px, ${Math.round(top)}px)`;
+}
+$('#roomList').addEventListener('mouseover', (e) => {
+  const row = e.target.closest('.rrow');
+  if (!row) return hideRoomTip();
+  if (row.dataset.token === roomTip.token) return;
+  hideRoomTip();
+  roomTip.token = row.dataset.token;
+  const x = e.clientX;
+  const token = row.dataset.token;
+  // La lista se puede redibujar en el medio (refresco, cambio del club): se
+  // busca la fila de nuevo por su sala en vez de usar la que quedó suelta.
+  roomTip.timer = setTimeout(() => {
+    const live = row.isConnected ? row : $(`#roomList .rrow[data-token="${CSS.escape(token)}"]`);
+    if (live && live.matches(':hover')) showRoomTip(live, x);
+  }, 380);
+});
+$('#roomList').addEventListener('mouseleave', hideRoomTip);
+$('#roomList').addEventListener('mousedown', hideRoomTip);
+$('#roomList').addEventListener('wheel', hideRoomTip, { passive: true });
+
 /**
  * Bandera del sprite de HaxBall. Si todavía no se pudo bajar, cae al código
  * de país en texto, que es mejor que un hueco.
@@ -3594,6 +3679,12 @@ function renderGameSettings(container, group) {
  * fila y ninguna necesita el `ⓘ`.
  */
 function gameSettingControl(setting) {
+  const row = gameSettingRow(setting);
+  if (row && row.dataset) row.dataset.cfg = `game.${setting.id}`;
+  return row;
+}
+
+function gameSettingRow(setting) {
   const current = state.config.game[setting.id];
   const description = help(setting);
   const hint = null;
@@ -6426,6 +6517,7 @@ function renderAvatar() {
  */
 function renderAvatarImage() {
   const file = (state.config.vip || {}).avatarImage || '';
+  paintProfCard();
   const face = $('#vipAvatarPreview');
   face.replaceChildren();
   $('#vipCropAvatar').hidden = !file;
@@ -6516,6 +6608,7 @@ function syncAvatarFields() {
 }
 
 function paintAvatarPreview() {
+  paintProfCard();
   const avatar = state.config.avatar || {};
   // Si el cliente todavía no tiene avatar propio se muestra el que HaxBall ya
   // tenía guardado, que es el que el jugador ve en la cancha ahora mismo.
@@ -10711,6 +10804,12 @@ function lookGalleryRow(item, value) {
 }
 
 function lookRow(item) {
+  const row = lookRowInner(item);
+  if (row && row.dataset && item.key && item.type !== 'reset') row.dataset.cfg = `visual.${item.key}`;
+  return row;
+}
+
+function lookRowInner(item) {
   if (item.type === 'reset') {
     const unset = item.keys.every((k) => lookValue(k) === LOOK_DEFAULTS[k]);
     const btn = document.createElement('button');
@@ -10921,7 +11020,6 @@ async function boot() {
   // Recién acá se sabe el idioma y la versión: hasta este punto la pantalla de
   // carga muestra el texto que trae el HTML.
   splashStep('splash.config');
-  splashTip();
   $('#splashVersion').textContent = `v${info.version}`;
 
   $('#roomSort').value = state.sort;
@@ -11778,6 +11876,20 @@ async function goToClubRoom(member) {
 
 window.TLGoToRoom = (m) => goToClubRoom(m);
 
+/* Plantel del riel: los del club conectados ahora van en verde con un punto.
+   Se empareja por nombre sin mayúsculas, tildes ni espacios («Ñandu» = «nandu»). */
+const rosterKey = (n) => String(n || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, '').toLowerCase();
+function paintRosterOnline(online) {
+  const on = new Map();
+  for (const m of online) if (m && m.name) on.set(rosterKey(m.name), m);
+  for (const li of document.querySelectorAll('.roster__list li')) {
+    const m = on.get(rosterKey(li.textContent));
+    li.classList.toggle('is-on', !!m);
+    li.classList.toggle('is-playing', !!(m && m.room));
+  }
+  rosterFit(true);
+}
+
 function paintClubNow(list) {
   try { updateClubRooms(list); } catch (e) { /* adorno */ }
   const host = $('#clubNowList');
@@ -11791,6 +11903,7 @@ function paintClubNow(list) {
   const k = $('#kpiOnline');
   if (k) k.textContent = String(online.length);
   state.clubOnline = online.length;
+  paintRosterOnline(online);
   try { paintStatusBar(); if (state.hub) paintHub(); } catch (e) { /* adorno */ }
 
   const nodes = [];
@@ -13265,21 +13378,25 @@ function paintMixer() {
 
 /* Plantel del riel: en ventanas bajas la lista no entra y, como va centrada,
    se cortaba arriba y abajo (medio nombre y sin el «Toda la Lecce»). Se
-   esconden nombres del final hasta que entre entera. Sólo corre cuando cambia
-   el alto del riel —al agrandar o achicar la ventana—, nunca en una partida. */
+   esconden nombres hasta que entre entera: primero los desconectados, del final
+   para arriba, así los que están en verde se ven siempre. Corre cuando cambia el
+   alto del riel o quién está conectado, nunca en una partida. */
+let rosterFit = () => {};
 (function fitRoster() {
   const box = $('.roster');
   if (!box || typeof ResizeObserver !== 'function') return;
   const items = [...box.querySelectorAll('.roster__list li')];
   let lastHeight = -1;
-  new ResizeObserver(() => {
+  rosterFit = (force) => {
     const h = box.clientHeight;
-    if (h === lastHeight) return;
+    if (h === lastHeight && !force) return;
     lastHeight = h;
     for (const li of items) li.hidden = false;
     if (!h) return;
-    for (let i = items.length - 1; i > 0 && box.scrollHeight > box.clientHeight + 1; i--) items[i].hidden = true;
-  }).observe(box);
+    const order = [...items.filter((li) => !li.classList.contains('is-on')).reverse(), ...items.filter((li) => li.classList.contains('is-on')).reverse()];
+    for (let i = 0; i < order.length - 1 && box.scrollHeight > box.clientHeight + 1; i++) order[i].hidden = true;
+  };
+  new ResizeObserver(() => rosterFit(false)).observe(box);
 })();
 
 /* Interruptores en grilla de a dos: si una tanda entre filas anchas es impar,
@@ -13314,4 +13431,166 @@ function paintMixer() {
   const queue = () => { if (!queued) { queued = true; requestAnimationFrame(pass); } };
   new MutationObserver(queue).observe(panel, { childList: true, subtree: true, attributes: true, attributeFilter: ['hidden'] });
   queue();
+})();
+
+
+/* ═══ Lo que cambiaste ═══════════════════════════════════════════════
+ *
+ * Cada ajuste que no está como viene de fábrica lleva un puntito al lado del
+ * nombre, cada solapa del índice dice cuántos tiene, y «Sólo lo que cambié»
+ * deja a la vista nada más que eso.
+ *
+ * Cómo sabe una fila a qué ajuste corresponde, de más preciso a menos:
+ *   · los interruptores guardan su ítem: se le pregunta qué valdría con la
+ *     config de fábrica (se cambia `state.config` por un instante, sin esperar
+ *     nada en el medio, y se vuelve a poner);
+ *   · las filas de HaxBall y de «Detalles» dicen su ruta en `data-cfg`;
+ *   · el resto, por el id de sus controles: `overlayOpacity` → overlay.opacity,
+ *     `hudScale` → appearance.hudScale. Sólo si el id apunta a UNA ruta.
+ * Una fila que no encaja en nada no lleva punto: mejor sin marca que con una
+ * mentira.
+ *
+ * Corre con el panel abierto, al cambiar la config o la solapa, una vez por
+ * cuadro como mucho.
+ */
+let cfgIdIndex = null;
+function cfgDefaults() { return (state.schema && state.schema.defaults) || null; }
+function cfgAt(obj, path) {
+  let o = obj;
+  for (const k of path.split('.')) { if (o == null) return undefined; o = o[k]; }
+  return o;
+}
+function cfgIndex() {
+  if (cfgIdIndex) return cfgIdIndex;
+  const defs = cfgDefaults();
+  const idx = new Map();
+  const dup = new Set();
+  const cap = (x) => x.charAt(0).toUpperCase() + x.slice(1);
+  const walk = (o, segs) => {
+    for (const k of Object.keys(o || {})) {
+      const v = o[k];
+      const path = [...segs, k];
+      if (v && typeof v === 'object' && !Array.isArray(v)) { walk(v, path); continue; }
+      const full = path.join('.');
+      for (let i = path.length - 1; i >= Math.max(0, path.length - 3); i--) {
+        const id = path.slice(i).map((x, j) => (j ? cap(x) : x)).join('');
+        if (idx.has(id) && idx.get(id) !== full) dup.add(id); else idx.set(id, full);
+      }
+    }
+  };
+  walk(defs, []);
+  for (const k of dup) idx.delete(k);
+  cfgIdIndex = idx;
+  return idx;
+}
+function pathChanged(path) {
+  const defs = cfgDefaults();
+  let cur = cfgAt(state.config, path);
+  if (cur === undefined) return false;
+  let def = cfgAt(defs, path);
+  if (def === undefined && path.startsWith('visual.')) def = LOOK_DEFAULTS[path.slice(7)];
+  if (def === undefined) return false;
+  if (typeof def === 'number' && typeof cur === 'string' && cur !== '') cur = Number(cur);
+  return JSON.stringify(cur) !== JSON.stringify(def);
+}
+function switchChanged(item) {
+  const defs = cfgDefaults();
+  if (!defs || typeof item.value !== 'function') return false;
+  const real = state.config;
+  let now;
+  let def;
+  try {
+    now = !!item.value();
+    state.config = { ...defs, visual: { ...(defs.visual || {}) } };
+    def = !!item.value();
+  } catch (e) {
+    return false;
+  } finally {
+    state.config = real;
+  }
+  return now !== def;
+}
+function rowChanged(row) {
+  if (row.__tvmItem) return switchChanged(row.__tvmItem);
+  if (row.dataset.cfg) return pathChanged(row.dataset.cfg);
+  const idx = cfgIndex();
+  for (const el of row.querySelectorAll('[id]')) {
+    const path = idx.get(el.id);
+    if (path && pathChanged(path)) return true;
+  }
+  return false;
+}
+
+let changedQueued = false;
+function markChanged() {
+  if (changedQueued) return;
+  changedQueued = true;
+  requestAnimationFrame(() => {
+    changedQueued = false;
+    const panel = $('#panel');
+    if (!panel || panel.hidden || !state.config || !cfgDefaults()) return;
+    const pageName = state.view;
+    const page = navPage(pageName);
+    if (!page) return;
+    const perTab = new Map();
+    let total = 0;
+    for (const sec of $$('.sec', page)) {
+      let n = 0;
+      for (const row of $$('.row', sec)) {
+        const on = rowChanged(row);
+        row.classList.toggle('is-changed', on);
+        if (on) n++;
+      }
+      sec.classList.toggle('has-changed', n > 0);
+      const tab = sec.dataset.tab;
+      if (tab) perTab.set(tab, (perTab.get(tab) || 0) + n);
+      total += n;
+    }
+    for (const btn of $$('#panelNavList .pnav__tab[data-go]')) {
+      const n = perTab.get(btn.dataset.go) || 0;
+      let b = btn.querySelector('.pnav__cnt');
+      if (!n) { if (b) b.remove(); continue; }
+      if (!b) { b = document.createElement('span'); b.className = 'pnav__cnt'; btn.append(b); }
+      b.textContent = String(n);
+      b.title = isEn() ? `${n} changed` : `${n} cambiado${n === 1 ? '' : 's'}`;
+    }
+    const only = $('#onlyChanged');
+    if (only) {
+      only.querySelector('b').textContent = String(total);
+      only.disabled = !total && !panel.classList.contains('only-changed');
+      only.querySelector('span').textContent = isEn() ? 'Only what I changed' : 'Sólo lo que cambié';
+    }
+  });
+}
+
+(function onlyChangedFilter() {
+  const nav = $('#panelNav');
+  const favs = $('#favList');
+  if (!nav || !favs) return;
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.id = 'onlyChanged';
+  btn.className = 'pnav__only';
+  btn.setAttribute('aria-pressed', 'false');
+  btn.innerHTML = '<i aria-hidden="true"></i><span></span><b>0</b>';
+  favs.before(btn);
+  btn.addEventListener('click', () => {
+    const panel = $('#panel');
+    const on = !panel.classList.contains('only-changed');
+    panel.classList.toggle('only-changed', on);
+    btn.setAttribute('aria-pressed', String(on));
+    btn.classList.toggle('is-on', on);
+    // Prendido: se abren las secciones que tienen algo, si no no se vería nada.
+    if (on) for (const sec of $$('.sec.has-changed', navPage(state.view) || document)) setSecOpen(sec, true, false);
+  });
+  // Al salir del panel o cambiar de página el filtro se apaga solo.
+  const panel = $('#panel');
+  new MutationObserver(() => {
+    if (panel.hidden && panel.classList.contains('only-changed')) {
+      panel.classList.remove('only-changed');
+      btn.classList.remove('is-on');
+      btn.setAttribute('aria-pressed', 'false');
+    }
+    if (!panel.hidden) markChanged();
+  }).observe(panel, { attributes: true, attributeFilter: ['hidden'] });
 })();
