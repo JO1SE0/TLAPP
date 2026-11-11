@@ -8282,3 +8282,27 @@ html[data-layout="comando"] :is(#app[data-view="ajustes"], #app[data-view="aspec
 .panel__card > #pv.is-min .pv__solo { display: none; }
 /* Flotante con las vistas sueltas es más alta: más relleno abajo para que no tape la última fila. */
 .panel.has-pv.pv-solo:not(.pv-docked):not(.pv-min) .page[data-page="aspecto"] .page__inner { padding-bottom: 420px; }
+
+/* ═══ Pantallas sin vista previa en ventanas anchas ═══
+   Estilo, En partida y toda Configuración: en vez de una columna angosta con
+   media pantalla vacía, las secciones van en dos columnas (cada una entera,
+   sin cortarse), y el título y los atajos ocupan todo el ancho. */
+@media (min-width: 1560px) {
+  #app[data-view="ajustes"] .panel .page[data-page="ajustes"] .page__inner,
+  #app[data-view="aspecto"] .panel:not(.has-pv) .page[data-page="aspecto"] .page__inner {
+    display: block;
+    max-width: 1500px;
+    column-count: 2;
+    column-gap: 24px;
+  }
+  :is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .page__inner > * { break-inside: avoid; }
+  :is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .page__inner > .pagehead,
+  :is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .page__inner > .tabbar,
+  :is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .page__inner > .page__empty { column-span: all; }
+  :is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .page__inner > .sec { width: 100%; margin: 0 0 24px; }
+  /* Una sola sección a la vista: una columna, más ancha. */
+  :is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .page__inner.one-sec { column-count: 1 !important; max-width: 1200px !important; }
+}
+/* Interruptores siempre de a dos: con tres por renglón quedaban huecos. */
+:is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .rows { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+@media (max-width: 760px) { :is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .rows { grid-template-columns: minmax(0, 1fr); } }

@@ -939,7 +939,12 @@ function paintPreview() {
   if (sub) sub.textContent = t(solo ? 'preview.subSolo' : 'preview.sub');
   previewFrame = requestAnimationFrame(() => {
     try {
-      window.TLPreview.draw(document.getElementById('pvCanvas'), state.config);
+      // En Cancha se ve la cancha entera (menos zoom) para que se note lo que
+      // cambia; en Fichas, el recorte de cerca de siempre.
+      const cv = document.getElementById('pvCanvas');
+      const tall = solo ? 500 : 620;
+      if (cv.height !== tall) cv.height = tall;
+      window.TLPreview.draw(cv, state.config, solo ? undefined : { w: 690, cx: 0 });
       const spots = window.TLPreview.SPOTS;
       if (solo && spots) {
         window.TLPreview.draw(document.getElementById('pvMe'), state.config, { w: 96, cx: spots.me.x, cy: spots.me.y - 8 });
@@ -13663,6 +13668,11 @@ let rosterFit = () => {};
         }
       }
       flush();
+    }
+    // Una sola sección a la vista → sin dos columnas (ver «Pantallas sin vista previa»).
+    for (const inner of panel.querySelectorAll('.page__inner')) {
+      const n = [...inner.children].filter((el) => el.classList.contains('sec') && el.getClientRects().length).length;
+      inner.classList.toggle('one-sec', n < 2);
     }
     // Pulido #34: las filas comunes seguidas (deslizadores, listas, campos) van
     // juntas en una misma tarjeta con separadores finos, en vez de sueltas.
