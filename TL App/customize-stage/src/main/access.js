@@ -40,6 +40,8 @@ let notice = null;
 /** Plantel con llave pública y dirección de la base de presencia (de access.json). */
 let roster = [];
 let presence = '';
+/** Servidores para la voz (STUN/TURN) que puede publicar el club en access.json → `voiceIce`. */
+let voiceIce = [];
 /** Versión de esta app (para la «versión mínima»). La pasa main al iniciar. */
 let appVersion = '0.0.0';
 /** Última lista de GitHub que se pudo leer, para reevaluar sin volver a bajarla. */
@@ -148,6 +150,14 @@ function rebuild(list) {
   }
   roster = eff.users.filter((u) => u && HEX64.test(String(u.pub || ''))).map((u) => ({ name: String(u.name || '').slice(0, 40), pub: String(u.pub).toLowerCase(), trial: Number(u.trial) > 0, rep: u.rep === true, host: u.host === true, ext: u.ext === true || u.soc === true, soc: u.soc === true || u.ext === true }));
   presence = typeof base.presence === 'string' ? base.presence : '';
+  voiceIce = (Array.isArray(base.voiceIce) ? base.voiceIce : []).slice(0, 6).map((x) => {
+    const urls = [].concat(x && x.urls || []).map(String).filter((u) => /^(stun|turns?):[^\s]{3,200}$/i.test(u)).slice(0, 4);
+    if (!urls.length) return null;
+    const out = { urls };
+    if (typeof x.username === 'string') out.username = x.username.slice(0, 200);
+    if (typeof x.credential === 'string') out.credential = x.credential.slice(0, 200);
+    return out;
+  }).filter(Boolean);
 }
 
 /** Baja lo del admin. Devuelve true si cambió algo respecto de lo guardado. */
@@ -474,6 +484,7 @@ const recheck = async () => { await evaluate(null); return status; };
 const getKey = () => (status.state === 'ok' && saved.key && saved.enabled ? saved.key : '');
 const getRoster = () => roster;
 const presenceUrl = () => presence;
+const getVoiceIce = () => voiceIce.map((x) => ({ ...x }));
 
 /** Copia de lo que rige hoy (para el panel del admin). */
 const getEffective = () => JSON.parse(JSON.stringify({
@@ -494,4 +505,4 @@ async function adoptAdmin(raw) {
   await evaluate(null, { skipGithub: true });
 }
 
-module.exports = { getEffective, isCaptain, canReports, canHost, hostPubs, isExternal, isSocio, adoptAdmin, getKey, getRoster, presenceUrl, init, get, isLocked, submit, recheck, hashKey, normalize, ACCESS_URL };
+module.exports = { getEffective, isCaptain, canReports, canHost, hostPubs, isExternal, isSocio, adoptAdmin, getKey, getRoster, presenceUrl, getVoiceIce, init, get, isLocked, submit, recheck, hashKey, normalize, ACCESS_URL };

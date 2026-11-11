@@ -251,6 +251,22 @@ const DEFAULTS = {
     requests: true,
     volume: 0.5
   },
+  /**
+   * Voz entre los que usan TL App (ver main/voice.js y renderer/js/voice.js).
+   * mode: 'ptt' (apretar para hablar) | 'open' (voz abierta, se abre sola al hablar).
+   * overlay: qué se ve sobre la cancha — 'all' | 'speaking' | 'off'.
+   * peers: volumen de cada uno (0 a 1), por pid.
+   */
+  voice: {
+    mode: 'ptt',
+    pttKey: 'KeyV',
+    device: '',
+    sensitivity: 0.5,
+    volume: 1,
+    noise: true,
+    overlay: 'all',
+    peers: {}
+  },
   /** Tokens de salas marcadas como favoritas. */
   favorites: [],
   discord: {

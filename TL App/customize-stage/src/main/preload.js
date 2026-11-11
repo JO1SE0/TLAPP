@@ -117,6 +117,20 @@ contextBridge.exposeInMainWorld('tvm', {
     onCheck: (cb) => on('auth:check', cb)
   },
 
+  voice: {
+    config: () => call('voice:config'),
+    join: (which) => call('voice:join', which),
+    leave: () => call('voice:leave'),
+    signal: (to, data) => call('voice:signal', to, data),
+    mute: (on) => call('voice:mute', on),
+    peek: (which) => call('voice:peek', which),
+    onMembers: (cb) => on('voice:members', cb),
+    onSignal: (cb) => on('voice:signal', cb),
+    onStatus: (cb) => on('voice:status', cb),
+    onPtt: (cb) => on('voice:ptt', cb),
+    onInvite: (cb) => on('voice:invite', cb)
+  },
+
   replays: {
     list: () => call('replays:list'),
     chooseFolder: () => call('replays:chooseFolder'),

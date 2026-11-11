@@ -107,7 +107,7 @@ const PANEL_TABS = {
     { id: 'red', group: 'tabg.perf', label: 'tab.net', hint: 'tab.netHint', secs: ['latencia', 'sistemaperf', 'red'] },
     { id: 'controles', group: 'tabg.game', label: 'tab.controls', hint: 'tab.controlsHint', secs: ['teclas'] },
     { id: 'cliente', group: 'tabg.game', label: 'tab.client', hint: 'tab.clientHint', secs: ['cliente'] },
-    { id: 'sonido', group: 'tabg.game', label: 'tab.sound', hint: 'tab.soundHint', secs: ['mezclador', 'audio', 'sonidos'] },
+    { id: 'sonido', group: 'tabg.game', label: 'tab.sound', hint: 'tab.soundHint', secs: ['mezclador', 'audio', 'voz', 'sonidos'] },
     { id: 'cuentas', group: 'tabg.game', label: 'tab.accounts', hint: 'tab.accountsHint', secs: ['identidades', 'discord'] },
     { id: 'sistema', group: 'tabg.game', label: 'tab.system', hint: 'tab.systemHint', secs: ['actualizaciones', 'config'] }
   ]
@@ -884,6 +884,7 @@ function applyConfig(config) {
   try { paintNowLike(); } catch (e) { /* la tarjeta todavía no se armó */ }
   try { if (state.view === 'musica') paintMusicPage(); } catch (e) { /* la página todavía no se armó */ }
   if (window.TLSfx) window.TLSfx.configure(config.appearance.uiSounds !== false, config.appearance.uiSoundStyle);
+  if (window.TLVoiceUI) { try { window.TLVoiceUI.onConfig(config); } catch (e) { /* la voz no frena la config */ } }
   if (typeof paintAudio === 'function' && document.getElementById('audMusic')) paintAudio();
   if (window.TLSparks) {
     window.TLSparks.setStyle(config.appearance.sparkStyle || 'oro');

@@ -12380,6 +12380,24 @@ function watchKeystrokes(doc) {
   keyWatched.add(doc);
   doc.addEventListener('keydown', (e) => safe(trackKey, e.code, true), true);
   doc.addEventListener('keyup', (e) => safe(trackKey, e.code, false), true);
+  // Voz: la tecla de «apretar para hablar» también vale con el foco en la cancha.
+  // Sólo se mira; el juego recibe la tecla igual. Escribiendo en el chat no cuenta.
+  doc.addEventListener('keydown', (e) => safe(voicePttKey, e, true), true);
+  doc.addEventListener('keyup', (e) => safe(voicePttKey, e, false), true);
+  const w = doc.defaultView;
+  if (w) w.addEventListener('blur', () => { if (voicePttDown) { voicePttDown = false; ipcRenderer.send('game:voice-ptt', false); } });
+}
+
+let voicePttDown = false;
+function voicePttKey(e, down) {
+  const v = state.config && state.config.voice;
+  if (!v || v.mode === 'open' || !v.pttKey || e.code !== v.pttKey) return;
+  if (down && (e.repeat || voicePttDown)) return;
+  const t = e.target;
+  if (down && t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
+  if (!down && !voicePttDown) return;
+  voicePttDown = down;
+  ipcRenderer.send('game:voice-ptt', down);
 }
 
 /* ── Moverlo por la pantalla ───────────────────────────────────────────────

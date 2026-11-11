@@ -22,6 +22,7 @@ const updater = require('./updater');
 const access = require('./access');
 const panel = require('./panel');
 const presence = require('./presence');
+const voiceMod = require('./voice');
 const hostRoom = require('./host');
 const interno = require('./interno');
 const admin = require('./admin');
@@ -3304,6 +3305,7 @@ listen('game:room-info', (_e, info) => {
     sendToGame('game:peers', lastPeers.list);
   }
   beatPresence();
+  voiceRoomChanged();
   /*
    * Y de paso, cómo se llama la sala guardada para «volver».
    *
@@ -3318,6 +3320,70 @@ listen('game:room-info', (_e, info) => {
     send('rooms:last', lastRoom());
   }
 });
+
+/* ------------------------------------------------------------------ *
+ * Voz entre los que usan TL App
+ * ------------------------------------------------------------------ *
+ * Acá sólo vive el «encontrarse» (quién está en el canal y los mensajes para
+ * armar cada llamada), por la base de la presencia. El audio va directo entre
+ * las PCs, desde la ventana de la interfaz (ver renderer/js/voice.js).
+ * Canales: el del club y el de la sala donde estás (su huella anónima).
+ */
+let voiceWant = null; // 'club' | 'room' | null
+const voice = voiceMod.createVoice({
+  getCtx: () => ({ url: access.presenceUrl(), key: access.getKey(), roster: access.getRoster(), name: (access.get() || {}).name || '' }),
+  onMembers: (list) => send('voice:members', list),
+  onSignal: (m) => send('voice:signal', m),
+  onStatus: (st) => send('voice:status', { ...st, want: voiceWant })
+});
+function voiceRoomChannel() {
+  const fp = panel.roomFingerprint(roomInfo.room);
+  return fp ? `r${fp}` : null;
+}
+let voicePeekRoom = null;
+function voiceRoomChanged() {
+  const ch = voiceRoomChannel();
+  if (voiceWant === 'room') {
+    if (!ch) { voiceWant = null; voice.leave().catch(() => {}); return; }
+    if (ch !== voice.channel()) voice.join(ch).catch(() => {});
+    return;
+  }
+  // Fuera de la voz de la sala: si hay gente del club hablando en ESTA sala, se avisa una vez.
+  if (!ch || ch === voicePeekRoom) return;
+  voicePeekRoom = ch;
+  setTimeout(() => {
+    if (voiceRoomChannel() !== ch || voice.channel() === ch) return;
+    voice.peek(ch).then((list) => {
+      const others = (list || []).filter((m) => !m.self);
+      if (others.length && voiceRoomChannel() === ch && voice.channel() !== ch) send('voice:invite', { names: others.map((m) => m.name).slice(0, 4), count: others.length });
+    }).catch(() => {});
+  }, 2500);
+}
+handle('voice:config', async () => ({
+  ice: access.getVoiceIce(),
+  pid: voice.myPid(),
+  status: voice.status(),
+  want: voiceWant,
+  inRoom: !!voiceRoomChannel(),
+  ready: !!(presence.cleanUrl(access.presenceUrl()) && access.getKey())
+}));
+handle('voice:join', async (_e, which) => {
+  const want = which === 'room' ? 'room' : 'club';
+  const ch = want === 'room' ? voiceRoomChannel() : 'club';
+  if (!ch) throw new Error('sin-sala');
+  voiceWant = want;
+  try { return await voice.join(ch); } catch (err) { voiceWant = null; throw err; }
+});
+handle('voice:leave', async () => { voiceWant = null; await voice.leave(); return true; });
+handle('voice:signal', async (_e, to, data) => voice.signal(String(to || ''), data));
+handle('voice:mute', async (_e, on) => { voice.setMuted(!!on); return true; });
+handle('voice:peek', async (_e, which) => {
+  const ch = which === 'room' ? voiceRoomChannel() : 'club';
+  return ch ? voice.peek(ch) : [];
+});
+// Apretar para hablar con el foco en la cancha: el preload del juego avisa la tecla.
+listen('game:voice-ptt', (_e, down) => send('voice:ptt', !!down));
+app.on('before-quit', () => { if (voice.channel()) voice.leave().catch(() => {}); });
 
 /*
  * El juego avisa que cambió la lista de la sala: entró o salió alguien.
