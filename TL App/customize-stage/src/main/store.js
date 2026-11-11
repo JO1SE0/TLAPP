@@ -620,18 +620,7 @@ const DEFAULTS = {
      */
     replayFreeCam: true,
     /** Mapa de calor de la pelota, acumulado durante la grabación. */
-    replayHeatmap: false,
-    /*
-     * Entrenamiento (F8): zona de patada, línea de tiro, trayectoria completa y
-     * cono de efecto. Es la otra excepción a la regla de arriba, y por la misma
-     * razón que los replays: se dibujan SÓLO con vos solo en la cancha, donde no
-     * hay a quién sacarle ventaja. Estos valores eligen qué se ve; prenderlas es
-     * F8 adentro de la partida, y arrancan apagadas cada vez que abrís la app.
-     */
-    trainZone: true,
-    trainLine: true,
-    trainPath: true,
-    trainCone: true
+    replayHeatmap: false
   }
 };
 
