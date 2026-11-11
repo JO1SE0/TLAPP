@@ -4573,6 +4573,9 @@ function renderAspect() {
 
   renderGameSettings($('#gameChat'), 'chat');
   const extra = document.createElement('div');
+  // Sin caja propia: los dos interruptores entran a la grilla de la tarjeta
+  // como los demás, en vez de quedar apilados en media columna.
+  extra.className = 'rows__flat';
   buildSwitches(
     extra,
     CHAT_SWITCHES[lang].map((i) => ({ ...i, value: () => !!state.config[i.scope][i.key] })),
@@ -10755,6 +10758,10 @@ function lookRow(item) {
     reset.type = 'button';
     reset.textContent = t('look.original');
     reset.disabled = unset;
+    // Si ya está en «Original» el valor lo dice: el botón apagado repetía la
+    // misma palabra al lado. Queda invisible pero ocupa su lugar, así las
+    // barras de todas las filas siguen alineadas.
+    if (unset) reset.style.visibility = 'hidden';
     reset.addEventListener('click', () => lookPatch({ visual: { [item.key]: item.original } }));
     nodes.push(reset);
   }
@@ -12395,7 +12402,10 @@ function renderTabBar(page) {
     return b;
   };
   all.append(mk(isEn() ? 'Open all' : 'Abrir todo', true), mk(isEn() ? 'Close all' : 'Cerrar todo', false));
-  bar.replaceChildren(...(secs.length > 1 ? [...chips, all] : []));
+  const chipBox = document.createElement('div');
+  chipBox.className = 'tabbar__chips';
+  chipBox.append(...chips);
+  bar.replaceChildren(...(secs.length > 1 ? [chipBox, all] : []));
   bar.hidden = secs.length < 2;
 
   /* Migas de pan: «Personalización › Estilo». Dicen dónde estás y la primera
@@ -13219,3 +13229,56 @@ function paintMixer() {
     row.querySelector('.row__val').textContent = `${Math.round(v * 100)}%`;
   }
 }
+
+/* Plantel del riel: en ventanas bajas la lista no entra y, como va centrada,
+   se cortaba arriba y abajo (medio nombre y sin el «Toda la Lecce»). Se
+   esconden nombres del final hasta que entre entera. Sólo corre cuando cambia
+   el alto del riel —al agrandar o achicar la ventana—, nunca en una partida. */
+(function fitRoster() {
+  const box = $('.roster');
+  if (!box || typeof ResizeObserver !== 'function') return;
+  const items = [...box.querySelectorAll('.roster__list li')];
+  let lastHeight = -1;
+  new ResizeObserver(() => {
+    const h = box.clientHeight;
+    if (h === lastHeight) return;
+    lastHeight = h;
+    for (const li of items) li.hidden = false;
+    if (!h) return;
+    for (let i = items.length - 1; i > 0 && box.scrollHeight > box.clientHeight + 1; i--) items[i].hidden = true;
+  }).observe(box);
+})();
+
+/* Interruptores en grilla de a dos: si una tanda entre filas anchas es impar,
+   el último quedaba en media columna con un hueco al lado. Se marca para que
+   ocupe todo el ancho. Mira el panel sólo cuando cambian sus filas (al abrirlo
+   o al redibujar un ajuste), una vez por cuadro como mucho. */
+(function evenToggleRuns() {
+  const panel = $('#panel');
+  if (!panel || typeof MutationObserver !== 'function') return;
+  let queued = false;
+  const pass = () => {
+    queued = false;
+    if (panel.hidden) return;
+    for (const rows of panel.querySelectorAll('.rows')) {
+      let run = [];
+      const flush = () => {
+        run.forEach((r, i) => r.classList.toggle('row--span', run.length % 2 === 1 && i === run.length - 1));
+        run = [];
+      };
+      for (const el of rows.children) {
+        if (el.classList.contains('rows__flat')) {
+          for (const c of el.children) { if (c.classList.contains('row--tog')) run.push(c); else flush(); }
+        } else if (el.classList.contains('row--tog')) {
+          if (!el.hidden) run.push(el);
+        } else if (!el.hidden) {
+          flush();
+        }
+      }
+      flush();
+    }
+  };
+  const queue = () => { if (!queued) { queued = true; requestAnimationFrame(pass); } };
+  new MutationObserver(queue).observe(panel, { childList: true, subtree: true, attributes: true, attributeFilter: ['hidden'] });
+  queue();
+})();
