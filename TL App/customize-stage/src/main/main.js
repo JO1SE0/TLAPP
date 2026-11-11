@@ -3089,7 +3089,7 @@ async function pushClubStats(force) {
   } catch { /* sin red o sin permiso en la carpeta stats: se reintenta después */ }
 }
 handle('club:stats', async () => {
-  if (access.isExternal()) return null;
+  // Los socios también ven el ranking (del plantel: ellos no suman, ver pushClubStats y readStats).
   await pushClubStats(false);
   try {
     return await presence.readStats({ url: access.presenceUrl(), key: access.getKey(), roster: access.getRoster(), captain: access.isCaptain() });
@@ -3144,9 +3144,8 @@ handle('host:pickScript', async () => {
   return res.canceled || !res.filePaths[0] ? '' : res.filePaths[0];
 });
 handle('club:interno', async () => {
-  if (access.isExternal()) return null;
   try {
-    interno.flush(internoCtx()).catch(() => {});
+    if (!access.isExternal()) interno.flush(internoCtx()).catch(() => {});
     return await interno.read({ url: access.presenceUrl(), hostPubs: access.hostPubs(), names: (access.getRoster() || []).map((u) => u && u.name).filter(Boolean) });
   } catch { return null; }
 });
