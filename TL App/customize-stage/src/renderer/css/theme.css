@@ -81,12 +81,19 @@
    * Lo de afuera del panel (el juego, el dock, el perfil) todavía usa números
    * propios; estos tokens son para lo que se rediseñó.
    */
-  --fs-2xs: 10px;
-  --fs-xs: 11.5px;
-  --fs-sm: 12.5px;
-  --fs-md: 13.5px;
+  --fs-2xs: 11px;
+  --fs-xs: 12px;
+  --fs-sm: 13px;
+  --fs-md: 14px;
   --fs-lg: 16px;
-  --fs-xl: 24px;
+  --fs-xl: 26px;
+  /* Jerarquía fija (pulido #43): título de pantalla · título de sección ·
+     texto · detalle · mínimo. Todo lo demás se acomoda a estos cinco. */
+  --fs-title: 28px;
+  --fs-section: 16px;
+  --fs-body: 13px;
+  --fs-detail: 12px;
+  --fs-micro: 11px;
 
   /*
    * ═══ Radios ═══
@@ -126,10 +133,14 @@
    * Lo que se anima también se recortó: sólo transform y opacity, que el
    * compositor resuelve sin repintar. Ver el bloque de arriba de app.css.
    */
-  --ease: cubic-bezier(0.22, 1, 0.36, 1);
-  --fast: 0.1s var(--ease);
-  --mid: 0.16s var(--ease);
-  --slow: 0.22s var(--ease);
+  /* Pulido #52: una sola curva y una sola duración para todo lo que aparece o se
+     mueve. Las transiciones sueltas de app.css usan --t-ui / --ease-ui. */
+  --ease-ui: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --t-ui: 0.15s;
+  --ease: var(--ease-ui);
+  --fast: var(--t-ui) var(--ease-ui);
+  --mid: var(--t-ui) var(--ease-ui);
+  --slow: var(--t-ui) var(--ease-ui);
 
   --font: "Outfit", "Segoe UI Variable Display", "Segoe UI", system-ui, -apple-system, sans-serif;
   --font-display: "Outfit", Bahnschrift, "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif;

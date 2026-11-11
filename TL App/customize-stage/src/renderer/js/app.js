@@ -5,6 +5,30 @@
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
+
+/* Íconos de línea propios (pulido #21/#60): mismo trazo que el resto de la app, en vez de emojis. */
+const LINE_ICONS = {
+  list: '<path d="M8 6.5h12M8 12h12M8 17.5h12"/><path class="ico-fill" d="M4.2 5.4a1.1 1.1 0 1 1 0 2.2 1.1 1.1 0 0 1 0-2.2zm0 5.5a1.1 1.1 0 1 1 0 2.2 1.1 1.1 0 0 1 0-2.2zm0 5.5a1.1 1.1 0 1 1 0 2.2 1.1 1.1 0 0 1 0-2.2z"/>',
+  cards: '<rect x="3.5" y="3.5" width="7.2" height="7.2" rx="1.6"/><rect x="13.3" y="3.5" width="7.2" height="7.2" rx="1.6"/><rect x="3.5" y="13.3" width="7.2" height="7.2" rx="1.6"/><rect x="13.3" y="13.3" width="7.2" height="7.2" rx="1.6"/>',
+  bars: '<path d="M4 6.5h14M4 12h9M4 17.5h16"/>',
+  board: '<rect x="3.5" y="4" width="4.6" height="16" rx="1.4"/><rect x="9.7" y="4" width="4.6" height="11" rx="1.4"/><rect x="15.9" y="4" width="4.6" height="7" rx="1.4"/>',
+  globe: '<circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c2.4 2.4 3.6 5.2 3.6 8.5s-1.2 6.1-3.6 8.5c-2.4-2.4-3.6-5.2-3.6-8.5s1.2-6.1 3.6-8.5z"/>',
+  lock: '<rect x="5" y="10.5" width="14" height="10" rx="2.2"/><path d="M8.2 10.5V7.8a3.8 3.8 0 0 1 7.6 0v2.7"/>',
+  people: '<circle cx="9" cy="8.5" r="3.2"/><path d="M3.5 19.5c0-3.1 2.5-5.3 5.5-5.3s5.5 2.2 5.5 5.3"/><path d="M15.5 5.6a3 3 0 0 1 0 5.8M17.3 14.4c1.9.6 3.2 2.5 3.2 5.1"/>',
+  stadium: '<ellipse cx="12" cy="12" rx="8.5" ry="6"/><ellipse cx="12" cy="12" rx="4.4" ry="2.6"/><path d="M12 6v12"/>',
+  clipboard: '<rect x="5" y="4.5" width="14" height="16" rx="2.2"/><path d="M9 4.5h6v2.4H9zM8.5 11h7M8.5 14.5h7M8.5 18h4"/>',
+  pencil: '<path d="M4.5 19.5h3.2L18.3 8.9a1.6 1.6 0 0 0 0-2.3l-.9-.9a1.6 1.6 0 0 0-2.3 0L4.5 16.3z"/>',
+  close: '<path d="M6.4 6.4l11.2 11.2M17.6 6.4 6.4 17.6"/>'
+};
+function lineIcon(name) {
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.setAttribute('viewBox', '0 0 24 24');
+  svg.setAttribute('data-icon', '');
+  svg.setAttribute('aria-hidden', 'true');
+  svg.innerHTML = LINE_ICONS[name] || '';
+  return svg;
+}
+
 const t = (key, vars) => window.i18n.t(key, vars);
 const isEn = () => window.i18n.language === 'en';
 
@@ -758,8 +782,11 @@ function toast(message, kind = '', action = null) {
     node.append(button);
   }
 
+  const life = action ? 14000 : 3200;
+  // La barrita de abajo muestra cuánto le queda (ver `.toast::after`).
+  node.style.setProperty('--life', `${life}ms`);
   $('#toasts').append(node);
-  setTimeout(() => dismissToast(node), action ? 14000 : 3200);
+  setTimeout(() => dismissToast(node), life);
   return node;
 }
 
@@ -770,6 +797,35 @@ function dismissToast(node) {
   node.addEventListener('animationend', () => node.remove(), { once: true });
   // Por si la animación no corre (ventana en segundo plano): no queda colgado.
   setTimeout(() => node.remove(), 600);
+}
+
+/**
+ * Pulido #40 · Botones peligrosos, todos iguales: rojos, y el primer toque no
+ * hace nada más que armarlos («¿Seguro? Tocá de nuevo»). El segundo, dentro de
+ * los 3 segundos, confirma. Reemplaza al cartel de Windows, que tapaba todo.
+ * Devuelve true sólo en el toque que confirma.
+ */
+function confirmTwice(btn) {
+  if (btn.classList.contains('is-armed')) {
+    clearTimeout(btn.__armTimer);
+    btn.classList.remove('is-armed');
+    if (btn.__armLabel != null) setButtonLabel(btn, btn.__armLabel);
+    btn.title = btn.__armTitle || '';
+    return true;
+  }
+  const sure = isEn() ? 'Sure? Click again' : '¿Seguro? Tocá de nuevo';
+  const text = [...btn.childNodes].filter((n) => n.nodeType === 3).map((n) => n.nodeValue).join('').trim();
+  // Un botón de sólo ícono no se estira: el aviso va en el cartelito.
+  btn.__armLabel = text || null;
+  btn.__armTitle = btn.title || btn.dataset.tip || '';
+  btn.classList.add('is-armed');
+  if (text) setButtonLabel(btn, sure); else { btn.title = sure; btn.dataset.tip = sure; }
+  btn.__armTimer = setTimeout(() => {
+    btn.classList.remove('is-armed');
+    if (btn.__armLabel != null) setButtonLabel(btn, btn.__armLabel);
+    btn.title = btn.__armTitle || '';
+  }, 3000);
+  return false;
 }
 
 /**
@@ -1127,17 +1183,16 @@ function switchRow(item, onToggle) {
    * del motor no la tienen. Ahora la marca se agrega a la descripción si ya
    * existe y se crea una línea propia si no.
    */
+  // Pulido #32: «pide reiniciar» es una pastillita al lado del nombre, no un
+  // texto naranja suelto al final de la descripción.
   if (item.restart) {
-    const em = document.createElement('em');
-    em.textContent = `↻ ${t('perf.restartMark')}`;
-    const existing = row.querySelector('.row__desc');
-    if (existing) existing.append(' · ', em);
-    else {
-      const line = document.createElement('span');
-      line.className = 'row__desc';
-      line.append(em);
-      row.querySelector('.row__text').append(line);
-    }
+    const pill = document.createElement('em');
+    pill.className = 'row__restart';
+    pill.textContent = `↻ ${isEn() ? 'Restart' : 'Reinicio'}`;
+    pill.title = t('perf.restartMark');
+    const label = row.querySelector('.row__label');
+    const star = label && label.querySelector('.favstar');
+    if (star) star.before(pill); else if (label) label.append(pill);
   }
 
   return row;
@@ -1404,7 +1459,31 @@ function paintEmptyState(page, show) {
   const previo = $('.page__empty', page);
   if (previo) previo.remove();
   if (!show) return;
-  const box = emptyState(t('panel.noResults'), t('panel.noResultsText'));
+  // Dice qué se buscó y ofrece palabras que sí existen: un clic y se busca eso.
+  const en = isEn();
+  const q = ($('#settingsSearch').value || '').trim();
+  const title = q ? (en ? `Nothing found for “${q}”` : `No encontré nada con «${q}»`) : t('panel.noResults');
+  const box = emptyState(title, t('panel.noResultsText'), { icon: 'search' });
+  const ideas = en ? ['chat', 'pitch', 'FPS', 'avatar', 'sound', 'keys'] : ['chat', 'cancha', 'FPS', 'avatar', 'sonido', 'teclas'];
+  const row = document.createElement('div');
+  row.className = 'empty__ideas';
+  const lead = document.createElement('span');
+  lead.textContent = en ? 'Try:' : 'Probá:';
+  row.append(lead);
+  for (const word of ideas) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'tabbar__chip';
+    b.textContent = word;
+    b.addEventListener('click', () => {
+      const input = $('#settingsSearch');
+      input.value = word;
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      input.focus();
+    });
+    row.append(b);
+  }
+  box.append(row);
   box.classList.add('page__empty');
   $('.page__inner', page).append(box);
 }
@@ -1707,14 +1786,45 @@ function syncRangeFill(input) {
   input.style.setProperty('--fill', `${((Number(input.value) - min) / (max - min)) * 100}%`);
 }
 
-function emptyState(title, text) {
+/*
+ * Estado vacío, el mismo molde en toda la app: ícono, título, una línea y, si
+ * hay algo que hacer, los botones. `opts.icon` es uno de EMPTY_ICONS y
+ * `opts.actions` una lista de [texto, al tocar].
+ */
+const EMPTY_ICONS = {
+  search: '<circle cx="11" cy="11" r="6.8"/><path d="M16.1 16.1 20.2 20.2"/>',
+  film: '<rect x="3.5" y="5" width="17" height="14" rx="2.2"/><path d="M3.5 9h17M3.5 15h17M8 5v4M12 5v4M16 5v4M8 15v4M12 15v4M16 15v4"/>',
+  rooms: '<rect x="3.5" y="4.5" width="17" height="15" rx="2.2"/><path d="M12 4.5v15M3.5 12h17"/><circle cx="12" cy="12" r="2.4"/>',
+  alert: '<path d="M12 4 21 19.5H3z"/><path d="M12 10v4.2M12 17v.01"/>'
+};
+function emptyState(title, text, opts = {}) {
   const box = document.createElement('div');
   box.className = 'empty';
+  const icon = opts.icon ? EMPTY_ICONS[opts.icon] : null;
+  if (icon) {
+    const ic = document.createElement('span');
+    ic.className = 'empty__ico';
+    ic.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true">${icon}</svg>`;
+    box.append(ic);
+  }
   const strong = document.createElement('strong');
   strong.textContent = title;
   const p = document.createElement('p');
   p.textContent = text;
   box.append(strong, p);
+  if (opts.actions && opts.actions.length) {
+    const row = document.createElement('div');
+    row.className = 'empty__actions';
+    opts.actions.forEach(([label, run], i) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = i === 0 ? 'btn btn--primary btn--sm' : 'btn btn--ghost btn--sm';
+      b.textContent = label;
+      b.addEventListener('click', run);
+      row.append(b);
+    });
+    box.append(row);
+  }
   return box;
 }
 
@@ -2499,7 +2609,7 @@ function renderRooms() {
   }
   if (state.rooms.error) {
     summary.textContent = '';
-    showRoomsMessage(emptyState(t('rooms.error'), state.rooms.error));
+    showRoomsMessage(emptyState(t('rooms.error'), state.rooms.error, { icon: 'alert', actions: [[isEn() ? 'Try again' : 'Reintentar', () => loadRooms()]] }));
     return;
   }
 
@@ -2516,7 +2626,8 @@ function renderRooms() {
     const hasQuery = $('#roomSearch').value.trim().length > 0 || state.hideLocked || state.hideFull || state.onlyFavs || state.onlyClub || state.onlyFull;
     showRoomsMessage(emptyState(
       hasQuery ? t('rooms.noResults') : t('rooms.empty'),
-      hasQuery ? t('rooms.noResultsText') : t('rooms.emptyText')
+      hasQuery ? t('rooms.noResultsText') : t('rooms.emptyText'),
+      { icon: hasQuery ? 'search' : 'rooms' }
     ));
     syncJoinButton();
     return;
@@ -2820,7 +2931,7 @@ function buildRoomMap() {
     const b = document.createElement('b');
     b.textContent = room.name;
     const small = document.createElement('span');
-    small.textContent = `${room.players}/${room.maxPlayers}${room.password ? ' 🔒' : ''}${room.distance != null ? ` · ${room.distance.toLocaleString('es-AR')} km` : ''}`;
+    small.textContent = `${room.players}/${room.maxPlayers}${room.password ? (isEn() ? ' · locked' : ' · con clave') : ''}${room.distance != null ? ` · ${room.distance.toLocaleString('es-AR')} km` : ''}`;
     tip.append(b, small);
     tip.hidden = false;
     tip.style.left = `${Math.min(mapUi.w - 200, x + 14)}px`;
@@ -2930,14 +3041,14 @@ function roomRow(room) {
   if (room.password) {
     const lock = document.createElement('span');
     lock.className = 'rrow__lock';
-    lock.textContent = '🔒';
+    lock.append(lineIcon('lock'));
     lock.title = t('rooms.locked');
     name.append(lock);
   }
   const label = document.createElement('span');
   label.className = 'rrow__label';
   label.textContent = room.name;
-  label.title = room.name;
+  // Sin `title`: la tarjeta de la sala ya muestra el nombre entero al pasar el mouse.
   name.append(label);
 
   if (sponsored) {
@@ -2961,7 +3072,7 @@ function roomRow(room) {
   if (mates) {
     const club = document.createElement('span');
     club.className = 'rrow__club';
-    club.textContent = '👥 ' + mates.length;
+    club.append(lineIcon('people'), document.createTextNode(String(mates.length)));
     club.title = mates.join(', ');
     name.append(club);
   }
@@ -4590,7 +4701,7 @@ function renderThemes() {
     if (meta.custom) {
       const edit = document.createElement('span');
       edit.className = 'themecard__edit';
-      edit.textContent = '✎';
+      edit.append(lineIcon('pencil'));
       edit.title = t('look.customEdit');
       edit.addEventListener('click', (e) => {
         e.stopPropagation();
@@ -7569,9 +7680,9 @@ $('#themeForm').addEventListener('submit', async (e) => {
   toast(t('toast.themeApplied', { name: payload.label }), 'ok');
 });
 
-$('#themeDelete').addEventListener('click', async () => {
+$('#themeDelete').addEventListener('click', async (e) => {
   if (!editingTheme || !editingTheme.id) return;
-  if (!window.confirm(t('look.customDeleteConfirm'))) return;
+  if (!confirmTwice(e.currentTarget)) return;
   const res = await guard(tvm.theme.remove(editingTheme.id), 'Error');
   if (!res) return;
   state.schema.themes = res.themes;
@@ -7681,15 +7792,20 @@ function renderReplays() {
   const list = $('#replayList');
   list.replaceChildren();
 
+  const folderActions = () => [
+    [isEn() ? 'Open folder' : 'Abrir carpeta', () => $('#replayOpenFolder').click()],
+    [isEn() ? 'Change folder' : 'Cambiar carpeta', () => $('#replayChoose').click()]
+  ];
   if (error) {
-    list.append(emptyState(t('replays.empty'), error));
+    list.append(emptyState(t('replays.empty'), error, { icon: 'alert', actions: folderActions() }));
     return;
   }
   if (!filtered.length) {
     const filtering = query || replayUi.filter !== 'all';
     list.append(emptyState(
       filtering ? t('rooms.noResults') : t('replays.empty'),
-      filtering ? t('rooms.noResultsText') : t('replays.emptyText')
+      filtering ? t('rooms.noResultsText') : t('replays.emptyText'),
+      filtering ? { icon: 'search' } : { icon: 'film', actions: folderActions() }
     ));
     return;
   }
@@ -8561,8 +8677,8 @@ $('#friendCodeValue').addEventListener('click', async () => {
   }
 });
 
-$('#friendCodeNew').addEventListener('click', async () => {
-  if (!window.confirm(t('friends.newCodeConfirm'))) return;
+$('#friendCodeNew').addEventListener('click', async (e) => {
+  if (!confirmTwice(e.currentTarget)) return;
   const res = await friendAction({ action: 'newcode' });
   if (!res || !res.code) return;
   paintFriendCode(res.code);
@@ -8607,9 +8723,10 @@ $('#chatInvite').addEventListener('click', async () => {
   if (res) toast(t('friends.inviteSent', { name: friendName(state.friendPick) }), 'ok');
 });
 
-$('#chatRemove').addEventListener('click', async () => {
+$('#chatRemove').addEventListener('click', async (e) => {
   const friend = friendById(state.friendPick);
   if (!friend) return;
+  if (!confirmTwice(e.currentTarget)) return;
   const res = await friendAction({ action: 'remove', friend: friend.id });
   if (!res) return;
   state.friendPick = null;
@@ -9051,7 +9168,7 @@ function paintCountryFlag(code) {
   } else {
     box.className = 'flagrow__flag flagrow__flag--text';
     box.style.backgroundPosition = '';
-    box.textContent = code ? code.toUpperCase() : '🌐';
+    if (code) box.textContent = code.toUpperCase(); else box.replaceChildren(lineIcon('globe'));
   }
 }
 
@@ -9686,8 +9803,8 @@ $('#cfgImport').addEventListener('click', async () => {
   }
 });
 
-$('#cfgReset').addEventListener('click', async () => {
-  if (!window.confirm(t('settings.resetConfirm'))) return;
+$('#cfgReset').addEventListener('click', async (e) => {
+  if (!confirmTwice(e.currentTarget)) return;
   const next = await guard(tvm.config.reset(), 'Error');
   if (next) {
     applyConfig(next);
@@ -12333,7 +12450,7 @@ function pickReportMatch(list) {
     return b;
   });
   const close = document.createElement('button');
-  close.type = 'button'; close.className = 'btn btn--ghost btn--sm'; close.textContent = '✕';
+  close.type = 'button'; close.className = 'btn btn--ghost btn--sm'; close.append(lineIcon('close')); close.setAttribute('aria-label', isEn() ? 'Close' : 'Cerrar');
   close.addEventListener('click', () => { host.hidden = true; host.replaceChildren(); });
   host.replaceChildren(title, ...rows, close);
 }
@@ -13431,6 +13548,29 @@ let rosterFit = () => {};
       }
       flush();
     }
+    // Pulido #34: las filas comunes seguidas (deslizadores, listas, campos) van
+    // juntas en una misma tarjeta con separadores finos, en vez de sueltas.
+    for (const box of panel.querySelectorAll('.rows, .sec__body')) {
+      let group = [];
+      const close = () => {
+        group.forEach((r, i) => {
+          r.classList.add('grp');
+          r.classList.toggle('grp-first', i === 0);
+          r.classList.toggle('grp-last', i === group.length - 1);
+        });
+        group = [];
+      };
+      const kids = [];
+      for (const el of box.children) {
+        if (el.classList.contains('rows__flat')) kids.push(...el.children); else kids.push(el);
+      }
+      for (const el of kids) {
+        const plain = el.classList.contains('row') && !el.classList.contains('row--tog') && !el.classList.contains('row--block') && !el.closest('.pcard');
+        if (plain && !el.hidden) group.push(el);
+        else { if (el.classList.contains('row')) el.classList.remove('grp', 'grp-first', 'grp-last'); if (!el.hidden) close(); }
+      }
+      close();
+    }
   };
   const queue = () => { if (!queued) { queued = true; requestAnimationFrame(pass); } };
   new MutationObserver(queue).observe(panel, { childList: true, subtree: true, attributes: true, attributeFilter: ['hidden'] });
@@ -13604,5 +13744,65 @@ function markChanged() {
 /* «Sólo lo ves vos» quedó como un ojito: el texto va de cartelito al pasar el mouse. */
 document.addEventListener('mouseover', (e) => {
   const tag = e.target.closest && e.target.closest('.sec__head .tag[data-i18n="skin.tag"]');
-  if (tag && tag.title !== tag.textContent) { tag.title = tag.textContent; tag.setAttribute('aria-label', tag.textContent); }
-});
+  if (tag && tag.dataset.tip !== tag.textContent) { tag.dataset.tip = tag.textContent; tag.setAttribute('aria-label', tag.textContent); }
+}, true);
+
+/* ═══ #22 · Cartelitos propios ═══════════════════════════════════════
+ *
+ * Los de Windows son amarillentos, tardan y no siguen el tema. Al pasar el
+ * mouse por algo con `title`, el texto se muda a `data-tip` (así Windows no
+ * dibuja el suyo) y se muestra uno propio: oscuro, redondeado, arriba del
+ * elemento y sin salirse de la ventana. Uno solo para toda la app; se mueve
+ * con transform y aparece con opacidad. Si el código vuelve a escribir `title`,
+ * la próxima pasada lo muda otra vez.
+ *
+ * Los ⓘ tienen su propio globo (`.hint`) y no pasan por acá.
+ */
+(function appTooltips() {
+  const tip = document.createElement('div');
+  tip.className = 'apptip';
+  tip.setAttribute('role', 'tooltip');
+  document.body.append(tip);
+  let current = null;
+  let timer = 0;
+  const hide = () => {
+    clearTimeout(timer);
+    timer = 0;
+    current = null;
+    tip.classList.remove('is-on');
+  };
+  const place = (el) => {
+    const r = el.getBoundingClientRect();
+    if (!r.width && !r.height) return hide();
+    const w = tip.offsetWidth;
+    const h = tip.offsetHeight;
+    let x = r.left + r.width / 2 - w / 2;
+    x = Math.max(8, Math.min(x, window.innerWidth - w - 8));
+    let y = r.top - h - 8;
+    if (y < 8) y = r.bottom + 8;
+    tip.style.transform = `translate(${Math.round(x)}px, ${Math.round(y)}px)`;
+  };
+  document.addEventListener('mouseover', (e) => {
+    const el = e.target.closest && e.target.closest('[title], [data-tip]');
+    if (!el || el.closest('.hint')) { if (current && !(current.contains && current.contains(e.target))) hide(); return; }
+    if (el.hasAttribute('title')) {
+      const text = el.getAttribute('title');
+      el.removeAttribute('title');
+      if (text) el.dataset.tip = text; else delete el.dataset.tip;
+    }
+    if (el === current) return;
+    hide();
+    if (!el.dataset.tip) return;
+    current = el;
+    timer = setTimeout(() => {
+      if (current !== el || !el.isConnected) return;
+      tip.textContent = el.dataset.tip;
+      place(el);
+      tip.classList.add('is-on');
+    }, 420);
+  });
+  document.addEventListener('mouseout', (e) => {
+    if (current && (!e.relatedTarget || !current.contains(e.relatedTarget))) hide();
+  });
+  for (const ev of ['mousedown', 'wheel', 'keydown', 'blur']) window.addEventListener(ev, hide, { passive: true, capture: true });
+})();
