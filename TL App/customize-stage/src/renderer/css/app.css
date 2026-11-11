@@ -8232,3 +8232,53 @@ html[data-layout="dock"] :is(#app[data-view="ajustes"], #app[data-view="aspecto"
 html[data-layout="radial"] :is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel { padding-bottom: 88px; }
 html[data-layout="island"] :is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel { padding-left: 88px; }
 html[data-layout="comando"] :is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel { padding-top: 56px; }
+
+/* La ficha de Tu jugador: el disco exactamente en el centro del círculo de la
+   cancha, y el nombre arriba de él (antes la pareja nombre+disco iba centrada
+   junta y el disco quedaba corrido hacia abajo). */
+.pcard__pitch { display: block; }
+.pcard__disc { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); }
+.pcard__nick { position: absolute; left: 50%; top: calc(50% - 39px - 14px); transform: translate(-50%, -100%); max-width: 90%; }
+
+/* ═══ Vista previa: al costado, flotante o donde la dejes ═══ */
+.panel__card > #pv .pv__head { cursor: grab; touch-action: none; }
+.panel__card > #pv.is-dragging { will-change: transform; box-shadow: 0 26px 60px -10px rgb(0 0 0 / 70%), 0 0 0 1px var(--accent-line); }
+.panel__card > #pv.is-dragging .pv__head { cursor: grabbing; }
+/* Al costado: columna de la derecha, más grande, alineada con el contenido. */
+.panel__card > #pv.is-docked {
+  top: 132px;
+  right: 32px;
+  bottom: auto;
+  width: var(--pv-w, 480px);
+  padding: 12px 12px 12px;
+  box-shadow: 0 14px 34px -14px rgb(0 0 0 / 60%), 0 0 0 1px rgb(var(--text-rgb) / 8%);
+}
+.panel__card > #pv.is-docked.is-min { width: auto; }
+/* Donde la dejaste: left/top los pone JS. */
+.panel__card > #pv.is-free { right: auto; bottom: auto; }
+/* Con la vista previa al costado, las opciones se corren a la izquierda y no
+   hace falta el relleno de abajo (ya no tapa nada). */
+#app .panel.pv-docked.has-pv .page[data-page="aspecto"] .page__inner {
+  margin-left: 0;
+  margin-right: auto;
+  max-width: 868px;
+  padding-left: 48px;
+  padding-bottom: 64px;
+}
+/* Vistas sueltas de tu ficha y de la pelota (sólo en «Fichas y pelota»). */
+.pv__solo { display: none; gap: 8px; margin-bottom: 8px; }
+#pv.has-solo .pv__solo { display: grid; grid-template-columns: 1fr 1fr; order: -1; }
+.pv__solo figure { margin: 0; position: relative; }
+.pv__solo canvas { display: block; width: 100%; height: auto; border-radius: 8px; }
+.pv__solo figcaption {
+  position: absolute; left: 8px; bottom: 8px;
+  padding: 2px 8px; border-radius: 99px;
+  font-size: var(--fs-micro); font-weight: 700;
+  color: #fff; background: rgb(0 0 0 / 45%);
+}
+#pv.has-solo { display: flex; flex-direction: column; }
+#pv.has-solo[hidden] { display: none; }
+#pv.has-solo .pv__head { order: -2; }
+.panel__card > #pv.is-min .pv__solo { display: none; }
+/* Flotante con las vistas sueltas es más alta: más relleno abajo para que no tape la última fila. */
+.panel.has-pv.pv-solo:not(.pv-docked):not(.pv-min) .page[data-page="aspecto"] .page__inner { padding-bottom: 420px; }

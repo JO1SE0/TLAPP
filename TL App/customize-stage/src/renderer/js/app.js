@@ -926,46 +926,162 @@ function paintPreview() {
     && !(panel && panel.classList.contains('is-searching'));
   box.hidden = !on;
   if (panel) panel.classList.toggle('has-pv', on);
+  pvLayout();
   markChanged();
   if (!on || !window.TLPreview || !state.config) return;
   cancelAnimationFrame(previewFrame);
+  // En «Fichas y pelota» además van tu ficha y la pelota de cerca, cada una
+  // con su cámara: misma escena, dibujada a su tamaño (no un recorte estirado).
+  const solo = currentTab('aspecto') === 'fichas';
+  box.classList.toggle('has-solo', solo);
+  if (panel) panel.classList.toggle('pv-solo', solo);
+  const sub = $('.pv__head small', box);
+  if (sub) sub.textContent = t(solo ? 'preview.subSolo' : 'preview.sub');
   previewFrame = requestAnimationFrame(() => {
-    try { window.TLPreview.draw(document.getElementById('pvCanvas'), state.config); } catch (e) { box.hidden = true; }
+    try {
+      window.TLPreview.draw(document.getElementById('pvCanvas'), state.config);
+      const spots = window.TLPreview.SPOTS;
+      if (solo && spots) {
+        window.TLPreview.draw(document.getElementById('pvMe'), state.config, { w: 96, cx: spots.me.x, cy: spots.me.y - 8 });
+        window.TLPreview.draw(document.getElementById('pvBall'), state.config, { w: 56, cx: spots.ball.x, cy: spots.ball.y });
+      }
+    } catch (e) { box.hidden = true; }
   });
 }
 
 /* La vista previa flota en la esquina de abajo a la derecha de la ventana de
    Personalización, en vez de ocupar todo el ancho arriba de las opciones. Se
    puede achicar a una pestañita; eso se recuerda en esta PC. */
+var pvLayout = () => {};
 (function floatPreview() {
+  /*
+   * Tres formas de estar, sin que el jugador tenga que elegir ninguna:
+   *  · «al costado»: con la ventana ancha, las opciones se corren a la
+   *    izquierda y la vista previa ocupa la columna libre de la derecha, más
+   *    grande (clase .is-docked; el ancho sale de --pv-w);
+   *  · «flotante»: si no entra, una tarjeta abajo a la derecha, como antes;
+   *  · «donde la dejaste»: arrastrándola de la barra de arriba se puede poner
+   *    en cualquier lado; se guarda en proporción a la ventana, así sobrevive
+   *    a agrandarla o achicarla. Doble clic en la barra la vuelve a su lugar.
+   * El «–» la achica a una pestañita en cualquiera de las tres.
+   * Mover es sólo transform mientras se arrastra; nada de esto corre jugando.
+   */
   const box = document.getElementById('pv');
   const card = $('#panel .panel__card');
   if (!box || !card) return;
+  const panel = card.closest('.panel');
   card.append(box);
   const head = $('.pv__head', box);
   const btn = document.createElement('button');
   btn.type = 'button';
   btn.className = 'pv__min';
   head.append(btn);
-  const set = (min) => {
-    box.classList.toggle('is-min', min);
-    card.closest('.panel').classList.toggle('pv-min', min);
+
+  const read = (k) => { try { return localStorage.getItem(k); } catch (e) { return null; } };
+  const write = (k, v) => { try { if (v == null) localStorage.removeItem(k); else localStorage.setItem(k, v); } catch (e) { /* sin storage */ } };
+
+  let min = read('tl_pv_min') === '1';
+  let spot = null;
+  try { spot = JSON.parse(read('tl_pv_spot') || 'null'); } catch (e) { spot = null; }
+
+  const labels = () => {
+    const en = isEn();
+    const label = min ? (en ? 'Show preview' : 'Mostrar vista previa') : (en ? 'Hide preview' : 'Achicar vista previa');
     btn.textContent = min ? '+' : '–';
-    const label = min ? (isEn() ? 'Show preview' : 'Mostrar vista previa') : (isEn() ? 'Hide preview' : 'Achicar vista previa');
     btn.title = label;
     btn.setAttribute('aria-label', label);
+    head.title = en ? 'Drag to move it · double click puts it back' : 'Arrastrala para moverla · doble clic la vuelve a su lugar';
   };
-  let min = false;
-  // El texto del botón sigue al idioma aunque se cambie con el panel abierto.
-  btn.addEventListener('mouseenter', () => set(min));
-  try { min = localStorage.getItem('tl_pv_min') === '1'; } catch (e) {}
-  set(min);
-  head.addEventListener('click', () => {
-    min = !min;
-    set(min);
-    try { localStorage.setItem('tl_pv_min', min ? '1' : '0'); } catch (e) {}
+
+  // ¿Hay lugar a la derecha de las opciones? Lo mide sobre el panel de verdad.
+  const DOCK_MIN = 380;
+  const layout = () => {
+    const nav = $('#panelNav');
+    const navW = nav && nav.offsetParent ? nav.offsetWidth : 0;
+    const free = card.clientWidth - navW - 48 - 820 - 40 - 32;
+    const docked = !spot && free >= DOCK_MIN;
+    box.classList.toggle('is-docked', docked);
+    panel.classList.toggle('pv-docked', docked);
+    if (docked) card.style.setProperty('--pv-w', `${Math.min(680, Math.floor(free))}px`);
+    box.classList.toggle('is-free', !!spot);
+    if (spot) {
+      const w = box.offsetWidth;
+      const h = box.offsetHeight;
+      const x = Math.max(8, Math.min(card.clientWidth - w - 8, spot.fx * card.clientWidth));
+      const y = Math.max(8, Math.min(card.clientHeight - h - 8, spot.fy * card.clientHeight));
+      box.style.left = `${Math.round(x)}px`;
+      box.style.top = `${Math.round(y)}px`;
+    } else {
+      box.style.left = '';
+      box.style.top = '';
+    }
+  };
+
+  const set = (m) => {
+    min = m;
+    box.classList.toggle('is-min', min);
+    panel.classList.toggle('pv-min', min);
+    labels();
+    layout();
+  };
+  btn.addEventListener('mouseenter', labels);
+  btn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    set(!min);
+    write('tl_pv_min', min ? '1' : '0');
     if (!min) paintPreview();
   });
+
+  // Arrastrar desde la barra de arriba.
+  let drag = null;
+  head.addEventListener('pointerdown', (e) => {
+    if (e.button !== 0 || e.target.closest('button')) return;
+    const r = box.getBoundingClientRect();
+    const c = card.getBoundingClientRect();
+    drag = { id: e.pointerId, sx: e.clientX, sy: e.clientY, x0: r.left - c.left, y0: r.top - c.top, moved: false };
+    head.setPointerCapture(e.pointerId);
+  });
+  head.addEventListener('pointermove', (e) => {
+    if (!drag || e.pointerId !== drag.id) return;
+    const dx = e.clientX - drag.sx;
+    const dy = e.clientY - drag.sy;
+    if (!drag.moved && Math.abs(dx) + Math.abs(dy) < 4) return;
+    if (!drag.moved) {
+      drag.moved = true;
+      // Se suelta de su lugar automático en la posición en la que está.
+      box.classList.remove('is-docked');
+      panel.classList.remove('pv-docked');
+      box.classList.add('is-free', 'is-dragging');
+      box.style.left = `${drag.x0}px`;
+      box.style.top = `${drag.y0}px`;
+    }
+    box.style.transform = `translate(${dx}px, ${dy}px)`;
+  });
+  const drop = (e) => {
+    if (!drag || e.pointerId !== drag.id) return;
+    const d = drag;
+    drag = null;
+    box.classList.remove('is-dragging');
+    if (!d.moved) return;
+    const r = box.getBoundingClientRect();
+    const c = card.getBoundingClientRect();
+    box.style.transform = '';
+    spot = { fx: (r.left - c.left) / c.width, fy: (r.top - c.top) / c.height };
+    write('tl_pv_spot', JSON.stringify(spot));
+    layout();
+  };
+  head.addEventListener('pointerup', drop);
+  head.addEventListener('pointercancel', drop);
+  head.addEventListener('dblclick', (e) => {
+    if (e.target.closest('button')) return;
+    spot = null;
+    write('tl_pv_spot', null);
+    layout();
+  });
+
+  if (typeof ResizeObserver === 'function') new ResizeObserver(() => { if (!drag) layout(); }).observe(card);
+  pvLayout = () => { if (!drag) layout(); };
+  set(min);
 })();
 
 /**

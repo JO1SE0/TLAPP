@@ -363,6 +363,7 @@
       { x: -34, y: 42, team: RED, name: 'Amigo' }
     ];
     const r0 = 15 * discSize;
+    const face = String((cfg.avatar && cfg.avatar.static) || '').trim().slice(0, 4);
 
     // Detrás de las fichas: el aro y la cola de tu ficha.
     const me = discs[0];
@@ -415,6 +416,16 @@
       ctx.lineWidth = 2 * discLine;
       ctx.strokeStyle = discOutline;
       ctx.stroke();
+      // Tu avatar adentro de tu ficha, como lo escribe HaxBall en el disco.
+      if (d.mine && face) {
+        ctx.save();
+        ctx.fillStyle = '#ffffff';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.font = `900 ${(r0 * (face.length > 1 && !/\p{Extended_Pictographic}/u.test(face) ? 0.78 : 0.95)).toFixed(2)}px "Segoe UI Emoji", "Arial Black", Arial, sans-serif`;
+        ctx.fillText(face, d.x, d.y + r0 * 0.06);
+        ctx.restore();
+      }
     }
 
     // La pelota.
@@ -527,5 +538,7 @@
     }
   }
 
-  window.TLPreview = { draw, swatch };
+  // Dónde están tu ficha y la pelota en la escena (para las vistas sueltas).
+  const SPOTS = { me: { x: -178, y: 6 }, ball: { x: -122, y: 26 } };
+  window.TLPreview = { draw, swatch, SPOTS };
 })();
