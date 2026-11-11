@@ -9,7 +9,7 @@ const haxball = require('./haxball-settings');
 const FILE = 'config.json';
 
 const DEFAULTS = {
-  version: 29,
+  version: 30,
   general: {
     gameUrl: 'https://www.haxball.com/play',
     nickname: '',
@@ -115,7 +115,7 @@ const DEFAULTS = {
     // Tamaño de la interfaz: 'auto' (según el monitor) o un porcentaje fijo (60–150).
     uiScale: 'auto',
     /** Estructura de la interfaz: classic | top (barra superior) | dock (dock flotante). */
-    layout: 'vitrina',
+    layout: 'classic',
     /** Alto de las filas de la lista de salas: dense | normal | large. */
     roomRows: 'normal',
     /** Barra fina de estado abajo (hora, club conectado, jugadores online). Apagada por defecto. */
@@ -863,14 +863,10 @@ function migrate(stored) {
   // cuadro dibujado) y las teclas propias siguen respondiendo al instante.
   if (!(next.version >= 28) && next.perf) next.perf.lightSim = true;
 
-  // v29: «Vitrina» pasa a ser la interfaz del cliente. Quien seguía en la
-  // clásica (o nunca eligió) arranca en la nueva; quien ya había elegido otra
-  // la conserva. La clásica sigue en Personalización → Interfaz.
-  if (!(next.version >= 29) && next.appearance && (!next.appearance.layout || next.appearance.layout === 'classic')) {
-    next.appearance.layout = 'vitrina';
-  }
+  // v30: la interfaz «Vitrina» se retiró. Quien la tenía vuelve a la clásica.
+  if (next.appearance && next.appearance.layout === 'vitrina') next.appearance.layout = 'classic';
 
-  next.version = 29;
+  next.version = 30;
   return next;
 }
 

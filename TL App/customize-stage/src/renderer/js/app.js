@@ -870,17 +870,8 @@ function applyConfig(config) {
   rd.pageTrans = config.appearance.pageTransition || 'fade';
   { const rr = config.appearance.roomRows; const prev = rd.roomRows; if (rr === 'dense' || rr === 'large') rd.roomRows = rr; else delete rd.roomRows; if (prev !== rd.roomRows) { try { if (roomParts) paintRoomWindow(true); } catch (e) { /* aún no hay lista */ } } }
   if (LAYOUT_IDS.includes(config.appearance.layout)) rd.layout = config.appearance.layout; else delete rd.layout;
-  // La primera vez con «Vitrina» las salas pasan a tarjetas, que es como está
-  // pensada. Es una sola vez: después manda lo que elijas con los botones.
-  if (rd.layout === 'vitrina') {
-    try {
-      if (!localStorage.getItem('tl_vitrina_view')) { localStorage.setItem('tl_vitrina_view', '1'); setRoomView('cards'); }
-    } catch (e) { /* sin almacenamiento: queda la vista que haya */ }
-  }
   if (state.layoutSeen !== rd.layout) {
     state.layoutSeen = rd.layout;
-    // El alto de las tarjetas depende de la interfaz: se redibuja la lista.
-    try { paintedFrom = paintedTo = -1; renderRooms(); } catch (e) { /* la lista todavía no existe */ }
     /* Consola arranca en el Inicio; al salir de ella el Inicio se cierra. */
     try { openHub(rd.layout === 'consola'); } catch (e) { /* aún no está armado */ }
   }
@@ -2105,11 +2096,6 @@ function paintProfCard() {
   $('#profCardName').textContent = name;
   paintFace($('#profCardAv'), profile ? { name: profile.username, avatar: profile.avatar } : { name: nick });
   $('#profCardLvl').textContent = (isEn() ? 'Level ' : 'Nivel ') + lv.level;
-  // «Vitrina»: el saludo de arriba de las salas.
-  if ($('#vHeroHi')) {
-    $('#vHeroHi').textContent = `${isEn() ? 'Hi' : 'Hola'}, ${name} · ${isEn() ? 'Level' : 'Nivel'} ${lv.level}`;
-    $('#vHeroTitle').textContent = isEn() ? 'Where are we playing today?' : '¿Dónde jugamos hoy?';
-  }
   const pct = Math.max(3, Math.min(100, Math.round((lv.levelInto / Math.max(1, lv.levelNeed)) * 100)));
   $('#profCardBar').style.width = `${pct}%`;
   $('#profCardRing').style.setProperty('--p', pct);
@@ -2124,7 +2110,7 @@ if ($('#profCard')) $('#profCard').addEventListener('click', (e) => {
   const card = $('#profCard');
   // Con el menú compacto (dock, isla, arriba, abajo) no hay lugar para el dorso: abre directo.
   const lay = document.documentElement.dataset.layout;
-  if (['vitrina', 'dock', 'island', 'mini', 'top', 'bottom'].includes(lay)) { openProfile(); return; }
+  if (['dock', 'island', 'mini', 'top', 'bottom'].includes(lay)) { openProfile(); return; }
   if (card.classList.contains('is-back') && e.target.closest('[data-open]')) { flipProfCard(); openProfile(); return; }
   flipProfCard();
 });
@@ -2346,12 +2332,9 @@ let mapFit = true;
 const FILL_COLORS = { full: '#ff5d6c', almost: '#ffb54a', open: '#3ddc97', empty: '#7d88ab' };
 
 /* Tarjetas: alto, separación y ancho mínimo (ver `.rrow` en la vista de tarjetas). */
-/* En «Vitrina» las tarjetas son más altas y con más aire; como la lista se
-   dibuja por ventana, el alto tiene que salir de acá y no sólo del CSS. */
-const vitrinaOn = () => document.documentElement.dataset.layout === 'vitrina';
-const cardH = () => (vitrinaOn() ? 136 : 76);
-const cardGap = () => (vitrinaOn() ? 16 : 10);
-const cardMinW = () => (vitrinaOn() ? 236 : 250);
+const CARD_H = 76;
+const CARD_GAP = 10;
+const CARD_MIN_W = 250;
 const roomCardsOn = () => document.documentElement.dataset.roomview === 'cards';
 
 function roomListParts() {
@@ -2418,9 +2401,8 @@ function paintRoomWindow(force = false) {
   /* En tarjetas hay varias por renglón: el dibujado por ventana cuenta
      renglones y de ahí saca qué salas van. */
   const cards = roomCardsOn();
-  const CARD_GAP = cardGap();
-  const per = cards ? Math.max(1, Math.floor(((container.clientWidth || 800) - (vitrinaOn() ? 0 : 24) + CARD_GAP) / (cardMinW() + CARD_GAP))) : 1;
-  const ROW_H = cards ? cardH() + CARD_GAP : rowH();
+  const per = cards ? Math.max(1, Math.floor(((container.clientWidth || 800) - 24 + CARD_GAP) / (CARD_MIN_W + CARD_GAP))) : 1;
+  const ROW_H = cards ? CARD_H + CARD_GAP : rowH();
   const totalRows = Math.ceil(total / per);
   const window_ = Math.ceil(height / ROW_H) + OVERSCAN * 2;
   /* El tope importa: si la lista se achica (una búsqueda, por ejemplo) mientras
@@ -3021,26 +3003,9 @@ function selectRoom(token) {
 }
 
 function syncJoinButton() {
-  paintSelectedRoom();
   $('#actJoin').disabled = !state.selected;
   $('#actAutoJoin').disabled = !state.selected && !state.autoJoin;
   $('#actAutoJoin').classList.toggle('is-on', !!state.autoJoin);
-}
-
-/*
- * «Vitrina»: la barra de abajo dice qué sala está elegida (nombre, distancia y
- * cupo). En las demás interfaces el bloque está escondido por CSS.
- */
-function paintSelectedRoom() {
-  const box = $('#vSel');
-  if (!box) return;
-  const room = state.selected && state.rooms && state.rooms.list ? state.rooms.list.find((r) => r.token === state.selected) : null;
-  const en = isEn();
-  $('#vSelName').textContent = room ? room.name : (en ? 'Pick a room' : 'Elegí una sala');
-  $('#vSelMeta').textContent = room
-    ? [room.country ? String(room.country).toUpperCase() : '', room.distance != null ? `${room.distance.toLocaleString('es-AR')} km` : '', `${room.players} ${en ? 'of' : 'de'} ${room.maxPlayers} ${en ? 'players' : 'jugadores'}`].filter(Boolean).join(' · ')
-    : (en ? 'Click a card, double click to join.' : 'Un clic para elegirla, doble clic para entrar.');
-  box.classList.toggle('is-empty', !room);
 }
 
 /** Antes de entrar siempre se confirma el apodo en la pantalla de inicio. */
@@ -3384,6 +3349,8 @@ for (const [id, key, store] of [['#hideLocked', 'hideLocked', 'tl_hide_locked'],
 for (const btn of $$('#roomModes .roommode')) btn.addEventListener('click', () => applyRoomMode(btn.dataset.mode));
 for (const btn of $$('#roomModes .roomviewbtn')) btn.addEventListener('click', () => setRoomView(btn.dataset.view));
 try {
+  // «Vitrina» (retirada) había pasado las salas a tarjetas: se vuelve a la lista, una sola vez.
+  if (localStorage.getItem('tl_vitrina_view')) { localStorage.removeItem('tl_vitrina_view'); localStorage.setItem('tl_room_view', 'list'); }
   const savedView = localStorage.getItem('tl_room_view');
   document.documentElement.dataset.roomview = ROOM_VIEWS.includes(savedView) ? savedView : 'list';
 } catch (e) { document.documentElement.dataset.roomview = 'list'; }
@@ -12467,8 +12434,6 @@ initCollapsibles();
  * (`data-layout`) y reglas de CSS: no hay JS corriendo ni nada que repintar
  * por cuadro. «Clásico» es la de siempre y la que arranca por defecto. */
 const LAYOUTS = [
-  { id: 'vitrina', es: 'Vitrina', en: 'Showcase',
-    desD: 'La nueva: riel de íconos flotante, salas en tarjetas y todo redondeado.', desE: 'The new one: floating icon rail, rooms as cards, everything rounded.' },
   { id: 'classic', es: 'Clásica', en: 'Classic',
     desD: 'Menú lateral a la izquierda. La de siempre.', desE: 'Side menu on the left. The usual one.' },
   { id: 'top', es: 'Barra superior', en: 'Top bar',
@@ -12490,7 +12455,7 @@ const LAYOUTS = [
   { id: 'radial', es: 'Radial', en: 'Radial',
     desD: 'Un botón en la esquina que abre los destinos en abanico.', desE: 'A corner button that fans the destinations out.' }
 ];
-const LAYOUT_IDS = ['vitrina', 'top', 'dock', 'mini', 'right', 'island', 'bottom', 'consola', 'comando', 'radial'];
+const LAYOUT_IDS = ['top', 'dock', 'mini', 'right', 'island', 'bottom', 'consola', 'comando', 'radial'];
 function paintLayout() {
   const host = $('#layoutCards');
   if (!host || !state.config) return;
