@@ -1200,7 +1200,7 @@ function onNewGameDocument(doc) {
    */
   if (doc.defaultView) {
     doc.defaultView.__tvmAvatar = (obj, texto, prop) => {
-      if (obj && obj.__tvmP && !avatarFieldSure) safe(learnAvatarField, obj.__tvmP, texto);
+      if (obj && obj.__tvmP && avatarFields.length < 2) safe(learnAvatarField, obj.__tvmP, texto, true);
       safe(onAvatarTexture, obj, texto, prop);
     };
     /*
@@ -5211,11 +5211,25 @@ function paintPeers(doc) {
  * jugando.
  */
 const AVATAR_FIELD_KEY = 'tvm_avatar_field';
-let avatarField = null;
+/*
+ * Puede haber DOS campos de avatar: el que elige el jugador y el que le pone la
+ * sala encima (salas con bots que marcan a los jugadores). HaxBall dibuja el
+ * de la sala si existe. Antes se aprendía uno solo: si el primero que se
+ * aprendía era el de la sala, a todos los que no tenían uno puesto por la sala
+ * no se les veía nada. Ahora se guardan hasta dos y se muestra el primero que
+ * tenga algo, con el de la sala adelante.
+ */
+let avatarFields = [];
 let avatarFieldSure = false;
-try { avatarField = localStorage.getItem(AVATAR_FIELD_KEY) || null; } catch { /* sin storage */ }
+try {
+  const saved = localStorage.getItem(AVATAR_FIELD_KEY) || '';
+  avatarFields = saved ? saved.split(',').filter(Boolean).slice(0, 2) : [];
+} catch { /* sin storage */ }
+function saveAvatarFields() {
+  try { localStorage.setItem(AVATAR_FIELD_KEY, avatarFields.join(',')); } catch { /* sin storage */ }
+}
 
-function learnAvatarField(player, text) {
+function learnAvatarField(player, text, fromDisc) {
   if (!player || typeof player !== 'object' || typeof text !== 'string' || !text) return;
   let found = null;
   for (const k of Object.keys(player)) {
@@ -5225,9 +5239,27 @@ function learnAvatarField(player, text) {
   }
   if (!found) return;
   avatarFieldSure = true;
-  if (found === avatarField) return;
-  avatarField = found;
-  try { localStorage.setItem(AVATAR_FIELD_KEY, found); } catch { /* sin storage */ }
+  const before = avatarFields.join(',');
+  if (!avatarFields.includes(found)) {
+    avatarFields.push(found);
+    if (avatarFields.length > 2) avatarFields.shift();
+  }
+  // Lo que se dibuja en el disco gana: si este jugador tiene otro campo con
+  // otro valor, el que coincide con el disco es el de la sala y va primero.
+  if (fromDisc) {
+    const other = avatarFields.find((k) => k !== found);
+    if (other && typeof player[other] === 'string' && player[other] && player[other] !== text) {
+      avatarFields = [found, other];
+    }
+  }
+  if (avatarFields.join(',') !== before) saveAvatarFields();
+}
+function avatarOf(player) {
+  for (const k of avatarFields) {
+    const v = player[k];
+    if (typeof v === 'string' && v) return v;
+  }
+  return null;
 }
 
 function paintRowAvatars(doc) {
@@ -5237,23 +5269,23 @@ function paintRowAvatars(doc) {
   const rows = playerRows(doc);
   if (!players || !rows.length) return;
 
+  // Por nombre, sin espacios de más: la fila muestra el nombre recortado.
   const byName = new Map();
   for (let i = 0; i < players.length; i++) {
-    const n = String(players[i][f.name] || '');
+    const n = String(players[i][f.name] || '').trim();
     if (n && !byName.has(n)) byName.set(n, players[i]);
   }
 
   if (!avatarFieldSure) {
     const me = byName.get(myNick());
     const face = String(readStorage(haxball.AVATAR_KEY) || '');
-    if (me && face) learnAvatarField(me, face);
+    if (me && face) learnAvatarField(me, face, false);
   }
-  // Un campo guardado de otra versión del bundle: si apunta a algo que no es
-  // texto, se olvida y no se pinta nada hasta volver a aprenderlo.
-  if (avatarField && !avatarFieldSure) {
+  // Campos guardados de otra versión del bundle: si alguno apunta a algo que
+  // no es texto, se olvidan y se vuelven a aprender.
+  if (avatarFields.length && !avatarFieldSure) {
     for (const p of byName.values()) {
-      const v = p[avatarField];
-      if (v != null && typeof v !== 'string') { avatarField = null; break; }
+      if (avatarFields.some((k) => p[k] != null && typeof p[k] !== 'string')) { avatarFields = []; saveAvatarFields(); break; }
     }
   }
 
@@ -5261,9 +5293,9 @@ function paintRowAvatars(doc) {
     const name = row.querySelector('[data-hook="name"]');
     if (!name) continue;
     const player = byName.get((name.textContent || '').trim());
-    const face = avatarField && player ? player[avatarField] : null;
+    const face = player ? avatarOf(player) : null;
     let chip = row.querySelector('.tvm-av');
-    if (typeof face !== 'string' || !face) {
+    if (!face) {
       if (chip) chip.remove();
       continue;
     }

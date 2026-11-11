@@ -858,6 +858,7 @@ function applyConfig(config) {
   // `ambient` ya no existe: el fondo dejó de animarse (blobs y aura quietos),
   // así que era un interruptor que no apagaba nada. Ver theme.css.
   root.dataset.animations = config.appearance.animations ? 'on' : 'off';
+  root.dataset.lowend = config.perf && config.perf.lowEnd ? 'on' : 'off';
   window.i18n.setLanguage(config.appearance.language || 'es');
   // `setLanguage` repinta TODO lo que tiene data-i18n, y hay dos botones que
   // dicen otra cosa mientras su modo está encendido. Ver `paintKeysMoveButton`.
@@ -927,6 +928,7 @@ function paintPreview() {
   box.hidden = !on;
   if (panel) panel.classList.toggle('has-pv', on);
   pvLayout();
+  requestAnimationFrame(masonry);
   markChanged();
   if (!on || !window.TLPreview || !state.config) return;
   cancelAnimationFrame(previewFrame);
@@ -960,16 +962,9 @@ function paintPreview() {
 var pvLayout = () => {};
 (function floatPreview() {
   /*
-   * Tres formas de estar, sin que el jugador tenga que elegir ninguna:
-   *  · «al costado»: con la ventana ancha, las opciones se corren a la
-   *    izquierda y la vista previa ocupa la columna libre de la derecha, más
-   *    grande (clase .is-docked; el ancho sale de --pv-w);
-   *  · «flotante»: si no entra, una tarjeta abajo a la derecha, como antes;
-   *  · «donde la dejaste»: arrastrándola de la barra de arriba se puede poner
-   *    en cualquier lado; se guarda en proporción a la ventana, así sobrevive
-   *    a agrandarla o achicarla. Doble clic en la barra la vuelve a su lugar.
-   * El «–» la achica a una pestañita en cualquiera de las tres.
-   * Mover es sólo transform mientras se arrastra; nada de esto corre jugando.
+   * La vista previa no se mueve: con la ventana ancha queda fija en la columna
+   * de la derecha, grande (las opciones se corren a la izquierda); si no entra,
+   * flota abajo a la derecha. El «–» la achica a una pestañita.
    */
   const box = document.getElementById('pv');
   const card = $('#panel .panel__card');
@@ -981,13 +976,9 @@ var pvLayout = () => {};
   btn.type = 'button';
   btn.className = 'pv__min';
   head.append(btn);
-
-  const read = (k) => { try { return localStorage.getItem(k); } catch (e) { return null; } };
-  const write = (k, v) => { try { if (v == null) localStorage.removeItem(k); else localStorage.setItem(k, v); } catch (e) { /* sin storage */ } };
-
-  let min = read('tl_pv_min') === '1';
-  let spot = null;
-  try { spot = JSON.parse(read('tl_pv_spot') || 'null'); } catch (e) { spot = null; }
+  try { localStorage.removeItem('tl_pv_spot'); } catch (e) { /* sin storage */ }
+  let min = false;
+  try { min = localStorage.getItem('tl_pv_min') === '1'; } catch (e) { /* sin storage */ }
 
   const labels = () => {
     const en = isEn();
@@ -995,33 +986,16 @@ var pvLayout = () => {};
     btn.textContent = min ? '+' : '–';
     btn.title = label;
     btn.setAttribute('aria-label', label);
-    head.title = en ? 'Drag to move it · double click puts it back' : 'Arrastrala para moverla · doble clic la vuelve a su lugar';
   };
-
-  // ¿Hay lugar a la derecha de las opciones? Lo mide sobre el panel de verdad.
-  const DOCK_MIN = 380;
   const layout = () => {
     const nav = $('#panelNav');
     const navW = nav && nav.offsetParent ? nav.offsetWidth : 0;
     const free = card.clientWidth - navW - 48 - 820 - 40 - 32;
-    const docked = !spot && free >= DOCK_MIN;
+    const docked = free >= 380;
     box.classList.toggle('is-docked', docked);
     panel.classList.toggle('pv-docked', docked);
-    if (docked) card.style.setProperty('--pv-w', `${Math.min(680, Math.floor(free))}px`);
-    box.classList.toggle('is-free', !!spot);
-    if (spot) {
-      const w = box.offsetWidth;
-      const h = box.offsetHeight;
-      const x = Math.max(8, Math.min(card.clientWidth - w - 8, spot.fx * card.clientWidth));
-      const y = Math.max(8, Math.min(card.clientHeight - h - 8, spot.fy * card.clientHeight));
-      box.style.left = `${Math.round(x)}px`;
-      box.style.top = `${Math.round(y)}px`;
-    } else {
-      box.style.left = '';
-      box.style.top = '';
-    }
+    if (docked) card.style.setProperty('--pv-w', `${Math.min(900, Math.floor(free))}px`);
   };
-
   const set = (m) => {
     min = m;
     box.classList.toggle('is-min', min);
@@ -1030,62 +1004,13 @@ var pvLayout = () => {};
     layout();
   };
   btn.addEventListener('mouseenter', labels);
-  btn.addEventListener('click', (e) => {
-    e.stopPropagation();
+  head.addEventListener('click', () => {
     set(!min);
-    write('tl_pv_min', min ? '1' : '0');
+    try { localStorage.setItem('tl_pv_min', min ? '1' : '0'); } catch (e) { /* sin storage */ }
     if (!min) paintPreview();
   });
-
-  // Arrastrar desde la barra de arriba.
-  let drag = null;
-  head.addEventListener('pointerdown', (e) => {
-    if (e.button !== 0 || e.target.closest('button')) return;
-    const r = box.getBoundingClientRect();
-    const c = card.getBoundingClientRect();
-    drag = { id: e.pointerId, sx: e.clientX, sy: e.clientY, x0: r.left - c.left, y0: r.top - c.top, moved: false };
-    head.setPointerCapture(e.pointerId);
-  });
-  head.addEventListener('pointermove', (e) => {
-    if (!drag || e.pointerId !== drag.id) return;
-    const dx = e.clientX - drag.sx;
-    const dy = e.clientY - drag.sy;
-    if (!drag.moved && Math.abs(dx) + Math.abs(dy) < 4) return;
-    if (!drag.moved) {
-      drag.moved = true;
-      // Se suelta de su lugar automático en la posición en la que está.
-      box.classList.remove('is-docked');
-      panel.classList.remove('pv-docked');
-      box.classList.add('is-free', 'is-dragging');
-      box.style.left = `${drag.x0}px`;
-      box.style.top = `${drag.y0}px`;
-    }
-    box.style.transform = `translate(${dx}px, ${dy}px)`;
-  });
-  const drop = (e) => {
-    if (!drag || e.pointerId !== drag.id) return;
-    const d = drag;
-    drag = null;
-    box.classList.remove('is-dragging');
-    if (!d.moved) return;
-    const r = box.getBoundingClientRect();
-    const c = card.getBoundingClientRect();
-    box.style.transform = '';
-    spot = { fx: (r.left - c.left) / c.width, fy: (r.top - c.top) / c.height };
-    write('tl_pv_spot', JSON.stringify(spot));
-    layout();
-  };
-  head.addEventListener('pointerup', drop);
-  head.addEventListener('pointercancel', drop);
-  head.addEventListener('dblclick', (e) => {
-    if (e.target.closest('button')) return;
-    spot = null;
-    write('tl_pv_spot', null);
-    layout();
-  });
-
-  if (typeof ResizeObserver === 'function') new ResizeObserver(() => { if (!drag) layout(); }).observe(card);
-  pvLayout = () => { if (!drag) layout(); };
+  if (typeof ResizeObserver === 'function') new ResizeObserver(layout).observe(card);
+  pvLayout = layout;
   set(min);
 })();
 
@@ -1626,6 +1551,7 @@ function buildPanelNav() {
   const panel = $('#panel');
   list.replaceChildren();
   panel.classList.toggle('is-searching', Boolean(query));
+  requestAnimationFrame(masonry);
 
   /*
    * Sin búsqueda: las solapas de la página, grandes y con una línea que dice qué
@@ -9534,8 +9460,8 @@ function renderDiscord() {
 
 async function applyDiscord() {
   try {
-    const res = await tvm.discord.apply();
-    $('#discordStatus').textContent = res.message;
+    const res = (await tvm.discord.apply()) || {};
+    $('#discordStatus').textContent = res.message || '';
     $('#discordStatus').className = `statusline${res.status === 'on' ? ' is-ok' : res.status === 'error' ? ' is-err' : ''}`;
     if (res.status === 'on') pushPresence();
   } catch (err) {
@@ -13645,6 +13571,46 @@ let rosterFit = () => {};
    el último quedaba en media columna con un hueco al lado. Se marca para que
    ocupe todo el ancho. Mira el panel sólo cuando cambian sus filas (al abrirlo
    o al redibujar un ajuste), una vez por cuadro como mucho. */
+/* ═══ Mosaico de dos columnas (Configuración y pestañas sin vista previa) ═══
+ * Cada hijo visible de la página ocupa `span N` renglones de 4 px según su
+ * alto real (+24 px de aire debajo de las secciones). Un ResizeObserver por
+ * hijo lo recalcula cuando una sección se abre, se cierra o cambia de tamaño.
+ * Sólo con ventana ancha y sin vista previa; si no, todo vuelve a una columna.
+ */
+const MASONRY_ROW = 4;
+const masonryRO = typeof ResizeObserver === 'function' ? new ResizeObserver((entries) => {
+  for (const e of entries) spanOf(e.target);
+}) : null;
+const masonryWatched = new WeakSet();
+function spanOf(el) {
+  const inner = el.parentElement;
+  if (!inner || !inner.classList.contains('is-masonry')) { el.style.gridRowEnd = ''; return; }
+  const h = el.getBoundingClientRect().height;
+  if (!h) { el.style.gridRowEnd = ''; return; }
+  const gap = el.classList.contains('sec') ? 24 : 16;
+  const span = Math.max(1, Math.ceil((h + gap) / MASONRY_ROW));
+  const v = `span ${span}`;
+  if (el.style.gridRowEnd !== v) el.style.gridRowEnd = v;
+}
+function masonry() {
+  const panel = $('#panel');
+  if (!panel) return;
+  const wide = window.innerWidth >= 1560;
+  for (const inner of panel.querySelectorAll('.page__inner')) {
+    const page = inner.closest('.page');
+    const secs = [...inner.children].filter((el) => el.classList.contains('sec') && el.getClientRects().length);
+    const on = wide && !panel.classList.contains('has-pv') && !panel.classList.contains('is-searching') &&
+      !panel.classList.contains('only-changed') && page && !page.hidden && secs.length >= 2;
+    inner.classList.toggle('is-masonry', on);
+    inner.classList.toggle('is-wide1', wide && !panel.classList.contains('has-pv') && secs.length < 2);
+    for (const el of inner.children) {
+      if (on && masonryRO && !masonryWatched.has(el)) { masonryRO.observe(el); masonryWatched.add(el); }
+      if (on) spanOf(el); else if (el.style.gridRowEnd) el.style.gridRowEnd = '';
+    }
+  }
+}
+window.addEventListener('resize', () => requestAnimationFrame(masonry));
+
 (function evenToggleRuns() {
   const panel = $('#panel');
   if (!panel || typeof MutationObserver !== 'function') return;
@@ -13669,11 +13635,7 @@ let rosterFit = () => {};
       }
       flush();
     }
-    // Una sola sección a la vista → sin dos columnas (ver «Pantallas sin vista previa»).
-    for (const inner of panel.querySelectorAll('.page__inner')) {
-      const n = [...inner.children].filter((el) => el.classList.contains('sec') && el.getClientRects().length).length;
-      inner.classList.toggle('one-sec', n < 2);
-    }
+    masonry();
     // Pulido #34: las filas comunes seguidas (deslizadores, listas, campos) van
     // juntas en una misma tarjeta con separadores finos, en vez de sueltas.
     for (const box of panel.querySelectorAll('.rows, .sec__body')) {
@@ -13851,6 +13813,7 @@ function markChanged() {
     panel.classList.toggle('only-changed', on);
     btn.setAttribute('aria-pressed', String(on));
     btn.classList.toggle('is-on', on);
+    requestAnimationFrame(masonry);
     // Prendido: se abren las secciones que tienen algo, si no no se vería nada.
     if (on) for (const sec of $$('.sec.has-changed', navPage(state.view) || document)) setSecOpen(sec, true, false);
   });

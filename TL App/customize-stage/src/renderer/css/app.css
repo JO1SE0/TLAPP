@@ -8241,7 +8241,7 @@ html[data-layout="comando"] :is(#app[data-view="ajustes"], #app[data-view="aspec
 .pcard__nick { position: absolute; left: 50%; top: calc(50% - 39px - 14px); transform: translate(-50%, -100%); max-width: 90%; }
 
 /* ═══ Vista previa: al costado, flotante o donde la dejes ═══ */
-.panel__card > #pv .pv__head { cursor: grab; touch-action: none; }
+.panel__card > #pv .pv__head { cursor: pointer; }
 .panel__card > #pv.is-dragging { will-change: transform; box-shadow: 0 26px 60px -10px rgb(0 0 0 / 70%), 0 0 0 1px var(--accent-line); }
 .panel__card > #pv.is-dragging .pv__head { cursor: grabbing; }
 /* Al costado: columna de la derecha, más grande, alineada con el contenido. */
@@ -8284,25 +8284,50 @@ html[data-layout="comando"] :is(#app[data-view="ajustes"], #app[data-view="aspec
 .panel.has-pv.pv-solo:not(.pv-docked):not(.pv-min) .page[data-page="aspecto"] .page__inner { padding-bottom: 420px; }
 
 /* ═══ Pantallas sin vista previa en ventanas anchas ═══
-   Estilo, En partida y toda Configuración: en vez de una columna angosta con
-   media pantalla vacía, las secciones van en dos columnas (cada una entera,
-   sin cortarse), y el título y los atajos ocupan todo el ancho. */
-@media (min-width: 1560px) {
-  #app[data-view="ajustes"] .panel .page[data-page="ajustes"] .page__inner,
-  #app[data-view="aspecto"] .panel:not(.has-pv) .page[data-page="aspecto"] .page__inner {
-    display: block;
-    max-width: 1500px;
-    column-count: 2;
-    column-gap: 24px;
-  }
-  :is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .page__inner > * { break-inside: avoid; }
-  :is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .page__inner > .pagehead,
-  :is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .page__inner > .tabbar,
-  :is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .page__inner > .page__empty { column-span: all; }
-  :is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .page__inner > .sec { width: 100%; margin: 0 0 24px; }
-  /* Una sola sección a la vista: una columna, más ancha. */
-  :is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .page__inner.one-sec { column-count: 1 !important; max-width: 1200px !important; }
+   Estilo, En partida y toda Configuración: dos columnas tipo mosaico. Es una
+   grilla (no columnas de texto, que cortaban tarjetas y las superponían): cada
+   sección ocupa tantos renglones de 4 px como mide, y JS lo recalcula cuando
+   una se abre o se cierra. El título y los atajos van a todo el ancho. */
+#app .panel .page .page__inner.is-masonry {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-auto-rows: 4px;
+  column-gap: 32px;
+  row-gap: 0;
+  align-items: start;
+  max-width: none;
+  width: 100%;
+  padding-left: 40px;
+  padding-right: 40px;
 }
+.panel .page__inner.is-masonry > * { grid-column: 1 / -1; margin-top: 0; margin-bottom: 0; }
+.panel .page__inner.is-masonry > .sec { grid-column: auto; }
+.panel .page__inner.is-masonry > .sec,
+.panel .page__inner.is-masonry > .pagehead,
+.panel .page__inner.is-masonry > .tabbar { align-self: start; }
+/* Una sola sección a la vista: una columna, más ancha. */
+#app .panel .page .page__inner.is-wide1 { max-width: none; padding-left: 40px; padding-right: 40px; }
+
 /* Interruptores siempre de a dos: con tres por renglón quedaban huecos. */
 :is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .rows { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 @media (max-width: 760px) { :is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .rows { grid-template-columns: minmax(0, 1fr); } }
+
+/* ═══ Club, Música, Informes y Hostear: ventana flotante redondeada ═══
+   En el menú, el fondo de atrás se desenfoca. En partida NO (el desenfoque
+   cuesta FPS): ahí sólo se oscurece. */
+:is(#app[data-view="club"], #app[data-view="musica"], #app[data-view="informes"], #app[data-view="hostear"]) .panel__card {
+  border-radius: 22px;
+  overflow: hidden;
+  box-shadow: 0 30px 80px -20px rgb(0 0 0 / 75%), 0 0 0 1px rgb(var(--text-rgb) / 8%);
+}
+:is(#app[data-view="club"], #app[data-view="musica"], #app[data-view="informes"], #app[data-view="hostear"]):not([data-stage="game"]) .panel__scrim {
+  background: rgba(4, 3, 8, 0.45);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+}
+:is(#app[data-view="club"], #app[data-view="musica"], #app[data-view="informes"], #app[data-view="hostear"])[data-stage="game"] .panel__scrim {
+  background: rgba(4, 3, 8, 0.7);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+html[data-lowend="on"] .panel__scrim, html[data-animations="off"] .panel__scrim { -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
