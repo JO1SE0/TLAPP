@@ -14130,3 +14130,146 @@ document.addEventListener('mouseover', (e) => {
   });
   for (const ev of ['mousedown', 'wheel', 'keydown', 'blur']) window.addEventListener(ev, hide, { passive: true, capture: true });
 })();
+
+/* ═══ Vista del chat al pasar el mouse ═══════════════════════════════
+ * En «En partida → Chat y botones», al apoyar el mouse sobre un ajuste del
+ * chat aparece al costado una cancha chiquita con el chat como se vería
+ * jugando: opacidad, alto, fondo, tamaño y fuente de la letra, hora y oculto.
+ * Se arma una sola vez y después sólo se le cambian estilos; no se anima
+ * nada mientras está quieta y no deja pasar el mouse (no tapa clics).
+ */
+(function chatHoverPreview() {
+  const HOSTS = '#gameChat .row, #lookChat .row';
+  const FAMILIES = {
+    outfit: 'Outfit, system-ui, sans-serif',
+    mono: 'Consolas, "Courier New", monospace',
+    serif: 'Georgia, "Times New Roman", serif',
+    round: '"Comic Sans MS", "Comic Neue", cursive',
+    impact: 'Impact, "Arial Black", sans-serif'
+  };
+  let box = null;
+  let row = null;
+  let hideTimer = 0;
+  let parts = null;
+
+  function build() {
+    box = document.createElement('div');
+    box.className = 'chatpv';
+    box.setAttribute('aria-hidden', 'true');
+    box.innerHTML = '<div class="chatpv__h"><span></span><b></b></div>'
+      + '<div class="chatpv__f">'
+      + '<i class="chatpv__d" style="left:22%;top:30%;background:#e56e56"></i>'
+      + '<i class="chatpv__d" style="left:46%;top:18%;background:#5689e5"></i>'
+      + '<i class="chatpv__d chatpv__ball" style="left:37%;top:42%"></i>'
+      + '<i class="chatpv__d" style="left:70%;top:34%;background:#5689e5"></i>'
+      + '<div class="chatpv__chat"><div class="chatpv__log"></div><div class="chatpv__in"></div></div>'
+      + '<div class="chatpv__off"></div>'
+      + '</div>';
+    document.body.append(box);
+    parts = {
+      title: box.querySelector('.chatpv__h span'),
+      tag: box.querySelector('.chatpv__h b'),
+      chat: box.querySelector('.chatpv__chat'),
+      log: box.querySelector('.chatpv__log'),
+      input: box.querySelector('.chatpv__in'),
+      off: box.querySelector('.chatpv__off')
+    };
+  }
+
+  function num(v, def) { const n = Number(v); return Number.isFinite(n) ? n : def; }
+
+  function paint() {
+    if (!box || !row || !state.config) return;
+    const en = isEn();
+    const g = state.config.game || {};
+    const vis = state.config.visual || {};
+    const ap = state.config.appearance || {};
+    const typing = row.dataset.cfg === 'game.chatFocusHeight';
+    const hidden = !!ap.hideChat;
+    const full = g.chatBgMode === 'full';
+    const bgAlpha = num(g.chatOpacity, 0.8);
+    const ownBg = num(vis.chatBg, -1);
+    const idle = full ? 1 : Math.min(1, Math.max(0.15, num(vis.chatOpacity, 1)));
+    const scale = Math.min(1.8, Math.max(0.7, num(vis.chatScale, 1)));
+    // La cancha de muestra mide ~190 px de alto contra ~720 de una ventana de
+    // juego: los altos del chat se achican en esa proporción.
+    const h = Math.max(0, num(typing ? g.chatFocusHeight : g.chatHeight, typing ? 140 : 160)) * 0.26;
+
+    parts.title.textContent = typing
+      ? (en ? 'In game · typing' : 'En partida · escribiendo')
+      : (en ? 'In game' : 'Así se ve en partida');
+    const label = row.querySelector('.row__val');
+    parts.tag.textContent = label ? label.textContent : '';
+
+    parts.off.textContent = en ? 'Chat hidden' : 'Chat oculto';
+    parts.off.hidden = !hidden;
+    parts.chat.hidden = hidden;
+    if (hidden) return;
+
+    const bg = !full && ownBg >= 0 ? `rgba(8, 12, 22, ${ownBg})` : `rgba(10, 14, 24, ${(bgAlpha * 0.85).toFixed(2)})`;
+    const cs = parts.chat.style;
+    cs.background = bg;
+    cs.opacity = typing ? 1 : idle;
+    cs.left = full ? '0' : '6px';
+    cs.right = full ? '0' : '34%';
+    cs.bottom = full ? '0' : '6px';
+    cs.borderRadius = full ? '0' : '4px';
+    cs.fontSize = `${(10.5 * scale).toFixed(1)}px`;
+    cs.fontFamily = FAMILIES[vis.chatFont] || '';
+    parts.log.style.height = `${h.toFixed(1)}px`;
+    parts.input.hidden = !typing;
+    parts.input.textContent = en ? 'Type here…' : 'Escribí acá…';
+
+    const nick = String((state.config.general && state.config.general.nickname) || '').trim() || (en ? 'You' : 'Vos');
+    const stamp = g.chatTimestamps ? '21:04 ' : '';
+    const lines = [
+      [stamp, `${nick}: `, en ? 'come on, we can do it' : 'vamos que se puede'],
+      [stamp, en ? 'Rival: ' : 'Rival: ', 'gg'],
+      [stamp, '', en ? 'Goal by Friend · 2-1' : 'Gol de Amigo · 2-1', true]
+    ];
+    parts.log.replaceChildren(...lines.map(([ts, who, text, notice]) => {
+      const p = document.createElement('p');
+      if (notice) p.className = 'is-note';
+      if (ts) { const i = document.createElement('i'); i.textContent = ts; p.append(i); }
+      if (who) { const b = document.createElement('b'); b.textContent = who; p.append(b); }
+      p.append(document.createTextNode(text));
+      return p;
+    }));
+  }
+
+  function place() {
+    if (!box || !row) return;
+    const r = row.getBoundingClientRect();
+    const w = box.offsetWidth || 320;
+    const hgt = box.offsetHeight || 230;
+    let left = r.right + 14;
+    if (left + w > window.innerWidth - 12) left = r.left - w - 14;
+    if (left < 12) left = Math.max(12, window.innerWidth - w - 12);
+    const top = Math.min(Math.max(12, r.top + r.height / 2 - hgt / 2), window.innerHeight - hgt - 12);
+    box.style.transform = `translate(${Math.round(left)}px, ${Math.round(top)}px)`;
+  }
+
+  function show(next) {
+    clearTimeout(hideTimer);
+    if (!box) build();
+    if (row !== next) { row = next; paint(); place(); }
+    box.classList.add('is-on');
+  }
+
+  function hide() {
+    clearTimeout(hideTimer);
+    hideTimer = setTimeout(() => { row = null; if (box) box.classList.remove('is-on'); }, 120);
+  }
+
+  document.addEventListener('mouseover', (e) => {
+    const target = e.target && e.target.closest ? e.target.closest(HOSTS) : null;
+    if (target && target.offsetParent) show(target); else if (row) hide();
+  });
+  // Al mover una barra o cambiar algo, la vista sigue el valor nuevo (después
+  // de que la config vuelve guardada).
+  const repaint = () => { if (row) { paint(); setTimeout(paint, 250); } };
+  document.addEventListener('input', (e) => { if (row && e.target.closest && e.target.closest('#gameChat, #lookChat')) requestAnimationFrame(repaint); });
+  document.addEventListener('change', (e) => { if (row && e.target.closest && e.target.closest('#gameChat, #lookChat')) setTimeout(repaint, 60); });
+  document.addEventListener('click', (e) => { if (row && e.target.closest && e.target.closest('#gameChat, #lookChat')) setTimeout(repaint, 120); });
+  document.addEventListener('scroll', () => { if (row) { row = null; box.classList.remove('is-on'); } }, true);
+})();

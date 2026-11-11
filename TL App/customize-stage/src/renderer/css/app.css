@@ -8372,3 +8372,36 @@ html[data-lowend="on"] .panel__scrim, html[data-animations="off"] .panel__scrim 
 .pv__cmp.is-on { background: var(--accent); border-color: var(--accent); color: var(--on-accent, #111); }
 #pv.is-min .pv__cmp { display: none; }
 #pv.is-comparing canvas { outline: 2px dashed rgb(var(--text-rgb) / 35%); outline-offset: -2px; }
+
+/* Vista del chat al pasar el mouse por sus ajustes (En partida). Sin blur:
+   el panel también se abre jugando. Sólo opacidad y transform. */
+.chatpv {
+  position: fixed;
+  left: 0; top: 0;
+  z-index: 70;
+  width: 320px;
+  padding: 10px;
+  border-radius: 14px;
+  background: var(--panel, #0e1626);
+  box-shadow: 0 18px 40px -8px rgb(0 0 0 / 60%), 0 0 0 1px rgb(var(--text-rgb) / 10%);
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity var(--t-ui) var(--ease-ui), visibility 0s linear var(--t-ui);
+}
+.chatpv.is-on { opacity: 1; visibility: visible; transition: opacity var(--t-ui) var(--ease-ui), visibility 0s; }
+.chatpv__h { display: flex; justify-content: space-between; gap: 8px; margin: 2px 4px 8px; font: 700 var(--fs-micro)/1.2 var(--font); color: var(--muted, var(--text-dim)); text-transform: uppercase; letter-spacing: .06em; }
+.chatpv__h b { color: var(--accent); white-space: nowrap; }
+.chatpv__f { position: relative; height: 190px; border-radius: 9px; overflow: hidden; background: repeating-linear-gradient(90deg, #6b8a5a 0 32px, #65844f 32px 64px); }
+.chatpv__f::before { content: ''; position: absolute; inset: 12px 16px; border: 2px solid rgb(255 255 255 / 55%); border-radius: 3px; }
+.chatpv__d { position: absolute; width: 18px; height: 18px; border-radius: 50%; border: 2px solid #111; }
+.chatpv__ball { width: 11px; height: 11px; background: #fff; }
+.chatpv__chat { position: absolute; padding: 4px 7px 5px; color: #fff; font-size: 10.5px; line-height: 1.4; }
+.chatpv__log { display: flex; flex-direction: column; justify-content: flex-end; overflow: hidden; }
+.chatpv__log p { margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-shadow: 0 1px 2px #000; }
+.chatpv__log i { font-style: normal; color: #9fb3c8; }
+.chatpv__log .is-note { color: #ffd166; }
+.chatpv__in { margin-top: 4px; padding: 2px 6px; border-radius: 3px; background: rgb(255 255 255 / 14%); color: rgb(255 255 255 / 55%); }
+.chatpv__in[hidden], .chatpv__chat[hidden], .chatpv__off[hidden] { display: none; }
+.chatpv__off { position: absolute; left: 50%; bottom: 12px; transform: translateX(-50%); padding: 4px 10px; border-radius: 99px; background: rgb(0 0 0 / 55%); color: #fff; font: 700 var(--fs-micro) var(--font); }
+html[data-animations="off"] .chatpv { transition: none; }
