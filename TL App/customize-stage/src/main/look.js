@@ -816,12 +816,58 @@ function pentagon(ctx, cx, cy, r, rot) {
  * 3D: se pinta UNA vez sobre un lienzo aparte con el mismo código de siempre y
  * se guardan los píxeles. Se reusa mientras no cambie el estilo ni el color.
  */
+/* ── Pelotas con foto ──────────────────────────────────────────────────
+ * Las fotos vienen de ball-photos.js ya recortadas y achicadas (256 la común,
+ * 128 la «plana» para el 3D). Se crea un <img> por documento —el del juego y
+ * el del menú son distintos— y se dibuja con un solo drawImage. Mientras la
+ * foto no terminó de cargar se usa el dibujo de siempre de ese estilo.
+ */
+let ballPhotoMap = null;
+let ballPhotoHook = null;
+const ballPhotoCache = new WeakMap();
+// Mientras se arma la textura del 3D va la versión sin la luz de la foto.
+let ballPhotoFlat = false;
+function setBallPhotos(map, onReady) {
+  ballPhotoMap = map || null;
+  ballPhotoHook = typeof onReady === 'function' ? onReady : null;
+}
+function hasBallPhoto(style) {
+  return !!(ballPhotoMap && ballPhotoMap[style]);
+}
+function ballPhotoOf(doc, style, flat) {
+  if (!doc || !hasBallPhoto(style)) return null;
+  let byDoc = ballPhotoCache.get(doc);
+  if (!byDoc) { byDoc = {}; ballPhotoCache.set(doc, byDoc); }
+  const key = `${style}|${flat ? 1 : 0}`;
+  let entry = byDoc[key];
+  if (!entry) {
+    const Img = doc.defaultView && doc.defaultView.Image;
+    if (!Img) return null;
+    const img = new Img();
+    entry = byDoc[key] = { img, ok: false };
+    img.onload = () => {
+      entry.ok = true;
+      // La textura 3D de este estilo se armó con el dibujo de respaldo: se rehace.
+      for (const k of Array.from(ballTextures.keys())) if (k.startsWith(`${style}|`)) ballTextures.delete(k);
+      if (ballPhotoHook) { try { ballPhotoHook(doc, style); } catch (e) { /* sólo avisa */ } }
+    };
+    img.src = ballPhotoMap[style][flat ? 'flat' : 'photo'];
+  }
+  return entry.ok ? entry.img : null;
+}
+/** Carga de antemano todas las fotos en un documento (el menú, para la galería). */
+function preloadBallPhotos(doc) {
+  if (!ballPhotoMap) return;
+  for (const style of Object.keys(ballPhotoMap)) { ballPhotoOf(doc, style, false); ballPhotoOf(doc, style, true); }
+}
+
 const BALL_TEX = 128;
 const ballTextures = new Map();
 function ballTexture(ctx, style, tint) {
   const key = `${style}|${tint || ''}`;
   let tex = ballTextures.get(key);
   if (tex) return tex;
+  const photoReady = !hasBallPhoto(style) || !!ballPhotoOf(ctx.canvas.ownerDocument, style, true);
   const c = ctx.canvas.ownerDocument.createElement('canvas');
   c.width = c.height = BALL_TEX;
   const g = c.getContext('2d');
@@ -832,9 +878,12 @@ function ballTexture(ctx, style, tint) {
   g.fill();
   g.beginPath();
   g.arc(h, h, h, 0, TAU);
-  ballOverlay(g, style, h, h, h, null, tint, null);
+  ballPhotoFlat = true;
+  try { ballOverlay(g, style, h, h, h, null, tint, null); } finally { ballPhotoFlat = false; }
   tex = { size: BALL_TEX, data: g.getImageData(0, 0, BALL_TEX, BALL_TEX).data };
   c.width = 0;
+  // Sin la foto todavía no se guarda: así la próxima vez sale con la foto.
+  if (!photoReady) return tex;
   if (ballTextures.size > 24) ballTextures.clear();
   ballTextures.set(key, tex);
   return tex;
@@ -876,7 +925,10 @@ function ballOverlay(ctx, style, x, y, r, strokeFn, tint, fx3d) {
       ctx.rotate(fx3d.spin);
       ctx.translate(-x, -y);
     }
-    if (style === 'soccer') {
+    const photo = hasBallPhoto(style) ? ballPhotoOf(ctx.canvas.ownerDocument, style, ballPhotoFlat || !!fx3d) : null;
+    if (photo) {
+      ctx.drawImage(photo, x - r, y - r, r * 2, r * 2);
+    } else if (style === 'soccer') {
       // Pentágono negro al medio y cinco más cortados por el borde.
       ctx.fillStyle = '#16181d';
       pentagon(ctx, x, y, r * 0.36, -Math.PI / 2);
@@ -1021,31 +1073,7 @@ function extraBall(ctx, style, x, y, r) {
   const lw = Math.max(0.4, r * 0.07);
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
-  if (style === 'panels') {
-    // Fútbol moderno: tres palas curvas que giran desde el centro.
-    disc(ctx, x, y, r, '#f6f6f4');
-    for (let k = 0; k < 3; k++) {
-      const a = (k * TAU) / 3 - Math.PI / 2;
-      ctx.save();
-      ctx.translate(x, y);
-      ctx.rotate(a);
-      ctx.beginPath();
-      ctx.moveTo(0, 0);
-      ctx.quadraticCurveTo(r * 0.5, -r * 0.95, r * 1.2, -r * 0.25);
-      ctx.quadraticCurveTo(r * 0.85, r * 0.3, 0, 0);
-      ctx.fillStyle = k === 1 ? '#e8a21a' : '#2563c9';
-      ctx.fill();
-      ctx.strokeStyle = 'rgba(20,24,34,0.55)';
-      ctx.lineWidth = lw;
-      ctx.stroke();
-      ctx.restore();
-    }
-    ctx.strokeStyle = 'rgba(20,24,34,0.35)';
-    ctx.lineWidth = lw * 0.8;
-    ctx.beginPath();
-    ctx.arc(x, y, r * 0.62, 0, TAU);
-    ctx.stroke();
-  } else if (style === 'triangles') {
+  if (style === 'triangles') {
     // Fútbol de triángulos: uno al medio y tres cortados por el borde.
     disc(ctx, x, y, r, '#f4f4f2');
     ctx.fillStyle = '#d4312b';
@@ -1458,6 +1486,13 @@ function extraBall(ctx, style, x, y, r) {
     ctx.beginPath();
     ctx.ellipse(x, y, r * 0.9, r * 0.2, -0.35, 0, TAU);
     ctx.stroke();
+  } else if (style === 'peso') {
+    // Respaldo mientras carga la foto: centro dorado y anillo plateado.
+    disc(ctx, x, y, r, '#b9bcc2');
+    ctx.fillStyle = '#c9a64a';
+    ctx.beginPath();
+    ctx.arc(x, y, r * 0.68, 0, TAU);
+    ctx.fill();
   } else if (style === 'lava') {
     disc(ctx, x, y, r, '#1b0d0a');
     // Sin shadowBlur (es caro por cuadro): el resplandor es un trazo ancho y tenue debajo.
@@ -2346,6 +2381,8 @@ module.exports = {
   paintLight,
   discOverlay,
   ballOverlay,
+  setBallPhotos,
+  preloadBallPhotos,
   drawRing,
   noteTrail,
   drawTrail,

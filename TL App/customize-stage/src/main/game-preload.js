@@ -18,6 +18,7 @@
 const { ipcRenderer } = require('electron');
 const ball3d = require('./ball-3d');
 const lookfx = require('./look');
+lookfx.setBallPhotos(require('./ball-photos'));
 const zoomControl = require('./game-zoom');
 const themes = require('./themes');
 const roomUi = require('./room-ui');
@@ -5701,9 +5702,9 @@ let ballDrawFailed = false;
 let ball3dLogged = false;
 const BALL_STYLES = [
   'soccer', 'neon', 'gold', 'beach', 'eight', 'star',
-  'panels', 'triangles', 'vintage', 'tennis', 'basket', 'volley', 'baseball', 'golf', 'bowling',
+  'triangles', 'vintage', 'tennis', 'basket', 'volley', 'baseball', 'golf', 'bowling',
   'earth', 'moon', 'disco', 'orb', 'pumpkin', 'melon', 'eye',
-  'argentina', 'fire', 'ice', 'yinyang', 'smile', 'sun', 'donut', 'checker', 'candy', 'heart', 'saturn', 'lava'
+  'argentina', 'fire', 'ice', 'yinyang', 'smile', 'sun', 'donut', 'checker', 'candy', 'heart', 'saturn', 'lava', 'peso'
 ];
 /** Para que el estilo/color de la pelota gire y se sombree con la pelota 3D. */
 const ballFx3d = { spin: 0, shade: ball3d.shade, sphere: ball3d.sphere, surface: ball3d.surface, state: null };
@@ -10705,7 +10706,9 @@ function syncCanvasHotFlags() {
   visual.shadows = !!cfg.softShadows;
   visual.ballColor = lookfx.safeColor(cfg.ballColor);
   visual.lineGlow = !!cfg.lineGlow;
-  visual.ballStyle = BALL_STYLES.includes(cfg.ballStyle) ? cfg.ballStyle : 'default';
+  // «Fútbol moderno» se sacó: quien la tenía queda con la clásica (ahora con foto).
+  const ballStyle = cfg.ballStyle === 'panels' ? 'soccer' : cfg.ballStyle;
+  visual.ballStyle = BALL_STYLES.includes(ballStyle) ? ballStyle : 'default';
   visual.ringStyle = ['double', 'dashed', 'crown', 'glow', 'dots', 'arrow'].includes(cfg.ringStyle) ? cfg.ringStyle : 'default';
   visual.ringColor = lookfx.safeColor(cfg.ringColor);
   visual.selfTrail = !!cfg.selfTrail;

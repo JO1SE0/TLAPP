@@ -11,6 +11,17 @@
   const L = window.module && window.module.exports;
   try { delete window.module; } catch (e) { window.module = undefined; }
   if (!L || !L.discOverlay) return;
+  // Las pelotas con foto: se cargan ya, y cuando llega cada una se avisa para que
+  // la galería y la vista previa se vuelvan a dibujar con la foto.
+  if (L.setBallPhotos && window.TL_BALL_PHOTOS) {
+    let queued = false;
+    L.setBallPhotos(window.TL_BALL_PHOTOS, () => {
+      if (queued) return;
+      queued = true;
+      setTimeout(() => { queued = false; window.dispatchEvent(new Event('tl-ballphotos')); }, 120);
+    });
+    L.preloadBallPhotos(document);
+  }
 
   const FONTS = {
     outfit: 'Outfit, system-ui, sans-serif',

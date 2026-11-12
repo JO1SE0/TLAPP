@@ -11065,7 +11065,7 @@ const LOOK_SECTIONS = {
     { type: 'reset', key: '_ringReset', label: 'look.resetRing', keys: ['ownRingColor', 'ownRingAlpha', 'ownRingRadius', 'ownRingSoft'] }
   ],
   lookBall: [
-    { key: 'ballStyle', type: 'select', label: 'look.ballStyle', options: [['default', 'look.opt.none'], ['soccer', 'look.bs.soccer'], ['neon', 'look.bs.neon'], ['gold', 'look.bs.gold'], ['beach', 'look.bs.beach'], ['eight', 'look.bs.eight'], ['star', 'look.bs.star'], ['panels', 'look.bs.panels'], ['triangles', 'look.bs.triangles'], ['vintage', 'look.bs.vintage'], ['tennis', 'look.bs.tennis'], ['basket', 'look.bs.basket'], ['volley', 'look.bs.volley'], ['baseball', 'look.bs.baseball'], ['golf', 'look.bs.golf'], ['bowling', 'look.bs.bowling'], ['earth', 'look.bs.earth'], ['moon', 'look.bs.moon'], ['disco', 'look.bs.disco'], ['orb', 'look.bs.orb'], ['pumpkin', 'look.bs.pumpkin'], ['melon', 'look.bs.melon'], ['eye', 'look.bs.eye'], ['argentina', 'look.bs.argentina'], ['fire', 'look.bs.fire'], ['ice', 'look.bs.ice'], ['yinyang', 'look.bs.yinyang'], ['smile', 'look.bs.smile'], ['sun', 'look.bs.sun'], ['donut', 'look.bs.donut'], ['checker', 'look.bs.checker'], ['candy', 'look.bs.candy'], ['heart', 'look.bs.heart'], ['saturn', 'look.bs.saturn'], ['lava', 'look.bs.lava']] },
+    { key: 'ballStyle', type: 'select', label: 'look.ballStyle', options: [['default', 'look.opt.none'], ['soccer', 'look.bs.soccer'], ['neon', 'look.bs.neon'], ['gold', 'look.bs.gold'], ['beach', 'look.bs.beach'], ['eight', 'look.bs.eight'], ['star', 'look.bs.star'], ['triangles', 'look.bs.triangles'], ['vintage', 'look.bs.vintage'], ['tennis', 'look.bs.tennis'], ['basket', 'look.bs.basket'], ['volley', 'look.bs.volley'], ['baseball', 'look.bs.baseball'], ['golf', 'look.bs.golf'], ['bowling', 'look.bs.bowling'], ['earth', 'look.bs.earth'], ['moon', 'look.bs.moon'], ['disco', 'look.bs.disco'], ['orb', 'look.bs.orb'], ['pumpkin', 'look.bs.pumpkin'], ['melon', 'look.bs.melon'], ['eye', 'look.bs.eye'], ['argentina', 'look.bs.argentina'], ['fire', 'look.bs.fire'], ['ice', 'look.bs.ice'], ['yinyang', 'look.bs.yinyang'], ['smile', 'look.bs.smile'], ['sun', 'look.bs.sun'], ['donut', 'look.bs.donut'], ['checker', 'look.bs.checker'], ['candy', 'look.bs.candy'], ['heart', 'look.bs.heart'], ['saturn', 'look.bs.saturn'], ['lava', 'look.bs.lava'], ['peso', 'look.bs.peso']] },
     { key: 'ballColor', type: 'color', label: 'look.ballColor' },
     { key: 'ballOutline', type: 'color', label: 'look.ballOutline' }
   ],
@@ -11389,6 +11389,13 @@ function renderLook() {
   renderLookSections();
   renderLooks();
 }
+// Las fotos de las pelotas terminan de cargar después del primer dibujo: se
+// vuelven a pintar la galería y la vista previa para que salgan con la foto.
+window.addEventListener('tl-ballphotos', () => {
+  if (!state.config) return;
+  renderLookSections();
+  if (typeof paintPreview === 'function') { try { paintPreview(); } catch (e) { /* adorno */ } }
+});
 
 function renderAll() {
   window.i18n.applyStatic();
