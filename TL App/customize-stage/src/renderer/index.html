@@ -1034,10 +1034,7 @@
             <header class="sec__head"><h2 class="sec__title" id="detTitle">Detalles de la interfaz</h2></header>
             <p class="sec__desc" id="detDesc">Botones, interruptores, avisos y otras piezas del menú.</p>
             <div class="sec__body">
-              <div class="row">
-                <div class="row__text"><span class="row__label" id="glassLabel">Opacidad del vidrio</span><span class="row__desc" id="glassDesc"></span></div>
-                <div class="row__ctl"><input type="range" id="glassRange" min="50" max="100" step="1" value="100" /><b class="row__val" id="glassValue">100%</b></div>
-              </div>
+              <h3 class="sec__sub" data-i18n="det.sub.controls">Botones y controles</h3>
               <div class="row">
                 <div class="row__text"><span class="row__label" id="btnLabel">Estilo de botones</span><span class="row__desc" id="btnDesc"></span></div>
                 <div class="row__ctl"><div class="chips" id="btnChips"></div></div>
@@ -1047,16 +1044,25 @@
                 <div class="row__ctl"><div class="chips" id="swChips"></div></div>
               </div>
               <div class="row">
+                <div class="row__text"><span class="row__label" id="ddLabel">Menús desplegables</span><span class="row__desc" id="ddDesc"></span></div>
+                <div class="row__ctl"><div class="chips" id="ddChips"></div></div>
+              </div>
+              <div class="row">
                 <div class="row__text"><span class="row__label" id="hovLabel">Al pasar el mouse</span><span class="row__desc" id="hovDesc"></span></div>
                 <div class="row__ctl"><div class="chips" id="hovChips"></div></div>
               </div>
               <div class="row">
-                <div class="row__text"><span class="row__label" id="pcLabel">Tarjeta de perfil</span><span class="row__desc" id="pcDesc"></span></div>
-                <div class="row__ctl"><div class="chips" id="pcChips"></div></div>
+                <div class="row__text"><span class="row__label" id="tiltLabel">Inclinación 3D</span><span class="row__desc" id="tiltDesc"></span></div>
+                <div class="row__ctl"><div class="chips" id="tiltChips"></div></div>
+              </div>
+              <h3 class="sec__sub" data-i18n="det.sub.menu">Piezas del menú</h3>
+              <div class="row">
+                <div class="row__text"><span class="row__label" id="glassLabel">Opacidad del vidrio</span><span class="row__desc" id="glassDesc"></span></div>
+                <div class="row__ctl"><input type="range" id="glassRange" min="50" max="100" step="1" value="100" /><b class="row__val" id="glassValue">100%</b></div>
               </div>
               <div class="row">
-                <div class="row__text"><span class="row__label" id="tsLabel">Avisos</span></div>
-                <div class="row__ctl"><div class="chips" id="tsChips"></div></div>
+                <div class="row__text"><span class="row__label" id="pcLabel">Tarjeta de perfil</span><span class="row__desc" id="pcDesc"></span></div>
+                <div class="row__ctl"><div class="chips" id="pcChips"></div></div>
               </div>
               <div class="row">
                 <div class="row__text"><span class="row__label" id="rsLabel">Plantel del menú</span></div>
@@ -1067,12 +1073,8 @@
                 <div class="row__ctl"><div class="chips" id="hsChips"></div></div>
               </div>
               <div class="row">
-                <div class="row__text"><span class="row__label" id="ddLabel">Menús desplegables</span><span class="row__desc" id="ddDesc"></span></div>
-                <div class="row__ctl"><div class="chips" id="ddChips"></div></div>
-              </div>
-              <div class="row">
-                <div class="row__text"><span class="row__label" id="tiltLabel">Inclinación 3D</span><span class="row__desc" id="tiltDesc"></span></div>
-                <div class="row__ctl"><div class="chips" id="tiltChips"></div></div>
+                <div class="row__text"><span class="row__label" id="tsLabel">Avisos</span></div>
+                <div class="row__ctl"><div class="chips" id="tsChips"></div></div>
               </div>
             </div>
           </section>
@@ -1082,11 +1084,14 @@
             <p class="sec__desc" id="animDesc">Todo usa movimiento barato y se apaga con «Animaciones» en Estilo.</p>
             <div class="sec__body">
               <div class="rows" id="animMaster"></div>
-              <div class="rows" id="animSwitches"></div>
               <div class="row">
                 <div class="row__text"><span class="row__label" id="pageTransLabel">Transición entre pantallas</span></div>
                 <div class="row__ctl"><div class="chips" id="pageTransChips"></div></div>
               </div>
+              <h3 class="sec__sub" data-i18n="anim.sub.moments">Momentos</h3>
+              <div class="rows" id="animMoments"></div>
+              <h3 class="sec__sub" data-i18n="anim.sub.menu">En el menú</h3>
+              <div class="rows" id="animSwitches"></div>
             </div>
           </section>
 

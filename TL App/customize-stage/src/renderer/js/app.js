@@ -943,6 +943,26 @@ function factoryLook() {
   out.avatar = Object.assign({}, out.avatar, c.avatar);
   return out;
 }
+/*
+ * El final de la página no puede quedar debajo de la vista previa flotante. El
+ * relleno fijo que había (en app.css) no alcanzaba con las dos tarjetas de
+ * «Fichas» y además lo pisaba otra regla: ahora se mide la vista previa y el
+ * relleno es su alto real. Sólo cuando cambia de tamaño, no por cuadro.
+ */
+let pvObserver = null;
+function watchPvHeight(box, panel) {
+  if (!panel || !box) return;
+  const apply = () => {
+    const h = box.hidden ? 0 : Math.ceil(box.getBoundingClientRect().height);
+    panel.style.setProperty('--pv-h', `${h}px`);
+  };
+  if (!pvObserver && typeof ResizeObserver === 'function') {
+    pvObserver = new ResizeObserver(apply);
+    pvObserver.observe(box);
+  }
+  apply();
+}
+
 function paintPreview() {
   const box = document.getElementById('pv');
   if (!box) return;
@@ -957,6 +977,7 @@ function paintPreview() {
   box.hidden = !on;
   if (panel) panel.classList.toggle('has-pv', on);
   pvLayout();
+  watchPvHeight(box, panel);
   requestAnimationFrame(masonry);
   markChanged();
   if (!on || !window.TLPreview || !state.config) return;
@@ -5015,7 +5036,9 @@ function renderAspect() {
    * dibujan acá: son los mismos interruptores de la página Música, que es donde
    * se maneja todo lo de la música (antes estaban repetidos en los dos lados).
    */
-  const LOOK_ANIM_KEYS = ['animations', 'welcome', 'welcomeSound'];
+  const LOOK_ANIM_KEYS = ['animations'];
+  // La bienvenida va con los otros «momentos» (ver paintAnimations).
+  const LOOK_MOMENT_KEYS = ['welcome', 'welcomeSound'];
   // El interruptor de las partículas va con su estilo y su cantidad, en «Fondo del menú».
   const LOOK_SPARK_KEYS = ['sparks'];
   const LOOK_MUSIC_KEYS = ['music', 'musicClub', 'musicInGame'];
@@ -5023,7 +5046,7 @@ function renderAspect() {
   const lookSave = (item, value) => patchConfig({ appearance: { [item.key]: value } });
   buildSwitches(
     $('#lookSwitches'),
-    LOOK_SWITCHES[lang].filter((i) => !LOOK_ANIM_KEYS.includes(i.key) && !LOOK_SPARK_KEYS.includes(i.key) && !LOOK_MUSIC_KEYS.includes(i.key)).map(lookSwitch),
+    LOOK_SWITCHES[lang].filter((i) => !LOOK_ANIM_KEYS.includes(i.key) && !LOOK_MOMENT_KEYS.includes(i.key) && !LOOK_SPARK_KEYS.includes(i.key) && !LOOK_MUSIC_KEYS.includes(i.key)).map(lookSwitch),
     lookSave
   );
   buildSwitches(
@@ -6647,11 +6670,14 @@ function paintAnimations() {
   $('#pageTransLabel').textContent = lang === 'en' ? 'Screen transition' : 'Transición entre pantallas';
   $('#sparkStyleLabel').textContent = lang === 'en' ? 'Menu particles' : 'Partículas del menú';
   $('#sparkDensLabel').textContent = lang === 'en' ? 'Particle amount' : 'Cantidad de partículas';
-  buildSwitches(
-    host,
-    ANIM_SWITCHES[lang].map((i) => ({ ...i, value: () => !!state.config.appearance[i.key] })),
-    (item, value) => patchConfig({ appearance: { [item.key]: value } })
-  );
+  // Dos tandas: lo que pasa una vez (abrir la app, entrar a una sala, un gol) y
+  // lo que se mueve en el menú. Eran 11 interruptores iguales seguidos.
+  const MOMENTS = ['welcome', 'welcomeSound', 'roomCurtain', 'joinSparkle', 'goalEdge'];
+  const anim = (i) => ({ ...i, value: () => !!state.config.appearance[i.key] });
+  const saveAnim = (item, value) => patchConfig({ appearance: { [item.key]: value } });
+  const pool = [...LOOK_SWITCHES[lang], ...ANIM_SWITCHES[lang]];
+  buildSwitches($('#animMoments'), MOMENTS.map((k) => pool.find((i) => i.key === k)).filter(Boolean).map(anim), saveAnim);
+  buildSwitches(host, ANIM_SWITCHES[lang].filter((i) => !MOMENTS.includes(i.key)).map(anim), saveAnim);
   const fill = (el, items, cur, attr) => {
     el.replaceChildren();
     for (const it of items) {
