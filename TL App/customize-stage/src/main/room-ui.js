@@ -613,9 +613,9 @@ function css(p, opts = {}) {
 /* Formas con dibujo (cada una pinta su fondo; el nombre usa la letra elegida si hay una). */
 /* Lujo: noche con filetes de tu color, versalitas y el ícono grande de marca de agua. */
 .room-view .player-list-item.tvm-peer-row[data-tvm-style="lujo"]{border-radius:4px!important;background:linear-gradient(90deg,rgba(10,10,16,.85),rgb(var(--tvm-b-rgb)/18%) 70%,rgb(var(--tvm-a-rgb)/30%))!important;box-shadow:inset 0 1px 0 rgb(var(--tvm-a-rgb)/80%),inset 0 -1px 0 rgb(var(--tvm-a-rgb)/80%),0 0 0 1px rgba(0,0,0,.4)!important;padding-left:12px!important}
-.room-view .player-list-item.tvm-peer-row[data-tvm-style="lujo"]::after{content:attr(data-tvm-icon);left:auto;right:150px;top:50%;bottom:auto;width:auto;background:none;box-shadow:none;transform:translateY(-50%) rotate(-14deg);font-size:38px;opacity:.22;filter:saturate(.6)}
+.room-view .player-list-item.tvm-peer-row[data-tvm-style="lujo"]::after{content:attr(data-tvm-icon);left:auto;right:34%;top:50%;bottom:auto;width:auto;background:none;box-shadow:none;transform:translateY(-50%) rotate(-14deg);font-size:38px;opacity:.22;filter:saturate(.6)}
 .room-view .player-list-item.tvm-peer-row[data-tvm-style="lujo"][data-tvm-icon]::before{display:none}
-.room-view .player-list-item.tvm-peer-row[data-tvm-style="lujo"] [data-hook="name"]{font-family:Georgia,'Times New Roman',serif;font-variant:small-caps;letter-spacing:.1em!important;font-weight:700!important;font-size:15px}
+.room-view .player-list-item.tvm-peer-row[data-tvm-style="lujo"] [data-hook="name"]{font-family:Georgia,'Times New Roman',serif;font-variant:small-caps;letter-spacing:.04em!important;font-weight:700!important;font-size:14px}
 .room-view .player-list-item.tvm-peer-row[data-tvm-style="lujo"]:not(.admin) [data-hook="name"]{background-image:linear-gradient(180deg,#fff,rgb(var(--tvm-a-rgb)))!important;filter:none!important}
 .room-view .player-list-item.tvm-peer-row[data-tvm-style="lujo"] .tvm-av{background:transparent!important;box-shadow:0 0 0 1px rgb(var(--tvm-a-rgb))!important;color:rgb(var(--tvm-a-rgb))!important}
 .room-view .player-list-item.tvm-peer-row[data-tvm-style="lujo"] [data-hook="ping"]{background:none!important;font-family:Georgia,serif;color:rgb(var(--tvm-a-rgb))!important}
@@ -624,7 +624,7 @@ function css(p, opts = {}) {
 .room-view .player-list-item.tvm-peer-row[data-tvm-style="pincel"]{background:transparent!important;box-shadow:none!important;overflow:visible}
 .room-view .player-list-item.tvm-peer-row[data-tvm-style="pincel"]::after{left:-4px;right:-4px;top:-3px;bottom:-3px;width:auto;z-index:-1;background:linear-gradient(90deg,rgb(var(--tvm-a-rgb)),rgb(var(--tvm-b-rgb)));box-shadow:none;-webkit-mask:url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%20400%2060%27%20preserveAspectRatio%3D%27none%27%3E%3Cpath%20d%3D%27M6%2034%20C20%2014%2060%2010%20110%2012%20C170%206%20230%2014%20300%2010%20C340%208%20380%2012%20394%2022%20C398%2030%20392%2040%20380%2044%20C330%2052%20260%2046%20200%2050%20C140%2054%2080%2050%2040%2052%20C18%2054%202%2046%206%2034Z%20M30%2018%20C80%208%20120%2014%20160%209%20L150%2016%20C110%2020%2070%2018%2030%2018Z%20M220%2050%20C260%2052%20300%2056%20340%2052%20L330%2058%20C290%2060%20250%2058%20220%2050Z%27%2F%3E%3C%2Fsvg%3E") center/100% 100% no-repeat;opacity:.85}
 .room-view .player-list-item.tvm-peer-row[data-tvm-style="pincel"]{isolation:isolate}
-.room-view .player-list-item.tvm-peer-row[data-tvm-style="pincel"]:not(.admin) [data-hook="name"]{background-image:none!important;-webkit-text-fill-color:#fff!important;font-family:'Comic Sans MS','Segoe Print',cursive;font-weight:900!important;font-size:16px;transform:rotate(-2deg);filter:drop-shadow(2px 2px 0 rgba(0,0,0,.45))!important}
+.room-view .player-list-item.tvm-peer-row[data-tvm-style="pincel"]:not(.admin) [data-hook="name"]{background-image:none!important;-webkit-text-fill-color:#fff!important;font-family:'Comic Sans MS','Segoe Print',cursive;font-weight:900!important;font-size:14px;transform:rotate(-2deg);filter:drop-shadow(2px 2px 0 rgba(0,0,0,.45))!important}
 .room-view .player-list-item.tvm-peer-row[data-tvm-style="pincel"][data-tvm-icon]::before{background:#fff!important;box-shadow:0 2px 0 rgba(0,0,0,.3)!important;transform:rotate(-8deg)}
 .room-view .player-list-item.tvm-peer-row[data-tvm-style="pincel"] .tvm-av{background:rgba(0,0,0,.3)!important;box-shadow:0 0 0 2px #fff!important}
 .room-view .player-list-item.tvm-peer-row[data-tvm-style="pincel"] [data-hook="ping"]{background:rgba(0,0,0,.3)!important;color:#fff!important}
@@ -636,7 +636,7 @@ function css(p, opts = {}) {
  radial-gradient(160px 60px at 20% 30%,rgba(255,255,255,.9),transparent 70%),
  linear-gradient(90deg,#efe9e2,#ddd5cc)!important;box-shadow:inset 0 0 0 1px rgba(255,255,255,.7),inset 0 -2px 0 rgba(0,0,0,.12),0 6px 14px -8px #000!important}
 .room-view .player-list-item.tvm-peer-row[data-tvm-style="marmol"]::after{width:5px;background:linear-gradient(180deg,#e9c46a,#a3741c);box-shadow:none}
-.room-view .player-list-item.tvm-peer-row[data-tvm-style="marmol"]:not(.admin) [data-hook="name"]{background-image:linear-gradient(90deg,rgb(var(--tvm-b-rgb)),#1b1b25)!important;filter:none!important;font-family:Georgia,serif;font-weight:700!important;font-size:15px}
+.room-view .player-list-item.tvm-peer-row[data-tvm-style="marmol"]:not(.admin) [data-hook="name"]{background-image:linear-gradient(90deg,rgb(var(--tvm-b-rgb)),#1b1b25)!important;filter:none!important;font-family:Georgia,serif;font-weight:700!important;font-size:14px}
 .room-view .player-list-item.tvm-peer-row[data-tvm-style="marmol"] .tvm-av{background:#fff!important;color:#333!important;box-shadow:0 0 0 1.5px #c9a24a!important}
 .room-view .player-list-item.tvm-peer-row[data-tvm-style="marmol"][data-tvm-icon]::before{background:radial-gradient(circle at 35% 30%,#fff3c4,#c9a24a)!important}
 .room-view .player-list-item.tvm-peer-row[data-tvm-style="marmol"] [data-hook="ping"]{background:rgba(0,0,0,.08)!important;color:#333!important}
@@ -701,6 +701,23 @@ function css(p, opts = {}) {
 .room-view .player-list-item.tvm-peer-row[data-tvm-style="acuanoche"]:hover,
 .room-view .player-list-item.tvm-peer-row[data-tvm-style="humo"]:hover,
 .room-view .player-list-item.tvm-peer-row[data-tvm-style="galaxia"]:hover { filter: brightness(1.12); }
+/* Compacta, para todas las formas: las columnas de la sala son angostas y entre
+   la moneda, la bandera, el avatar, las insignias y el ping el nombre quedaba
+   corrido a la derecha y cortado («mi…»). Va al final y con más peso para
+   ganarle a lo que trae cada forma. */
+.room-view .player-list-item.tvm-peer-row.tvm-peer-row.tvm-peer-row { padding: 4px 6px 4px 8px !important; margin: 3px 4px !important; min-height: 32px; }
+/* El ícono va después del nombre, con las insignias: delante empujaba el
+   nombre a la derecha y la fila quedaba distinta de las comunes. */
+.room-view .player-list-item.tvm-peer-row.tvm-peer-row.tvm-peer-row[data-tvm-icon]::before { order: 1; width: 18px; height: 18px; margin: 0 0 0 4px; font-size: 10px; }
+.room-view .player-list-item.tvm-peer-row.tvm-peer-row.tvm-peer-row .tvm-marks { order: 2; }
+.room-view .player-list-item.tvm-peer-row.tvm-peer-row.tvm-peer-row [data-hook="ping"] { order: 3; }
+.room-view .player-list-item.tvm-peer-row.tvm-peer-row.tvm-peer-row [data-hook="flag"] { margin-right: 4px; }
+.room-view .player-list-item.tvm-peer-row.tvm-peer-row.tvm-peer-row .tvm-av { width: 18px; height: 18px; margin: 0 5px 0 0; font-size: 9px; }
+.room-view .player-list-item.tvm-peer-row.tvm-peer-row.tvm-peer-row [data-hook="name"] { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.room-view .player-list-item.tvm-peer-row.tvm-peer-row.tvm-peer-row .tvm-marks { margin: 0 4px; padding: 1px 4px; gap: 3px; }
+.room-view .player-list-item.tvm-peer-row.tvm-peer-row.tvm-peer-row .tvm-mark { width: 14px; height: 14px; }
+.room-view .player-list-item.tvm-peer-row.tvm-peer-row.tvm-peer-row [data-hook="ping"] { flex: none; min-width: 20px; padding: 1px 5px; font-size: 11px; }
+
 `;
 }
 
