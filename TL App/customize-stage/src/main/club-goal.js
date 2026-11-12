@@ -6,7 +6,11 @@
  *   · `club`  — cuando mete alguien del plantel que usa la app. Escudo, «GOL»
  *               con un brillo que lo recorre, el nombre con filetes dorados,
  *               ondas de oro, un abanico de chispas y cintas que caen.
- *   · `lite`  — cuando mete cualquier otro. Una sola onda y un cartel corto.
+ *   · `socio` — cuando mete un socio con la app. Lo mismo en plata: «GOL»
+ *               plateado, su nombre con filetes, dos ondas, chispas y la
+ *               franja «SOCIO TL». Sin escudo ni cintas (son del plantel).
+ *   · `lite`  — cuando mete cualquier otro. Un cartel con el color del equipo
+ *               que convirtió, una onda chica y un brillo que lo recorre.
  *
  * Todo es DOM con animaciones CSS de `transform` y `opacity`: las compone la
  * GPU, así que no corre JavaScript por cuadro y no cuesta FPS. El único trabajo
@@ -79,13 +83,35 @@
     '.cg-rb{position:absolute;top:-5vmin;width:.8vmin;height:2.6vmin;border-radius:1px;opacity:0;animation:cgFall var(--d) cubic-bezier(.3,.1,.55,1) var(--w) both}',
     '@keyframes cgFall{0%{opacity:0;transform:translate3d(0,0,0) rotate(0)}8%{opacity:1}100%{opacity:.9;transform:translate3d(var(--sx),118vh,0) rotate(var(--r))}}',
     /* versión corta */
-    '.cgl{position:absolute;left:50%;top:11%;display:flex;align-items:center;gap:1.8vmin;padding:1.2vmin 3.2vmin 1.2vmin 2.4vmin;border-radius:.8vmin;background:linear-gradient(90deg,rgba(19,36,63,.92),rgba(19,36,63,.78));border-left:.7vmin solid #d0b878;box-shadow:0 .4vmin 0 rgba(10,20,40,.35);opacity:0;animation:cgLite 2.1s cubic-bezier(.2,.9,.25,1) both;will-change:transform,opacity;overflow:hidden}',
+    '.cgl{position:absolute;left:50%;top:11%;display:flex;align-items:center;gap:1.8vmin;padding:1.2vmin 3.2vmin 1.2vmin 2.4vmin;border-radius:.8vmin;background:linear-gradient(90deg,rgba(var(--cg-t),.38),rgba(19,36,63,.9) 32%,rgba(19,36,63,.8));border-left:.7vmin solid rgb(var(--cg-t));box-shadow:0 .4vmin 0 rgba(10,20,40,.35);opacity:0;animation:cgLite 2.1s cubic-bezier(.2,.9,.25,1) both;will-change:transform,opacity;overflow:hidden}',
     '.cgl::after{content:"";position:absolute;inset:0;background:linear-gradient(105deg,transparent 35%,rgba(244,240,223,.28) 50%,transparent 65%);transform:translateX(-120%);animation:cgLiteShine 1.1s ease .25s both}',
     '@keyframes cgLiteShine{to{transform:translateX(120%)}}',
     '.cgl b{font:900 4.2vmin/1 ' + FONT + ';letter-spacing:.14em;background:linear-gradient(180deg,#f4f0df,#d0b878);-webkit-background-clip:text;background-clip:text;color:transparent}',
     '.cgl span{font:700 2.5vmin/1 ' + FONT + ';letter-spacing:.16em;text-transform:uppercase;color:#f4f0df;padding-left:1.8vmin;border-left:.2vmin solid rgba(208,184,120,.5)}',
-    '.cgl-line{position:absolute;left:50%;top:calc(11% + 7.6vmin);height:.3vmin;width:18vmin;margin-left:0;background:linear-gradient(90deg,#d0b878,transparent);opacity:0;animation:cgLiteLine 2.1s ease .2s both}',
+    '.cgl-line{position:absolute;left:50%;top:calc(11% + 7.6vmin);height:.3vmin;width:18vmin;margin-left:0;background:linear-gradient(90deg,rgb(var(--cg-t)),transparent);opacity:0;animation:cgLiteLine 2.1s ease .2s both}',
     '@keyframes cgLiteLine{0%{opacity:0;transform:translateX(-50%) scaleX(0)}25%{opacity:.9;transform:translateX(-50%) scaleX(1)}80%{opacity:.7;transform:translateX(-50%) scaleX(1)}100%{opacity:0;transform:translateX(-50%) scaleX(1)}}',
+    /* lo nuevo de la corta: el GOL entra de a una letra, una onda chica del color
+       del equipo y seis chispitas debajo del cartel. Todo transform/opacity. */
+    '.cgl b i{display:inline-block;font-style:normal;background:linear-gradient(180deg,#f4f0df,#d0b878);-webkit-background-clip:text;background-clip:text;color:transparent;opacity:0;animation:cgLiteL 2.1s cubic-bezier(.2,.9,.25,1.3) both;will-change:transform,opacity}',
+    '@keyframes cgLiteL{0%{opacity:0;transform:translateY(1.6vmin) scale(.6)}18%{opacity:1;transform:translateY(-.3vmin) scale(1.15)}28%{transform:none}80%{opacity:1}100%{opacity:0}}',
+    '.cgl-ring{position:absolute;left:50%;top:calc(11% + 3.4vmin);width:14vmin;height:14vmin;margin:-7vmin 0 0 -7vmin;border-radius:50%;border:.3vmin solid rgb(var(--cg-t));opacity:0;animation:cgRing 1.1s cubic-bezier(.16,.8,.3,1) .12s both;will-change:transform,opacity}',
+    '.cgl-sp{position:absolute;left:50%;top:calc(11% + 3.4vmin);width:.8vmin;height:.8vmin;margin:-.4vmin 0 0 -.4vmin;border-radius:50%;background:rgb(var(--cg-t));opacity:0;animation:cgSpark .9s cubic-bezier(.1,.7,.3,1) .1s both;will-change:transform,opacity}',
+    /* socio: la versión completa en plata */
+    '#tvm-cg.so .cg-vig{background:radial-gradient(ellipse at center,rgba(20,24,32,0) 42%,rgba(20,24,32,.55) 100%),radial-gradient(ellipse at center,rgba(200,208,220,0) 62%,rgba(200,208,220,.22) 100%);animation-duration:2.6s}',
+    '#tvm-cg.so .cg-flash{background:radial-gradient(circle at 50% 46%,rgba(255,255,255,.75),rgba(200,208,220,.3) 28%,rgba(200,208,220,0) 60%)}',
+    '#tvm-cg.so .cg-ring{border-color:#d9dee7;background:radial-gradient(closest-side,transparent 74%,rgba(200,208,220,.26) 95%,rgba(200,208,220,.05) 100%);animation-duration:1.2s}',
+    '#tvm-cg.so .cg-ring.r2{border-color:#8fa0bb}',
+    '#tvm-cg.so .cg-word{top:38%;font-size:14vmin}',
+    '#tvm-cg.so .cg-word span{background-image:linear-gradient(105deg,transparent 38%,rgba(255,255,255,.95) 50%,transparent 62%),linear-gradient(180deg,#ffffff 0%,#dfe4ec 38%,#aab4c4 62%,#5d6778 100%);animation-duration:2.5s,1.1s}',
+    '#tvm-cg.so .cg-bar{top:calc(38% + 7vmin);right:calc(50% + 20vmin);background:linear-gradient(90deg,transparent,#c8d0dc 55%,#fff);animation-duration:2.5s}',
+    '#tvm-cg.so .cg-bar.r{right:auto;left:calc(50% + 20vmin);background:linear-gradient(270deg,transparent,#c8d0dc 55%,#fff)}',
+    '#tvm-cg.so .cg-name{top:58%;color:#eef1f6}',
+    '#tvm-cg.so .cg-name b{animation-duration:2.5s}',
+    '#tvm-cg.so .cg-name i{background:linear-gradient(90deg,transparent,#c8d0dc);animation-duration:2.5s}',
+    '#tvm-cg.so .cg-name i:last-child{background:linear-gradient(270deg,transparent,#c8d0dc)}',
+    '#tvm-cg.so .cg-sub{top:64%;color:#aab4c4;animation-duration:2.5s}',
+    '#tvm-cg.so .cg-club{bottom:12%;color:#c8d0dc;letter-spacing:.6em;text-indent:.6em;animation-duration:2.5s}',
+    '#tvm-cg.so .cg-tag{position:absolute;left:50%;top:26%;transform:translateX(-50%);padding:.7vmin 2.2vmin;border-radius:99px;border:.25vmin solid rgba(200,208,220,.7);background:rgba(20,24,32,.55);color:#eef1f6;font:800 2vmin/1 ' + FONT + ';letter-spacing:.3em;text-indent:.3em;opacity:0;animation:cgPill 2.5s cubic-bezier(.2,.9,.25,1.2) .05s both;will-change:transform,opacity}',
     '@keyframes cgLite{0%{opacity:0;transform:translate(-80%,0)}16%{opacity:1;transform:translate(-50%,0)}22%{transform:translate(-50%,0) scale(1.02)}28%{transform:translate(-50%,0) scale(1)}80%{opacity:1;transform:translate(-50%,0)}100%{opacity:0;transform:translate(-20%,0)}}'
   ].join('\n');
 
@@ -191,12 +217,29 @@
 
     box.append(el(doc, 'cg-vig' + (club ? '' : ' lite')));
 
+    if (o.mode === 'socio') return playSocio(doc, box, o, name, assist);
+
     if (!club) {
+      // Color del equipo que convirtió (el dorado del club si no se sabe).
+      box.style.setProperty('--cg-t', o.team === 'Red' ? '229,110,86' : o.team === 'Blue' ? '86,137,229' : '208,184,120');
       var pill = el(doc, 'cgl');
-      pill.append(el(doc, '', 'b', 'GOL'));
+      var gol = el(doc, '', 'b');
+      'GOL'.split('').forEach(function (ch, idx) {
+        var l = el(doc, '', 'i', ch);
+        l.style.animationDelay = (0.08 + idx * 0.07).toFixed(2) + 's';
+        gol.append(l);
+      });
+      pill.append(gol);
       var label = o.own ? ('EN CONTRA' + (name ? ' · ' + name : '')) : name;
       if (label) pill.append(el(doc, '', 'span', label));
-      box.append(pill, el(doc, 'cgl-line'));
+      box.append(el(doc, 'cgl-ring'), pill, el(doc, 'cgl-line'));
+      for (var s6 = 0; s6 < 6; s6++) {
+        var sp6 = el(doc, 'cgl-sp');
+        var a6 = Math.PI * (0.15 + s6 * 0.14);
+        sp6.style.setProperty('--dx', (Math.cos(a6) * 13).toFixed(1) + 'vmin');
+        sp6.style.setProperty('--dy', (Math.sin(a6) * 9).toFixed(1) + 'vmin');
+        box.append(sp6);
+      }
       doc.body.append(box);
       timer = setTimeout(function () { stop(doc); }, 2300);
       return true;
@@ -268,6 +311,41 @@
     box.append(el(doc, 'cg-club', 'div', 'TODA LA LECCE'));
     doc.body.append(box);
     timer = setTimeout(function () { stop(doc); }, 3400);
+    return true;
+  }
+
+  /** Festejo del socio: el del club en plata, más corto y sin escudo ni cintas. */
+  function playSocio(doc, box, o, name, assist) {
+    box.className = 'so';
+    box.append(el(doc, 'cg-flash'), el(doc, 'cg-ring'), el(doc, 'cg-ring r2'));
+    var SILVER = ['#ffffff', '#dfe4ec', '#aab4c4'];
+    for (var i = 0; i < 10; i++) {
+      var sp = el(doc, 'cg-sp');
+      var ang = (i / 10) * Math.PI * 2 + 0.3;
+      var dist = 18 + (i % 3) * 8;
+      sp.style.background = SILVER[i % 3];
+      sp.style.setProperty('--dx', (Math.cos(ang) * dist).toFixed(1) + 'vmin');
+      sp.style.setProperty('--dy', (Math.sin(ang) * dist).toFixed(1) + 'vmin');
+      sp.style.animationDelay = (0.05 + (i % 3) * 0.04).toFixed(2) + 's';
+      box.append(sp);
+    }
+    box.append(el(doc, 'cg-tag', 'div', 'SOCIO'));
+    var word = el(doc, 'cg-word');
+    'GOL'.split('').forEach(function (ch, idx) {
+      var s = el(doc, '', 'span', ch);
+      s.style.animationDelay = (0.1 + idx * 0.08).toFixed(2) + 's,' + (0.45 + idx * 0.1).toFixed(2) + 's';
+      word.append(s);
+    });
+    box.append(el(doc, 'cg-bar'), el(doc, 'cg-bar r'), word);
+    if (name) {
+      var nm = el(doc, 'cg-name');
+      nm.append(el(doc, '', 'i'), el(doc, '', 'b', name), el(doc, '', 'i'));
+      box.append(nm);
+    }
+    if (assist) box.append(el(doc, 'cg-sub', 'div', 'Asist. ' + assist));
+    box.append(el(doc, 'cg-club', 'div', 'SOCIO TL'));
+    doc.body.append(box);
+    timer = setTimeout(function () { stop(doc); }, 2800);
     return true;
   }
 

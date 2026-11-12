@@ -9266,7 +9266,7 @@ function sparkleJoiners(doc, rows) {
  * era del club.
  */
 const goalFxTally = { at: 0, by: new Map() };
-const goalFxLast = { at: 0, club: false };
+const goalFxLast = { at: 0, mode: 'lite' };
 
 function isClubScorer(nick) {
   const n = String(nick || '').trim();
@@ -9276,7 +9276,26 @@ function isClubScorer(nick) {
   return !!((peer && peer.name && !peer.soc) || (selfClub && selfClub.name && !selfClub.soc && me && n === me));
 }
 
-function playGoalFx(doc, club) {
+function isSocioScorer(nick) {
+  const n = String(nick || '').trim();
+  if (!n) return false;
+  const peer = peers.get(n);
+  const me = myNick();
+  return !!((peer && peer.name && peer.soc) || (selfClub && selfClub.name && selfClub.soc && me && n === me));
+}
+
+/** 'club' (plantel), 'socio' o 'lite' (cualquier otro, o gol en contra). */
+function goalFxMode() {
+  const cfg = state.config.pitch || {};
+  const fresh = Date.now() - goalNames.at < 2500;
+  if (cfg.goalClub === false || !fresh || goalNames.own) return 'lite';
+  if (isClubScorer(goalNames.scorer)) return 'club';
+  if (isSocioScorer(goalNames.scorer)) return 'socio';
+  return 'lite';
+}
+
+function playGoalFx(doc, mode) {
+  const club = mode === 'club';
   const cfg = state.config.pitch || {};
   const scorer = Date.now() - goalNames.at < 2500 ? goalNames.scorer : null;
   const who = String(scorer || '').trim().toLowerCase();
@@ -9289,9 +9308,10 @@ function playGoalFx(doc, club) {
     goalFxTally.at = now;
   }
   goalFxLast.at = now;
-  goalFxLast.club = club;
+  goalFxLast.mode = mode;
   return clubGoal.play(doc, {
-    mode: club ? 'club' : 'lite',
+    mode,
+    team: Date.now() - lastGoal.at < 2500 ? lastGoal.team : '',
     name: scorer || '',
     assist: goalNames.assist || '',
     own: !!goalNames.own,
@@ -9306,9 +9326,7 @@ function goalCelebration(team) {
   if (state.config.appearance && state.config.appearance.animations === false) return false;
   const doc = gameDocument();
   if (!doc || !doc.body) return false;
-  const fresh = Date.now() - goalNames.at < 2500;
-  const club = cfg.goalClub !== false && fresh && !goalNames.own && isClubScorer(goalNames.scorer);
-  return playGoalFx(doc, club);
+  return playGoalFx(doc, goalFxMode());
 }
 
 /** Llegó el autor tarde: si era del club, se pasa de la versión corta a la completa. */
@@ -9316,10 +9334,11 @@ function upgradeGoalFx() {
   const cfg = state.config.pitch || {};
   if (!cfg.goalFlash || cfg.goalClub === false) return;
   if (state.config.appearance && state.config.appearance.animations === false) return;
-  if (goalFxLast.club || !goalFxLast.at || Date.now() - goalFxLast.at > 1800) return;
-  if (goalNames.own || !isClubScorer(goalNames.scorer)) return;
+  if (goalFxLast.mode !== 'lite' || !goalFxLast.at || Date.now() - goalFxLast.at > 1800) return;
+  const mode = goalFxMode();
+  if (mode === 'lite') return;
   const doc = gameDocument();
-  if (doc && doc.body) playGoalFx(doc, true);
+  if (doc && doc.body) playGoalFx(doc, mode);
 }
 
 function goalImpact(skipFlash) {
