@@ -1082,6 +1082,20 @@
                 <div class="row__text"><span class="row__label" id="pageTransLabel">Transición entre pantallas</span></div>
                 <div class="row__ctl"><div class="chips" id="pageTransChips"></div></div>
               </div>
+            </div>
+          </section>
+
+          <!-- El fondo del menú y sus partículas: antes iban al final de «Animaciones»
+               y se mezclaban con los interruptores. -->
+          <section class="sec" data-sec="fondomenu">
+            <header class="sec__head"><h2 class="sec__title" data-i18n="look.menuFx.title">Fondo del menú</h2></header>
+            <p class="sec__desc" data-i18n="look.menuFx.desc">El dibujo de fondo y las partículas que flotan en el menú. En la partida no se ven.</p>
+            <div class="sec__body">
+              <div class="rows" id="lookMenu"></div>
+              <div class="row">
+                <div class="row__text"><span class="row__label" id="parLabel">Fondo con profundidad</span><span class="row__desc" id="parDesc"></span></div>
+                <div class="row__ctl"><div class="chips" id="parChips"></div></div>
+              </div>
               <div class="row row--block">
                 <div class="row__text"><span class="row__label" id="sparkStyleLabel">Partículas del menú</span></div>
                 <div class="row__ctl"><div class="chips" id="sparkStyleChips"></div></div>
@@ -1089,11 +1103,6 @@
               <div class="row">
                 <div class="row__text"><span class="row__label" id="sparkDensLabel">Cantidad de partículas</span></div>
                 <div class="row__ctl"><div class="chips" id="sparkDensChips"></div></div>
-              </div>
-              <div class="rows" id="lookMenu"></div>
-              <div class="row">
-                <div class="row__text"><span class="row__label" id="parLabel">Fondo con profundidad</span><span class="row__desc" id="parDesc"></span></div>
-                <div class="row__ctl"><div class="chips" id="parChips"></div></div>
               </div>
             </div>
           </section>
@@ -1154,11 +1163,21 @@
 
           <section class="sec" data-sec="pisofx">
             <header class="sec__head">
-              <h2 class="sec__title" data-i18n="look.pitchFx.title">Clima y marcador en el piso</h2>
+              <h2 class="sec__title" data-i18n="look.pitchFx.title">Clima en la cancha</h2>
               <span class="tag" data-i18n="skin.tag">Sólo lo ves vos</span>
             </header>
             <div class="sec__body">
               <div class="rows" id="lookPitchFx"></div>
+            </div>
+          </section>
+
+          <section class="sec" data-sec="marcadorpiso">
+            <header class="sec__head">
+              <h2 class="sec__title" data-i18n="look.pitchScore.title">Marcador en el piso</h2>
+              <span class="tag" data-i18n="skin.tag">Sólo lo ves vos</span>
+            </header>
+            <div class="sec__body">
+              <div class="rows" id="lookPitchScore"></div>
             </div>
           </section>
 
@@ -1174,12 +1193,24 @@
 
           <section class="sec" data-sec="fichaslook">
             <header class="sec__head">
-              <h2 class="sec__title" data-i18n="look.discs.title">Fichas y aro</h2>
+              <h2 class="sec__title" data-i18n="look.discs.title">Fichas</h2>
               <span class="tag" data-i18n="skin.tag">Sólo lo ves vos</span>
             </header>
             <div class="sec__body">
               <div class="rows" id="lookDiscs"></div>
+            </div>
+          </section>
+
+          <!-- El aro de tu ficha tenía su lugar dentro de «Fichas» y se perdía entre
+               los colores de los equipos: ahora va aparte, con su interruptor arriba. -->
+          <section class="sec" data-sec="aro">
+            <header class="sec__head">
+              <h2 class="sec__title" data-i18n="look.ring.title">Tu aro</h2>
+              <span class="tag" data-i18n="skin.tag">Sólo lo ves vos</span>
+            </header>
+            <div class="sec__body">
               <div class="rows" id="ringSwitches"></div>
+              <div class="rows" id="lookRing"></div>
             </div>
           </section>
 
@@ -1228,6 +1259,13 @@
             <div class="sec__body">
               <div class="rows" id="gameChat"></div>
               <div class="rows" id="lookChat"></div>
+            </div>
+          </section>
+
+          <!-- El cartel del marcador y el tamaño de los botones iban al final del chat. -->
+          <section class="sec" data-sec="hudpartida">
+            <header class="sec__head"><h2 class="sec__title" data-i18n="group.inGameHud">Marcador y botones</h2></header>
+            <div class="sec__body">
               <div class="row">
                 <div class="row__text"><span class="row__label" id="scoreboardLabel">Cartel de marcador</span></div>
                 <div class="row__ctl"><div class="chips" id="scoreboardChips"></div></div>
@@ -1548,6 +1586,13 @@
                 <div class="row__text"><span class="row__label">Forma de la fila</span></div>
                 <div class="row__ctl">
                   <select id="vipLookStyle">
+                    <option value="galaxia">Galaxia (la de entrada)</option>
+                    <option value="lujo">Lujo</option>
+                    <option value="pincel">Pincel</option>
+                    <option value="marmol">Mármol</option>
+                    <option value="acuarela">Acuarela</option>
+                    <option value="acuanoche">Acuarela de noche</option>
+                    <option value="humo">Humo</option>
                     <option value="glass">Vidrio (como el lobby)</option>
                     <option value="solid">Sólida</option>
                     <option value="outline">Contorno</option>

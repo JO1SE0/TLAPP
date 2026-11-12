@@ -610,6 +610,97 @@ function css(p, opts = {}) {
 .room-view .player-list-item.tvm-peer-row[data-tvm-style="outline"]:hover,
 .room-view .player-list-item.tvm-peer-row[data-tvm-style="neon"]:hover,
 .room-view .player-list-item.tvm-peer-row[data-tvm-style="bar"]:hover { filter: brightness(1.1); }
+/* Formas con dibujo (cada una pinta su fondo; el nombre usa la letra elegida si hay una). */
+/* Lujo: noche con filetes de tu color, versalitas y el ícono grande de marca de agua. */
+.room-view .player-list-item.tvm-peer-row[data-tvm-style="lujo"]{border-radius:4px!important;background:linear-gradient(90deg,rgba(10,10,16,.85),rgb(var(--tvm-b-rgb)/18%) 70%,rgb(var(--tvm-a-rgb)/30%))!important;box-shadow:inset 0 1px 0 rgb(var(--tvm-a-rgb)/80%),inset 0 -1px 0 rgb(var(--tvm-a-rgb)/80%),0 0 0 1px rgba(0,0,0,.4)!important;padding-left:12px!important}
+.room-view .player-list-item.tvm-peer-row[data-tvm-style="lujo"]::after{content:attr(data-tvm-icon);left:auto;right:150px;top:50%;bottom:auto;width:auto;background:none;box-shadow:none;transform:translateY(-50%) rotate(-14deg);font-size:38px;opacity:.22;filter:saturate(.6)}
+.room-view .player-list-item.tvm-peer-row[data-tvm-style="lujo"][data-tvm-icon]::before{display:none}
+.room-view .player-list-item.tvm-peer-row[data-tvm-style="lujo"] [data-hook="name"]{font-family:Georgia,'Times New Roman',serif;font-variant:small-caps;letter-spacing:.1em!important;font-weight:700!important;font-size:15px}
+.room-view .player-list-item.tvm-peer-row[data-tvm-style="lujo"]:not(.admin) [data-hook="name"]{background-image:linear-gradient(180deg,#fff,rgb(var(--tvm-a-rgb)))!important;filter:none!important}
+.room-view .player-list-item.tvm-peer-row[data-tvm-style="lujo"] .tvm-av{background:transparent!important;box-shadow:0 0 0 1px rgb(var(--tvm-a-rgb))!important;color:rgb(var(--tvm-a-rgb))!important}
+.room-view .player-list-item.tvm-peer-row[data-tvm-style="lujo"] [data-hook="ping"]{background:none!important;font-family:Georgia,serif;color:rgb(var(--tvm-a-rgb))!important}
+.room-view .player-list-item.tvm-peer-row[data-tvm-style="lujo"] .tvm-marks{background:none!important;box-shadow:none!important}
+/* Pincel: un brochazo de tus dos colores y letra a mano. */
+.room-view .player-list-item.tvm-peer-row[data-tvm-style="pincel"]{background:transparent!important;box-shadow:none!important;overflow:visible}
+.room-view .player-list-item.tvm-peer-row[data-tvm-style="pincel"]::after{left:-4px;right:-4px;top:-3px;bottom:-3px;width:auto;z-index:-1;background:linear-gradient(90deg,rgb(var(--tvm-a-rgb)),rgb(var(--tvm-b-rgb)));box-shadow:none;-webkit-mask:url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%20400%2060%27%20preserveAspectRatio%3D%27none%27%3E%3Cpath%20d%3D%27M6%2034%20C20%2014%2060%2010%20110%2012%20C170%206%20230%2014%20300%2010%20C340%208%20380%2012%20394%2022%20C398%2030%20392%2040%20380%2044%20C330%2052%20260%2046%20200%2050%20C140%2054%2080%2050%2040%2052%20C18%2054%202%2046%206%2034Z%20M30%2018%20C80%208%20120%2014%20160%209%20L150%2016%20C110%2020%2070%2018%2030%2018Z%20M220%2050%20C260%2052%20300%2056%20340%2052%20L330%2058%20C290%2060%20250%2058%20220%2050Z%27%2F%3E%3C%2Fsvg%3E") center/100% 100% no-repeat;opacity:.85}
+.room-view .player-list-item.tvm-peer-row[data-tvm-style="pincel"]{isolation:isolate}
+.room-view .player-list-item.tvm-peer-row[data-tvm-style="pincel"]:not(.admin) [data-hook="name"]{background-image:none!important;-webkit-text-fill-color:#fff!important;font-family:'Comic Sans MS','Segoe Print',cursive;font-weight:900!important;font-size:16px;transform:rotate(-2deg);filter:drop-shadow(2px 2px 0 rgba(0,0,0,.45))!important}
+.room-view .player-list-item.tvm-peer-row[data-tvm-style="pincel"][data-tvm-icon]::before{background:#fff!important;box-shadow:0 2px 0 rgba(0,0,0,.3)!important;transform:rotate(-8deg)}
+.room-view .player-list-item.tvm-peer-row[data-tvm-style="pincel"] .tvm-av{background:rgba(0,0,0,.3)!important;box-shadow:0 0 0 2px #fff!important}
+.room-view .player-list-item.tvm-peer-row[data-tvm-style="pincel"] [data-hook="ping"]{background:rgba(0,0,0,.3)!important;color:#fff!important}
+/* Mármol: piedra clara con vetas de tus colores y canto dorado. */
+.room-view .player-list-item.tvm-peer-row[data-tvm-style="marmol"]{border-radius:8px!important;background:
+ linear-gradient(115deg,transparent 0 20%,rgb(var(--tvm-b-rgb)/35%) 21%,transparent 23% 46%,rgba(0,0,0,.18) 47%,transparent 48.5%),
+ linear-gradient(160deg,transparent 0 55%,rgb(var(--tvm-a-rgb)/45%) 56%,transparent 57.5% 80%,rgba(0,0,0,.12) 81%,transparent 82%),
+ linear-gradient(80deg,transparent 0 68%,rgba(255,255,255,.5) 69%,transparent 70%),
+ radial-gradient(160px 60px at 20% 30%,rgba(255,255,255,.9),transparent 70%),
+ linear-gradient(90deg,#efe9e2,#ddd5cc)!important;box-shadow:inset 0 0 0 1px rgba(255,255,255,.7),inset 0 -2px 0 rgba(0,0,0,.12),0 6px 14px -8px #000!important}
+.room-view .player-list-item.tvm-peer-row[data-tvm-style="marmol"]::after{width:5px;background:linear-gradient(180deg,#e9c46a,#a3741c);box-shadow:none}
+.room-view .player-list-item.tvm-peer-row[data-tvm-style="marmol"]:not(.admin) [data-hook="name"]{background-image:linear-gradient(90deg,rgb(var(--tvm-b-rgb)),#1b1b25)!important;filter:none!important;font-family:Georgia,serif;font-weight:700!important;font-size:15px}
+.room-view .player-list-item.tvm-peer-row[data-tvm-style="marmol"] .tvm-av{background:#fff!important;color:#333!important;box-shadow:0 0 0 1.5px #c9a24a!important}
+.room-view .player-list-item.tvm-peer-row[data-tvm-style="marmol"][data-tvm-icon]::before{background:radial-gradient(circle at 35% 30%,#fff3c4,#c9a24a)!important}
+.room-view .player-list-item.tvm-peer-row[data-tvm-style="marmol"] [data-hook="ping"]{background:rgba(0,0,0,.08)!important;color:#333!important}
+.room-view .player-list-item.tvm-peer-row[data-tvm-style="marmol"] .flag{box-shadow:0 0 0 1px rgba(0,0,0,.15)}
+/* Acuarela: manchas de tus colores sobre papel claro. */
+.room-view .player-list-item.tvm-peer-row[data-tvm-style="acuarela"]{border-radius:14px 6px 16px 8px!important;background:
+ radial-gradient(70px 30px at 10% 40%,rgb(var(--tvm-a-rgb)/65%),transparent 70%),
+ radial-gradient(90px 26px at 38% 70%,rgb(var(--tvm-b-rgb)/55%),transparent 72%),
+ radial-gradient(80px 34px at 62% 30%,rgb(var(--tvm-a-rgb)/45%),transparent 70%),
+ radial-gradient(110px 30px at 88% 60%,rgb(var(--tvm-b-rgb)/50%),transparent 72%),
+ radial-gradient(40px 20px at 50% 50%,rgba(255,255,255,.18),transparent 70%),
+ linear-gradient(90deg,#f6f1e7,#ece4d6)!important;box-shadow:0 0 0 1px rgba(0,0,0,.08),0 6px 14px -8px rgba(0,0,0,.8)!important}
+.room-view .player-list-item.tvm-peer-row[data-tvm-style="acuarela"]::after{display:none}
+.room-view .player-list-item.tvm-peer-row[data-tvm-style="acuarela"]:not(.admin) [data-hook="name"]{background-image:none!important;-webkit-text-fill-color:#1d1a24!important;font-family:'Segoe Print','Comic Sans MS',cursive;font-weight:700!important;filter:none!important}
+.room-view .player-list-item.tvm-peer-row[data-tvm-style="acuarela"] .tvm-av{background:rgba(255,255,255,.7)!important;color:#333!important;box-shadow:0 0 0 1.5px rgb(var(--tvm-b-rgb))!important}
+.room-view .player-list-item.tvm-peer-row[data-tvm-style="acuarela"][data-tvm-icon]::before{background:rgba(255,255,255,.75)!important;box-shadow:none!important}
+.room-view .player-list-item.tvm-peer-row[data-tvm-style="acuarela"] [data-hook="ping"]{background:rgba(255,255,255,.6)!important;color:#333!important}
+/* Acuarela de noche: las mismas manchas sobre papel oscuro. */
+.room-view .player-list-item.tvm-peer-row[data-tvm-style="acuanoche"]{border-radius:14px 6px 16px 8px!important;background:
+ radial-gradient(70px 30px at 10% 40%,rgb(var(--tvm-a-rgb)/70%),transparent 70%),
+ radial-gradient(90px 26px at 38% 70%,rgb(var(--tvm-b-rgb)/60%),transparent 72%),
+ radial-gradient(80px 34px at 62% 30%,rgb(var(--tvm-a-rgb)/50%),transparent 70%),
+ radial-gradient(110px 30px at 88% 60%,rgb(var(--tvm-b-rgb)/55%),transparent 72%),
+ radial-gradient(30px 14px at 25% 20%,rgba(255,255,255,.25),transparent 70%),
+ radial-gradient(26px 12px at 70% 80%,rgba(255,255,255,.18),transparent 70%),
+ linear-gradient(90deg,#15131d,#1b1826)!important;box-shadow:inset 0 0 0 1px rgb(var(--tvm-a-rgb)/30%),0 6px 14px -8px #000!important}
+.room-view .player-list-item.tvm-peer-row[data-tvm-style="acuanoche"]::after{display:none}
+.room-view .player-list-item.tvm-peer-row[data-tvm-style="acuanoche"]:not(.admin) [data-hook="name"]{background-image:none!important;-webkit-text-fill-color:#fff!important;font-family:'Segoe Print','Comic Sans MS',cursive;font-weight:700!important;filter:drop-shadow(0 1px 2px rgba(0,0,0,.6))!important}
+.room-view .player-list-item.tvm-peer-row[data-tvm-style="acuanoche"] .tvm-av{background:rgba(0,0,0,.35)!important;box-shadow:0 0 0 1.5px rgb(var(--tvm-a-rgb))!important}
+.room-view .player-list-item.tvm-peer-row[data-tvm-style="acuanoche"][data-tvm-icon]::before{background:rgba(255,255,255,.18)!important;box-shadow:none!important}
+.room-view .player-list-item.tvm-peer-row[data-tvm-style="acuanoche"] [data-hook="ping"]{background:rgba(0,0,0,.35)!important;color:#fff!important}
+/* Humo: hilos de tus colores sobre fondo oscuro, nombre en cursiva. */
+.room-view .player-list-item.tvm-peer-row[data-tvm-style="humo"]{border-radius:10px!important;background:
+ radial-gradient(60px 10px at 15% 30%,rgb(var(--tvm-a-rgb)/45%),transparent 80%),
+ radial-gradient(90px 8px at 30% 62%,rgb(var(--tvm-a-rgb)/35%),transparent 80%),
+ radial-gradient(120px 12px at 52% 38%,rgb(var(--tvm-b-rgb)/40%),transparent 80%),
+ radial-gradient(80px 7px at 66% 72%,rgb(var(--tvm-a-rgb)/30%),transparent 80%),
+ radial-gradient(140px 14px at 86% 45%,rgb(var(--tvm-b-rgb)/35%),transparent 80%),
+ radial-gradient(70px 6px at 44% 20%,rgba(255,255,255,.12),transparent 80%),
+ linear-gradient(90deg,#121118,#18161f)!important;box-shadow:inset 0 0 0 1px rgb(var(--tvm-a-rgb)/22%),0 6px 14px -8px #000!important}
+.room-view .player-list-item.tvm-peer-row[data-tvm-style="humo"]:not(.admin) [data-hook="name"]{background-image:none!important;-webkit-text-fill-color:#fff!important;font-family:Georgia,serif;font-style:italic;font-weight:700!important;filter:drop-shadow(0 0 6px rgb(var(--tvm-a-rgb)/60%))!important}
+.room-view .player-list-item.tvm-peer-row[data-tvm-style="humo"]::after{display:none}
+.room-view .player-list-item.tvm-peer-row[data-tvm-style="humo"] .tvm-av{background:rgba(0,0,0,.35)!important;box-shadow:0 0 0 1.5px rgb(var(--tvm-a-rgb))!important}
+.room-view .player-list-item.tvm-peer-row[data-tvm-style="humo"][data-tvm-icon]::before{background:rgba(255,255,255,.14)!important;box-shadow:none!important}
+.room-view .player-list-item.tvm-peer-row[data-tvm-style="humo"] [data-hook="ping"]{background:rgba(0,0,0,.35)!important;color:#fff!important}
+/* Galaxia (la de entrada): estrellas y dos nebulosas de tus colores. */
+.room-view .player-list-item.tvm-peer-row[data-tvm-style="galaxia"]{border-radius:10px!important;background:
+ radial-gradient(1px 1px at 8% 30%,#fff,transparent),radial-gradient(1px 1px at 19% 75%,#fff,transparent),radial-gradient(1.5px 1.5px at 33% 22%,#fff,transparent),radial-gradient(1px 1px at 46% 68%,#cfe,transparent),radial-gradient(1px 1px at 57% 35%,#fff,transparent),radial-gradient(1.5px 1.5px at 66% 80%,#fff,transparent),radial-gradient(1px 1px at 74% 18%,#fff,transparent),radial-gradient(1px 1px at 88% 60%,#fff,transparent),radial-gradient(2px 2px at 95% 25%,#fff,transparent),
+ radial-gradient(120px 40px at 35% 60%,rgb(var(--tvm-a-rgb)/45%),transparent 70%),
+ radial-gradient(110px 36px at 70% 35%,rgb(var(--tvm-b-rgb)/45%),transparent 70%),
+ radial-gradient(70px 24px at 55% 50%,rgba(255,255,255,.10),transparent 70%),
+ linear-gradient(90deg,#07060f,#0d0a1c)!important;
+ box-shadow:inset 0 0 0 1px rgba(255,255,255,.12),0 6px 16px -8px #000!important}
+.room-view .player-list-item.tvm-peer-row[data-tvm-style="galaxia"]::after{display:none}
+.room-view .player-list-item.tvm-peer-row[data-tvm-style="galaxia"]:not(.admin) [data-hook="name"]{background-image:none!important;-webkit-text-fill-color:#fff!important;font-weight:800!important;letter-spacing:.04em;filter:drop-shadow(0 0 6px rgb(var(--tvm-a-rgb)))!important}
+.room-view .player-list-item.tvm-peer-row[data-tvm-style="galaxia"] [data-hook="ping"]{background:rgba(255,255,255,.1)!important;color:#fff!important;box-shadow:inset 0 0 0 1px rgba(255,255,255,.25)!important}
+.room-view .player-list-item.tvm-peer-row[data-tvm-style="galaxia"] .tvm-av{box-shadow:0 0 0 1.5px #fff,0 0 8px rgb(var(--tvm-a-rgb))!important}
+.room-view .player-list-item.tvm-peer-row[data-tvm-style="lujo"]:hover,
+.room-view .player-list-item.tvm-peer-row[data-tvm-style="pincel"]:hover,
+.room-view .player-list-item.tvm-peer-row[data-tvm-style="marmol"]:hover,
+.room-view .player-list-item.tvm-peer-row[data-tvm-style="acuarela"]:hover,
+.room-view .player-list-item.tvm-peer-row[data-tvm-style="acuanoche"]:hover,
+.room-view .player-list-item.tvm-peer-row[data-tvm-style="humo"]:hover,
+.room-view .player-list-item.tvm-peer-row[data-tvm-style="galaxia"]:hover { filter: brightness(1.12); }
 `;
 }
 

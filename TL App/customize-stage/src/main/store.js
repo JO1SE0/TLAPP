@@ -9,7 +9,7 @@ const haxball = require('./haxball-settings');
 const FILE = 'config.json';
 
 const DEFAULTS = {
-  version: 30,
+  version: 31,
   general: {
     gameUrl: 'https://www.haxball.com/play',
     nickname: '',
@@ -343,8 +343,8 @@ const DEFAULTS = {
       /** Id de uno de los degradados de la lista, o vacío. */
       gradient: '',
       font: 'default',
-      /** Forma de la fila: glass | solid | outline | neon | bar | minimal. */
-      style: 'glass',
+      /** Forma de la fila (ver PEER_STYLES en game-preload.js). La de entrada es Galaxia. */
+      style: 'galaxia',
       /** Un emoji de una lista cerrada que va delante de tu nombre, o vacío. */
       icon: ''
     },
@@ -884,7 +884,13 @@ function migrate(stored) {
   // v30: la interfaz «Vitrina» se retiró. Quien la tenía vuelve a la clásica.
   if (next.appearance && next.appearance.layout === 'vitrina') next.appearance.layout = 'classic';
 
-  next.version = 30;
+  // v31: la forma de entrada de la fila pasó de Vidrio a Galaxia. El config guardado
+  // tiene 'glass' aunque nadie lo haya elegido, así que se pasa una vez.
+  if (!(next.version >= 31) && next.vip && next.vip.cosmetics && next.vip.cosmetics.style === 'glass') {
+    next.vip = { ...next.vip, cosmetics: { ...next.vip.cosmetics, style: 'galaxia' } };
+  }
+
+  next.version = 31;
   return next;
 }
 

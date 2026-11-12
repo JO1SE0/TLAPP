@@ -1270,6 +1270,218 @@ function extraBall(ctx, style, x, y, r) {
     ctx.beginPath();
     ctx.arc(x - r * 0.16, y - r * 0.16, r * 0.1, 0, TAU);
     ctx.fill();
+  } else if (style === 'argentina') {
+    // Celeste y blanca, con el sol al medio.
+    disc(ctx, x, y, r, '#ffffff');
+    ctx.fillStyle = '#74acdf';
+    ctx.fillRect(x - r, y - r, r * 2, r * 0.68);
+    ctx.fillRect(x - r, y + r * 0.32, r * 2, r * 0.68);
+    ctx.fillStyle = '#f6b40e';
+    ctx.beginPath();
+    for (let i = 0; i < 16; i++) {
+      const a = (i * TAU) / 16;
+      const rad = i % 2 ? r * 0.2 : r * 0.3;
+      if (i) ctx.lineTo(x + Math.cos(a) * rad, y + Math.sin(a) * rad);
+      else ctx.moveTo(x + Math.cos(a) * rad, y + Math.sin(a) * rad);
+    }
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = '#85340a';
+    ctx.lineWidth = lw * 0.5;
+    ctx.beginPath();
+    ctx.arc(x, y, r * 0.13, 0, TAU);
+    ctx.stroke();
+  } else if (style === 'fire') {
+    // Bola de fuego: núcleo amarillo y lenguas naranjas.
+    const g = ctx.createRadialGradient(x, y + r * 0.2, 0, x, y, r);
+    g.addColorStop(0, '#fff6b0');
+    g.addColorStop(0.35, '#ffc02e');
+    g.addColorStop(0.7, '#f2581b');
+    g.addColorStop(1, '#8e1606');
+    ctx.fillStyle = g;
+    ctx.fillRect(x - r, y - r, r * 2, r * 2);
+    ctx.fillStyle = 'rgba(255,230,120,0.45)';
+    for (const [dx, k] of [[-0.45, 0.45], [0, 0.8], [0.42, 0.5]]) {
+      ctx.beginPath();
+      ctx.moveTo(x + (dx - 0.3) * r, y + r);
+      ctx.quadraticCurveTo(x + (dx - 0.2) * r, y - r * (k - 0.25), x + dx * r, y - r * k);
+      ctx.quadraticCurveTo(x + (dx + 0.2) * r, y - r * (k - 0.3), x + (dx + 0.3) * r, y + r);
+      ctx.fill();
+    }
+  } else if (style === 'ice') {
+    // Hielo: celeste claro con grietas blancas y un brillo.
+    const g = ctx.createLinearGradient(x - r, y - r, x + r, y + r);
+    g.addColorStop(0, '#e9fbff');
+    g.addColorStop(0.5, '#9fdcf2');
+    g.addColorStop(1, '#4fa6cf');
+    ctx.fillStyle = g;
+    ctx.fillRect(x - r, y - r, r * 2, r * 2);
+    ctx.strokeStyle = 'rgba(255,255,255,0.85)';
+    ctx.lineWidth = lw * 0.6;
+    ctx.beginPath();
+    ctx.moveTo(x - r * 0.1, y - r);
+    ctx.lineTo(x - r * 0.05, y - r * 0.3);
+    ctx.lineTo(x - r * 0.4, y + r * 0.1);
+    ctx.lineTo(x - r * 0.3, y + r);
+    ctx.moveTo(x - r * 0.05, y - r * 0.3);
+    ctx.lineTo(x + r * 0.45, y + r * 0.05);
+    ctx.lineTo(x + r, y - r * 0.1);
+    ctx.moveTo(x + r * 0.45, y + r * 0.05);
+    ctx.lineTo(x + r * 0.35, y + r * 0.6);
+    ctx.stroke();
+  } else if (style === 'yinyang') {
+    disc(ctx, x, y, r, '#f4f4f2');
+    ctx.fillStyle = '#121212';
+    ctx.beginPath();
+    ctx.arc(x, y, r * 1.02, -Math.PI / 2, Math.PI / 2);
+    ctx.arc(x, y + r / 2, r / 2, Math.PI / 2, -Math.PI / 2, true);
+    ctx.arc(x, y - r / 2, r / 2, Math.PI / 2, -Math.PI / 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(x, y - r / 2, r * 0.14, 0, TAU);
+    ctx.fill();
+    ctx.fillStyle = '#f4f4f2';
+    ctx.beginPath();
+    ctx.arc(x, y + r / 2, r * 0.14, 0, TAU);
+    ctx.fill();
+  } else if (style === 'smile') {
+    disc(ctx, x, y, r, '#ffd23a');
+    ctx.fillStyle = '#3b2a00';
+    for (const dx of [-0.32, 0.32]) {
+      ctx.beginPath();
+      ctx.ellipse(x + dx * r, y - r * 0.22, r * 0.1, r * 0.17, 0, 0, TAU);
+      ctx.fill();
+    }
+    ctx.strokeStyle = '#3b2a00';
+    ctx.lineWidth = Math.max(0.6, r * 0.11);
+    ctx.beginPath();
+    ctx.arc(x, y + r * 0.02, r * 0.5, 0.2 * Math.PI, 0.8 * Math.PI);
+    ctx.stroke();
+  } else if (style === 'sun') {
+    const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+    g.addColorStop(0, '#fff3a6');
+    g.addColorStop(0.55, '#ffc928');
+    g.addColorStop(1, '#ff8a00');
+    ctx.fillStyle = g;
+    ctx.fillRect(x - r, y - r, r * 2, r * 2);
+    ctx.strokeStyle = 'rgba(255,255,255,0.7)';
+    ctx.lineWidth = lw;
+    ctx.beginPath();
+    for (let i = 0; i < 12; i++) {
+      const a = (i * TAU) / 12;
+      ctx.moveTo(x + Math.cos(a) * r * 0.5, y + Math.sin(a) * r * 0.5);
+      ctx.lineTo(x + Math.cos(a) * r * 0.85, y + Math.sin(a) * r * 0.85);
+    }
+    ctx.stroke();
+  } else if (style === 'donut') {
+    disc(ctx, x, y, r, '#d9a45f');
+    ctx.fillStyle = '#ff7eb6';
+    ctx.beginPath();
+    for (let i = 0; i <= 24; i++) {
+      const a = (i * TAU) / 24;
+      const rad = r * (0.86 + (i % 2 ? 0.06 : -0.02));
+      if (i) ctx.lineTo(x + Math.cos(a) * rad, y + Math.sin(a) * rad);
+      else ctx.moveTo(x + Math.cos(a) * rad, y + Math.sin(a) * rad);
+    }
+    ctx.fill();
+    ctx.fillStyle = '#b07a3c';
+    ctx.beginPath();
+    ctx.arc(x, y, r * 0.28, 0, TAU);
+    ctx.fill();
+    ctx.lineWidth = Math.max(0.5, r * 0.07);
+    ctx.lineCap = 'round';
+    const colors = ['#ffffff', '#5fd0ff', '#ffe066', '#7cf29c', '#b57bff'];
+    for (let i = 0; i < 10; i++) {
+      const a = i * 2.4;
+      const rad = r * (0.45 + (i % 3) * 0.12);
+      const px = x + Math.cos(a) * rad;
+      const py = y + Math.sin(a) * rad;
+      ctx.strokeStyle = colors[i % colors.length];
+      ctx.beginPath();
+      ctx.moveTo(px - Math.cos(a + 1) * r * 0.06, py - Math.sin(a + 1) * r * 0.06);
+      ctx.lineTo(px + Math.cos(a + 1) * r * 0.06, py + Math.sin(a + 1) * r * 0.06);
+      ctx.stroke();
+    }
+  } else if (style === 'checker') {
+    disc(ctx, x, y, r, '#f2f2f2');
+    ctx.fillStyle = '#151515';
+    const n = 4;
+    const cell = (r * 2) / n;
+    for (let j = 0; j < n; j++) {
+      for (let i = 0; i < n; i++) {
+        if ((i + j) % 2) ctx.fillRect(x - r + i * cell, y - r + j * cell, cell, cell);
+      }
+    }
+  } else if (style === 'candy') {
+    // Caramelo: espiral roja y blanca.
+    disc(ctx, x, y, r, '#ffffff');
+    ctx.fillStyle = '#e3263b';
+    for (let k = 0; k < 4; k++) {
+      const a0 = (k * TAU) / 4;
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      for (let i = 0; i <= 12; i++) {
+        const t = i / 12;
+        const a = a0 + t * 2.2;
+        ctx.lineTo(x + Math.cos(a) * r * 1.1 * t, y + Math.sin(a) * r * 1.1 * t);
+      }
+      for (let i = 12; i >= 0; i--) {
+        const t = i / 12;
+        const a = a0 + 0.7 + t * 2.2;
+        ctx.lineTo(x + Math.cos(a) * r * 1.1 * t, y + Math.sin(a) * r * 1.1 * t);
+      }
+      ctx.fill();
+    }
+  } else if (style === 'heart') {
+    disc(ctx, x, y, r, '#ffe3ec');
+    ctx.fillStyle = '#e8204f';
+    ctx.beginPath();
+    ctx.moveTo(x, y + r * 0.62);
+    ctx.bezierCurveTo(x - r * 0.95, y + r * 0.05, x - r * 0.55, y - r * 0.75, x, y - r * 0.25);
+    ctx.bezierCurveTo(x + r * 0.55, y - r * 0.75, x + r * 0.95, y + r * 0.05, x, y + r * 0.62);
+    ctx.fill();
+  } else if (style === 'saturn') {
+    // Planeta con anillo.
+    const g = ctx.createLinearGradient(x, y - r, x, y + r);
+    g.addColorStop(0, '#f3d9a4');
+    g.addColorStop(0.5, '#d49b5a');
+    g.addColorStop(1, '#8a5a2e');
+    ctx.fillStyle = g;
+    ctx.fillRect(x - r, y - r, r * 2, r * 2);
+    ctx.strokeStyle = 'rgba(255,240,210,0.9)';
+    ctx.lineWidth = Math.max(0.6, r * 0.12);
+    ctx.beginPath();
+    ctx.ellipse(x, y, r * 1.05, r * 0.28, -0.35, 0, TAU);
+    ctx.stroke();
+    ctx.strokeStyle = 'rgba(90,50,20,0.5)';
+    ctx.lineWidth = Math.max(0.4, r * 0.04);
+    ctx.beginPath();
+    ctx.ellipse(x, y, r * 0.9, r * 0.2, -0.35, 0, TAU);
+    ctx.stroke();
+  } else if (style === 'lava') {
+    disc(ctx, x, y, r, '#1b0d0a');
+    // Sin shadowBlur (es caro por cuadro): el resplandor es un trazo ancho y tenue debajo.
+    const lavaPath = () => {
+      ctx.beginPath();
+      ctx.moveTo(x - r, y - r * 0.2);
+      ctx.lineTo(x - r * 0.4, y - r * 0.05);
+      ctx.lineTo(x - r * 0.1, y - r * 0.55);
+      ctx.lineTo(x + r * 0.25, y - r * 0.15);
+      ctx.lineTo(x + r, y - r * 0.35);
+      ctx.moveTo(x - r * 0.4, y - r * 0.05);
+      ctx.lineTo(x - r * 0.2, y + r * 0.5);
+      ctx.lineTo(x + r * 0.4, y + r * 0.45);
+      ctx.lineTo(x + r * 0.7, y + r);
+      ctx.moveTo(x + r * 0.25, y - r * 0.15);
+      ctx.lineTo(x + r * 0.4, y + r * 0.45);
+    };
+    lavaPath();
+    ctx.strokeStyle = 'rgba(255,120,30,0.35)';
+    ctx.lineWidth = Math.max(1, r * 0.28);
+    ctx.stroke();
+    ctx.strokeStyle = '#ffb02e';
+    ctx.lineWidth = Math.max(0.5, r * 0.08);
+    ctx.stroke();
   }
 }
 

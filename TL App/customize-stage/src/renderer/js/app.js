@@ -93,13 +93,13 @@ const TAB_ICONS = {
 const PANEL_TABS = {
   aspecto: [
     { id: 'estilo', label: 'tab.style', hint: 'tab.styleHint',
-      secs: ['tema', 'acento', 'interfaz', 'densidad', 'detalles', 'animaciones', 'looks'] },
+      secs: ['tema', 'acento', 'interfaz', 'densidad', 'detalles', 'animaciones', 'fondomenu', 'looks'] },
     { id: 'cancha', label: 'tab.pitch', hint: 'tab.pitchHint',
-      secs: ['cancha', 'acabado', 'pisofx', 'trazos', 'replays'] },
+      secs: ['cancha', 'acabado', 'pisofx', 'marcadorpiso', 'trazos', 'replays'] },
     { id: 'fichas', label: 'tab.discs', hint: 'tab.discsHint',
-      secs: ['jugador', 'pelota', 'fichaslook', 'nombres'] },
+      secs: ['jugador', 'pelota', 'fichaslook', 'aro', 'nombres'] },
     { id: 'partida', label: 'tab.ingame', hint: 'tab.ingameHint',
-      secs: ['partida', 'goles', 'statslook', 'teclashud', 'overlay', 'lista'] }
+      secs: ['partida', 'hudpartida', 'goles', 'statslook', 'teclashud', 'overlay', 'lista'] }
   ],
   ajustes: [
     { id: 'rapido', group: 'tabg.perf', label: 'tab.quick', hint: 'tab.quickHint', secs: ['perfil', 'respuesta'] },
@@ -6633,7 +6633,7 @@ function paintAnimations() {
   if (!host || !state.config) return;
   const lang = isEn() ? 'en' : 'es';
   const ap = state.config.appearance;
-  $('#animTitle').textContent = lang === 'en' ? 'Animations and background' : 'Animaciones y fondo';
+  $('#animTitle').textContent = lang === 'en' ? 'Animations' : 'Animaciones';
   $('#animDesc').textContent = lang === 'en'
     ? 'Cheap motion only. Everything stops with “Animations” off.'
     : 'Sólo movimiento barato. Todo se apaga con «Animaciones» apagado.';
@@ -7190,9 +7190,10 @@ function paintLooks(ids, looks, { editable = true, name } = {}) {
   }
   demo.style.color = look ? look.text : '';
   demo.classList.toggle('is-on', !!look);
-  if (looks.style && looks.style !== 'glass') demo.dataset.tvmStyle = looks.style; else delete demo.dataset.tvmStyle;
+  const shape = looks.style || 'galaxia';
+  if (shape !== 'glass') demo.dataset.tvmStyle = shape; else delete demo.dataset.tvmStyle;
   if (looks.icon) demo.dataset.tvmIcon = looks.icon; else delete demo.dataset.tvmIcon;
-  if (ids.style && $(ids.style)) $(ids.style).value = looks.style || 'glass';
+  if (ids.style && $(ids.style)) $(ids.style).value = shape;
   if (ids.icon && $(ids.icon)) $(ids.icon).value = looks.icon || '';
   $(ids.name).textContent = name;
   $(ids.name).style.fontFamily = LOOK_FONTS[looks.font] || '';
@@ -7247,7 +7248,7 @@ async function saveLooks(patch) {
 $('#vipLookFont').addEventListener('change', (e) => saveLooks({ font: e.target.value }));
 $('#vipLookStyle').addEventListener('change', (e) => saveLooks({ style: e.target.value }));
 $('#vipLookIcon').addEventListener('change', (e) => saveLooks({ icon: e.target.value }));
-$('#vipLookClear').addEventListener('click', () => saveLooks({ gradient: '', font: 'default', style: 'glass', icon: '' }));
+$('#vipLookClear').addEventListener('click', () => saveLooks({ gradient: '', font: 'default', style: 'galaxia', icon: '' }));
 
 function renderVipAssets() {
   const vipCfg = state.config.vip || {};
@@ -11027,6 +11028,9 @@ const LOOK_SECTIONS = {
   lookPitchFx: [
     { key: 'pitchWeather', type: 'select', label: 'look.weather', desc: 'look.weatherHelp', options: [['none', 'look.opt.none'], ['rain', 'look.wx.rain'], ['storm', 'look.wx.storm'], ['snow', 'look.wx.snow'], ['fog', 'look.wx.fog'], ['dust', 'look.wx.dust'], ['leaves', 'look.wx.leaves'], ['embers', 'look.wx.embers'], ['fireflies', 'look.wx.fireflies'], ['blizzard', 'look.wx.blizzard']] },
     { key: 'pitchWeatherAmount', type: 'range', label: 'look.weatherAmount', min: 0.2, max: 1, step: 0.05, showIf: (v) => v.pitchWeather && v.pitchWeather !== 'none' },
+    { type: 'reset', key: '_wxReset', label: 'look.resetWeather', keys: ['pitchWeather', 'pitchWeatherAmount'] }
+  ],
+  lookPitchScore: [
     { key: 'pitchScore', type: 'select', label: 'look.pitchScore', desc: 'look.pitchScoreHelp', options: [['none', 'look.opt.none'], ['white', 'look.ps.white'], ['team', 'look.ps.team']] },
     { key: 'pitchScoreStyle', type: 'select', label: 'look.psStyle', options: [['ring', 'look.pss.ring'], ['solid', 'look.pss.solid'], ['outline', 'look.pss.outline'], ['neon', 'look.pss.neon'], ['badge', 'look.pss.badge'], ['3d', 'look.pss.3d']], showIf: (v) => v.pitchScore && v.pitchScore !== 'none' },
     { key: 'pitchScoreFont', type: 'select', label: 'look.psFont', options: [['default', 'look.font.default'], ['impact', 'look.font.impact'], ['outfit', 'look.psf.black'], ['round', 'look.font.round'], ['mono', 'look.font.mono'], ['serif', 'look.font.serif']], showIf: (v) => v.pitchScore && v.pitchScore !== 'none' },
@@ -11038,19 +11042,12 @@ const LOOK_SECTIONS = {
     { key: 'pitchScoreBurst', type: 'switch', label: 'look.psBurst', desc: 'look.psBurstHelp', showIf: (v) => v.pitchScore && v.pitchScore !== 'none' },
     { key: 'pitchScoreColorR', type: 'color', label: 'look.psColorR', desc: 'look.psColorHelp', showIf: (v) => v.pitchScore && v.pitchScore !== 'none' },
     { key: 'pitchScoreColorB', type: 'color', label: 'look.psColorB', showIf: (v) => v.pitchScore && v.pitchScore !== 'none' },
-    { type: 'reset', key: '_wxReset', label: 'look.resetWeather', keys: ['pitchWeather', 'pitchWeatherAmount', 'pitchScore', 'pitchScoreOpacity', 'pitchScoreStyle', 'pitchScoreFont', 'pitchScoreSize', 'pitchScorePos', 'pitchScoreMode', 'pitchScoreAnim', 'pitchScoreBurst', 'pitchScoreColorR', 'pitchScoreColorB'] }
+    { type: 'reset', key: '_scoreReset', label: 'look.resetScore', keys: ['pitchScore', 'pitchScoreOpacity', 'pitchScoreStyle', 'pitchScoreFont', 'pitchScoreSize', 'pitchScorePos', 'pitchScoreMode', 'pitchScoreAnim', 'pitchScoreBurst', 'pitchScoreColorR', 'pitchScoreColorB'] }
   ],
   lookDiscs: [
     { key: 'discStyle', type: 'select', label: 'look.discStyle', options: [['default', 'look.opt.none'], ['sphere', 'look.ds.sphere'], ['glass', 'look.ds.glass'], ['neon', 'look.ds.neon'], ['metal', 'look.ds.metal'], ['bubble', 'look.ds.bubble'], ['target', 'look.ds.target'], ['stripes', 'look.ds.stripes'], ['gem', 'look.ds.gem'], ['cartoon', 'look.ds.cartoon'], ['dots', 'look.ds.dots']] },
     { key: 'softShadows', type: 'switch', label: 'look.softShadows', desc: 'look.softShadowsHelp' },
     { key: 'discOutline', type: 'color', label: 'look.discOutline' },
-    { key: 'ringStyle', type: 'select', label: 'look.ringStyle', desc: 'look.ringHelp', options: [['default', 'look.opt.simple'], ['double', 'look.ring.double'], ['dashed', 'look.ring.dashed'], ['crown', 'look.ring.crown'], ['glow', 'look.ring.glow'], ['dots', 'look.ring.dots'], ['arrow', 'look.ring.arrow']] },
-    { key: 'ringColor', type: 'color', label: 'look.ringColor' },
-    { key: 'ownRingColor', type: 'color', label: 'look.ownRingColor', desc: 'look.ownRingHelp' },
-    { key: 'ownRingAlpha', type: 'range', label: 'look.ownRingAlpha', min: 0.05, max: 1, step: 0.01 },
-    { key: 'ownRingRadius', type: 'range', label: 'look.ownRingRadius', min: 18, max: 70, step: 1, raw: true },
-    { key: 'ownRingSoft', type: 'range', label: 'look.ownRingSoft', min: 0, max: 1, step: 0.05 },
-    { type: 'reset', key: '_ringReset', label: 'look.resetRing', keys: ['ownRingColor', 'ownRingAlpha', 'ownRingRadius', 'ownRingSoft'] },
     { key: 'selfTrail', type: 'switch', label: 'look.selfTrail', desc: 'look.selfTrailHelp' },
     { key: 'selfTrailColor', type: 'color', label: 'look.selfTrailColor', showIf: (v) => v.selfTrail },
     { key: 'teamColors', type: 'select', label: 'look.teamColors', desc: 'look.teamColorsHelp', options: [['room', 'look.tc.room'], ['mine', 'look.tc.mine']] },
@@ -11058,8 +11055,17 @@ const LOOK_SECTIONS = {
     { key: 'teamBlue', type: 'color', label: 'look.teamBlue', showIf: (v) => v.teamColors === 'mine' },
     { key: 'teamKeepKits', type: 'switch', label: 'look.teamKeep', desc: 'look.teamKeepHelp', showIf: (v) => v.teamColors === 'mine' }
   ],
+  lookRing: [
+    { key: 'ringStyle', type: 'select', label: 'look.ringStyle', desc: 'look.ringHelp', options: [['default', 'look.opt.simple'], ['double', 'look.ring.double'], ['dashed', 'look.ring.dashed'], ['crown', 'look.ring.crown'], ['glow', 'look.ring.glow'], ['dots', 'look.ring.dots'], ['arrow', 'look.ring.arrow']] },
+    { key: 'ringColor', type: 'color', label: 'look.ringColor' },
+    { key: 'ownRingColor', type: 'color', label: 'look.ownRingColor', desc: 'look.ownRingHelp' },
+    { key: 'ownRingAlpha', type: 'range', label: 'look.ownRingAlpha', min: 0.05, max: 1, step: 0.01 },
+    { key: 'ownRingRadius', type: 'range', label: 'look.ownRingRadius', min: 18, max: 70, step: 1, raw: true },
+    { key: 'ownRingSoft', type: 'range', label: 'look.ownRingSoft', min: 0, max: 1, step: 0.05 },
+    { type: 'reset', key: '_ringReset', label: 'look.resetRing', keys: ['ownRingColor', 'ownRingAlpha', 'ownRingRadius', 'ownRingSoft'] }
+  ],
   lookBall: [
-    { key: 'ballStyle', type: 'select', label: 'look.ballStyle', options: [['default', 'look.opt.none'], ['soccer', 'look.bs.soccer'], ['neon', 'look.bs.neon'], ['gold', 'look.bs.gold'], ['beach', 'look.bs.beach'], ['eight', 'look.bs.eight'], ['star', 'look.bs.star'], ['panels', 'look.bs.panels'], ['triangles', 'look.bs.triangles'], ['vintage', 'look.bs.vintage'], ['tennis', 'look.bs.tennis'], ['basket', 'look.bs.basket'], ['volley', 'look.bs.volley'], ['baseball', 'look.bs.baseball'], ['golf', 'look.bs.golf'], ['bowling', 'look.bs.bowling'], ['earth', 'look.bs.earth'], ['moon', 'look.bs.moon'], ['disco', 'look.bs.disco'], ['orb', 'look.bs.orb'], ['pumpkin', 'look.bs.pumpkin'], ['melon', 'look.bs.melon'], ['eye', 'look.bs.eye']] },
+    { key: 'ballStyle', type: 'select', label: 'look.ballStyle', options: [['default', 'look.opt.none'], ['soccer', 'look.bs.soccer'], ['neon', 'look.bs.neon'], ['gold', 'look.bs.gold'], ['beach', 'look.bs.beach'], ['eight', 'look.bs.eight'], ['star', 'look.bs.star'], ['panels', 'look.bs.panels'], ['triangles', 'look.bs.triangles'], ['vintage', 'look.bs.vintage'], ['tennis', 'look.bs.tennis'], ['basket', 'look.bs.basket'], ['volley', 'look.bs.volley'], ['baseball', 'look.bs.baseball'], ['golf', 'look.bs.golf'], ['bowling', 'look.bs.bowling'], ['earth', 'look.bs.earth'], ['moon', 'look.bs.moon'], ['disco', 'look.bs.disco'], ['orb', 'look.bs.orb'], ['pumpkin', 'look.bs.pumpkin'], ['melon', 'look.bs.melon'], ['eye', 'look.bs.eye'], ['argentina', 'look.bs.argentina'], ['fire', 'look.bs.fire'], ['ice', 'look.bs.ice'], ['yinyang', 'look.bs.yinyang'], ['smile', 'look.bs.smile'], ['sun', 'look.bs.sun'], ['donut', 'look.bs.donut'], ['checker', 'look.bs.checker'], ['candy', 'look.bs.candy'], ['heart', 'look.bs.heart'], ['saturn', 'look.bs.saturn'], ['lava', 'look.bs.lava']] },
     { key: 'ballColor', type: 'color', label: 'look.ballColor' },
     { key: 'ballOutline', type: 'color', label: 'look.ballOutline' }
   ],
@@ -13078,6 +13084,9 @@ function paintLayout() {
   const back = $('#layReset');
   back.textContent = en ? 'Back to Classic' : 'Volver a la clásica';
   back.hidden = cur === 'classic';
+  // Su fila también: si no, quedaba una tarjeta vacía debajo de «Barra de estado».
+  const backRow = back.closest('.row');
+  if (backRow) backRow.hidden = back.hidden;
 }
 $('#layoutCards').addEventListener('click', (e) => {
   const b = e.target.closest('[data-lay]');
@@ -13980,6 +13989,8 @@ window.addEventListener('resize', () => requestAnimationFrame(masonry));
         if (el.classList.contains('rows__flat')) kids.push(...el.children); else kids.push(el);
       }
       for (const el of kids) {
+        // Las elecciones con píldoras o miniaturas van en su propia tarjeta (ver «ritmo parejo» en app.css).
+        if (el.classList.contains('row--block')) el.classList.toggle('row--card', !!el.querySelector(':scope > .row__ctl > .chips, :scope > .row__ctl > .lookgal, :scope > .row__ctl > .lookchips'));
         const plain = el.classList.contains('row') && !el.classList.contains('row--tog') && !el.classList.contains('row--block') && !el.closest('.pcard');
         if (plain && !el.hidden) group.push(el);
         else { if (el.classList.contains('row')) el.classList.remove('grp', 'grp-first', 'grp-last'); if (!el.hidden) close(); }

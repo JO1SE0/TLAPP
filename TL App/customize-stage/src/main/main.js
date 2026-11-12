@@ -3041,7 +3041,8 @@ function myCosmetics() {
   const out = {
     gradient: looks.gradient || null,
     font: looks.font && looks.font !== 'default' ? looks.font : null,
-    style: looks.style && looks.style !== 'glass' ? looks.style : null,
+    // Vidrio viaja explícito: sin forma, el que recibe pone la de entrada (Galaxia).
+    style: looks.style || null,
     icon: looks.icon || null
   };
   return out.gradient || out.font || out.style || out.icon ? out : null;

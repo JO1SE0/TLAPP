@@ -75,11 +75,11 @@ const GRADIENTS = new Set(['violeta', 'oceano', 'esmeralda', 'fuego', 'rubi', 'r
 const FONTS = new Set(['outfit', 'mono', 'serif', 'round', 'impact']);
 const looksText = (fp, nick, t, g, f) => `${fp}|${nick}|${t}|${g}|${f}`;
 /* Forma de la fila y ícono: otra firma aparte (`xs`) para no romper a las versiones que sólo conocen `cs`. */
-const STYLES = new Set(['glass', 'solid', 'outline', 'neon', 'bar', 'minimal']);
+const STYLES = new Set(['glass', 'solid', 'outline', 'neon', 'bar', 'minimal', 'galaxia', 'lujo', 'pincel', 'marmol', 'acuarela', 'acuanoche', 'humo']);
 const ICONS = new Set(['⚡', '🔥', '👑', '⭐', '🎯', '🧤', '🐐', '🦁', '🐺', '🚀', '💀', '🍀']);
 const looksText2 = (fp, nick, t, y, i) => `looks2|${fp}|${nick}|${t}|${y}|${i}`;
 function cleanLooks2(c) {
-  return { y: c && STYLES.has(c.y) && c.y !== 'glass' ? c.y : '', i: c && ICONS.has(c.i) ? c.i : '' };
+  return { y: c && STYLES.has(c.y) ? c.y : '', i: c && ICONS.has(c.i) ? c.i : '' };
 }
 function cleanLooks(c) {
   const g = c && GRADIENTS.has(c.g) ? c.g : '';
@@ -109,10 +109,11 @@ async function beat(ctx) {
     call(`${base}/rooms/${old}/${id.pid}.json`, 'DELETE').catch(() => {});
   }
     const meEntry = (ctx.roster || []).find((u) => u && u.pub && /^[0-9a-f]{64}$/i.test(u.pub) && identity.pidOf(u.pub) === id.pid);
-  // Los ajenos al club (ext) no dejan casillero: nadie los ve. Los SOCIOS sí: el plantel los ve en la
-  // sala con su propio distintivo (no el escudo ni el aura dorada, que son del plantel).
-  const iAmExternal = !!(meEntry && meEntry.ext);
-  const iAmSocio = !!(meEntry && meEntry.soc && !meEntry.ext);
+  // Los ajenos al club (ext sin soc) no dejan casillero: nadie los ve. Los SOCIOS sí, con su fila
+  // personalizada como cualquiera del plantel, pero sin el escudo de TL (eso es del plantel).
+  // Ojo: en el roster `ext` y `soc` vienen juntos para los socios (ver access.js).
+  const iAmSocio = !!(meEntry && meEntry.soc);
+  const iAmExternal = !!(meEntry && meEntry.ext) && !iAmSocio;
   if (!ctx.fp || !ctx.nick) { why = `sin sala o sin nick (sala=${ctx.fp ? 'sí' : 'no'}, nick=${ctx.nick ? 'sí' : 'no'})`; return null; }
   why = '';
   lastFp = ctx.fp;
@@ -123,9 +124,6 @@ async function beat(ctx) {
   const mine2 = cleanLooks2({ y: ctx.cosmetics && ctx.cosmetics.style, i: ctx.cosmetics && ctx.cosmetics.icon });
   if (iAmExternal) {
     call(`${base}/rooms/${ctx.fp}/${id.pid}.json`, 'DELETE').catch(() => {});
-  } else if (iAmSocio) {
-    // Casillero simple, sin aspecto. Si la base no lo acepta, la sala se lee igual.
-    try { await call(`${base}/rooms/${ctx.fp}/${id.pid}.json`, 'PUT', { n: nick, t, s: id.sign(signedText(ctx.fp, nick, t)) }); } catch { /* sigue sin casillero */ }
   } else {
     const slot = { n: nick, t, s: id.sign(signedText(ctx.fp, nick, t)) };
     if (noLooks && Date.now() > noLooksUntil) noLooks = false; // se vuelve a probar cada tanto
@@ -164,18 +162,20 @@ async function beat(ctx) {
     }
     const member = byPid.get(pid);
     // Las claves de prueba no son del plantel: no llevan insignia ni aura. Los ajenos tampoco.
-    if (!member || member.trial || member.ext) continue;
+    if (!member || member.trial || (member.ext && !member.soc)) continue;
     if (typeof entry.n !== 'string' || typeof entry.t !== 'number' || typeof entry.s !== 'string') continue;
     if (!identity.verify(member.pub, signedText(ctx.fp, entry.n, entry.t), entry.s)) continue;
     const k = `${ctx.fp}|${pid}`;
     const prev = seen.get(k);
     if (!prev || prev.t !== entry.t) seen.set(k, { t: entry.t, at: now });
     if (now - seen.get(k).at > ALIVE_MS) continue;
-    let look = { gradient: 'oro' };
+    // Sin degradado elegido: dorado el plantel, plateado (medianoche) el socio.
+    const baseG = member.soc ? 'medianoche' : 'oro';
+    let look = { gradient: baseG };
     if (entry.c && typeof entry.c === 'object' && typeof entry.cs === 'string') {
       const c = cleanLooks(entry.c);
       if (identity.verify(member.pub, looksText(ctx.fp, entry.n, entry.t, c.g, c.f), entry.cs)) {
-        look = { gradient: c.g || 'oro', font: c.f || null };
+        look = { gradient: c.g || baseG, font: c.f || null };
         if (entry.x && typeof entry.x === 'object' && typeof entry.xs === 'string') {
           const c2 = cleanLooks2(entry.x);
           if (identity.verify(member.pub, looksText2(ctx.fp, entry.n, entry.t, c2.y, c2.i), entry.xs)) {
@@ -184,8 +184,8 @@ async function beat(ctx) {
         }
       }
     }
-    // Socio: se lo marca con su distintivo, sin el aura ni el escudo del plantel.
-    if (member.soc) { peers.push({ nick: entry.n, name: member.name, soc: true, noLogo: true, vip: false, cosmetics: { gradient: 'medianoche' } }); continue; }
+    // Socio: su fila como la eligió y su distintivo de socio, pero sin el escudo del plantel.
+    if (member.soc) { peers.push({ nick: entry.n, name: member.name, soc: true, noLogo: true, vip: false, cosmetics: look }); continue; }
     peers.push({ nick: entry.n, name: member.name, vip: false, cosmetics: look });
   }
   // Se olvidan los que ya no aparecen.

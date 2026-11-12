@@ -4953,7 +4953,7 @@ function auraStyle(look) {
 /** Las variables que puede dejar puestas `applyPeerLook`, para poder sacarlas. */
 const PEER_LOOK_VARS = ['--tvm-vip-bg', '--tvm-vip-bg-hi', '--tvm-vip-edge', '--tvm-vip-name', '--tvm-a-rgb', '--tvm-b-rgb'];
 /** Listas cerradas de lo que se puede elegir para la fila (se validan igual en presence.js). */
-const PEER_STYLES = new Set(['glass', 'solid', 'outline', 'neon', 'bar', 'minimal']);
+const PEER_STYLES = new Set(['glass', 'solid', 'outline', 'neon', 'bar', 'minimal', 'galaxia', 'lujo', 'pincel', 'marmol', 'acuarela', 'acuanoche', 'humo']);
 const PEER_ICONS = new Set(['⚡', '🔥', '👑', '⭐', '🎯', '🧤', '🐐', '🦁', '🐺', '🚀', '💀', '🍀']);
 
 let selfClub = null;
@@ -5484,7 +5484,9 @@ function applyPeerLook(row, name, looks) {
   }
   // Lo que ponía la receta anterior en línea. Se limpia por si la fila viene
   // de una pasada de antes de la actualización.
-  const style = look && looks.style && PEER_STYLES.has(looks.style) && looks.style !== 'glass' ? looks.style : '';
+  // Sin forma elegida (o de una versión que no la manda) va la de entrada: Galaxia.
+  const shape = looks && PEER_STYLES.has(looks.style) ? looks.style : 'galaxia';
+  const style = look && shape !== 'glass' ? shape : '';
   const icon = look && looks.icon && PEER_ICONS.has(looks.icon) ? looks.icon : '';
   if (style) row.dataset.tvmStyle = style; else delete row.dataset.tvmStyle;
   if (icon) row.dataset.tvmIcon = icon; else delete row.dataset.tvmIcon;
@@ -5700,7 +5702,8 @@ let ball3dLogged = false;
 const BALL_STYLES = [
   'soccer', 'neon', 'gold', 'beach', 'eight', 'star',
   'panels', 'triangles', 'vintage', 'tennis', 'basket', 'volley', 'baseball', 'golf', 'bowling',
-  'earth', 'moon', 'disco', 'orb', 'pumpkin', 'melon', 'eye'
+  'earth', 'moon', 'disco', 'orb', 'pumpkin', 'melon', 'eye',
+  'argentina', 'fire', 'ice', 'yinyang', 'smile', 'sun', 'donut', 'checker', 'candy', 'heart', 'saturn', 'lava'
 ];
 /** Para que el estilo/color de la pelota gire y se sombree con la pelota 3D. */
 const ballFx3d = { spin: 0, shade: ball3d.shade, sphere: ball3d.sphere, surface: ball3d.surface, state: null };
