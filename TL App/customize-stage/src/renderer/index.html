@@ -1571,13 +1571,20 @@
                   <span class="row__label" data-i18n="vip.looks">Cómo te ven en la lista<i class="hint" tabindex="0" data-hint="vip.looksHint" aria-label="Más información">i</i></span>
                 </div>
                 <div class="row__ctl">
-                  <div class="looksdemo" id="vipLookPreview">
-                    <span class="looksdemo__flag"></span>
-                    <span class="looksdemo__name" id="vipLookName">TuNombre</span>
-                    <span class="looksdemo__marks">
-                      <img class="looksdemo__logo" src="../../assets/toda-la-lecce.png" alt="" />
-                    </span>
-                    <span class="looksdemo__ping">12</span>
+                  <div class="looksroom">
+                    <div class="looksroom__tt" data-i18n="vip.roomCol">Así te ven en la sala</div>
+                    <div class="looksroom__row"><span class="looksdemo__flag"></span><span class="looksroom__av">99</span><span class="looksdemo__name">terepin</span><span class="looksdemo__ping">22</span></div>
+                    <div class="looksroom__row"><span class="looksdemo__flag"></span><span class="looksroom__av">GK</span><span class="looksdemo__name">Soy Mundialista</span><span class="looksdemo__ping">31</span></div>
+                    <div class="looksdemo" id="vipLookPreview">
+                      <span class="looksdemo__flag"></span>
+                      <span class="looksroom__av" id="vipLookAv">·</span>
+                      <span class="looksdemo__name" id="vipLookName">TuNombre</span>
+                      <span class="looksdemo__marks">
+                        <img class="looksdemo__logo" src="../../assets/toda-la-lecce.png" alt="" />
+                      </span>
+                      <span class="looksdemo__ping">12</span>
+                    </div>
+                    <div class="looksroom__row"><span class="looksdemo__flag"></span><span class="looksroom__av">·</span><span class="looksdemo__name">silentt</span><span class="looksdemo__ping">26</span></div>
                   </div>
                 </div>
                 <div class="row__ctl"><div class="gradients" id="vipGradients"></div></div>
@@ -1617,7 +1624,7 @@
                 </div>
               </div>
               <div class="row">
-                <div class="row__text"><span class="row__label">Ícono delante del nombre</span></div>
+                <div class="row__text"><span class="row__label">Ícono al lado del nombre</span></div>
                 <div class="row__ctl">
                   <select id="vipLookIcon">
                     <option value="">Sin ícono</option>

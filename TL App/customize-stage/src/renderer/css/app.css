@@ -8694,3 +8694,18 @@ html[data-scheme="light"] .vhud__p, html[data-scheme="light"] .vhud__me { color:
 .sec[data-sec="graficosav"] { --sec-ico: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%20fill='none'%20stroke='%2314161f'%20stroke-width='2'%20stroke-linecap='round'%20stroke-linejoin='round'%3E%3Crect%20x='6'%20y='6'%20width='12'%20height='12'%20rx='2'/%3E%3Cpath%20d='M9%202.5v3M15%202.5v3M9%2018.5v3M15%2018.5v3M2.5%209h3M2.5%2015h3M18.5%209h3M18.5%2015h3'/%3E%3C/svg%3E"); }
 /* Relleno abajo = alto real de la vista previa flotante (lo mide watchPvHeight). */
 #app .panel.has-pv:not(.pv-docked) .page[data-page="aspecto"] .page__inner { padding-bottom: calc(var(--pv-h, 0px) + 36px); }
+/* Tu fila dentro de una columna de sala de verdad (mismo ancho que en HaxBall),
+   entre filas comunes: se ve si el nombre entra y cómo resalta. */
+.row--block .row__ctl > .looksroom { flex: 0 1 260px; width: 260px; max-width: 100%; }
+.looksroom { display: flex; flex-direction: column; gap: 4px; padding: 10px 6px; border-radius: 14px; background: #1c2a3d; box-shadow: inset 0 0 0 1px rgb(255 255 255 / 6%); color: #e9eef5; font-size: 13px; }
+.looksroom__tt { margin: 0 6px 4px; font-size: 10px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: rgb(233 238 245 / 55%); }
+.looksroom__row { display: flex; align-items: center; gap: 6px; height: 30px; padding: 0 8px; }
+.looksroom__av { flex: none; display: grid; place-items: center; width: 18px; height: 18px; border-radius: 50%; background: rgb(255 255 255 / 12%); font-size: 8.5px; font-weight: 700; }
+.looksroom .looksdemo { margin: 0; font-size: 13px; min-height: 32px; }
+.looksroom .looksdemo__name, .looksroom__row .looksdemo__name { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.looksroom__row .looksdemo__ping { font-size: 11px; }
+/* Como en la sala: el ícono va después del nombre, con las insignias. */
+.looksdemo.is-on[data-tvm-icon]::before { order: 1; margin: 0 0 0 4px; }
+.looksdemo.is-on .looksdemo__marks { order: 2; }
+.looksdemo.is-on .looksdemo__ping { order: 3; }
+.looksdemo.is-on .looksroom__av { background: rgb(var(--tvm-b-rgb) / 38%); box-shadow: 0 0 0 1.5px rgb(var(--tvm-a-rgb) / 85%); color: #fff; }

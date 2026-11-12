@@ -1055,8 +1055,10 @@ var pvLayout = () => {};
   head.append(cmp);
   head.append(btn);
   try { localStorage.removeItem('tl_pv_spot'); } catch (e) { /* sin storage */ }
+  // Sin pestañita: la vista previa queda siempre grande (lo pidió el club).
   let min = false;
-  try { min = localStorage.getItem('tl_pv_min') === '1'; } catch (e) { /* sin storage */ }
+  try { localStorage.removeItem('tl_pv_min'); } catch (e) { /* sin storage */ }
+  btn.hidden = true;
 
   const labels = () => {
     const en = isEn();
@@ -1070,8 +1072,10 @@ var pvLayout = () => {};
     const navW = nav && nav.offsetParent ? nav.offsetWidth : 0;
     // Ancho para opciones + vista previa: se reparte 55/45 y se usa todo.
     const room = card.clientWidth - navW - 40 - 32 - 32;
-    const pvW = Math.floor(Math.min(1000, room * 0.45));
-    const docked = pvW >= 380 && room - pvW >= 640;
+    // Fija y grande al costado siempre que entre: antes pedía tanto ancho que en
+    // la mayoría de las pantallas quedaba flotando chiquita abajo.
+    const pvW = Math.floor(Math.max(290, Math.min(620, room * 0.42)));
+    const docked = room - pvW >= 400;
     box.classList.toggle('is-docked', docked);
     panel.classList.toggle('pv-docked', docked);
     if (docked) {
@@ -1087,11 +1091,7 @@ var pvLayout = () => {};
     layout();
   };
   btn.addEventListener('mouseenter', labels);
-  head.addEventListener('click', () => {
-    set(!min);
-    try { localStorage.setItem('tl_pv_min', min ? '1' : '0'); } catch (e) { /* sin storage */ }
-    if (!min) paintPreview();
-  });
+  head.style.cursor = 'default';
   if (typeof ResizeObserver === 'function') new ResizeObserver(() => requestAnimationFrame(layout)).observe(card);
   pvLayout = layout;
   set(min);
@@ -7251,6 +7251,8 @@ function renderVipLooks() {
   paintLooks(VIP_LOOK_IDS, looksOf(), {
     name: (state.config.general.nickname || '').trim() || t('vip.looksYou')
   });
+  const av = $('#vipLookAv');
+  if (av) av.textContent = String((state.config.avatar && state.config.avatar.static) || '').slice(0, 2) || '·';
 }
 
 /**
