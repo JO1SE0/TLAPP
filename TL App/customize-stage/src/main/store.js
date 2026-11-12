@@ -124,6 +124,8 @@ const DEFAULTS = {
     crestBreath: true,
     /** Cortina con el escudo al entrar a una sala. */
     roomCurtain: true,
+    /** Si alguien escribe tu apodo en el chat: la línea se resalta y suena un aviso corto. */
+    mentionAlert: true,
     /** Los interruptores rebotan al cambiar. */
     toggleBounce: true,
     /** Las filas de salas y ajustes entran una tras otra. */

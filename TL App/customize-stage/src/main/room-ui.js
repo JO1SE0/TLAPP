@@ -195,6 +195,9 @@ function css(p, opts = {}) {
 .chatbox-view .tvm-chat-nick--blue { color: ${p.blue}; }
 .chatbox-view .tvm-chat-nick--spec { color: ${p.dim}; }
 
+/* ── Te nombraron: la línea se marca (ver checkMention) ───────────── */
+.chatbox-view p.tvm-mention { background: ${rgba(p.accent, light ? 0.16 : 0.14)}; box-shadow: inset 3px 0 0 ${p.accent}; border-radius: 3px; }
+
 /* ── Íconos de trazo ─────────────────────────────────────────── */
 .tvm-ico {
   display: block;

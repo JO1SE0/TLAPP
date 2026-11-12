@@ -887,6 +887,7 @@ function applyConfig(config) {
   try { if (state.view === 'musica') paintMusicPage(); } catch (e) { /* la página todavía no se armó */ }
   if (window.TLSfx) window.TLSfx.configure(config.appearance.uiSounds !== false, config.appearance.uiSoundStyle);
   if (window.TLVoiceUI) { try { window.TLVoiceUI.onConfig(config); } catch (e) { /* la voz no frena la config */ } }
+  try { paintGreeting(); } catch (e) { /* todavía no se armó */ }
   if (typeof paintAudio === 'function' && document.getElementById('audMusic')) paintAudio();
   if (window.TLSparks) {
     window.TLSparks.setStyle(config.appearance.sparkStyle || 'oro');
@@ -4814,6 +4815,12 @@ const CHAT_SWITCHES = {
       scope: 'game',
       label: 'Hora en el chat',
       description: 'Agrega la hora local delante de cada mensaje.'
+    },
+    {
+      key: 'mentionAlert',
+      scope: 'appearance',
+      label: 'Avisar cuando te nombran',
+      description: 'Si alguien escribe tu apodo, la línea se resalta y suena un aviso corto.'
     }
   ],
   en: [
@@ -4828,6 +4835,12 @@ const CHAT_SWITCHES = {
       scope: 'game',
       label: 'Chat timestamps',
       description: 'Adds the local time before each message.'
+    },
+    {
+      key: 'mentionAlert',
+      scope: 'appearance',
+      label: 'Alert when mentioned',
+      description: 'If someone types your nickname, the line is highlighted and a short sound plays.'
     }
   ]
 };
@@ -13689,6 +13702,82 @@ function paintScale() {
 $('#scaleChips').addEventListener('click', (e) => {
   const b = e.target.closest('[data-scale]');
   if (b) patchConfig({ appearance: { uiScale: b.dataset.scale === 'auto' ? 'auto' : Number(b.dataset.scale) } }).then(paintScale);
+});
+/* Tocar el escudo de la barra: un saltito con destello. La clase se saca al
+   terminar para poder repetirlo. */
+(function crestTap() {
+  const crest = document.querySelector('.brand__crest');
+  if (!crest) return;
+  crest.addEventListener('click', () => {
+    crest.classList.remove('is-pop');
+    void crest.offsetWidth; // reinicia la animación si se toca seguido
+    crest.classList.add('is-pop');
+  });
+  crest.addEventListener('animationend', (e) => { if (e.animationName === 'crestPop') crest.classList.remove('is-pop'); });
+})();
+
+/* Saludo según la hora, al lado de los modos de Salas. Se actualiza cada
+   10 minutos y al cambiar el apodo o el idioma; no corre nada más. */
+function paintGreeting() {
+  const el = document.getElementById('greet');
+  if (!el || !state.config) return;
+  const h = new Date().getHours();
+  const en = isEn();
+  const hi = h >= 5 && h < 12 ? (en ? 'Good morning' : 'Buen día')
+    : h >= 12 && h < 20 ? (en ? 'Good afternoon' : 'Buenas tardes')
+      : (en ? 'Good evening' : 'Buenas noches');
+  const nick = String((state.config.general && state.config.general.nickname) || '').trim();
+  const text = nick ? `${hi}, ${nick}` : hi;
+  if (el.textContent !== text) el.textContent = text;
+}
+setInterval(paintGreeting, 10 * 60 * 1000);
+
+/* Ctrl + rueda: agranda o achica toda la interfaz de a 5 %. Ctrl+0 vuelve a
+   «Automático». Sólo en el menú: la cancha no recibe estos eventos. Se guarda
+   un rato después de que dejás de girar, para no escribir la config en cada paso. */
+let zoomWheelPct = 0;
+let zoomWheelTimer = 0;
+function zoomCurrentPct() {
+  const pref = state.config && state.config.appearance && state.config.appearance.uiScale;
+  if (pref && pref !== 'auto' && Number(pref)) return Number(pref);
+  return Math.round(((state.uiScale || 1) * 100) / 5) * 5;
+}
+function zoomTo(value) {
+  clearTimeout(zoomWheelTimer);
+  const label = value === 'auto' ? (isEn() ? 'Automatic' : 'Automático') : `${value}%`;
+  // Un solo cartelito que se actualiza (no una pila de avisos por cada paso).
+  let pill = document.getElementById('zoomPill');
+  if (!pill) {
+    pill = document.createElement('div');
+    pill.id = 'zoomPill';
+    pill.className = 'zoompill';
+    document.body.append(pill);
+  }
+  pill.textContent = `${isEn() ? 'Interface size' : 'Tamaño de la interfaz'} · ${label}`;
+  pill.classList.add('is-on');
+  clearTimeout(pill._t);
+  pill._t = setTimeout(() => pill.classList.remove('is-on'), 1300);
+  zoomWheelTimer = setTimeout(() => {
+    zoomWheelPct = 0;
+    patchConfig({ appearance: { uiScale: value } }).then(paintScale);
+  }, value === 'auto' ? 0 : 220);
+}
+window.addEventListener('wheel', (e) => {
+  if (!e.ctrlKey || e.shiftKey || e.altKey) return;
+  e.preventDefault();
+  const base = zoomWheelPct || zoomCurrentPct();
+  const next = Math.max(60, Math.min(150, base + (e.deltaY < 0 ? 5 : -5)));
+  if (next === base && zoomWheelPct) return;
+  zoomWheelPct = next;
+  zoomTo(next);
+}, { passive: false });
+document.addEventListener('keydown', (e) => {
+  if (!e.ctrlKey || e.shiftKey || e.altKey || (e.code !== 'Digit0' && e.code !== 'Numpad0')) return;
+  const t = e.target;
+  if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
+  e.preventDefault();
+  zoomWheelPct = 0;
+  zoomTo('auto');
 });
 $('#denChips').addEventListener('click', (e) => {
   const b = e.target.closest('[data-den]');

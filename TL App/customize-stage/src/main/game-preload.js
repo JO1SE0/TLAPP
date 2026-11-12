@@ -2967,6 +2967,58 @@ function tagSpeaker(doc, node) {
   node.insertBefore(span, first);
 }
 
+/*
+ * Te nombraron en el chat: la línea se marca y suena un aviso corto.
+ * Sólo líneas de jugador (las que `tagSpeaker` pudo separar), nunca las tuyas,
+ * y tu apodo como palabra entera (sin importar mayúsculas). El sonido es un
+ * «ding» de dos notas armado con WebAudio: corre en el hilo de audio, no en el
+ * dibujo, y no suena más de una vez cada 2,5 s.
+ */
+let mentionRe = null;
+let mentionNick = '';
+let mentionAudio = null;
+let mentionLast = 0;
+function checkMention(node) {
+  const ap = state.config && state.config.appearance;
+  if (!ap || ap.mentionAlert === false) return;
+  const nickEl = node.querySelector('.tvm-chat-nick');
+  if (!nickEl) return;
+  const me = String((state.config.general && state.config.general.nickname) || '').trim();
+  if (me.length < 2) return;
+  const speaker = nickEl.textContent || '';
+  if (speaker.trim().toLowerCase() === me.toLowerCase()) return;
+  if (me !== mentionNick) {
+    mentionNick = me;
+    const esc = me.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    try { mentionRe = new RegExp(`(^|[^\\p{L}\\p{N}_])${esc}($|[^\\p{L}\\p{N}_])`, 'iu'); } catch (e) { mentionRe = null; }
+  }
+  if (!mentionRe) return;
+  const msg = (node.textContent || '').slice(speaker.length + 1);
+  if (!mentionRe.test(msg)) return;
+  node.classList.add('tvm-mention');
+  const now = Date.now();
+  if (now - mentionLast < 2500) return;
+  mentionLast = now;
+  try {
+    if (!mentionAudio) mentionAudio = new (window.AudioContext || window.webkitAudioContext)();
+    const ctx = mentionAudio;
+    if (ctx.state === 'suspended') ctx.resume().catch(() => {});
+    const t0 = ctx.currentTime + 0.01;
+    for (const [freq, at] of [[988, 0], [1319, 0.09]]) {
+      const o = ctx.createOscillator();
+      const g = ctx.createGain();
+      o.type = 'sine';
+      o.frequency.value = freq;
+      g.gain.setValueAtTime(0.0001, t0 + at);
+      g.gain.exponentialRampToValueAtTime(0.12, t0 + at + 0.012);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + at + 0.16);
+      o.connect(g).connect(ctx.destination);
+      o.start(t0 + at);
+      o.stop(t0 + at + 0.18);
+    }
+  } catch (e) { /* sin audio: queda la marca */ }
+}
+
 function watchChatLog(doc) {
   if (chatObserver) {
     chatObserver.disconnect();
@@ -3010,6 +3062,7 @@ function watchChatLog(doc) {
     }
 
     safe(tagSpeaker, doc, node);
+    safe(checkMention, node);
 
     if (stamps && !node.dataset.tvmStamped) {
       node.dataset.tvmStamped = '1';

@@ -8578,3 +8578,23 @@ html[data-animations="off"] .chatpv { transition: none; }
 .vmeter b { position: absolute; top: -2px; bottom: -2px; left: var(--thr); width: 2px; background: var(--text); border-radius: 1px; }
 html[data-scheme="light"] .vhud__p, html[data-scheme="light"] .vhud__me { color: rgb(255 255 255 / 80%); }
 
+
+/* Ctrl + rueda: cartelito con el tamaño de la interfaz. */
+.zoompill { position: fixed; left: 50%; bottom: 36px; z-index: 9500; transform: translateX(-50%); padding: 8px 16px; border-radius: 999px; background: var(--panel-top); border: 1px solid var(--line-hi); color: var(--text); font: 700 var(--fs-detail)/1 var(--font); box-shadow: 0 12px 30px -12px rgb(0 0 0 / 60%); pointer-events: none; opacity: 0; transition: opacity var(--t-ui) var(--ease-ui); }
+.zoompill.is-on { opacity: 1; }
+
+/* Saludo según la hora (Salas). */
+.roommodes .greet { margin: 0 auto 0 14px; font: 600 var(--fs-detail)/1.2 var(--font); color: var(--text-faint); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+
+/* Tocar el escudo: un saltito y un destello (una sola vez, sólo en el menú). */
+.brand__crest { -webkit-app-region: no-drag; cursor: pointer; }
+.brand__crest { transform-origin: 50% 60%; }
+.brand__crest.is-pop { animation: crestPop .5s cubic-bezier(.3, 1.6, .5, 1); }
+.brand__crest.is-pop::after { animation: brandShine .55s ease-out; }
+@keyframes crestPop {
+  0% { transform: scale(1); filter: brightness(1); }
+  35% { transform: scale(.86) rotate(-6deg); filter: brightness(1.35); }
+  70% { transform: scale(1.08) rotate(3deg); filter: brightness(1.15); }
+  100% { transform: scale(1); filter: brightness(1); }
+}
+:root[data-animations="off"] .brand__crest.is-pop { animation: none; }
