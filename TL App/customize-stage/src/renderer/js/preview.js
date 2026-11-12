@@ -356,6 +356,39 @@
       ctx.restore();
     }
 
+    /* ── Clima y marcador en el piso: los mismos dibujos del juego ──── */
+    // Una foto quieta: el clima en un instante y el cartel entero (2 a 1).
+    const wx = ['rain', 'storm', 'snow', 'fog', 'dust', 'leaves', 'embers', 'fireflies', 'blizzard'].includes(V.pitchWeather) ? V.pitchWeather : '';
+    const scoreTint = ['white', 'team'].includes(V.pitchScore) ? V.pitchScore : (V.pitchScore === undefined ? 'team' : '');
+    if (wx || scoreTint) {
+      ctx.save();
+      ctx.setTransform(world);
+      ctx.beginPath();
+      rounded(ctx, -HALF_W, -HALF_H, 2 * HALF_W, 2 * HALF_H, 6);
+      ctx.clip();
+      try {
+        if (wx && L.weatherVeil && L.paintWeather) {
+          const amount = num(V.pitchWeatherAmount, 0.2, 1, 0.6);
+          const veil = L.weatherVeil(wx, amount);
+          if (veil) { ctx.fillStyle = veil; ctx.fillRect(-HALF_W, -HALF_H, 2 * HALF_W, 2 * HALF_H); }
+          L.paintWeather(ctx, wx, amount, 4000, true);
+        }
+        if (scoreTint && L.paintMatchMark) {
+          L.paintMatchMark(ctx, {
+            still: true, now: 1, red: 2, blue: 1, hasBall: true, ballX: 0, ballY: 0,
+            halfW: HALF_W, halfH: HALF_H, tint: scoreTint,
+            opacity: num(V.pitchScoreOpacity, 0.06, 0.7, 0.16),
+            style: V.pitchScoreStyle || 'ring', font: V.pitchScoreFont || 'default',
+            size: num(V.pitchScoreSize, 0.5, 1.6, 1), pos: num(V.pitchScorePos, 0.25, 0.8, 0.5),
+            mode: 'always', anim: V.pitchScoreAnim || 'rise', burst: false,
+            colorR: L.safeColor(V.pitchScoreColorR) || '', colorB: L.safeColor(V.pitchScoreColorB) || '',
+            mirrored: false
+          });
+        }
+      } catch (e) { /* la vista previa es un adorno */ }
+      ctx.restore();
+    }
+
     /* ── Fichas, pelota y nombres ───────────────────────────────────── */
     ctx.setTransform(sc, 0, 0, sc, tx, ty);
     ctx.globalCompositeOperation = 'source-over';

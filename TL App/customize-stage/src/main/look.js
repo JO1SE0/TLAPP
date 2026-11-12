@@ -2165,6 +2165,13 @@ const MM_FONTS = {
 
 function paintMatchMark(ctx, o) {
   const now = o.now;
+  // Vista previa del panel: el cartel quieto y entero, sin la entrada animada.
+  if (o.still) {
+    resetMatchMark();
+    mm.red = mm.shR = o.red;
+    mm.blue = mm.shB = o.blue;
+    mm.p = 1; mm.dir = 1; mm.lv = 1; mm.last = now;
+  } else {
   let dt = mm.last ? (now - mm.last) / 1000 : 0.016;
   mm.last = now;
   if (dt > 0.1) dt = 0.1;
@@ -2200,6 +2207,7 @@ function paintMatchMark(ctx, o) {
   if (mm.dir < 0) {
     if (mm.pendR) { mm.shR = o.red; mm.pendR = false; }
     if (mm.pendB) { mm.shB = o.blue; mm.pendB = false; }
+  }
   }
 
   const k = o.size > 0 ? o.size : 1;
