@@ -4201,6 +4201,7 @@ const PERF_GROUPS = {
   perfLatency: [
     { key: 'highProcessPriority', label: 'Prioridad alta', description: 'Le pide más CPU a Windows.', restart: false },
     { key: 'disableBackgroundThrottling', label: 'Sin freno en segundo plano', description: 'No baja el ritmo sin el foco.', restart: true },
+    { key: 'powerBoost', label: 'CPU despierta mientras jugás', description: 'Pone el plan de energía de Windows al máximo sólo durante la partida.', hint: 'Con «Equilibrado» Windows duerme núcleos y baja la frecuencia: cada tecla tiene que despertarlos. Al salir de la sala o cerrar la app vuelve tu plan de siempre. En notebook a batería gasta más.', restart: false },
     { key: 'lowLatencyCanvas', label: 'Menos retardo de pantalla (experimental)', description: 'La imagen sale sin esperar al compositor.', hint: 'Puede achicar el tiempo entre tu tecla y lo que ves. Medilo con «Latencia de entrada» del overlay. Si ves tirones o parpadeos, apagalo.', restart: true }
   ],
   perfGpu: [
@@ -4234,6 +4235,7 @@ const PERF_GROUPS_EN = {
   perfLatency: [
     { key: 'highProcessPriority', label: 'High priority', description: 'Asks Windows for more CPU.', restart: false },
     { key: 'disableBackgroundThrottling', label: 'No background throttling', description: 'Keeps the pace without focus.', restart: true },
+    { key: 'powerBoost', label: 'CPU awake while playing', description: 'Sets the Windows power plan to maximum only during a match.', hint: 'On «Balanced» Windows parks cores and lowers the clock: each key has to wake them. Leaving the room or closing the app brings your usual plan back. Drains more on a laptop on battery.', restart: false },
     { key: 'lowLatencyCanvas', label: 'Lower display lag (experimental)', description: 'Frames go out without waiting for the compositor.', hint: 'May shrink the time between your key and what you see. Measure it with the overlay “Input latency”. If you see stutter or flicker, turn it off.', restart: true }
   ],
   perfGpu: [

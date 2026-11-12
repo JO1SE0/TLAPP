@@ -16,6 +16,7 @@ const haxball = require('./haxball-settings');
 const themes = require('./themes');
 const roomlist = require('./roomlist');
 const powerThrottle = require('./power-throttle');
+const powerPlan = require('./power-plan');
 const flags = require('./flags');
 const discord = require('./discord');
 const updater = require('./updater');
@@ -2246,6 +2247,8 @@ if (!app.requestSingleInstanceLock()) {
       powerSaveBlocker.start('prevent-app-suspension');
     } catch (ePsb) {}
     applyRuntimeFlags(store.get().perf);
+    // Si la app se cerró mal con el plan de energía subido, se devuelve el de antes.
+    powerPlan.init(app.getPath('userData'), (msg) => logToApp('info', msg));
     // Antes de crear la ventana: así la interfaz lee la racha ya sumada de hoy
     // en su primera lectura de la config, sin tener que refrescarla después.
     touchStreak();
@@ -2289,6 +2292,7 @@ if (!app.requestSingleInstanceLock()) {
   app.on('before-quit', () => {
     store.save();
     replays.stopWatching();
+    powerPlan.restoreNow();
   });
 }
 
@@ -2587,7 +2591,11 @@ handle('cfg:set', (_e, patch) => {
   if (!patch || typeof patch !== 'object' || Array.isArray(patch)) throw new Error('Configuración inválida');
   if (patch.vip && (Object.prototype.hasOwnProperty.call(patch.vip, 'discord') || '__replace' in patch.vip)) throw new Error('La sesión sólo se cambia con Discord');
   const next = store.set(patch);
-  if (patch && patch.perf) applyRuntimeFlags(next.perf);
+  if (patch && patch.perf) {
+    applyRuntimeFlags(next.perf);
+    const info = gameContents && tabInfo.get(gameContents);
+    powerPlan.sync(next.perf.powerBoost && info && info.view === 'game', (msg) => logToApp('info', msg));
+  }
   if (patch && patch.perf && 'windowsTweaks' in patch.perf) applyWindowsTweaks(!!next.perf.windowsTweaks);
   if (patch && patch.general && 'launchOnStartup' in patch.general) applyStartupFlag(next.general);
   // Cambiar de color o de fuente se tiene que ver en la sala sin esperar al
@@ -4132,6 +4140,7 @@ listen('game:view', (e, kind) => {
   if (e.sender === gameContents) {
     const perf = store.get().perf;
     if (!!(perf.highProcessPriority && kind === 'game') !== lastPriorityPlaying) applyRuntimeFlags(perf);
+    powerPlan.sync(perf.powerBoost && kind === 'game', (msg) => logToApp('info', msg));
   }
 });
 

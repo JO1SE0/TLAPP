@@ -201,6 +201,8 @@ const DEFAULTS = {
     noOcclusionPause: true,
     /** Preferencia de GPU de alto rendimiento y sin optimizaciones de pantalla completa de Windows para TL App.exe. */
     windowsTweaks: false,
+    /** Plan de energía de máximo rendimiento sólo mientras estás en una partida (ver power-plan.js). */
+    powerBoost: false,
     /** Abre la app ya en pantalla completa (para PCs que se traban al cambiar con F11 con el juego andando). */
     startFullscreen: true,
     /** Opcional: reusa la simulación del cuadro anterior si pasó <4 ms (ver patchLightSim). */
