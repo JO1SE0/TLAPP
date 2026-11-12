@@ -882,8 +882,10 @@ function ballTexture(ctx, style, tint) {
   try { ballOverlay(g, style, h, h, h, null, tint, null); } finally { ballPhotoFlat = false; }
   tex = { size: BALL_TEX, data: g.getImageData(0, 0, BALL_TEX, BALL_TEX).data };
   c.width = 0;
-  // Sin la foto todavía no se guarda: así la próxima vez sale con la foto.
-  if (!photoReady) return tex;
+  // Se guarda aunque la foto no haya llegado: si no, se rearmaría en cada cuadro
+  // (y para siempre si la foto fallara). Cuando la foto carga, su `onload` borra
+  // esta textura y la próxima sale con la foto.
+  void photoReady;
   if (ballTextures.size > 24) ballTextures.clear();
   ballTextures.set(key, tex);
   return tex;
