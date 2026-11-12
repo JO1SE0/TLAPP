@@ -949,7 +949,7 @@ ${each(FIELDS, ':focus')} {
     radial-gradient(45% 40% at 100% 100%, ${rgba(p.accent, 0.1)}, transparent 70%),
     linear-gradient(180deg, ${rgba(p.text, 0.05)}, transparent 28%),
     ${p.panel || p.bg} !important;
-  box-shadow: 0 36px 80px -26px rgba(0, 0, 0, 0.7), 0 1px 0 ${rgba(p.text, 0.12)} inset !important;
+  box-shadow: 0 24px 44px -22px rgba(0, 0, 0, 0.75), 0 1px 0 ${rgba(p.text, 0.12)} inset !important;
 }
 @keyframes tvmRoomIn { from { opacity: 0; transform: translateY(12px) scale(.985); } }
 .room-view > .container { animation: tvmRoomIn .36s cubic-bezier(.2, .8, .2, 1) both; }

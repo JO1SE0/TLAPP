@@ -3961,6 +3961,11 @@ function watchRoomPanel(doc) {
       // del latido anterior y no lo incluye todavía.
       safe(askForPeers);
     }
+    // Si lo único que cambió fueron pings (texto), no hay nada que reponer: el
+    // repaso de cada segundo (`tick`) cubre lo demás. Antes cada tanda de pings
+    // disparaba el repaso completo cuatro veces por segundo, y con el menú de la
+    // sala abierto en plena partida eso le sacaba cuadros al juego.
+    if (records.every(onlyText)) return;
     if (roomRefreshTimer) return;
     roomRefreshTimer = setTimeout(refresh, 250);
   });
@@ -4010,6 +4015,14 @@ function watchRoomPanel(doc) {
  * No dispara con lo que agregamos NOSOTROS —las marcas y los botones son
  * `<span>`, no filas—, así que repintar acá adentro no se llama a sí mismo.
  */
+/** Una mutación que sólo cambia texto (el ping que se reescribe). */
+function onlyText(record) {
+  for (const nodes of [record.addedNodes, record.removedNodes]) {
+    for (const node of nodes) if (node.nodeType === 1) return false;
+  }
+  return true;
+}
+
 function changesPlayerList(record) {
   for (const nodes of [record.addedNodes, record.removedNodes]) {
     for (const node of nodes) {
@@ -5448,6 +5461,11 @@ const { FRIEND_SVG, VIP_GEM_SVG } = roomUi;
  * es admin conserva su dorado en vez de perderlo debajo del cosmético.
  */
 function applyPeerLook(row, name, looks) {
+  // Se repasa cada segundo: si la fila ya tiene este aspecto no se toca nada,
+  // así no se invalida el estilo (ni se repintan sus degradados) por gusto.
+  const sig = looks ? `${looks.gradient}|${looks.font}|${looks.style}|${looks.icon}|${state.config.appearance.theme}|${state.config.appearance.accent}` : '';
+  if (row.__tvmLookSig === sig && (!sig || row.classList.contains('tvm-peer-row'))) return;
+  row.__tvmLookSig = sig;
   const look = looks && PEER_GRADIENTS[looks.gradient];
   const font = looks && PEER_FONTS[looks.font];
   const aura = look ? auraStyle(look) : null;

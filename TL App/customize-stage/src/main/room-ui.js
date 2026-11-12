@@ -701,6 +701,13 @@ function css(p, opts = {}) {
 .room-view .player-list-item.tvm-peer-row[data-tvm-style="acuanoche"]:hover,
 .room-view .player-list-item.tvm-peer-row[data-tvm-style="humo"]:hover,
 .room-view .player-list-item.tvm-peer-row[data-tvm-style="galaxia"]:hover { filter: brightness(1.12); }
+/* Rendimiento con el menú de la sala abierto durante la partida: la ventana y
+   cada fila personalizada van en su propia capa, y el ping también. Así, cuando
+   HaxBall reescribe un ping, se repinta sólo ese numerito y no los degradados de
+   la fila ni la sombra grande de la ventana encima de la cancha. */
+.room-view > .container { will-change: transform; }
+.room-view .player-list-item.tvm-peer-row { will-change: transform; }
+.room-view .player-list-item [data-hook="ping"] { will-change: transform; }
 /* Compacta, para todas las formas: las columnas de la sala son angostas y entre
    la moneda, la bandera, el avatar, las insignias y el ping el nombre quedaba
    corrido a la derecha y cortado («mi…»). Va al final y con más peso para
