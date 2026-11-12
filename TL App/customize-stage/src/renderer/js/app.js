@@ -11066,7 +11066,9 @@ const LOOK_SECTIONS = {
     { type: 'reset', key: '_wxReset', label: 'look.resetWeather', keys: ['pitchWeather', 'pitchWeatherAmount'] }
   ],
   lookPitchScore: [
-    { key: 'pitchScore', type: 'select', label: 'look.pitchScore', desc: 'look.pitchScoreHelp', options: [['none', 'look.opt.none'], ['white', 'look.ps.white'], ['team', 'look.ps.team']] },
+    // Prendido o apagado con un interruptor: antes se apagaba eligiendo «Como viene» en la lista y no se entendía.
+    { key: 'pitchScore', type: 'onoff', on: 'team', off: 'none', label: 'look.pitchScore', desc: 'look.pitchScoreHelp' },
+    { key: 'pitchScore', type: 'select', label: 'look.psColor', options: [['team', 'look.ps.team'], ['white', 'look.ps.white']], showIf: (v) => v.pitchScore && v.pitchScore !== 'none' },
     { key: 'pitchScoreStyle', type: 'select', label: 'look.psStyle', options: [['ring', 'look.pss.ring'], ['solid', 'look.pss.solid'], ['outline', 'look.pss.outline'], ['neon', 'look.pss.neon'], ['badge', 'look.pss.badge'], ['3d', 'look.pss.3d']], showIf: (v) => v.pitchScore && v.pitchScore !== 'none' },
     { key: 'pitchScoreFont', type: 'select', label: 'look.psFont', options: [['default', 'look.font.default'], ['impact', 'look.font.impact'], ['outfit', 'look.psf.black'], ['round', 'look.font.round'], ['mono', 'look.font.mono'], ['serif', 'look.font.serif']], showIf: (v) => v.pitchScore && v.pitchScore !== 'none' },
     { key: 'pitchScoreSize', type: 'range', label: 'look.psSize', min: 0.5, max: 1.6, step: 0.05, showIf: (v) => v.pitchScore && v.pitchScore !== 'none' },
@@ -11300,6 +11302,16 @@ function lookRowInner(item) {
     toggle.setAttribute('role', 'switch');
     toggle.setAttribute('aria-checked', String(!!value));
     toggle.addEventListener('click', () => lookPatch({ visual: { [item.key]: !lookValue(item.key) } }));
+    return settingRow({ label: t(item.label), description: item.desc ? t(item.desc) : '', control: toggle });
+  }
+  if (item.type === 'onoff') {
+    const isOn = value !== item.off;
+    const toggle = document.createElement('button');
+    toggle.className = 'switch' + (isOn ? ' is-on' : '');
+    toggle.type = 'button';
+    toggle.setAttribute('role', 'switch');
+    toggle.setAttribute('aria-checked', String(isOn));
+    toggle.addEventListener('click', () => lookPatch({ visual: { [item.key]: isOn ? item.off : item.on } }));
     return settingRow({ label: t(item.label), description: item.desc ? t(item.desc) : '', control: toggle });
   }
   if (item.type === 'select' && LOOK_GALLERY[item.key] && window.TLPreview) {
