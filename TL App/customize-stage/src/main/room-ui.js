@@ -712,18 +712,21 @@ function css(p, opts = {}) {
    la moneda, la bandera, el avatar, las insignias y el ping el nombre quedaba
    corrido a la derecha y cortado («mi…»). Va al final y con más peso para
    ganarle a lo que trae cada forma. */
-.room-view .player-list-item.tvm-peer-row.tvm-peer-row.tvm-peer-row { padding: 4px 6px 4px 8px !important; margin: 3px 4px !important; min-height: 32px; }
+.room-view .player-list-item.tvm-peer-row.tvm-peer-row.tvm-peer-row { padding: 4px 10px 4px 10px !important; margin: 3px 7px !important; min-height: 32px; }
 /* El ícono va después del nombre, con las insignias: delante empujaba el
    nombre a la derecha y la fila quedaba distinta de las comunes. */
 .room-view .player-list-item.tvm-peer-row.tvm-peer-row.tvm-peer-row[data-tvm-icon]::before { order: 1; width: 18px; height: 18px; margin: 0 0 0 4px; font-size: 10px; }
 .room-view .player-list-item.tvm-peer-row.tvm-peer-row.tvm-peer-row .tvm-marks { order: 2; }
 .room-view .player-list-item.tvm-peer-row.tvm-peer-row.tvm-peer-row [data-hook="ping"] { order: 3; }
-.room-view .player-list-item.tvm-peer-row.tvm-peer-row.tvm-peer-row [data-hook="flag"] { margin-right: 4px; }
-.room-view .player-list-item.tvm-peer-row.tvm-peer-row.tvm-peer-row .tvm-av { width: 18px; height: 18px; margin: 0 5px 0 0; font-size: 9px; }
+/* Bandera, avatar y nombre en el mismo lugar que en una fila común. */
+.room-view .player-list-item.tvm-peer-row.tvm-peer-row.tvm-peer-row .tvm-av { width: 20px; height: 20px; margin: 0 6px 0 2px; }
 .room-view .player-list-item.tvm-peer-row.tvm-peer-row.tvm-peer-row [data-hook="name"] { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .room-view .player-list-item.tvm-peer-row.tvm-peer-row.tvm-peer-row .tvm-marks { margin: 0 4px; padding: 1px 4px; gap: 3px; }
 .room-view .player-list-item.tvm-peer-row.tvm-peer-row.tvm-peer-row .tvm-mark { width: 14px; height: 14px; }
-.room-view .player-list-item.tvm-peer-row.tvm-peer-row.tvm-peer-row [data-hook="ping"] { flex: none; min-width: 20px; padding: 1px 5px; font-size: 11px; }
+.room-view .player-list-item.tvm-peer-row.tvm-peer-row.tvm-peer-row [data-hook="ping"] { flex: none; box-sizing: border-box; width: 30px; min-width: 0; padding: 1px 0; text-align: center; font-size: 11px; }
+/* El ping de todas las filas centrado en la misma columna de 30 px, así los
+   números quedan uno debajo del otro con o sin tarjeta. */
+.room-view .player-list-item [data-hook="ping"] { text-align: center; }
 
 `;
 }

@@ -8709,3 +8709,12 @@ html[data-scheme="light"] .vhud__p, html[data-scheme="light"] .vhud__me { color:
 .looksdemo.is-on .looksdemo__marks { order: 2; }
 .looksdemo.is-on .looksdemo__ping { order: 3; }
 .looksdemo.is-on .looksroom__av { background: rgb(var(--tvm-b-rgb) / 38%); box-shadow: 0 0 0 1.5px rgb(var(--tvm-a-rgb) / 85%); color: #fff; }
+/* Columna de ejemplo: las cuatro filas con las mismas medidas (bandera, avatar,
+   nombre y un ping de 30 px centrado), como en la sala. */
+.looksroom .looksdemo__flag { width: 16px; height: 11px; border-radius: 2px; background: linear-gradient(#74acdf 33%, #fff 33% 66%, #74acdf 66%); }
+.looksroom .looksroom__row, .looksroom .looksdemo, .looksroom .looksdemo.is-on { gap: 6px; padding: 0 8px !important; margin: 0; }
+.looksroom .looksdemo__ping, .looksroom .looksdemo.is-on .looksdemo__ping { flex: none; box-sizing: border-box; width: 30px; min-width: 0; padding: 1px 0; text-align: center; font-size: 11px; opacity: 1; }
+.looksroom .looksroom__row .looksdemo__ping { opacity: .75; }
+.looksroom .looksdemo__marks { margin: 0 2px; padding: 1px 4px; }
+.looksroom .looksdemo__logo { width: 14px; height: 14px; }
+.looksroom .looksdemo.is-on .looksdemo__ping { border-radius: 99px; }
