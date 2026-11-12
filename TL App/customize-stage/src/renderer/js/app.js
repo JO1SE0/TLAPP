@@ -103,7 +103,7 @@ const PANEL_TABS = {
   ],
   ajustes: [
     { id: 'rapido', group: 'tabg.perf', label: 'tab.quick', hint: 'tab.quickHint', secs: ['perfil', 'respuesta'] },
-    { id: 'graficos', group: 'tabg.perf', label: 'tab.gfx', hint: 'tab.gfxHint', secs: ['graficos'] },
+    { id: 'graficos', group: 'tabg.perf', label: 'tab.gfx', hint: 'tab.gfxHint', secs: ['graficos', 'graficosav'] },
     { id: 'red', group: 'tabg.perf', label: 'tab.net', hint: 'tab.netHint', secs: ['latencia', 'sistemaperf', 'red'] },
     { id: 'controles', group: 'tabg.game', label: 'tab.controls', hint: 'tab.controlsHint', secs: ['teclas'] },
     { id: 'cliente', group: 'tabg.game', label: 'tab.client', hint: 'tab.clientHint', secs: ['cliente'] },
@@ -127,7 +127,7 @@ const MODAL_SECS = {
 
   // Lo de Rendimiento se muda a Configuración; las líneas y tamaños, a la cancha.
   if (perfPage) {
-    for (const id of ['perfil', 'respuesta', 'graficos', 'red', 'teclas', 'latencia', 'sistemaperf']) {
+    for (const id of ['perfil', 'respuesta', 'graficos', 'graficosav', 'red', 'teclas', 'latencia', 'sistemaperf']) {
       const sec = $(`[data-sec="${id}"]`, perfPage);
       if (sec) settingsPage.append(sec);
     }
@@ -4819,8 +4819,8 @@ const CHAT_SWITCHES = {
     {
       key: 'mentionAlert',
       scope: 'appearance',
-      label: 'Avisar cuando te nombran',
-      description: 'Si alguien escribe tu apodo, la línea se resalta y suena un aviso corto.'
+      label: 'Resaltar cuando te nombran',
+      description: 'La línea con tu apodo se marca con tu color. El sonido es «Aviso cuando te nombran», en Sonido.'
     }
   ],
   en: [
@@ -4839,8 +4839,8 @@ const CHAT_SWITCHES = {
     {
       key: 'mentionAlert',
       scope: 'appearance',
-      label: 'Alert when mentioned',
-      description: 'If someone types your nickname, the line is highlighted and a short sound plays.'
+      label: 'Highlight when mentioned',
+      description: 'The line with your nickname is marked. The sound is «Nick highlight sound», under Sound.'
     }
   ]
 };
@@ -5015,18 +5015,25 @@ function renderAspect() {
    * dibujan acá: son los mismos interruptores de la página Música, que es donde
    * se maneja todo lo de la música (antes estaban repetidos en los dos lados).
    */
-  const LOOK_ANIM_KEYS = ['animations', 'welcome', 'welcomeSound', 'sparks'];
+  const LOOK_ANIM_KEYS = ['animations', 'welcome', 'welcomeSound'];
+  // El interruptor de las partículas va con su estilo y su cantidad, en «Fondo del menú».
+  const LOOK_SPARK_KEYS = ['sparks'];
   const LOOK_MUSIC_KEYS = ['music', 'musicClub', 'musicInGame'];
   const lookSwitch = (i) => ({ ...i, value: () => state.config.appearance[i.key] });
   const lookSave = (item, value) => patchConfig({ appearance: { [item.key]: value } });
   buildSwitches(
     $('#lookSwitches'),
-    LOOK_SWITCHES[lang].filter((i) => !LOOK_ANIM_KEYS.includes(i.key) && !LOOK_MUSIC_KEYS.includes(i.key)).map(lookSwitch),
+    LOOK_SWITCHES[lang].filter((i) => !LOOK_ANIM_KEYS.includes(i.key) && !LOOK_SPARK_KEYS.includes(i.key) && !LOOK_MUSIC_KEYS.includes(i.key)).map(lookSwitch),
     lookSave
   );
   buildSwitches(
     $('#animMaster'),
     LOOK_SWITCHES[lang].filter((i) => LOOK_ANIM_KEYS.includes(i.key)).map(lookSwitch),
+    lookSave
+  );
+  buildSwitches(
+    $('#sparkSwitch'),
+    LOOK_SWITCHES[lang].filter((i) => LOOK_SPARK_KEYS.includes(i.key)).map(lookSwitch),
     lookSave
   );
   $('#musicMovedLabel').textContent = lang === 'en' ? 'Menu music' : 'Música del menú';
@@ -11057,15 +11064,23 @@ const LOOK_SECTIONS = {
   ],
   lookRing: [
     { key: 'ringStyle', type: 'select', label: 'look.ringStyle', desc: 'look.ringHelp', options: [['default', 'look.opt.simple'], ['double', 'look.ring.double'], ['dashed', 'look.ring.dashed'], ['crown', 'look.ring.crown'], ['glow', 'look.ring.glow'], ['dots', 'look.ring.dots'], ['arrow', 'look.ring.arrow']] },
-    { key: 'ringColor', type: 'color', label: 'look.ringColor' },
-    { key: 'ownRingColor', type: 'color', label: 'look.ownRingColor', desc: 'look.ownRingHelp' },
+    { key: 'ringColor', type: 'color', label: 'look.ringColor' }
+  ],
+  lookHaxRing: [
+    { key: 'ownRingColor', type: 'color', label: 'look.ownRingColor' },
     { key: 'ownRingAlpha', type: 'range', label: 'look.ownRingAlpha', min: 0.05, max: 1, step: 0.01 },
     { key: 'ownRingRadius', type: 'range', label: 'look.ownRingRadius', min: 18, max: 70, step: 1, raw: true },
     { key: 'ownRingSoft', type: 'range', label: 'look.ownRingSoft', min: 0, max: 1, step: 0.05 },
     { type: 'reset', key: '_ringReset', label: 'look.resetRing', keys: ['ownRingColor', 'ownRingAlpha', 'ownRingRadius', 'ownRingSoft'] }
   ],
   lookBall: [
-    { key: 'ballStyle', type: 'select', label: 'look.ballStyle', options: [['default', 'look.opt.none'], ['soccer', 'look.bs.soccer'], ['neon', 'look.bs.neon'], ['gold', 'look.bs.gold'], ['beach', 'look.bs.beach'], ['eight', 'look.bs.eight'], ['star', 'look.bs.star'], ['triangles', 'look.bs.triangles'], ['vintage', 'look.bs.vintage'], ['tennis', 'look.bs.tennis'], ['basket', 'look.bs.basket'], ['volley', 'look.bs.volley'], ['baseball', 'look.bs.baseball'], ['golf', 'look.bs.golf'], ['bowling', 'look.bs.bowling'], ['earth', 'look.bs.earth'], ['moon', 'look.bs.moon'], ['disco', 'look.bs.disco'], ['orb', 'look.bs.orb'], ['pumpkin', 'look.bs.pumpkin'], ['melon', 'look.bs.melon'], ['eye', 'look.bs.eye'], ['argentina', 'look.bs.argentina'], ['fire', 'look.bs.fire'], ['ice', 'look.bs.ice'], ['yinyang', 'look.bs.yinyang'], ['smile', 'look.bs.smile'], ['sun', 'look.bs.sun'], ['donut', 'look.bs.donut'], ['checker', 'look.bs.checker'], ['candy', 'look.bs.candy'], ['heart', 'look.bs.heart'], ['saturn', 'look.bs.saturn'], ['lava', 'look.bs.lava'], ['peso', 'look.bs.peso']] },
+    { key: 'ballStyle', type: 'select', label: 'look.ballStyle', options: [['default', 'look.opt.none'], ['soccer', 'look.bs.soccer'], ['neon', 'look.bs.neon'], ['gold', 'look.bs.gold'], ['beach', 'look.bs.beach'], ['eight', 'look.bs.eight'], ['star', 'look.bs.star'], ['triangles', 'look.bs.triangles'], ['vintage', 'look.bs.vintage'], ['tennis', 'look.bs.tennis'], ['basket', 'look.bs.basket'], ['volley', 'look.bs.volley'], ['baseball', 'look.bs.baseball'], ['golf', 'look.bs.golf'], ['bowling', 'look.bs.bowling'], ['earth', 'look.bs.earth'], ['moon', 'look.bs.moon'], ['disco', 'look.bs.disco'], ['orb', 'look.bs.orb'], ['pumpkin', 'look.bs.pumpkin'], ['melon', 'look.bs.melon'], ['eye', 'look.bs.eye'], ['argentina', 'look.bs.argentina'], ['fire', 'look.bs.fire'], ['ice', 'look.bs.ice'], ['yinyang', 'look.bs.yinyang'], ['smile', 'look.bs.smile'], ['sun', 'look.bs.sun'], ['donut', 'look.bs.donut'], ['checker', 'look.bs.checker'], ['candy', 'look.bs.candy'], ['heart', 'look.bs.heart'], ['saturn', 'look.bs.saturn'], ['lava', 'look.bs.lava'], ['peso', 'look.bs.peso']],
+      // 35 miniaturas seguidas eran una pared: van en tandas con un título.
+      groups: [
+        ['Fotos reales', 'Real photos', ['default', 'soccer', 'vintage', 'tennis', 'basket', 'volley', 'baseball', 'golf', 'bowling', 'earth', 'moon', 'sun', 'disco', 'pumpkin', 'melon', 'donut', 'peso']],
+        ['Dibujadas', 'Drawn', ['triangles', 'eight', 'beach', 'argentina', 'checker', 'yinyang', 'smile', 'heart', 'candy', 'eye']],
+        ['Con brillo', 'Glowing', ['neon', 'gold', 'star', 'orb', 'fire', 'ice', 'lava', 'saturn']]
+      ] },
     { key: 'ballColor', type: 'color', label: 'look.ballColor' },
     { key: 'ballOutline', type: 'color', label: 'look.ballOutline' }
   ],
@@ -11177,7 +11192,26 @@ function lookGalleryRow(item, value) {
   const cfg = state.config;
   const grid = document.createElement('div');
   grid.className = 'lookgal';
-  for (const [val, label] of item.options) {
+  const labelOf = new Map(item.options);
+  const seq = [];
+  if (item.groups) {
+    const seen = new Set();
+    for (const [es, en, vals] of item.groups) {
+      seq.push({ head: isEn() ? en : es });
+      for (const v of vals) if (labelOf.has(v)) { seq.push([v, labelOf.get(v)]); seen.add(v); }
+    }
+    // Lo que no esté en ninguna tanda va al final, para no perder ninguna opción.
+    for (const o of item.options) if (!seen.has(o[0])) seq.push(o);
+  } else seq.push(...item.options);
+  for (const entry of seq) {
+    if (entry.head) {
+      const h = document.createElement('div');
+      h.className = 'lookgal__head';
+      h.textContent = entry.head;
+      grid.append(h);
+      continue;
+    }
+    const [val, label] = entry;
     const tile = document.createElement('button');
     tile.type = 'button';
     tile.className = 'lookgal__item' + (val === value ? ' is-on' : '');
@@ -11316,9 +11350,32 @@ function renderLookSections() {
     const host = $(`#${hostId}`);
     if (!host) continue;
     host.replaceChildren();
+    // «Volver a lo normal» va como botón chico en el encabezado de la sección y no
+    // como una fila más (con el mismo nombre que la sección, parecía otro ajuste).
+    const sec = host.closest('.sec');
+    const head = sec && $('.sec__head', sec);
+    if (head) for (const old of $$(`.sec__reset[data-for="${hostId}"]`, head)) old.remove();
     for (const item of items) {
       if (item.showIf && !item.showIf({ ...LOOK_DEFAULTS, ...values })) continue;
       if (fullBar && COMPACT_ONLY.has(item.key)) continue;
+      if (item.type === 'reset' && head) {
+        const unset = item.keys.every((k) => lookValue(k) === LOOK_DEFAULTS[k]);
+        if (unset) continue;
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'btn btn--ghost btn--sm sec__reset';
+        btn.dataset.for = hostId;
+        btn.textContent = t('look.backToNormal');
+        btn.title = t(item.label);
+        btn.addEventListener('click', () => {
+          const patch = {};
+          for (const k of item.keys) patch[k] = LOOK_DEFAULTS[k];
+          lookPatch({ visual: patch }).then(() => toast(t('look.backToNormalDone'), 'ok'));
+        });
+        const chev = $('.sec__chev', head);
+        head.insertBefore(btn, chev || null);
+        continue;
+      }
       host.append(lookRow(item));
     }
     if (fullBar && (hostId === 'lookChat' || hostId === 'lookStats')) {
@@ -13829,8 +13886,8 @@ function paintMixer() {
   const en = isEn();
   $('#mixTitle').textContent = en ? 'Volume mixer' : 'Mezclador de volúmenes';
   $('#mixDesc').textContent = en
-    ? 'Every volume in one place. Built-in sounds play when you let go of the slider.'
-    : 'Todos los volúmenes en un solo lugar. Los sonidos incluidos suenan al soltar la barra.';
+    ? 'The music and the sounds the app adds. HaxBall\'s own volume and the voices are in their sections below.'
+    : 'La música y los sonidos que suma la app. El volumen de HaxBall y el de las voces están en su sección, más abajo.';
   if (!host.children.length) {
     for (const ch of MIX_CHANNELS) {
       const row = document.createElement('div');

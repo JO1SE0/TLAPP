@@ -216,7 +216,8 @@ const BUILT_IN = {
     aura: { stops: ['#dfe3e8', '#f4efe2', '#d7dbe2', '#f7f8f9'], seconds: 52 }
   },
   clasico: {
-    label: 'Clásico',
+    // «Clásico» ya es el violeta de la app: con el mismo nombre no se sabía cuál era cuál.
+    label: 'HaxBall original',
     description: 'HaxBall tal cual, sin tocar. La app queda oscura.',
     dark: true,
     bg: '#0c0c0f', bg1: '#131317', panel: '#1a1a20', panelTop: '#22222a',

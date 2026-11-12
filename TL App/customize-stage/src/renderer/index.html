@@ -869,6 +869,15 @@
             <div class="sec__body">
               <div class="rows" id="gameVideo"></div>
               <div class="rows" id="perfFpsCap"></div>
+            </div>
+          </section>
+
+          <!-- Lo de la placa de video: casi todo pide reiniciar y se toca una vez.
+               Iba mezclado con lo de todos los días. -->
+          <section class="sec" data-sec="graficosav">
+            <header class="sec__head"><h2 class="sec__title" data-i18n="perf.graphicsAdv">Placa de video (avanzado)</h2></header>
+            <p class="sec__desc" data-i18n="perf.graphicsAdvDesc">Se tocan una vez y piden reiniciar. Si no sabés qué hacen, dejalos como están.</p>
+            <div class="sec__body">
               <div class="rows" id="perfGpu"></div>
             </div>
           </section>
@@ -982,10 +991,6 @@
                 <div class="row__ctl"><div class="themes" id="themes"></div></div>
               </div>
               <div class="rows" id="lookSwitches"></div>
-              <div class="row" id="musicMovedRow">
-                <div class="row__text"><span class="row__label" id="musicMovedLabel">Música del menú</span><span class="row__desc" id="musicMovedDesc">Prender, apagar y sumar canciones: está todo en la página Música.</span></div>
-                <div class="row__ctl"><button class="btn btn--ghost btn--sm" id="musicMovedGo" type="button">Abrir Música</button></div>
-              </div>
             </div>
           </section>
 
@@ -1096,6 +1101,7 @@
                 <div class="row__text"><span class="row__label" id="parLabel">Fondo con profundidad</span><span class="row__desc" id="parDesc"></span></div>
                 <div class="row__ctl"><div class="chips" id="parChips"></div></div>
               </div>
+              <div class="rows" id="sparkSwitch"></div>
               <div class="row row--block">
                 <div class="row__text"><span class="row__label" id="sparkStyleLabel">Partículas del menú</span></div>
                 <div class="row__ctl"><div class="chips" id="sparkStyleChips"></div></div>
@@ -1211,6 +1217,9 @@
             <div class="sec__body">
               <div class="rows" id="ringSwitches"></div>
               <div class="rows" id="lookRing"></div>
+              <h3 class="sec__sub" data-i18n="look.haxRing.title">Anillo de HaxBall</h3>
+              <p class="sec__subdesc" data-i18n="look.ownRingHelp">Es el aro tenue que HaxBall dibuja alrededor de tu ficha (no el de «Marcar tu disco»). Vacío = blanco.</p>
+              <div class="rows" id="lookHaxRing"></div>
             </div>
           </section>
 
@@ -2021,7 +2030,12 @@
           <section class="sec" data-sec="mezclador">
             <header class="sec__head"><h2 class="sec__title" id="mixTitle">Mezclador de volúmenes</h2></header>
             <p class="sec__desc" id="mixDesc"></p>
-            <div class="sec__body"><div class="rows" id="mixList"></div></div>
+            <div class="sec__body"><div class="rows" id="mixList"></div>
+                <div class="row" id="musicMovedRow">
+                <div class="row__text"><span class="row__label" id="musicMovedLabel">Música del menú</span><span class="row__desc" id="musicMovedDesc">Prender, apagar y sumar canciones: está todo en la página Música.</span></div>
+                <div class="row__ctl"><button class="btn btn--ghost btn--sm" id="musicMovedGo" type="button">Abrir Música</button></div>
+              </div>
+            </div>
           </section>
 
           <section class="sec" data-sec="audio">
