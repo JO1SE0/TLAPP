@@ -460,68 +460,156 @@ function css(p, opts = {}) {
   filter: drop-shadow(0 1px 1px rgba(0, 0, 0, .45));
 }
 
-/* ── La fila personalizada / del club — estilo Vidrio, igual que el lobby ──
+/* ── La fila personalizada / del club: una «tarjeta de jugador» ──────
    Los colores llegan por variables desde la fila (ver applyPeerLook): acá va
    la forma. Va con !important porque los temas pintan el hover de todas las
-   filas con un fondo !important. Sin animaciones: es una sala, no un escenario. */
+   filas con un fondo !important.
+
+   Todo es fijo: degradados, una veta de brillo y una textura finita pintados
+   una sola vez, sin animaciones ni desenfoques. La sala no gasta nada de más
+   por tener tarjetas lindas. Partes:
+     · una franja de color a la izquierda (::after),
+     · el ícono elegido dentro de una moneda con el degradado (::before),
+     · el nombre en degradado con un brillo suave del mismo color,
+     · el avatar y el ping con un aro / una pastilla del color de la tarjeta. */
 .room-view .player-list-item.tvm-peer-row,
 .player-list-item.tvm-peer-row {
+  position: relative !important;
   overflow: hidden;
+  min-height: 34px;
   border-radius: 12px !important;
-  padding-left: 10px !important;
-  background: var(--tvm-vip-bg) !important;
-  box-shadow: var(--tvm-vip-edge) !important;
+  padding: 6px 10px 6px 14px !important;
+  margin: 4px 7px !important;
+  background:
+    linear-gradient(112deg, transparent 0 52%, rgba(255, 255, 255, ${light ? 0.22 : 0.07}) 58%, transparent 65%),
+    repeating-linear-gradient(135deg, rgba(255, 255, 255, ${light ? 0.08 : 0.03}) 0 2px, transparent 2px 8px),
+    linear-gradient(90deg, rgb(var(--tvm-a-rgb) / ${light ? 34 : 30}%) 0%, rgb(var(--tvm-b-rgb) / ${light ? 18 : 15}%) 45%, rgb(var(--tvm-b-rgb) / 2%) 100%) !important;
+  box-shadow:
+    inset 0 0 0 1px rgb(var(--tvm-a-rgb) / ${light ? 55 : 38}%),
+    inset 0 1px 0 rgba(255, 255, 255, ${light ? 0.55 : 0.12}),
+    0 6px 16px -10px rgb(var(--tvm-b-rgb) / 70%) !important;
 }
 .room-view .player-list-item.tvm-peer-row:hover,
-.player-list-item.tvm-peer-row:hover { background: var(--tvm-vip-bg-hi) !important; }
-.player-list-item.tvm-peer-row [data-hook="name"] {
-  font-weight: 700 !important;
-  letter-spacing: .01em;
+.player-list-item.tvm-peer-row:hover {
+  background:
+    linear-gradient(112deg, transparent 0 52%, rgba(255, 255, 255, ${light ? 0.28 : 0.1}) 58%, transparent 65%),
+    repeating-linear-gradient(135deg, rgba(255, 255, 255, ${light ? 0.08 : 0.035}) 0 2px, transparent 2px 8px),
+    linear-gradient(90deg, rgb(var(--tvm-a-rgb) / ${light ? 44 : 40}%) 0%, rgb(var(--tvm-b-rgb) / ${light ? 24 : 22}%) 50%, rgb(var(--tvm-b-rgb) / 5%) 100%) !important;
 }
-/* El nombre en degradado. Un admin conserva su dorado: es información, y un
-   cosmético no la puede tapar. */
+/* Franja de color a la izquierda. */
+.player-list-item.tvm-peer-row::after {
+  content: "";
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 4px;
+  background: linear-gradient(180deg, rgb(var(--tvm-a-rgb)), rgb(var(--tvm-b-rgb)));
+  box-shadow: 0 0 10px rgb(var(--tvm-a-rgb) / 70%);
+  pointer-events: none;
+}
+.player-list-item.tvm-peer-row [data-hook="name"] {
+  font-weight: 800 !important;
+  letter-spacing: .015em;
+}
+/* El nombre en degradado, con un brillo del mismo color. Un admin conserva su
+   dorado: es información, y un cosmético no la puede tapar. */
 .player-list-item.tvm-peer-row:not(.admin) [data-hook="name"] {
   background-image: var(--tvm-vip-name);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
   text-shadow: none !important;
+  filter: drop-shadow(0 0 6px rgb(var(--tvm-a-rgb) / ${light ? 0 : 45}%)) drop-shadow(0 1px 0 rgba(0, 0, 0, ${light ? 0 : 0.35}));
 }
-/* Ícono elegido por la persona, delante de la bandera. */
+/* El ícono elegido, dentro de una moneda con el degradado de la tarjeta. */
 .player-list-item.tvm-peer-row[data-tvm-icon]::before {
   content: attr(data-tvm-icon);
   flex: none;
-  margin-right: 6px;
-  font-size: 13px;
+  display: inline-grid;
+  place-items: center;
+  width: 22px; height: 22px;
+  margin-right: 8px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 32% 28%, rgb(var(--tvm-a-rgb)), rgb(var(--tvm-b-rgb)) 75%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .45), inset 0 -2px 0 rgba(0, 0, 0, .18), 0 0 0 1.5px rgba(255, 255, 255, .18), 0 2px 6px rgba(0, 0, 0, .35);
+  font-size: 12px;
   line-height: 1;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, .35);
 }
-/* Formas de la fila (las elige cada uno en Personalización). */
+/* Avatar con aro del color de la tarjeta. */
+.player-list-item.tvm-peer-row .tvm-av {
+  width: 22px; height: 22px;
+  background: rgb(var(--tvm-b-rgb) / ${light ? 85 : 38}%);
+  box-shadow: 0 0 0 1.5px rgb(var(--tvm-a-rgb) / 85%), 0 0 8px rgb(var(--tvm-a-rgb) / 35%);
+  color: #fff;
+  font-weight: 800;
+}
+/* El escudo del club en la tarjeta: con un brillo dorado que lo separa del color. */
+.player-list-item.tvm-peer-row .tvm-mark--logo { filter: drop-shadow(0 0 4px rgba(255, 205, 100, .65)) drop-shadow(0 1px 1px rgba(0, 0, 0, .55)); }
+/* Insignias y ping como pastillas de la misma tarjeta. */
+.player-list-item.tvm-peer-row .tvm-marks {
+  background: rgba(0, 0, 0, ${light ? 0.06 : 0.22});
+  box-shadow: inset 0 0 0 1px rgb(var(--tvm-a-rgb) / 40%);
+}
+.player-list-item.tvm-peer-row [data-hook="ping"] {
+  min-width: 26px;
+  padding: 2px 6px;
+  border-radius: 99px;
+  text-align: center;
+  background: rgb(var(--tvm-a-rgb) / 14%);
+  color: inherit !important;
+  font-weight: 700;
+}
+
+/* Formas de la tarjeta (las elige cada uno en Personalización). */
+/* Sólida: todo el color, letra blanca. */
 .room-view .player-list-item.tvm-peer-row[data-tvm-style="solid"] {
-  background: linear-gradient(90deg, rgb(var(--tvm-a-rgb) / 52%), rgb(var(--tvm-b-rgb) / 38%)) !important;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .2) !important;
+  background:
+    linear-gradient(112deg, transparent 0 50%, rgba(255, 255, 255, .16) 57%, transparent 64%),
+    repeating-linear-gradient(135deg, rgba(255, 255, 255, .05) 0 2px, transparent 2px 8px),
+    linear-gradient(90deg, rgb(var(--tvm-a-rgb) / 78%), rgb(var(--tvm-b-rgb) / 70%) 60%, rgb(var(--tvm-b-rgb) / 45%)) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .3), inset 0 -2px 0 rgba(0, 0, 0, .15), 0 8px 18px -10px rgb(var(--tvm-b-rgb)) !important;
 }
+.room-view .player-list-item.tvm-peer-row[data-tvm-style="solid"]:not(.admin) [data-hook="name"] {
+  background-image: none;
+  -webkit-text-fill-color: #fff;
+  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, .45));
+}
+.room-view .player-list-item.tvm-peer-row[data-tvm-style="solid"]::after { background: rgba(255, 255, 255, .55); box-shadow: none; }
+.room-view .player-list-item.tvm-peer-row[data-tvm-style="solid"] [data-hook="ping"] { background: rgba(0, 0, 0, .2); color: #fff !important; }
+/* Borde: casi sin relleno y un contorno de dos colores. */
 .room-view .player-list-item.tvm-peer-row[data-tvm-style="outline"] {
-  background: rgb(var(--tvm-a-rgb) / 5%) !important;
-  box-shadow: inset 0 0 0 1.5px rgb(var(--tvm-b-rgb) / 85%) !important;
+  background:
+    linear-gradient(112deg, transparent 0 52%, rgba(255, 255, 255, .05) 58%, transparent 65%),
+    linear-gradient(90deg, rgb(var(--tvm-a-rgb) / 9%), rgb(var(--tvm-b-rgb) / 3%)) !important;
+  box-shadow: inset 0 0 0 1.5px rgb(var(--tvm-b-rgb) / 90%), inset 0 0 0 3px rgb(var(--tvm-a-rgb) / 18%) !important;
 }
+/* Neón: contorno encendido con resplandor afuera. */
 .room-view .player-list-item.tvm-peer-row[data-tvm-style="neon"] {
-  background: rgb(var(--tvm-b-rgb) / 10%) !important;
-  box-shadow: inset 0 0 0 1px rgb(var(--tvm-a-rgb) / 90%), 0 0 10px rgb(var(--tvm-b-rgb) / 55%) !important;
   overflow: visible;
+  background:
+    linear-gradient(112deg, transparent 0 52%, rgba(255, 255, 255, .06) 58%, transparent 65%),
+    linear-gradient(90deg, rgb(var(--tvm-b-rgb) / 18%), rgb(var(--tvm-b-rgb) / 6%)) !important;
+  box-shadow: inset 0 0 0 1.5px rgb(var(--tvm-a-rgb)), inset 0 0 14px rgb(var(--tvm-a-rgb) / 30%), 0 0 14px rgb(var(--tvm-b-rgb) / 60%) !important;
 }
+.room-view .player-list-item.tvm-peer-row[data-tvm-style="neon"]::after { left: 1.5px; top: 1.5px; bottom: 1.5px; border-radius: 10px 0 0 10px; }
+/* Franja: recta, con la franja más gruesa. */
 .room-view .player-list-item.tvm-peer-row[data-tvm-style="bar"] {
-  border-radius: 4px !important;
-  box-shadow: inset 3px 0 0 rgb(var(--tvm-b-rgb)), inset 0 0 0 1px rgb(var(--tvm-a-rgb) / 24%) !important;
+  border-radius: 5px !important;
+  padding-left: 16px !important;
 }
+.room-view .player-list-item.tvm-peer-row[data-tvm-style="bar"]::after { width: 6px; }
+/* Simple: sin tarjeta, sólo la moneda y el nombre. */
 .room-view .player-list-item.tvm-peer-row[data-tvm-style="minimal"] {
   background: transparent !important;
   box-shadow: none !important;
 }
+.room-view .player-list-item.tvm-peer-row[data-tvm-style="minimal"]::after { display: none; }
+.room-view .player-list-item.tvm-peer-row[data-tvm-style="minimal"] [data-hook="ping"] { background: none; }
 .room-view .player-list-item.tvm-peer-row[data-tvm-style="minimal"]:hover { background: rgb(var(--tvm-a-rgb) / 12%) !important; }
 .room-view .player-list-item.tvm-peer-row[data-tvm-style="solid"]:hover,
 .room-view .player-list-item.tvm-peer-row[data-tvm-style="outline"]:hover,
 .room-view .player-list-item.tvm-peer-row[data-tvm-style="neon"]:hover,
-.room-view .player-list-item.tvm-peer-row[data-tvm-style="bar"]:hover { filter: brightness(1.12); }
+.room-view .player-list-item.tvm-peer-row[data-tvm-style="bar"]:hover { filter: brightness(1.1); }
 `;
 }
 
