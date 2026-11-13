@@ -188,7 +188,8 @@
     ['real2', 'Golpe seco', 'Dry punch'],
     ['real3', 'Patada real', 'Real kick'],
     ['real4', 'Toque rápido', 'Quick touch'],
-    ['real5', 'Bombazo', 'Thump']
+    ['real5', 'Bombazo', 'Thump'],
+    ['real6', 'Zapatazo', 'Strike']
   ];
 
   /* ── Grabaciones de verdad ─────────────────────────────────────────────
@@ -247,6 +248,7 @@
     real3(c, o, t, k) { return playSample(c, o, t, 'kick', rate(k), 2); },
     real4(c, o, t, k) { return playSample(c, o, t, 'kick', rate(k), 3); },
     real5(c, o, t, k) { return playSample(c, o, t, 'kick', rate(k), 4); },
+    real6(c, o, t, k) { return playSample(c, o, t, 'kick', rate(k), 5); },
     // La mezcla al azar de antes: fuera de la lista, queda por si alguien la tenía elegida.
     real(c, o, t, k) { return playSample(c, o, t, 'kick', rate(k)); }
   };
