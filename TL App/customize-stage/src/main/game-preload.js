@@ -18,6 +18,7 @@
 const { ipcRenderer } = require('electron');
 const ball3d = require('./ball-3d');
 const lookfx = require('./look');
+const discArt = require('./disc-art');
 lookfx.setBallPhotos(require('./ball-photos'));
 const zoomControl = require('./game-zoom');
 const themes = require('./themes');
@@ -10697,7 +10698,13 @@ function syncCanvasHotFlags() {
   visual.postStyle = ['metal', 'gold', 'neon', 'wood', 'glass', 'ball'].includes(cfg.postStyle) ? cfg.postStyle : 'default';
   visual.discOutline = lookfx.safeColor(cfg.discOutline);
   visual.ballOutline = lookfx.safeColor(cfg.ballOutline);
-  visual.discStyle = ['sphere', 'glass', 'neon', 'metal', 'bubble', 'target', 'stripes', 'gem', 'cartoon', 'dots'].includes(cfg.discStyle) ? cfg.discStyle : 'default';
+  const prevDisc = visual.discStyle;
+  visual.discStyle = ['sphere', 'glass', 'neon', 'metal', 'bubble', 'target', 'stripes', 'gem', 'cartoon', 'dots'].includes(cfg.discStyle) || discArt.has(cfg.discStyle) ? cfg.discStyle : 'default';
+  // Las formas pintadas viven en la textura del disco: si cambian, hay que rehacerla.
+  if (prevDisc !== visual.discStyle && (discArt.has(prevDisc) || discArt.has(visual.discStyle))) {
+    myTextureCanvas = null;
+    safe(refreshAvatarTexture);
+  }
   visual.light = ['vignette', 'spot', 'corners', 'stadium', 'sunset', 'night', 'stripes', 'cinema'].includes(cfg.pitchLight) ? cfg.pitchLight : '';
   visual.ownRingColor = lookfx.safeColor(cfg.ownRingColor);
   visual.ownRingAlpha = clampNum(cfg.ownRingAlpha, 0.02, 1, 0.3);
@@ -11022,7 +11029,7 @@ function installCanvasHooks(doc) {
         } else if (pend.kind === 'disc') {
           mul = visual.discLine;
           color = visual.discOutline;
-          overlay = visual.discStyle !== 'default' && pend.mine;
+          overlay = visual.discStyle !== 'default' && pend.mine && !discArt.has(visual.discStyle);
         } else {
           mul = visual.pitchLine;
         }
@@ -11094,7 +11101,7 @@ function installCanvasHooks(doc) {
     // Con gráficos planos tu estilo de ficha (metal, vidrio…) se ve igual: es
     // del cliente, no de HaxBall.
     if (pend.on && ownDraw === 0) {
-      const discFx = pend.kind === 'disc' && pend.mine && visual.discStyle !== 'default';
+      const discFx = pend.kind === 'disc' && pend.mine && visual.discStyle !== 'default' && !discArt.has(visual.discStyle);
       const ballFx = pend.kind === 'ball' && (visual.ballStyle !== 'default' || !!visual.ballColor);
       if (discFx || ballFx) {
         ownDraw++;
@@ -11259,6 +11266,7 @@ function installCanvasHooks(doc) {
         if (mia) {
           if (porTexto) myTextureCanvas = this.canvas;
           keepAvatarBase(this);
+          paintDiscArt(this);
           // Con GIF se dibuja el primer cuadro: es lo que se ve hasta que la
           // animación arranca, y lo que queda si el parche no aplicó.
           if (gifOn()) this.drawImage(gifSheet, 0, 0, 64, 64, 0, 0, 64, 64);
@@ -11266,6 +11274,16 @@ function installCanvasHooks(doc) {
           return undefined;
         }
       } catch {}
+    } else if (esTextura && discArt.has(visual.discStyle)) {
+      // Forma pintada sin imagen de avatar: se decide igual de quién es la
+      // textura y, si es tuya, se pinta debajo del número que sigue.
+      const deQuienEs = textureOwner;
+      textureOwner = null;
+      const mia = deQuienEs !== null
+        ? deQuienEs
+        : (myAvatarTexts().has(String(text)) || this.canvas === myTextureCanvas);
+      lastTextureMine = mia;
+      if (mia) { if (deQuienEs === null) myTextureCanvas = this.canvas; safe(paintDiscArt, this); }
     } else if (esTextura) {
       lastTextureMine = false;
     }
@@ -11315,6 +11333,17 @@ function installCanvasHooks(doc) {
  * `watchChatLog` durante la ventana de silencio.
  */
 let avatarNoiseUntil = 0;
+
+/**
+ * Pinta tu forma de ficha (disc-art.js) en la textura de 64×64 de tu disco,
+ * antes del número. Corre sólo cuando HaxBall rehace esa textura: en la partida
+ * no cuesta nada. Las del club esperan al escudo; cuando llega, se rehace.
+ */
+function paintDiscArt(ctx) {
+  if (!discArt.has(visual.discStyle)) return;
+  const ok = discArt.paint(ctx, visual.discStyle, 32, 32, 32, () => { myTextureCanvas = null; safe(refreshAvatarTexture); });
+  void ok; // paint() guarda y restaura el estado del lienzo: el número sale igual que siempre.
+}
 
 function refreshAvatarTexture() {
   const doc = gameDocument();

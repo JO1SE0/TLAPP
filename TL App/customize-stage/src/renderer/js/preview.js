@@ -456,7 +456,9 @@
       ctx.fillStyle = d.team;
       ctx.fill();
       // El estilo de ficha es sólo de la tuya, igual que en el juego.
-      if (d.mine && V.discStyle && V.discStyle !== 'default') L.discOverlay(ctx, V.discStyle, d.x, d.y, r0, null);
+      const art = d.mine && window.TL_DISC_ART && window.TL_DISC_ART.has(V.discStyle);
+      if (art) window.TL_DISC_ART.paint(ctx, V.discStyle, d.x, d.y, r0, artReady);
+      else if (d.mine && V.discStyle && V.discStyle !== 'default') L.discOverlay(ctx, V.discStyle, d.x, d.y, r0, null);
       ctx.lineWidth = 2 * discLine;
       ctx.strokeStyle = discOutline;
       ctx.stroke();
@@ -572,7 +574,8 @@
         ctx.arc(x, y, rr, 0, TAU);
         ctx.fillStyle = '#e56e56';
         ctx.fill();
-        if (kind === 'discStyle' && value !== 'default') L.discOverlay(ctx, value, x, y, rr, null);
+        if (kind === 'discStyle' && window.TL_DISC_ART && window.TL_DISC_ART.has(value)) window.TL_DISC_ART.paint(ctx, value, x, y, rr, artReady);
+        else if (kind === 'discStyle' && value !== 'default') L.discOverlay(ctx, value, x, y, rr, null);
         ctx.lineWidth = Math.max(1, rr * 0.14) * 1;
         ctx.strokeStyle = L.safeColor(V.discOutline) || '#000000';
         ctx.stroke();
@@ -581,6 +584,9 @@
       ctx.restore();
     }
   }
+
+  // Las formas del club esperan al escudo: cuando llega, se repinta todo (igual que las fotos de pelota).
+  function artReady() { window.dispatchEvent(new Event('tl-ballphotos')); }
 
   // Dónde están tu ficha y la pelota en la escena (para las vistas sueltas).
   const SPOTS = { me: { x: -178, y: 6 }, ball: { x: -122, y: 26 } };

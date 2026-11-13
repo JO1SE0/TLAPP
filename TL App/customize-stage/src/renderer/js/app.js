@@ -11084,7 +11084,14 @@ const LOOK_SECTIONS = {
     { type: 'reset', key: '_scoreReset', label: 'look.resetScore', keys: ['pitchScore', 'pitchScoreOpacity', 'pitchScoreStyle', 'pitchScoreFont', 'pitchScoreSize', 'pitchScorePos', 'pitchScoreMode', 'pitchScoreAnim', 'pitchScoreBurst', 'pitchScoreColorR', 'pitchScoreColorB'] }
   ],
   lookDiscs: [
-    { key: 'discStyle', type: 'select', label: 'look.discStyle', options: [['default', 'look.opt.none'], ['sphere', 'look.ds.sphere'], ['glass', 'look.ds.glass'], ['neon', 'look.ds.neon'], ['metal', 'look.ds.metal'], ['bubble', 'look.ds.bubble'], ['target', 'look.ds.target'], ['stripes', 'look.ds.stripes'], ['gem', 'look.ds.gem'], ['cartoon', 'look.ds.cartoon'], ['dots', 'look.ds.dots']] },
+    { key: 'discStyle', type: 'select', label: 'look.discStyle', options: [['default', 'look.opt.none'], ['sphere', 'look.ds.sphere'], ['glass', 'look.ds.glass'], ['neon', 'look.ds.neon'], ['metal', 'look.ds.metal'], ['bubble', 'look.ds.bubble'], ['target', 'look.ds.target'], ['stripes', 'look.ds.stripes'], ['gem', 'look.ds.gem'], ['cartoon', 'look.ds.cartoon'], ['dots', 'look.ds.dots'], ['half', 'look.ds.half'], ['sash', 'look.ds.sash'], ['eclipse', 'look.ds.eclipse'], ['galaxy', 'look.ds.galaxy'], ['sunset', 'look.ds.sunset'], ['crystal', 'look.ds.crystal'], ['jelly', 'look.ds.jelly'], ['ink', 'look.ds.ink'], ['embers', 'look.ds.embers'], ['tigereye', 'look.ds.tigereye'], ['kintsugi', 'look.ds.kintsugi'], ['enamel', 'look.ds.enamel'], ['chrome', 'look.ds.chrome'], ['bevel', 'look.ds.bevel'], ['satin', 'look.ds.satin'], ['rimlight', 'look.ds.rimlight'], ['window', 'look.ds.window'], ['treerelief', 'look.ds.treerelief'], ['goldtree', 'look.ds.goldtree'], ['nightwolf', 'look.ds.nightwolf'], ['crestpin', 'look.ds.crestpin'], ['golddrip', 'look.ds.golddrip'], ['goldleaf', 'look.ds.goldleaf'], ['goldsplash', 'look.ds.goldsplash'], ['crown', 'look.ds.crown']],
+      groups: [
+        ['Clásicas', 'Classic', ['default', 'sphere', 'glass', 'neon', 'metal', 'bubble', 'target', 'stripes', 'gem', 'cartoon', 'dots']],
+        ['Con brillo', 'Glossy', ['bevel', 'satin', 'rimlight', 'window', 'crystal', 'jelly', 'chrome']],
+        ['Oro', 'Gold', ['golddrip', 'goldleaf', 'goldsplash', 'kintsugi', 'enamel', 'crown']],
+        ['Del club', 'Club', ['treerelief', 'goldtree', 'nightwolf', 'crestpin']],
+        ['Con dibujo', 'Patterned', ['half', 'sash', 'eclipse', 'galaxy', 'sunset', 'ink', 'embers', 'tigereye']]
+      ] },
     { key: 'softShadows', type: 'switch', label: 'look.softShadows', desc: 'look.softShadowsHelp' },
     { key: 'discOutline', type: 'color', label: 'look.discOutline' },
     { key: 'selfTrail', type: 'switch', label: 'look.selfTrail', desc: 'look.selfTrailHelp' },
