@@ -11339,10 +11339,25 @@ let avatarNoiseUntil = 0;
  * antes del número. Corre sólo cuando HaxBall rehace esa textura: en la partida
  * no cuesta nada. Las del club esperan al escudo; cuando llega, se rehace.
  */
+// Los dorados del escudo se arman fuera del dibujo de la textura: también van protegidos.
+discArt.setGuard((fn) => { ownDraw++; try { return fn(); } finally { ownDraw--; } });
+
 function paintDiscArt(ctx) {
   if (!discArt.has(visual.discStyle)) return;
-  const ok = discArt.paint(ctx, visual.discStyle, 32, 32, 32, () => { myTextureCanvas = null; safe(refreshAvatarTexture); });
-  void ok; // paint() guarda y restaura el estado del lienzo: el número sale igual que siempre.
+  /*
+   * `ownDraw` arriba: lo que dibuja el cliente no pasa por los ganchos de
+   * «Gráficos planos» ni de «Líneas simples». Sin esto, con gráficos planos los
+   * degradados de la forma salían transparentes o de un solo color (sin las
+   * sombras y con el brillo lleno: se veían mucho más claras que en
+   * Personalización), y con líneas simples los trazos quedaban de 1 px.
+   */
+  ownDraw++;
+  try {
+    // paint() guarda y restaura el estado del lienzo: el número sale igual que siempre.
+    discArt.paint(ctx, visual.discStyle, 32, 32, 32, () => { myTextureCanvas = null; safe(refreshAvatarTexture); });
+  } finally {
+    ownDraw--;
+  }
 }
 
 function refreshAvatarTexture() {

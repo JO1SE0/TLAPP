@@ -60,6 +60,10 @@ const ART = {
 const STYLES = Object.keys(ART);
 const NEEDS_ART = new Set(['treerelief', 'goldtree', 'nightwolf', 'crestpin']);
 
+/** Envoltorio del juego para que sus ganchos de dibujo no toquen lo nuestro (ver setGuard). */
+let guard = (fn) => fn();
+function setGuard(fn) { if (typeof fn === 'function') guard = fn; }
+
 /** Imágenes del club por documento (el del juego y el del menú son distintos). */
 const assetsByDoc = new WeakMap();
 function assetsFor(doc, onReady) {
@@ -76,7 +80,7 @@ function assetsFor(doc, onReady) {
       if (++n < 2) return;
       try {
         const make = (w, h) => { const cv = doc.createElement('canvas'); cv.width = w; cv.height = h; return cv; };
-        st.A = { CI: ci, EG: goldImg(em, make), EW: tint(em, '#fff', make), EK: tint(em, '#000', make) };
+        st.A = guard(() => ({ CI: ci, EG: goldImg(em, make), EW: tint(em, '#fff', make), EK: tint(em, '#000', make) }));
         st.ready = true;
         if (onReady) onReady();
       } catch (e) { /* sin escudo: esas formas quedan sin el dibujo del club */ }
@@ -117,7 +121,7 @@ function paint(c, style, x, y, r, onReady) {
   return true;
 }
 
-const api = { STYLES, paint, has: (s) => Object.prototype.hasOwnProperty.call(ART, s) };
+const api = { STYLES, paint, setGuard, has: (s) => Object.prototype.hasOwnProperty.call(ART, s) };
 // Módulo en el juego (game-preload) y script común en el menú (vista previa).
 if (typeof module !== 'undefined' && module && module.exports && typeof require === 'function') module.exports = api;
 if (root) root.TL_DISC_ART = api;
