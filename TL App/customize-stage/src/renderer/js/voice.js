@@ -22,9 +22,10 @@
   ];
   const ICE_WAIT_MS = 2500;      // cuánto se espera a juntar direcciones antes de mandar la oferta
   const TICK_MS = 150;
-  const OPEN_HOLD_MS = 450;      // voz abierta: el micrófono queda abierto este rato después de la última palabra
+  const OPEN_HOLD_MS = 700;      // voz abierta: el micrófono queda abierto este rato después de la última palabra
+  const PTT_TAIL_MS = 200;       // apretar para hablar: al soltar se sigue mandando un toque para no cortar la última sílaba
   const REMOTE_TALK = 0.012;     // nivel (0-1) desde el que alguien «está hablando»
-  const BITRATE = 28000;
+  const BITRATE = 40000;         // Opus de voz clara; sigue siendo muy poco (5 KB/s) y con DTX casi nada en silencio
 
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
@@ -76,6 +77,7 @@
       muted: false,
       deafened: false,
       ptt: false,
+      pttUntil: 0,
       openUntil: 0,
       sending: false,
       localLevel: 0,
@@ -184,7 +186,7 @@
     function wantsSend() {
       if (!S.joined || S.muted || !S.track || S.micError) return false;
       if (S.settings.mode === 'open') return performance.now() < S.openUntil;
-      return S.ptt;
+      return S.ptt || performance.now() < S.pttUntil;
     }
     function applySend() {
       const on = wantsSend();
@@ -282,7 +284,13 @@
         const prm = s.getParameters();
         if (!prm.encodings || !prm.encodings.length) prm.encodings = [{}];
         prm.encodings[0].maxBitrate = BITRATE;
-        s.setParameters(prm).catch(() => {});
+        // La voz primero: si la red se aprieta, Chromium le da lugar al audio antes que al resto.
+        prm.encodings[0].priority = 'high';
+        prm.encodings[0].networkPriority = 'high';
+        s.setParameters(prm).catch(() => {
+          // Si esta versión no acepta la prioridad, al menos el techo de bitrate.
+          try { delete prm.encodings[0].priority; delete prm.encodings[0].networkPriority; s.setParameters(prm).catch(() => {}); } catch (e) { /* nada */ }
+        });
       } catch (e) { /* no es esencial */ }
     }
     function retry(p) {
@@ -391,7 +399,7 @@
       for (const pid of [...S.peers.keys()]) closePeer(pid);
       for (const k of Object.keys(S)) if (k.startsWith('wait_')) { clearTimeout(S[k]); delete S[k]; }
       S.joined = false; S.joining = false; S.channel = null; S.want = null;
-      S.members = []; S.sending = false; S.ptt = false;
+      S.members = []; S.sending = false; S.ptt = false; S.pttUntil = 0;
       stopTick();
       closeMic();
     }
@@ -432,8 +440,14 @@
         emit(true);
         if (was) { try { await transport.leave(); } catch (e) { /* nada */ } }
       },
-      setPtt(down) { const d = !!down; if (S.ptt === d) return; S.ptt = d; applySend(); },
-      setMuted(on) { S.muted = !!on; if (S.muted) S.ptt = false; applySend(); transport.mute(S.muted); emit(); },
+      setPtt(down) {
+        const d = !!down;
+        if (S.ptt === d) return;
+        S.ptt = d;
+        S.pttUntil = d ? 0 : performance.now() + PTT_TAIL_MS; // el tic lo corta cuando vence
+        applySend();
+      },
+      setMuted(on) { S.muted = !!on; if (S.muted) { S.ptt = false; S.pttUntil = 0; } applySend(); transport.mute(S.muted); emit(); },
       setDeafened(on) {
         S.deafened = !!on;
         if (S.deafened && !S.muted) { S.muted = true; S.deafenMuted = true; transport.mute(true); }
