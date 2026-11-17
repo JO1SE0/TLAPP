@@ -8152,6 +8152,18 @@ function applyViews(view) {
   view.__tvmVertOn = !!perf.vertical && !want3d;
   // Su inclinación (ver TILT en vertical-patch.js): apagada, vuelve sola a plana.
   view.__tvmTiltOn = view.__tvmVertOn && perf.verticalTilt !== false;
+  /*
+   * Con la 3D dibujando, el cuadro 2D no llega a la parte que actualiza las
+   * flechas de la vertical: si la vertical estaba prendida, las flechas
+   * quedaban giradas (izquierda y derecha subían y bajaban), y con la cámara
+   * Vertical de la 3D se sumaban los dos giros. Se apagan acá, en el acto: en
+   * 3D las flechas las gira sólo la 3D (`__tvm3dRot`).
+   */
+  if (!view.__tvmVertOn && (view.__tvmRotKeys || view.__tvmRot)) {
+    view.__tvmRot = 0;
+    view.__tvmRotKeys = null;
+    try { if (view.__tvmInputSync && typeof view.__tvmInputSync.A === 'function') view.__tvmInputSync.A(); } catch (e) { /* nada */ }
+  }
 }
 function installView3d(view) {
   if (!view || view3dView === view) return;
