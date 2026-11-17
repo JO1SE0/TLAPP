@@ -68,7 +68,15 @@ const FIELDS = {
    * izquierda y derecha. Va ANTES del espejo: las flechas se piensan en lo que
    * se ve, y el espejo pasa de lo que se ve a la cancha.
    */
-  input: /this\.(\w+)\.has\("Kick"\)&&\(a\|=16\);/g
+  input: /this\.(\w+)\.has\("Kick"\)&&\(a\|=16\);/g,
+  /* Paredes (segmentos): la lista y cómo se dibuja cada una. */
+  segs: /\w+\(a\)\{if\(null!=a\)\{var b=0;for\(a=a\.([\w$]+);b<a\.length;\)this\.[\w$]+\(a\[b\+\+\]\)\}\}/g,
+  seg: /\w+\(a\)\{if\(a\.([\w$]+)\)\{this\.c\.beginPath\(\);this\.c\.strokeStyle=[\w$]+\.[\w$]+\(a\.([\w$]+)\);var b=a\.([\w$]+)\.[\w$]+,c=a\.([\w$]+)\.[\w$]+;if\(0!=0\*a\.([\w$]+)\)[\s\S]*?else\{a=a\.([\w$]+);/g,
+  /* Con qué choca cada cosa: el mismo par de campos en discos y paredes. */
+  mask: /0!=\(f\.([\w$]+)&c\.([\w$]+)\)&&0!=\(f\.\2&c\.\1\)/g,
+  /* Los arcos: la lista (por su nombre en el archivo del estadio) y sus dos puntas. */
+  goals: /\(this\.([\w$]+),"goals",/g,
+  goal: /[\w$]+\.[\w$]+\(a\.p0,Array\);let d=[\w$]+\.[\w$]+\(a\.p1,Array\),e=b\.([\w$]+);e\.x=c\[0\];e\.y=c\[1\];c=b\.([\w$]+);/g
 };
 
 /**
@@ -139,6 +147,14 @@ function patch3d(source) {
   const input = one(source, FIELDS.input);
   if (!joint || !joints) return fail('no se encontraron las uniones entre discos');
   if (!input) return fail('no se encontró la lectura de teclas');
+  const segs = one(source, FIELDS.segs);
+  const seg = one(source, FIELDS.seg);
+  const goals = one(source, FIELDS.goals);
+  const goal = one(source, FIELDS.goal);
+  const masks = [...source.matchAll(new RegExp(loose(FIELDS.mask).source, 'g'))];
+  if (!segs || !seg) return fail('no se encontraron las paredes');
+  if (!goals || !goal) return fail('no se encontraron los arcos');
+  if (!masks.length || masks.some((m) => m[1] !== masks[0][1] || m[2] !== masks[0][2])) return fail('no se encontró con qué choca cada cosa');
 
   const [, cv, tp, bp, cam] = hook;
   const N = {
@@ -155,6 +171,9 @@ function patch3d(source) {
     paused: tail[2],
     team: teams[0][1], teamId: teams[0][2],
     joints: joints[1], jointColor: joint[1], jointA: joint[2], jointB: joint[3],
+    segs: segs[1], segVis: seg[1], segColor: seg[2], segA: seg[3], segB: seg[4], segCurve: seg[5], segCenter: seg[6],
+    mask: masks[0][1], group: masks[0][2],
+    goals: goals[1], goalA: goal[1], goalB: goal[2],
     cv
   };
   const [, hud, paused, notes, notesStep, notesDraw, ug, prune] = tail;

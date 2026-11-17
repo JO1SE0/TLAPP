@@ -229,6 +229,164 @@ function stands(side, hx, hy) {
   return [new Float32Array(out[0]), new Float32Array(out[1])];
 }
 
+/* ── Estadio: paredes, arcos, carteles y torres ─────────────────────────
+ *
+ * Todo se arma UNA vez por estadio, en coordenadas de cancha, con la luz ya
+ * horneada en el color de cada vértice: en cada cuadro es un solo dibujo.
+ */
+const LIGHT = (() => { const l = [-0.35, 0.86, 0.38], n = Math.hypot(...l); return l.map((v) => v / n); })();
+const WALL_H = CONTACT_Y + 4;
+const BOARD_H = 14;
+const BOARD_A = [0.07, 0.08, 0.11];
+const BOARD_B = [0.62, 0.5, 0.2];
+
+function shade(nx, ny, nz) {
+  return 0.55 + 0.5 * Math.max(0, nx * LIGHT[0] + ny * LIGHT[1] + nz * LIGHT[2]);
+}
+/* Un cuadrilátero: cuatro puntas [x, y, z], un color y si lleva luz. */
+function face(arr, p, rgb, lit, uvs) {
+  let k = 1;
+  if (lit) {
+    const ux = p[1][0] - p[0][0], uy = p[1][1] - p[0][1], uz = p[1][2] - p[0][2];
+    const vx = p[3][0] - p[0][0], vy = p[3][1] - p[0][1], vz = p[3][2] - p[0][2];
+    let nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx;
+    const l = Math.hypot(nx, ny, nz) || 1;
+    nx /= l; ny /= l; nz /= l;
+    // Sin caras de atrás: se ilumina el lado que mira a la luz.
+    k = Math.max(shade(nx, ny, nz), shade(-nx, -ny, -nz));
+  }
+  for (const i of [0, 1, 2, 0, 2, 3]) {
+    const v = p[i];
+    arr.push(v[0], v[1], v[2], rgb[0] * k, rgb[1] * k, rgb[2] * k, uvs ? uvs[i][0] : 0, uvs ? uvs[i][1] : 0);
+  }
+}
+/* Un poste de 6 caras. */
+function pole(arr, x, z, r, h, rgb, y0 = 0) {
+  for (let i = 0; i < 6; i++) {
+    const a0 = (i / 6) * Math.PI * 2, a1 = ((i + 1) / 6) * Math.PI * 2;
+    const x0 = x + Math.cos(a0) * r, z0 = z + Math.sin(a0) * r, x1 = x + Math.cos(a1) * r, z1 = z + Math.sin(a1) * r;
+    face(arr, [[x0, y0, z0], [x1, y0, z1], [x1, y0 + h, z1], [x0, y0 + h, z0]], rgb, true);
+  }
+}
+/* Una caja alineada a los ejes. */
+function box(arr, x0, y0, z0, x1, y1, z1, rgb) {
+  face(arr, [[x0, y1, z0], [x1, y1, z0], [x1, y1, z1], [x0, y1, z1]], rgb, true);
+  face(arr, [[x0, y0, z1], [x1, y0, z1], [x1, y1, z1], [x0, y1, z1]], rgb, true);
+  face(arr, [[x0, y0, z0], [x1, y0, z0], [x1, y1, z0], [x0, y1, z0]], rgb, true);
+  face(arr, [[x0, y0, z0], [x0, y0, z1], [x0, y1, z1], [x0, y1, z0]], rgb, true);
+  face(arr, [[x1, y0, z0], [x1, y0, z1], [x1, y1, z1], [x1, y1, z0]], rgb, true);
+}
+function rgbOfInt(c) {
+  return c < 0 ? [0.85, 0.85, 0.85] : [((c >>> 16) & 255) / 255, ((c >>> 8) & 255) / 255, (c & 255) / 255];
+}
+
+/*
+ * Arma todo lo fijo del estadio. `ball` es el disco de la pelota: las paredes
+ * que la hacen rebotar se levantan (a la altura del ecuador de la pelota, para
+ * que el toque se vea donde pasa), las demás quedan como líneas en el piso.
+ */
+function decor(N, st, ball, bx, by) {
+  const solid = [], net = [], ends = [];
+  // Paredes.
+  const segs = st[N.segs] || [];
+  const bm = ball ? ball[N.mask] | 0 : 0, bg = ball ? ball[N.group] | 0 : 0;
+  for (const sg of segs) {
+    if (!sg || !sg[N.segVis]) continue;
+    if (!ball || !((sg[N.mask] & bg) && (sg[N.group] & bm))) continue;
+    const va = sg[N.segA], vb = sg[N.segB];
+    const A = va && va[N.pos], B = vb && vb[N.pos];
+    if (!A || !B) continue;
+    const pts = [];
+    const curve = sg[N.segCurve];
+    const c = sg[N.segCenter];
+    if (0 * curve !== 0 || !c) {
+      pts.push(A.x, A.y, B.x, B.y);
+    } else {
+      // Mismo arco que dibuja el 2D: de A a B, en sentido horario de la pantalla.
+      const r = Math.hypot(A.x - c.x, A.y - c.y);
+      const a0 = Math.atan2(A.y - c.y, A.x - c.x);
+      let sweep = Math.atan2(B.y - c.y, B.x - c.x) - a0;
+      while (sweep < 0) sweep += Math.PI * 2;
+      const n = Math.max(2, Math.min(64, Math.ceil((r * sweep) / 10)));
+      for (let i = 0; i <= n; i++) {
+        const a = a0 + (sweep * i) / n;
+        pts.push(c.x + Math.cos(a) * r, c.y + Math.sin(a) * r);
+      }
+    }
+    const col = rgbOfInt(sg[N.segColor] | 0);
+    const low = [col[0] * 0.55, col[1] * 0.55, col[2] * 0.55];
+    for (let i = 0; i + 3 < pts.length; i += 2) {
+      const x0 = pts[i], z0 = pts[i + 1], x1 = pts[i + 2], z1 = pts[i + 3];
+      // La cara: abajo más oscura, arriba con el color de la pared.
+      const k = Math.max(shade(-(z1 - z0), 0, x1 - x0), shade(z1 - z0, 0, -(x1 - x0)));
+      const L = Math.hypot(x1 - x0, z1 - z0) || 1;
+      const kk = k;
+      for (const [x, y, z, cc] of [[x0, 0, z0, low], [x1, 0, z1, low], [x1, WALL_H, z1, col], [x0, 0, z0, low], [x1, WALL_H, z1, col], [x0, WALL_H, z0, col]]) {
+        solid.push(x, y, z, cc[0] * kk, cc[1] * kk, cc[2] * kk, 0, 0);
+      }
+      // Canto de arriba, más claro: es lo que el ojo usa para ver el borde.
+      const px = -(z1 - z0) / L * 1.6, pz = (x1 - x0) / L * 1.6;
+      face(solid, [[x0 - px, WALL_H, z0 - pz], [x1 - px, WALL_H, z1 - pz], [x1 + px, WALL_H, z1 + pz], [x0 + px, WALL_H, z0 + pz]],
+        [Math.min(1, col[0] * 1.2 + 0.1), Math.min(1, col[1] * 1.2 + 0.1), Math.min(1, col[2] * 1.2 + 0.1)], false);
+    }
+  }
+
+  // Arcos: travesaño, palos de atrás y red.
+  const goals = st[N.goals] || [];
+  for (const g of goals) {
+    const p0 = g && g[N.goalA], p1 = g && g[N.goalB];
+    if (!p0 || !p1) continue;
+    const dx = p1.x - p0.x, dz = p1.y - p0.y;
+    const w = Math.hypot(dx, dz);
+    if (!(w > 1)) continue;
+    let nx = -dz / w, nz = dx / w;
+    // La red va hacia afuera de la cancha.
+    if (nx * (p0.x + p1.x) + nz * (p0.y + p1.y) < 0) { nx = -nx; nz = -nz; }
+    const GH = Math.max(24, Math.min(64, w * 0.3));
+    const GD = Math.max(18, Math.min(48, GH * 0.8));
+    const BH = GH * 0.62;
+    ends.push(p0.x, p0.y, GH, p1.x, p1.y, GH);
+    const white = [0.96, 0.96, 0.96];
+    // Travesaño: una barra de 5 de grueso.
+    const t = 2.5;
+    const q = (a, b, y0, y1) => [[p0.x + nx * a, y0, p0.y + nz * a], [p1.x + nx * a, y0, p1.y + nz * a], [p1.x + nx * b, y1, p1.y + nz * b], [p0.x + nx * b, y1, p0.y + nz * b]];
+    face(solid, q(-t, t, GH, GH), white, true);
+    face(solid, q(-t, -t, GH - 2 * t, GH), white, true);
+    face(solid, q(t, t, GH - 2 * t, GH), white, true);
+    // Palos de atrás y su barra.
+    const bx0 = p0.x + nx * GD, bz0 = p0.y + nz * GD, bx1 = p1.x + nx * GD, bz1 = p1.y + nz * GD;
+    pole(solid, bx0, bz0, 1.6, BH, white);
+    pole(solid, bx1, bz1, 1.6, BH, white);
+    // Red: techo, fondo y costados, con una trama que se repite cada 8.
+    const uv = (len, hgt) => [[0, 0], [len / 8, 0], [len / 8, hgt / 8], [0, hgt / 8]];
+    face(net, [[p0.x, GH, p0.y], [p1.x, GH, p1.y], [bx1, BH, bz1], [bx0, BH, bz0]], white, false, uv(w, Math.hypot(GD, GH - BH)));
+    face(net, [[bx0, 0, bz0], [bx1, 0, bz1], [bx1, BH, bz1], [bx0, BH, bz0]], white, false, uv(w, BH));
+    face(net, [[p0.x, 0, p0.y], [bx0, 0, bz0], [bx0, BH, bz0], [p0.x, GH, p0.y]], white, false, uv(GD, GH));
+    face(net, [[p1.x, 0, p1.y], [bx1, 0, bz1], [bx1, BH, bz1], [p1.x, GH, p1.y]], white, false, uv(GD, GH));
+  }
+
+  // Carteles alrededor de la cancha: bajos, oscuros, con el filo dorado del club.
+  const ax = bx + 24, az = by + 24;
+  for (const [x0, z0, x1, z1] of [[-ax, -az, ax, -az], [ax, -az, ax, az], [ax, az, -ax, az], [-ax, az, -ax, -az]]) {
+    face(solid, [[x0, 0, z0], [x1, 0, z1], [x1, BOARD_H - 3, z1], [x0, BOARD_H - 3, z0]], BOARD_A, true);
+    face(solid, [[x0, BOARD_H - 3, z0], [x1, BOARD_H - 3, z1], [x1, BOARD_H, z1], [x0, BOARD_H, z0]], BOARD_B, true);
+  }
+
+  // Torres de luz en las cuatro esquinas, detrás de las tribunas.
+  const tx = bx + 46 + STEPS * STEP_D + 40, tz = by + 46 + STEPS * STEP_D + 40;
+  const towerH = STEPS * STEP_H + 230;
+  for (const [x, z] of [[-tx, -tz], [tx, -tz], [tx, tz], [-tx, tz]]) {
+    pole(solid, x, z, 7, towerH, [0.32, 0.33, 0.36]);
+    const sx = x > 0 ? -1 : 1, sz = z > 0 ? -1 : 1;
+    box(solid, x - 34, towerH, z - 34, x + 34, towerH + 22, z + 34, [0.2, 0.21, 0.24]);
+    // Los focos, mirando a la cancha: sin luz propia, siempre encendidos.
+    face(solid, [[x - 30, towerH + 2, z + sz * 35], [x + 30, towerH + 2, z + sz * 35], [x + 30, towerH + 20, z + sz * 35], [x - 30, towerH + 20, z + sz * 35]], [1, 0.95, 0.78], false);
+    face(solid, [[x + sx * 35, towerH + 2, z - 30], [x + sx * 35, towerH + 2, z + 30], [x + sx * 35, towerH + 20, z + 30], [x + sx * 35, towerH + 20, z - 30]], [1, 0.95, 0.78], false);
+  }
+
+  return { solid: new Float32Array(solid), net: new Float32Array(net), ends: new Float32Array(ends) };
+}
+
 /* Cuadrado en el piso, de -1 a 1, con la v hacia +z (abajo en la pantalla 2D). */
 function quad() {
   return new Float32Array([
@@ -257,6 +415,8 @@ function install(view, opts = {}) {
 
   /* Tribunas: por lado, dos tandas de escalones. Se rearman con el piso. */
   let standBufs = null;
+  /* Estadio fijo (paredes, arcos, carteles, torres), la red y las puntas de los arcos. */
+  let decorSolid = null, decorNet = null, goalEnds = new Float32Array(0), netTex = null;
   /* Cámara que sigue a tu ficha (vista vertical): se suaviza para que no tiemble. */
   let follow = null;
   /* Uniones: un solo buffer que se rellena en cada cuadro (sin crear nada). */
@@ -366,6 +526,20 @@ function install(view, opts = {}) {
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, 1, 1, -1, -1, 1, 1, -1, 1]), gl.STATIC_DRAW);
     floorTex = texture(null, true);
     jointBuf = gl.createBuffer();
+    {
+      const c = doc.createElement('canvas');
+      c.width = c.height = 32;
+      const x = c.getContext('2d');
+      x.strokeStyle = 'rgba(255,255,255,0.85)';
+      x.lineWidth = 2;
+      x.beginPath();
+      x.moveTo(0, 1); x.lineTo(32, 1); x.moveTo(1, 0); x.lineTo(1, 32);
+      x.moveTo(0, 17); x.lineTo(32, 17); x.moveTo(17, 0); x.lineTo(17, 32);
+      x.stroke();
+      netTex = texture(c, true);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT);
+    }
 
     // Las capas van pegadas al canvas del juego, que queda en su lugar pero sin verse.
     const parent = cv.parentNode;
@@ -435,6 +609,13 @@ function install(view, opts = {}) {
     floorX = hx; floorY = hy;
     if (standBufs) for (const side of standBufs) for (const m of side) gl.deleteBuffer(m.b);
     standBufs = [0, 1, 2, 3].map((side) => stands(side, bx || hx, by || hy).map(buffer));
+    if (decorSolid) gl.deleteBuffer(decorSolid.b);
+    if (decorNet) gl.deleteBuffer(decorNet.b);
+    const discs0 = (F.world && F.world[N.discs]) || [];
+    const d = decor(N, st, discs0[0], bx || hx - 140, by || hy - 140);
+    decorSolid = d.solid.length ? buffer(d.solid) : null;
+    decorNet = d.net.length ? buffer(d.net) : null;
+    goalEnds = d.ends;
     floorFor = st;
     floorDirty = false;
   }
@@ -639,6 +820,10 @@ function install(view, opts = {}) {
     gl.depthFunc(gl.LEQUAL);
     gl.depthMask(true);
 
+    // Estadio fijo: paredes que hacen rebotar la pelota, arcos, carteles, torres.
+    if (decorSolid) {
+      draw(decorSolid, 5, 0, 0, 0, mx, 1, 1, 1, 1, 1, 1);
+    }
     // Tribunas.
     if (standBufs) {
       for (let side = 0; side < 4; side++) {
@@ -691,7 +876,12 @@ function install(view, opts = {}) {
         // El ecuador de la pelota, a la altura de las tapas de las fichas.
         draw(mesh.ball, 0, mx * pos.x, CONTACT_Y, pos.y, rad, rad, rad, cr, cg, cb, 1);
       } else {
-        const h = Math.max(rad * POST_H, CONTACT_Y + 4);
+        let h = Math.max(rad * POST_H, CONTACT_Y + 4);
+        // Si está en la punta de un arco, es un palo: llega hasta el travesaño.
+        for (let k = 0; k < goalEnds.length; k += 3) {
+          const ddx = pos.x - goalEnds[k], ddz = pos.y - goalEnds[k + 1];
+          if (ddx * ddx + ddz * ddz <= (rad + 3) * (rad + 3)) { h = goalEnds[k + 2]; break; }
+        }
         draw(mesh.side, 0, mx * pos.x, 0, pos.y, rad, h, rad, cr * 0.8, cg * 0.8, cb * 0.8, 1);
         draw(mesh.cap, 0, mx * pos.x, 0, pos.y, rad, h, rad, cr, cg, cb, 1);
       }
@@ -726,6 +916,16 @@ function install(view, opts = {}) {
         jointMesh.b = jointBuf; jointMesh.n = n / 8;
         draw(jointMesh, 5, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1);
       }
+    }
+    // La red: transparente, después de todo lo sólido y sin tapar profundidad.
+    if (decorNet) {
+      gl.enable(gl.BLEND);
+      gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+      gl.depthMask(false);
+      gl.bindTexture(gl.TEXTURE_2D, netTex);
+      draw(decorNet, 2, 0, 0, 0, mx, 1, 1, 1, 1, 1, 1);
+      gl.depthMask(true);
+      gl.disable(gl.BLEND);
     }
     gl.disableVertexAttribArray(U.aNor);
     gl.disableVertexAttribArray(U.aUv);
