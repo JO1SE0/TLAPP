@@ -213,8 +213,10 @@ const DEFAULTS = {
      * siempre, sin un solo gancho de más.
      */
     view3d: false,
-    /** Perspectiva de la vista 3D: dron | tribuna | tv. Se cambia en vivo. */
+    /** Perspectiva de la vista 3D: dron | tribuna | tv | vertical. Se cambia en vivo. */
     view3dCam: 'tribuna',
+    /** Bordes suaves (antialias) en la vista 3D: se ve más prolijo y cuesta ~1/3 del dibujo. */
+    view3dAA: true,
     /** «Modo PC lenta»: apaga de una vez lo visual que cuesta. `lowEndBackup` guarda lo que había para volver. */
     lowEnd: false,
     lowEndBackup: null,

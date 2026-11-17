@@ -76,6 +76,8 @@ const FIELDS = {
   mask: /0!=\(f\.([\w$]+)&c\.([\w$]+)\)&&0!=\(f\.\2&c\.\1\)/g,
   /* Los arcos: la lista (por su nombre en el archivo del estadio) y sus dos puntas. */
   goals: /\(this\.([\w$]+),"goals",/g,
+  /* La cola de carteles del juego («¡GOL!», «En pausa»): con eso se sabe si hay algo que mostrar. */
+  notes: /([\w$]+)\(a\)\{0<this\.([\w$]+)\.length&&this\.\2\[0\]\.[\w$]+\(a,this\.[\w$]+\)\}/g,
   goal: /[\w$]+\.[\w$]+\(a\.p0,Array\);let d=[\w$]+\.[\w$]+\(a\.p1,Array\),e=b\.([\w$]+);e\.x=c\[0\];e\.y=c\[1\];c=b\.([\w$]+);/g
 };
 
@@ -154,6 +156,8 @@ function patch3d(source) {
   const masks = [...source.matchAll(new RegExp(loose(FIELDS.mask).source, 'g'))];
   if (!segs || !seg) return fail('no se encontraron las paredes');
   if (!goals || !goal) return fail('no se encontraron los arcos');
+  const notesQ = [...source.matchAll(new RegExp(loose(FIELDS.notes).source, 'g'))].find((m) => m[1] === tail[5]);
+  if (!notesQ) return fail('no se encontró la cola de carteles');
   if (!masks.length || masks.some((m) => m[1] !== masks[0][1] || m[2] !== masks[0][2])) return fail('no se encontró con qué choca cada cosa');
 
   const [, cv, tp, bp, cam] = hook;
@@ -188,11 +192,14 @@ function patch3d(source) {
     'if(window.__tvm3d){var F=window.__tvm3dF||(window.__tvm3dF={});' +
     'F.r=this;F.room=a;F.game=c;F.world=e;F.me=g;F.pl=f;F.dt=d;F.z=h;F.cv=this.' + cv + ';' +
     'var __ok=!1;try{__ok=window.__tvm3d(F)}catch(__e){__ok=!1}' +
-    'if(__ok){var __o=window.__tvm3dHud;if(__o){var __c=this.c;this.c=__o;try{' +
+    // La capa de carteles se borra y se dibuja SÓLO si hay un cartel (pausa o
+    // aviso en cola) o si había uno en el cuadro anterior: casi siempre, nada.
+    'if(__ok){var __o=window.__tvm3dHud;if(__o){var __n=0<c.' + paused + '||0<this.' + notes + '.' + notesQ[2] + '.length;' +
+    'if(__n||__o.__tvmDirty){var __c=this.c;this.c=__o;try{' +
     '__o.setTransform(1,0,0,1,0,0);__o.clearRect(0,0,__o.canvas.width,__o.canvas.height);' +
-    '__o.translate(this.' + cv + '.width/2,' + tp + '+(this.' + cv + '.height-' + tp + '-' + bp + ')/2);' +
-    'this.' + hud + '(c);0>=c.' + paused + '&&(this.' + notes + '.' + notesStep + '(d),this.' + notes + '.' + notesDraw + '(__o))' +
-    '}catch(__e){}finally{this.c=__c}}' +
+    'if(__n){__o.translate(this.' + cv + '.width/2,' + tp + '+(this.' + cv + '.height-' + tp + '-' + bp + ')/2);' +
+    'this.' + hud + '(c);0>=c.' + paused + '&&(this.' + notes + '.' + notesStep + '(d),this.' + notes + '.' + notesDraw + '(__o))}' +
+    '}catch(__e){}finally{this.c=__c}}__o.__tvmDirty=__n}' +
     'this.' + ug + '.clear();this.' + prune + '(a);return}}';
 
   const at = start + hook.index;

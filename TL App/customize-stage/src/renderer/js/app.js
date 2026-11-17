@@ -4515,6 +4515,22 @@ function renderView3d() {
   });
   host.append(sw);
 
+  const aa = document.createElement('div');
+  aa.className = 'rows__flat';
+  buildSwitches(aa, [{
+    key: 'view3dAA',
+    label: en ? 'Smooth edges' : 'Bordes suaves',
+    description: en
+      ? 'Antialiasing for the 3D view. Looks cleaner; turning it off gives back about a third of what drawing costs.'
+      : 'Antialias de la vista 3D. Se ve más prolijo; apagado devuelve más o menos un tercio de lo que cuesta dibujar.',
+    restart: true,
+    value: () => (state.config.perf || {}).view3dAA !== false
+  }], async (_item, value) => {
+    await patchConfig({ perf: { view3dAA: value } });
+    needsRestart();
+  });
+  host.append(aa);
+
   const cams = document.createElement('div');
   cams.className = 'chips';
   const CAM_LABELS = [

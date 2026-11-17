@@ -8009,7 +8009,7 @@ function installView3d(view) {
   const perf = state.config.perf || {};
   view3dApi = require('./view-3d').install(view, {
     cam: perf.view3dCam,
-    antialias: !perf.lowEnd,
+    antialias: perf.view3dAA !== false && !perf.lowEnd,
     lowLatency: !!perf.lowLatencyCanvas,
     /* ¿La pelota tiene algo del cliente? Entonces la 3D la dibuja con los mismos
        pasos del 2D (y se ve igual); si no, una esfera simple. */

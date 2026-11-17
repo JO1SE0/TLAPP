@@ -131,19 +131,11 @@ function multiply(out, a, b) {
 /* ── Sombreadores ────────────────────────────────────────────────────── */
 const VS = `
 attribute vec3 aPos; attribute vec3 aNor; attribute vec2 aUv;
-uniform mat4 uVP; uniform vec3 uOff; uniform vec3 uScale; uniform float uTime; uniform float uAnim;
+uniform mat4 uVP; uniform vec3 uOff; uniform vec3 uScale;
 varying vec3 vNor; varying vec2 vUv;
 void main() {
   vNor = aNor; vUv = aUv;
-  vec3 p = aPos * uScale + uOff;
-  // El público: cada persona salta a su ritmo (aUv.x es su fase). Lo calcula
-  // la placa: en JavaScript no corre nada por persona.
-  if (uAnim > 0.5 && aUv.y > 1.5) {
-    float ph = aUv.x;
-    float moving = step(0.5, fract(ph * 13.0));
-    p.y += abs(sin(uTime * (2.2 + fract(ph * 7.0) * 2.4) + ph * 6.2832)) * 2.2 * moving;
-  }
-  gl_Position = uVP * vec4(p, 1.0);
+  gl_Position = uVP * vec4(aPos * uScale + uOff, 1.0);
 }`;
 /* uMode: 0 color con luz · 1 textura con luz (tapa de la ficha) · 2 textura sin
    luz (piso) · 3 sombra redonda · 4 color sin luz · 5 color por vértice · 6 aro */
@@ -245,7 +237,7 @@ function stands(side, hx, hy, tiers = STEPS) {
   const a0 = (horiz ? hy : hx) + STAND_GAP;   // distancia del centro al primer escalón
   const l0 = (horiz ? hx : hy) + STAND_GAP;   // medio largo del primer escalón
   const sign = side === 0 || side === 2 ? 1 : -1;
-  // 0 asientos A · 1 asientos B · 2 estructura · 3 público (se anima en la placa)
+  // 0 asientos A · 1 asientos B · 2 estructura · 3 público (quieto: no cuesta nada por cuadro)
   const out = [[], [], [], []];
   // De (a: hacia afuera, y, l: a lo largo) a coordenadas de cancha.
   const P = (a, y, l) => (horiz ? [l, y, sign * a] : [sign * a, y, l]);
@@ -278,11 +270,10 @@ function stands(side, hx, hy, tiers = STEPS) {
       if (isAisle(l) || rnd() < 0.16) continue;
       const shirt = CROWD[Math.floor(rnd() * CROWD.length)];
       const skin = SKIN[Math.floor(rnd() * SKIN.length)];
-      const phase = rnd();
       const k = 0.82 + rnd() * 0.3;
       const bh = 8 * k, bw = 2.8 * k, hs = 1.9 * k;
       const person = (p, rgb) => {
-        for (const j of [0, 1, 2, 0, 2, 3]) out[3].push(p[j][0], p[j][1], p[j][2], rgb[0], rgb[1], rgb[2], phase, 2);
+        for (const j of [0, 1, 2, 0, 2, 3]) out[3].push(p[j][0], p[j][1], p[j][2], rgb[0], rgb[1], rgb[2], 0, 0);
       };
       person([P(am, y, l - bw), P(am, y + bh, l - bw), P(am, y + bh, l + bw), P(am, y, l + bw)], shirt);
       person([P(am - 0.2, y + bh + 0.4, l - hs), P(am - 0.2, y + bh + 0.4 + 2 * hs, l - hs), P(am - 0.2, y + bh + 0.4 + 2 * hs, l + hs), P(am - 0.2, y + bh + 0.4, l + hs)], skin);
@@ -548,10 +539,19 @@ function install(view, opts = {}) {
     if (source) gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, source);
     return t;
   }
-  function upload(t, source) {
+  function upload(t, source, mip) {
     gl.bindTexture(gl.TEXTURE_2D, t);
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, source);
+    /*
+     * Con mipmaps lo lejano se lee de una versión achicada: mucho menos trabajo
+     * para la placa y sin brillitos. WebGL 1 sólo los arma en potencias de 2.
+     */
+    if (mip) {
+      gl.generateMipmap(gl.TEXTURE_2D);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+    }
   }
+  const pow2 = (n) => { let p = 1; while (p < n) p *= 2; return p; };
 
   /* Se arma la primera vez que hay un cuadro: ahí recién existe el canvas del juego. */
   function setup(cv) {
@@ -579,16 +579,16 @@ function install(view, opts = {}) {
 
     prog = program(VS, FS);
     U = {};
-    for (const n of ['uVP', 'uOff', 'uScale', 'uMode', 'uColor', 'uTex', 'uRot', 'uTime', 'uAnim']) U[n] = gl.getUniformLocation(prog, n);
+    for (const n of ['uVP', 'uOff', 'uScale', 'uMode', 'uColor', 'uTex', 'uRot']) U[n] = gl.getUniformLocation(prog, n);
     U.aPos = gl.getAttribLocation(prog, 'aPos');
     U.aNor = gl.getAttribLocation(prog, 'aNor');
     U.aUv = gl.getAttribLocation(prog, 'aUv');
     prog2 = program(VS2, FS2);
     U2 = { uCenter: gl.getUniformLocation(prog2, 'uCenter'), uSize: gl.getUniformLocation(prog2, 'uSize'), uTex: gl.getUniformLocation(prog2, 'uTex'), uDepth: gl.getUniformLocation(prog2, 'uDepth'), uCut: gl.getUniformLocation(prog2, 'uCut'), aPos: gl.getAttribLocation(prog2, 'aPos') };
 
-    mesh.side = buffer(cylinderSide(40));
-    mesh.cap = buffer(cap(40));
-    mesh.ball = buffer(sphere(14, 24));
+    mesh.side = buffer(cylinderSide(28));
+    mesh.cap = buffer(cap(28));
+    mesh.ball = buffer(sphere(12, 20));
     mesh.quad = buffer(quad());
     quad2 = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, quad2);
@@ -608,9 +608,12 @@ function install(view, opts = {}) {
       x.moveTo(0, 1); x.lineTo(32, 1); x.moveTo(1, 0); x.lineTo(1, 32);
       x.moveTo(0, 17); x.lineTo(32, 17); x.moveTo(17, 0); x.lineTo(17, 32);
       x.stroke();
-      netTex = texture(c, true);
+      netTex = texture(null, true);
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT);
+      // Sin mipmaps a propósito: promediada de lejos, la trama se vuelve un velo
+      // gris macizo. Es de 32×32: leerla entera no cuesta nada.
+      upload(netTex, c, false);
     }
 
     // Las capas van pegadas al canvas del juego, que queda en su lugar pero sin verse.
@@ -648,8 +651,9 @@ function install(view, opts = {}) {
     const bx = Math.abs(Number(st[N.boundX]) || 0), by = Math.abs(Number(st[N.boundY]) || 0);
     const hx = Math.max(200, bx) + 140, hy = Math.max(120, by) + 140;
     const maxTex = Math.min(4096, gl.getParameter(gl.MAX_TEXTURE_SIZE) || 4096);
-    const s = Math.min(2, maxTex / (2 * hx), maxTex / (2 * hy));
-    const W = Math.max(2, Math.round(2 * hx * s)), H = Math.max(2, Math.round(2 * hy * s));
+    // Potencias de 2 (para los mipmaps), ~1,5 píxeles por unidad y nunca más de lo que banca la placa.
+    const W = Math.min(maxTex, pow2(Math.round(2 * hx * 1.5))), H = Math.min(maxTex, pow2(Math.round(2 * hy * 1.5)));
+    const sx = W / (2 * hx), sy = H / (2 * hy);
     floorCv.width = W; floorCv.height = H;
     const ctx = floorCv.getContext('2d', { alpha: false });
     const r = F.r;
@@ -657,7 +661,7 @@ function install(view, opts = {}) {
     r.c = ctx;
     r[N.cv] = { width: W, height: H };
     try {
-      ctx.setTransform(s, 0, 0, s, W / 2, H / 2);
+      ctx.setTransform(sx, 0, 0, sy, W / 2, H / 2);
       ctx.lineWidth = 3;
       r[N.drawFloor](st);
       if (typeof view.__tvmSkin === 'function') {
@@ -665,7 +669,7 @@ function install(view, opts = {}) {
         try { view.__tvmSkin(ctx, W, H, st); } catch (e) { /* la piel es un adorno */ }
         ctx.restore();
       }
-      ctx.setTransform(s, 0, 0, s, W / 2, H / 2);
+      ctx.setTransform(sx, 0, 0, sy, W / 2, H / 2);
       ctx.lineWidth = 3;
       r[N.drawWalls](st);
     } finally {
@@ -677,7 +681,7 @@ function install(view, opts = {}) {
       const px = ctx.getImageData(1, 1, 1, 1).data;
       groundRgb = [px[0] / 255, px[1] / 255, px[2] / 255];
     } catch (e) { /* queda el anterior */ }
-    upload(floorTex, floorCv);
+    upload(floorTex, floorCv, true);
     floorX = hx; floorY = hy;
     if (standBufs) for (const side of standBufs) for (const m of side) gl.deleteBuffer(m.b);
     standBufs = [0, 1, 2, 3].map((side) => stands(side, bx || hx - 140, by || hy - 140).map(buffer));
@@ -771,7 +775,7 @@ function install(view, opts = {}) {
         }
       } catch (e) { /* sin lectura: queda lo que hay */ }
     }
-    upload(t.kit, kitCv);
+    upload(t.kit, kitCv, true);
   }
 
   /*
@@ -780,13 +784,17 @@ function install(view, opts = {}) {
    * pega de frente a la cámara. Sólo si hay algo personalizado: si no, va la
    * esfera de siempre, que no cuesta nada.
    */
-  const BALL = 128, BALL_R = 36;
+  const BALL = 64, BALL_R = 18;
+  let ballLastX = NaN, ballLastY = NaN;
   const ballCv = view.document.createElement('canvas');
   ballCv.width = ballCv.height = BALL;
   const ballCtx = ballCv.getContext('2d');
   let ballTex = null;
   function paintBall(d, N) {
     const rad = d[N.radius] || 10, pos = d[N.pos];
+    // Quieta y sin animación: queda la que ya está en la placa.
+    if (ballTex && Math.abs(pos.x - ballLastX) + Math.abs(pos.y - ballLastY) < 0.05 && frameNo % 6 !== 0) return;
+    ballLastX = pos.x; ballLastY = pos.y;
     const k = BALL_R / rad;
     const ctx = ballCtx;
     ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -805,7 +813,7 @@ function install(view, opts = {}) {
     ctx.stroke();
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     if (!ballTex) ballTex = texture(null, true);
-    upload(ballTex, ballCv);
+    upload(ballTex, ballCv, true);
   }
 
   function texturesFor(L, N, d, mine, pl) {
@@ -814,8 +822,8 @@ function install(view, opts = {}) {
     t.seen = frameNo;
     const pat = L[N.pattern], st = L[N.stroke], rad = d[N.radius];
     // Se rehace cuando cambia la camiseta, el borde de la patada o el radio. La
-    // tuya además cada 3 cuadros: los estilos del cliente pueden ser animados.
-    if (pat !== t.kitPat || st !== t.kitStroke || rad !== t.kitRad || (mine && frameNo % 3 === 0)) {
+    // tuya además cada 8 cuadros: los estilos del cliente pueden ser animados.
+    if (pat !== t.kitPat || st !== t.kitStroke || rad !== t.kitRad || (mine && (frameNo & 7) === 0)) {
       paintKit(t, L, N, d, pl, pat !== t.kitPat);
       t.kitPat = pat; t.kitStroke = st; t.kitRad = rad;
     }
@@ -948,8 +956,6 @@ function install(view, opts = {}) {
     gl.enableVertexAttribArray(U.aNor);
     gl.enableVertexAttribArray(U.aUv);
     gl.uniformMatrix4fv(U.uVP, false, vp);
-    gl.uniform1f(U.uTime, (performance.now() % 600000) / 1000);
-    gl.uniform1f(U.uAnim, 0);
     gl.uniform1i(U.uTex, 0);
     gl.activeTexture(gl.TEXTURE0);
     // En espejo se dan vuelta las posiciones y el piso, no las camisetas: igual que
@@ -957,13 +963,17 @@ function install(view, opts = {}) {
     // se giran con la cámara, por lo mismo.
     gl.uniform1f(U.uRot, ox > 0 ? -1 : ox < 0 ? 1 : 0);
 
-    // Piso: primero el suelo de afuera, después la cancha.
-    gl.disable(gl.DEPTH_TEST);
+    /*
+     * Orden de dibujo: de adelante hacia atrás. Primero lo que tapa (fichas,
+     * pelota, estadio), después el piso y el suelo de afuera: la placa
+     * descarta antes de pintarlo todo lo que ya quedó tapado. Lo transparente
+     * (sombras, red, nombres) va al final.
+     */
     gl.disable(gl.CULL_FACE);
     gl.disable(gl.BLEND);
-    draw(mesh.quad, 4, tx, -0.5, tz, D * 6, 1, D * 6, groundRgb[0] * 0.55, groundRgb[1] * 0.55, groundRgb[2] * 0.55, 1);
-    gl.bindTexture(gl.TEXTURE_2D, floorTex);
-    draw(mesh.quad, 2, 0, 0, 0, mx * floorX, 1, floorY, 1, 1, 1, 1);
+    gl.enable(gl.DEPTH_TEST);
+    gl.depthFunc(gl.LEQUAL);
+    gl.depthMask(true);
 
     // Juntar lo que hay en la cancha.
     const discs = world[N.discs] || [];
@@ -975,52 +985,6 @@ function install(view, opts = {}) {
     // Los discos de los jugadores, antes de todo: las sombras y los aros los necesitan.
     const playerSet = playerDiscs;
     for (let i = 0; i < players.length; i++) { const d = players[i][N.disc]; if (d) playerSet.add(d); }
-
-    // Sombras (sobre el piso, debajo de todo lo demás).
-    gl.enable(gl.BLEND);
-    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
-    for (let i = 0; i < discs.length; i++) {
-      const d = discs[i];
-      const rad = d[N.radius];
-      if (!(rad >= 0)) break;
-      const pos = d[N.pos];
-      // Sin color: en 2D es sólo un aro negro fino en el piso. Igual acá, y sin sombra.
-      if (i !== 0 && (d[N.color] | 0) === -1 && !playerSet.has(d)) {
-        draw(mesh.quad, 6, mx * pos.x, 0.4, pos.y, rad + 1.2, 1, rad + 1.2, 0, 0, 0, 0.85);
-        continue;
-      }
-      draw(mesh.quad, 3, mx * pos.x + rad * 0.3, 0.3, pos.y + rad * 0.25, rad * 1.4, 1, rad * 1.4, 0, 0, 0, 0.42);
-    }
-    // Tu aro en el piso: el mismo círculo claro que pone el juego en 2D.
-    if (F.me && F.me[N.pos] && F.me[N.radius] >= 0) {
-      const mp = F.me[N.pos];
-      draw(mesh.quad, 6, mx * mp.x, 0.35, mp.y, 26, 1, 26, 1, 1, 1, 0.38);
-    }
-    gl.disable(gl.BLEND);
-
-    gl.enable(gl.DEPTH_TEST);
-    gl.depthFunc(gl.LEQUAL);
-    gl.depthMask(true);
-
-    // Estadio fijo: paredes que hacen rebotar la pelota, arcos, carteles, torres.
-    if (decorSolid) {
-      draw(decorSolid, 5, 0, 0, 0, mx, 1, 1, 1, 1, 1, 1);
-    }
-    // Tribunas.
-    if (standBufs) {
-      for (let side = 0; side < 4; side++) {
-        // La del lado de la cámara, baja: cierra el estadio sin tapar la cancha.
-        const set = side === behind ? standLow : standBufs;
-        const parts = set[side];
-        for (let k = 0; k < parts.length; k++) {
-          const m = parts[k];
-          if (!m.n) continue;
-          if (k === 3) gl.uniform1f(U.uAnim, 1);
-          draw(m, 5, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1);
-          if (k === 3) gl.uniform1f(U.uAnim, 0);
-        }
-      }
-    }
 
     // Jugadores: disco con la camiseta arriba y el borde de la patada al costado.
     // Todas las tapas a la misma altura (ver CONTACT_Y).
@@ -1109,6 +1073,54 @@ function install(view, opts = {}) {
         draw(jointMesh, 5, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1);
       }
     }
+    // Estadio fijo: paredes que hacen rebotar la pelota, arcos, carteles, torres.
+    if (decorSolid) {
+      draw(decorSolid, 5, 0, 0, 0, mx, 1, 1, 1, 1, 1, 1);
+    }
+    // Tribunas.
+    if (standBufs) {
+      for (let side = 0; side < 4; side++) {
+        // La del lado de la cámara, baja: cierra el estadio sin tapar la cancha.
+        const set = side === behind ? standLow : standBufs;
+        const parts = set[side];
+        for (let k = 0; k < parts.length; k++) {
+          const m = parts[k];
+          if (!m.n) continue;
+          draw(m, 5, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1);
+        }
+      }
+    }
+
+    // Piso: la cancha y después el suelo de afuera (lo tapado no se pinta).
+    gl.bindTexture(gl.TEXTURE_2D, floorTex);
+    draw(mesh.quad, 2, 0, 0, 0, mx * floorX, 1, floorY, 1, 1, 1, 1);
+
+    draw(mesh.quad, 4, tx, -0.5, tz, D * 6, 1, D * 6, groundRgb[0] * 0.55, groundRgb[1] * 0.55, groundRgb[2] * 0.55, 1);
+
+    // Sombras (sobre el piso, debajo de todo lo demás).
+    gl.enable(gl.BLEND);
+    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+    gl.depthMask(false);
+    for (let i = 0; i < discs.length; i++) {
+      const d = discs[i];
+      const rad = d[N.radius];
+      if (!(rad >= 0)) break;
+      const pos = d[N.pos];
+      // Sin color: en 2D es sólo un aro negro fino en el piso. Igual acá, y sin sombra.
+      if (i !== 0 && (d[N.color] | 0) === -1 && !playerSet.has(d)) {
+        draw(mesh.quad, 6, mx * pos.x, 0.4, pos.y, rad + 1.2, 1, rad + 1.2, 0, 0, 0, 0.85);
+        continue;
+      }
+      draw(mesh.quad, 3, mx * pos.x + rad * 0.3, 0.3, pos.y + rad * 0.25, rad * 1.4, 1, rad * 1.4, 0, 0, 0, 0.42);
+    }
+    // Tu aro en el piso: el mismo círculo claro que pone el juego en 2D.
+    if (F.me && F.me[N.pos] && F.me[N.radius] >= 0) {
+      const mp = F.me[N.pos];
+      draw(mesh.quad, 6, mx * mp.x, 0.35, mp.y, 26, 1, 26, 1, 1, 1, 0.38);
+    }
+    gl.depthMask(true);
+    gl.disable(gl.BLEND);
+
     // La red: transparente, después de todo lo sólido y sin tapar profundidad.
     if (decorNet) {
       gl.enable(gl.BLEND);
