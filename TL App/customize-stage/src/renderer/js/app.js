@@ -4520,7 +4520,8 @@ function renderView3d() {
   const CAM_LABELS = [
     ['dron', 'Dron', 'Drone'],
     ['tribuna', 'Tribuna', 'Stand'],
-    ['tv', 'TV', 'TV']
+    ['tv', 'TV', 'TV'],
+    ['vertical', 'Vertical', 'Vertical']
   ];
   for (const [id, es, eng] of CAM_LABELS) {
     const c = document.createElement('button');
@@ -4533,8 +4534,8 @@ function renderView3d() {
   host.append(settingRow({
     label: en ? 'Camera' : 'Cámara',
     description: en
-      ? 'Drone: almost from above. Stand: from the side stand. TV: low, like a broadcast. Changes live.'
-      : 'Dron: casi desde arriba. Tribuna: desde la tribuna. TV: baja, como en la tele. Se cambia en vivo.',
+      ? 'Drone: almost from above. Stand: from the side stand. TV: low, like a broadcast. Vertical: from behind your goal, following your disc (keys do not turn: the key that moves you towards the rival goal is the same as always). Changes live.'
+      : 'Dron: casi desde arriba. Tribuna: desde la tribuna. TV: baja, como en la tele. Vertical: desde atrás de tu arco, siguiendo tu ficha (las teclas no giran: la que te lleva al arco rival es la de siempre). Se cambia en vivo.',
     control: cams
   }));
 }

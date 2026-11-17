@@ -35,18 +35,42 @@
 
 /* Perspectivas. `tilt` es cuánto se inclina la cámara desde la vertical, en
    grados; `dist` corrige la distancia para que entre lo mismo que en 2D.
-   Todas miran desde el lado de abajo de la cancha: así arriba en la pantalla
-   sigue siendo arriba en el teclado. */
+   Dron, Tribuna y TV miran desde el lado de abajo de la cancha: arriba en la
+   pantalla sigue siendo arriba en el teclado. Vertical se para detrás de TU
+   arco, mirando al rival y siguiendo tu ficha (las teclas no giran: para
+   avanzar hacia el arco rival se sigue usando la misma tecla de siempre). */
 const CAMS = {
-  dron: { tilt: 26, dist: 1.0 },
-  tribuna: { tilt: 46, dist: 0.95 },
-  tv: { tilt: 60, dist: 0.82 }
+  dron: { tilt: 24, dist: 1.0 },
+  tribuna: { tilt: 42, dist: 0.95 },
+  tv: { tilt: 55, dist: 0.85 },
+  vertical: { tilt: 52, dist: 0.8, follow: true }
 };
-const FOV = 40 * Math.PI / 180;
+/*
+ * Lente cerrada (como una transmisión de TV, no como un celular). Con 40° los
+ * bordes de la pantalla se estiraban y los ángulos de los pases no se veían
+ * como son; con 28° la cancha casi no se deforma.
+ */
+const FOV = 28 * Math.PI / 180;
 
-/* Alturas, en proporción al radio de cada disco. */
-const PUCK_H = 0.42;
+/*
+ * Altura de contacto, en unidades de cancha.
+ *
+ * El juego decide los choques con CÍRCULOS en el piso. En 3D, lo que el ojo
+ * compara es el borde de la tapa de la ficha con el ecuador de la pelota: si
+ * están a distinta altura, con la cámara inclinada parece que se tocan antes o
+ * después de lo que de verdad pasa. Por eso todas las fichas tienen la tapa a
+ * la misma altura y la pelota tiene el centro justo ahí: así el contacto que se
+ * ve es el mismo que calcula el juego.
+ */
+const CONTACT_Y = 6;
 const POST_H = 1.6;
+
+/* Tribunas: escalones alrededor de la cancha. Diseño propio y genérico. */
+const STEPS = 9;
+const STEP_D = 34;
+const STEP_H = 17;
+const SEAT_A = [0.12, 0.13, 0.17];
+const SEAT_B = [0.55, 0.44, 0.17];
 
 /* ── Matrices (columna mayor, como las quiere WebGL) ─────────────────── */
 function perspective(out, fovy, aspect, near, far) {
@@ -98,7 +122,7 @@ void main() {
 const FS = `
 precision mediump float;
 varying vec3 vNor; varying vec2 vUv;
-uniform int uMode; uniform vec4 uColor; uniform sampler2D uTex; uniform float uFlipU;
+uniform int uMode; uniform vec4 uColor; uniform sampler2D uTex; uniform float uRot;
 const vec3 L = vec3(-0.35, 0.86, 0.38);
 void main() {
   if (uMode == 3) {
@@ -110,7 +134,8 @@ void main() {
   if (uMode == 4) { gl_FragColor = uColor; return; }
   if (uMode == 2) { gl_FragColor = texture2D(uTex, vUv); return; }
   if (uMode == 1) {
-    vec2 uv = vec2(mix(vUv.x, 1.0 - vUv.x, uFlipU), vUv.y);
+    // La camiseta se gira con la cámara para que el número se lea derecho.
+    vec2 uv = uRot > 0.5 ? vec2(vUv.y, 1.0 - vUv.x) : (uRot < -0.5 ? vec2(1.0 - vUv.y, vUv.x) : vUv);
     vec4 t = texture2D(uTex, uv);
     gl_FragColor = vec4(t.rgb * lit, 1.0);
     return;
@@ -162,6 +187,39 @@ function sphere(lat, lon) {
   }
   return new Float32Array(v);
 }
+/*
+ * Tribunas de un lado. `side`: 0 abajo (+z), 1 arriba (-z), 2 derecha (+x),
+ * 3 izquierda (-x). Devuelve dos tandas de escalones (colores alternados).
+ * Los lados de arriba y abajo se estiran hasta las esquinas; los costados no,
+ * para que no se pisen dos caras en el mismo lugar.
+ */
+function stands(side, hx, hy) {
+  const gap = 46;
+  const depth = STEPS * STEP_D;
+  const horiz = side < 2;
+  const a0 = (horiz ? hy : hx) + gap;
+  const lh = horiz ? hx + gap + depth : hy + gap;
+  const sign = side === 0 || side === 2 ? 1 : -1;
+  const out = [[], []];
+  const put = (arr, a, y, l, na, ny) => {
+    const x = horiz ? l : sign * a, z = horiz ? sign * a : l;
+    const nx = horiz ? 0 : sign * na, nz = horiz ? sign * na : 0;
+    arr.push(x, y, z, nx, ny, nz, 0, 0);
+  };
+  const quad = (arr, p) => { for (const k of [0, 1, 2, 0, 2, 3]) put(arr, ...p[k]); };
+  for (let i = 0; i <= STEPS; i++) {
+    const last = i === STEPS;
+    const d0 = a0 + i * STEP_D, d1 = last ? d0 + 16 : d0 + STEP_D;
+    const top = last ? (STEPS * STEP_H + 46) : (i + 1) * STEP_H;
+    const arr = out[last ? 0 : i % 2];
+    // Tapa del escalón.
+    quad(arr, [[d0, top, -lh, 0, 1], [d1, top, -lh, 0, 1], [d1, top, lh, 0, 1], [d0, top, lh, 0, 1]]);
+    // Frente, mirando a la cancha.
+    quad(arr, [[d0, 0, -lh, -1, 0], [d0, top, -lh, -1, 0], [d0, top, lh, -1, 0], [d0, 0, lh, -1, 0]]);
+  }
+  return [new Float32Array(out[0]), new Float32Array(out[1])];
+}
+
 /* Cuadrado en el piso, de -1 a 1, con la v hacia +z (abajo en la pantalla 2D). */
 function quad() {
   return new Float32Array([
@@ -187,6 +245,13 @@ function install(view, opts = {}) {
   /* Piso */
   let floorTex = null, floorFor = null, floorDirty = true, floorX = 0, floorY = 0, groundRgb = [0.18, 0.3, 0.14];
   const floorCv = view.document.createElement('canvas');
+
+  /* Tribunas: por lado, dos tandas de escalones. Se rearman con el piso. */
+  let standBufs = null;
+  /* Cámara que sigue a tu ficha (vista vertical): se suaviza para que no tiemble. */
+  let follow = null;
+  /* Diagnóstico: las primeras camisetas que se suben se revisan una vez. */
+  let kitChecks = 0;
 
   /* Texturas por jugador: datos de dibujo del juego → { kit, kitPat, name, nameStr, seen } */
   const per = new Map();
@@ -257,7 +322,7 @@ function install(view, opts = {}) {
 
     prog = program(VS, FS);
     U = {};
-    for (const n of ['uVP', 'uOff', 'uScale', 'uMode', 'uColor', 'uTex', 'uFlipU']) U[n] = gl.getUniformLocation(prog, n);
+    for (const n of ['uVP', 'uOff', 'uScale', 'uMode', 'uColor', 'uTex', 'uRot']) U[n] = gl.getUniformLocation(prog, n);
     U.aPos = gl.getAttribLocation(prog, 'aPos');
     U.aNor = gl.getAttribLocation(prog, 'aNor');
     U.aUv = gl.getAttribLocation(prog, 'aUv');
@@ -339,6 +404,8 @@ function install(view, opts = {}) {
     } catch (e) { /* queda el anterior */ }
     upload(floorTex, floorCv);
     floorX = hx; floorY = hy;
+    if (standBufs) for (const side of standBufs) for (const m of side) gl.deleteBuffer(m.b);
+    standBufs = [0, 1, 2, 3].map((side) => stands(side, bx || hx, by || hy).map(buffer));
     floorFor = st;
     floorDirty = false;
   }
@@ -360,14 +427,46 @@ function install(view, opts = {}) {
     gl.drawArrays(gl.TRIANGLES, 0, m.n);
   }
 
+  /*
+   * La camiseta sale del PATRÓN con el que el juego pinta la ficha en 2D, no del
+   * canvas de 64×64 de abajo. Es lo mismo que se ve en 2D, incluido lo que pone
+   * el cliente encima (tu avatar con imagen, el GIF, las formas de ficha), que
+   * reemplazan el patrón y no siempre ese canvas. Se rearma sólo cuando el
+   * patrón cambia: casi nunca, y con GIF una vez por cuadro del GIF (64×64).
+   */
+  const kitCv = view.document.createElement('canvas');
+  kitCv.width = kitCv.height = 64;
+  const kitCtx = kitCv.getContext('2d');
+  function paintKit(t, L, N) {
+    const pat = L[N.pattern];
+    kitCtx.setTransform(1, 0, 0, 1, 0, 0);
+    kitCtx.clearRect(0, 0, 64, 64);
+    if (pat) {
+      kitCtx.fillStyle = pat;
+      kitCtx.fillRect(0, 0, 64, 64);
+    } else {
+      const ctx = L[N.tex];
+      if (ctx && ctx.canvas) kitCtx.drawImage(ctx.canvas, 0, 0);
+    }
+    upload(t.kit, kitCv);
+    // Si sale vacía, que quede escrito: es lo primero que hay que mirar.
+    if (kitChecks < 4) {
+      kitChecks++;
+      try {
+        const px = kitCtx.getImageData(0, 0, 64, 64).data;
+        let sum = 0;
+        for (let i = 0; i < px.length; i += 64) sum += px[i] + px[i + 1] + px[i + 2] + px[i + 3];
+        if (sum === 0) log('warn', `vista 3D: la camiseta salió vacía (patrón: ${pat ? 'sí' : 'no'})`);
+      } catch (e) { log('warn', `vista 3D: no se pudo revisar la camiseta (${e && e.message})`); }
+    }
+  }
   function texturesFor(L, N) {
     let t = per.get(L);
     if (!t) { t = { kit: texture(null, false), kitPat: undefined, name: texture(null, true), nameStr: undefined, seen: 0 }; per.set(L, t); }
     t.seen = frameNo;
     const pat = L[N.pattern];
     if (pat !== t.kitPat) {
-      const ctx = L[N.tex];
-      if (ctx && ctx.canvas) upload(t.kit, ctx.canvas);
+      paintKit(t, L, N);
       t.kitPat = pat;
     }
     const nm = L[N.name];
@@ -416,22 +515,53 @@ function install(view, opts = {}) {
     const p = Number(game[N.paused]) > 0;
     if (p !== paused) { paused = p; glCv.style.filter = p ? 'grayscale(70%)' : ''; }
 
-    // Cámara: sigue al mismo punto que la del juego, con su mismo zoom.
-    const cam = CAMS[camName] || CAMS.tribuna;
+    // Cámara.
     const W = glCv.width, H = glCv.height;
     const z = Number(F.z) > 0 ? Number(F.z) : 1.5 * (view.devicePixelRatio || 1);
     const visH = H / z;
+    const gameTarget = r[N.cam] || { x: 0, y: 0 };
+    let cam = CAMS[camName] || CAMS.tribuna;
+    // Dónde se para la cámara respecto del punto que mira (en el piso): por
+    // defecto, del lado de abajo de la cancha.
+    let ox = 0, oz = 1;
+    let tx = mx * gameTarget.x, tz = gameTarget.y;
+    if (cam.follow) {
+      const me = F.me;
+      const team = F.pl && F.pl[N.team];
+      const tid = team ? team[N.teamId] : 0;
+      if (me && (tid === 1 || tid === 2) && me[N.pos]) {
+        // El rojo ataca hacia la derecha y el azul hacia la izquierda: la cámara
+        // se para detrás de tu arco y mira al del rival.
+        const attack = (tid === 1 ? 1 : -1) * mx;
+        ox = -attack; oz = 0;
+        const p = me[N.pos];
+        const gx = mx * p.x + attack * visH * 0.2, gz = p.y;
+        const dt = Math.min(0.1, Math.max(0, Number(F.dt) || 0.016));
+        if (!follow || follow.attack !== attack || Math.abs(follow.x - gx) + Math.abs(follow.z - gz) > 600) {
+          follow = { x: gx, z: gz, attack };
+        } else {
+          const k = 1 - Math.exp(-dt * 9);
+          follow.x += (gx - follow.x) * k;
+          follow.z += (gz - follow.z) * k;
+        }
+        tx = follow.x; tz = follow.z;
+      } else {
+        // Mirando (sin ficha en la cancha): la de la tribuna.
+        cam = CAMS.tribuna;
+        follow = null;
+      }
+    } else follow = null;
     const tilt = cam.tilt * Math.PI / 180;
     const D = (visH / 2) / Math.tan(FOV / 2) * cam.dist;
-    const target = r[N.cam] || { x: 0, y: 0 };
-    const tx = mx * target.x, tz = target.y;
-    const ex = tx, ey = D * Math.cos(tilt), ez = tz + D * Math.sin(tilt);
+    const back = D * Math.sin(tilt);
     perspective(proj, FOV, W / H, D * 0.05, D * 8);
-    lookAt(viewM, ex, ey, ez, tx, 0, tz - D * 0.05 * Math.sin(tilt));
+    lookAt(viewM, tx + ox * back, D * Math.cos(tilt), tz + oz * back, tx, 0, tz);
     multiply(vp, proj, viewM);
+    // La tribuna que queda detrás de la cámara no se dibuja: taparía la cancha.
+    const behind = oz === 1 ? 0 : oz === -1 ? 1 : ox === 1 ? 2 : 3;
 
     gl.viewport(0, 0, W, H);
-    gl.clearColor(groundRgb[0] * 0.6, groundRgb[1] * 0.6, groundRgb[2] * 0.6, 1);
+    gl.clearColor(0.05, 0.06, 0.08, 1);
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
     gl.useProgram(prog);
@@ -443,14 +573,15 @@ function install(view, opts = {}) {
     gl.uniform1i(U.uTex, 0);
     gl.activeTexture(gl.TEXTURE0);
     // En espejo se dan vuelta las posiciones y el piso, no las camisetas: igual que
-    // en 2D, el número tiene que seguir leyéndose derecho.
-    gl.uniform1f(U.uFlipU, 0);
+    // en 2D, el número tiene que seguir leyéndose derecho. En la vista vertical
+    // se giran con la cámara, por lo mismo.
+    gl.uniform1f(U.uRot, ox > 0 ? -1 : ox < 0 ? 1 : 0);
 
     // Piso: primero el suelo de afuera, después la cancha.
     gl.disable(gl.DEPTH_TEST);
     gl.disable(gl.CULL_FACE);
     gl.disable(gl.BLEND);
-    draw(mesh.quad, 4, tx, -0.5, tz, D * 6, 1, D * 6, groundRgb[0] * 0.75, groundRgb[1] * 0.75, groundRgb[2] * 0.75, 1);
+    draw(mesh.quad, 4, tx, -0.5, tz, D * 6, 1, D * 6, groundRgb[0] * 0.55, groundRgb[1] * 0.55, groundRgb[2] * 0.55, 1);
     gl.bindTexture(gl.TEXTURE_2D, floorTex);
     draw(mesh.quad, 2, 0, 0, 0, mx * floorX, 1, floorY, 1, 1, 1, 1);
 
@@ -470,7 +601,7 @@ function install(view, opts = {}) {
       if (!(rad >= 0)) break;
       if ((d[N.color] | 0) === -1 && i !== 0) continue;
       const pos = d[N.pos];
-      draw(mesh.quad, 3, mx * pos.x + rad * 0.35, 0.3, pos.y + rad * 0.3, rad * 1.45, 1, rad * 1.45, 0, 0, 0, 0.45);
+      draw(mesh.quad, 3, mx * pos.x + rad * 0.3, 0.3, pos.y + rad * 0.25, rad * 1.4, 1, rad * 1.4, 0, 0, 0, 0.42);
     }
     gl.disable(gl.BLEND);
 
@@ -478,7 +609,17 @@ function install(view, opts = {}) {
     gl.depthFunc(gl.LEQUAL);
     gl.depthMask(true);
 
+    // Tribunas.
+    if (standBufs) {
+      for (let side = 0; side < 4; side++) {
+        if (side === behind) continue;
+        draw(standBufs[side][0], 0, 0, 0, 0, 1, 1, 1, SEAT_A[0], SEAT_A[1], SEAT_A[2], 1);
+        draw(standBufs[side][1], 0, 0, 0, 0, 1, 1, 1, SEAT_B[0], SEAT_B[1], SEAT_B[2], 1);
+      }
+    }
+
     // Jugadores: disco con la camiseta arriba y el borde de la patada al costado.
+    // Todas las tapas a la misma altura (ver CONTACT_Y).
     for (let i = 0; i < players.length; i++) {
       const pl = players[i];
       const d = pl[N.disc];
@@ -488,14 +629,14 @@ function install(view, opts = {}) {
       const rad = d[N.radius];
       if (!(rad >= 0) || !L) continue;
       const pos = d[N.pos];
-      const x = mx * pos.x, zz = pos.y, h = rad * PUCK_H;
+      const x = mx * pos.x, zz = pos.y;
       const t = texturesFor(L, N);
       const kick = L[N.stroke] === 'white';
       const c = kick ? 0.95 : 0.09;
-      draw(mesh.side, 0, x, 0, zz, rad, h, rad, c, c, c, 1);
+      draw(mesh.side, 0, x, 0, zz, rad, CONTACT_Y, rad, c, c, c, 1);
       gl.bindTexture(gl.TEXTURE_2D, t.kit);
-      draw(mesh.cap, 1, x, 0, zz, rad, h, rad, 1, 1, 1, 1);
-      names.push(t, x, h, zz + rad);
+      draw(mesh.cap, 1, x, 0, zz, rad, CONTACT_Y, rad, 1, 1, 1, 1);
+      names.push(t, x, zz, rad);
     }
 
     // Pelota y discos del estadio (palos y adornos).
@@ -512,9 +653,10 @@ function install(view, opts = {}) {
       const cg = col === -1 ? 1 : ((col >>> 8) & 255) / 255;
       const cb = col === -1 ? 1 : (col & 255) / 255;
       if (i === 0) {
-        draw(mesh.ball, 0, mx * pos.x, rad, pos.y, rad, rad, rad, cr, cg, cb, 1);
+        // El ecuador de la pelota, a la altura de las tapas de las fichas.
+        draw(mesh.ball, 0, mx * pos.x, CONTACT_Y, pos.y, rad, rad, rad, cr, cg, cb, 1);
       } else {
-        const h = Math.max(rad * POST_H, 6);
+        const h = Math.max(rad * POST_H, CONTACT_Y + 4);
         draw(mesh.side, 0, mx * pos.x, 0, pos.y, rad, h, rad, cr * 0.8, cg * 0.8, cb * 0.8, 1);
         draw(mesh.cap, 0, mx * pos.x, 0, pos.y, rad, h, rad, cr, cg, cb, 1);
       }
@@ -522,7 +664,8 @@ function install(view, opts = {}) {
     gl.disableVertexAttribArray(U.aNor);
     gl.disableVertexAttribArray(U.aUv);
 
-    // Nombres: siempre de frente, del mismo tamaño en pantalla que en 2D.
+    // Nombres: siempre de frente y debajo de la ficha en la pantalla, del tamaño
+    // que le toca por la distancia (los de lejos, un poco más chicos).
     if (names.length) {
       gl.disable(gl.DEPTH_TEST);
       gl.enable(gl.BLEND);
@@ -531,12 +674,16 @@ function install(view, opts = {}) {
       gl.bindBuffer(gl.ARRAY_BUFFER, quad2);
       gl.vertexAttribPointer(U2.aPos, 2, gl.FLOAT, false, 0, 0);
       gl.uniform1i(U2.uTex, 0);
-      const sw = (80 * z) / W, sh = (17 * z) / H;
+      const half = H / 2;
       for (let i = 0; i < names.length; i += 4) {
-        if (!project(names[i + 1], names[i + 2], names[i + 3])) continue;
+        if (!project(names[i + 1], CONTACT_Y, names[i + 2])) continue;
         const cx = clip[0] / clip[3], cy = clip[1] / clip[3];
+        // Píxeles por unidad de cancha a esa distancia, acotado para que se lea.
+        const ppu = Math.max(z * 0.7, Math.min(z * 1.3, (proj[5] * half) / clip[3]));
+        const sw = (40 * ppu) / (W / 2), sh = (8.5 * ppu) / half;
+        const down = ((names[i + 3] + 6) * ppu) / half;
         gl.bindTexture(gl.TEXTURE_2D, names[i].name);
-        gl.uniform2f(U2.uCenter, cx, cy - sh * 1.15);
+        gl.uniform2f(U2.uCenter, cx, cy - down - sh);
         gl.uniform2f(U2.uSize, sw, sh);
         gl.drawArrays(gl.TRIANGLES, 0, 6);
       }

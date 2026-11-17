@@ -54,7 +54,10 @@ const FIELDS = {
   tex: /a\.width=64;a\.height=64;this\.(\w+)=a\.getContext\("2d",null\);/g,
   nameCv: /a\.width=160;a\.height=34;this\.(\w+)=a\.getContext\("2d",null\)/g,
   name: /a\.(\w+)!=this\.\1&&\(this\.\1=a\.\1,this\.\w+\(\)\)/g,
-  bounds: /\w+\(a,b,c\)\{a>2\*c\.(\w+)\?this\.\w+\.x=0:[\s\S]*?b>2\*c\.(\w+)\?this\.\w+\.y=0/g
+  bounds: /\w+\(a,b,c\)\{a>2\*c\.(\w+)\?this\.\w+\.x=0:[\s\S]*?b>2\*c\.(\w+)\?this\.\w+\.y=0/g,
+  /* El equipo del jugador y su número (1 rojo, 2 azul): el mismo acceso aparece
+     dos veces, idéntico, al elegir la camiseta. */
+  team: /\?b\.\w+\[a\.(\w+)\.(\w+)\]:a\.\1\.\w+/g
 };
 
 /**
@@ -118,6 +121,8 @@ function patch3d(source) {
   const name = one(source, FIELDS.name);
   const bounds = one(source, FIELDS.bounds);
   if (!disc || !fill || !tex || !nameCv || !name || !bounds) return fail('faltan campos de discos o jugadores');
+  const teams = [...source.matchAll(new RegExp(loose(FIELDS.team).source, 'g'))];
+  if (!teams.length || teams.some((m) => m[1] !== teams[0][1] || m[2] !== teams[0][2])) return fail('no se encontró el equipo del jugador');
 
   const [, cv, tp, bp, cam] = hook;
   const N = {
@@ -132,6 +137,7 @@ function patch3d(source) {
     tex: tex[1], nameCv: nameCv[1], name: name[1],
     boundX: bounds[1], boundY: bounds[2],
     paused: tail[2],
+    team: teams[0][1], teamId: teams[0][2],
     cv
   };
   const [, hud, paused, notes, notesStep, notesDraw, ug, prune] = tail;
@@ -144,7 +150,7 @@ function patch3d(source) {
    */
   const inject =
     'if(window.__tvm3d){var F=window.__tvm3dF||(window.__tvm3dF={});' +
-    'F.r=this;F.room=a;F.game=c;F.world=e;F.me=g;F.dt=d;F.z=h;F.cv=this.' + cv + ';' +
+    'F.r=this;F.room=a;F.game=c;F.world=e;F.me=g;F.pl=f;F.dt=d;F.z=h;F.cv=this.' + cv + ';' +
     'var __ok=!1;try{__ok=window.__tvm3d(F)}catch(__e){__ok=!1}' +
     'if(__ok){var __o=window.__tvm3dHud;if(__o){var __c=this.c;this.c=__o;try{' +
     '__o.setTransform(1,0,0,1,0,0);__o.clearRect(0,0,__o.canvas.width,__o.canvas.height);' +
