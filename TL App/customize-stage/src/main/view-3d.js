@@ -126,7 +126,7 @@ void main() {
   gl_Position = uVP * vec4(aPos * uScale + uOff, 1.0);
 }`;
 /* uMode: 0 color con luz · 1 textura con luz (tapa de la ficha) · 2 textura sin
-   luz (piso) · 3 sombra redonda · 4 color sin luz · 5 color por vértice (uniones) */
+   luz (piso) · 3 sombra redonda · 4 color sin luz · 5 color por vértice · 6 aro */
 const FS = `
 precision mediump float;
 varying vec3 vNor; varying vec2 vUv;
@@ -142,10 +142,21 @@ void main() {
   if (uMode == 4) { gl_FragColor = uColor; return; }
   if (uMode == 5) { gl_FragColor = vec4(vNor, 1.0); return; }
   if (uMode == 2) { gl_FragColor = texture2D(uTex, vUv); return; }
+  if (uMode == 6) {
+    // Aro en el piso (el tuyo): un anillo suave.
+    float d = length(vUv - 0.5) * 2.0;
+    float a = smoothstep(0.78, 0.86, d) * (1.0 - smoothstep(0.94, 1.0, d));
+    gl_FragColor = vec4(uColor.rgb, uColor.a * a);
+    return;
+  }
   if (uMode == 1) {
+    // La tapa es el MISMO dibujo de la ficha que hace el 2D (camiseta, avatar,
+    // estilo y contorno), un poco más grande que el disco para que entre el
+    // contorno. Lo que queda afuera del dibujo no se pinta.
     // La camiseta se gira con la cámara para que el número se lea derecho.
     vec2 uv = uRot > 0.5 ? vec2(vUv.y, 1.0 - vUv.x) : (uRot < -0.5 ? vec2(1.0 - vUv.y, vUv.x) : vUv);
     vec4 t = texture2D(uTex, uv);
+    if (t.a < 0.5) discard;
     gl_FragColor = vec4(t.rgb * lit, 1.0);
     return;
   }
@@ -153,11 +164,13 @@ void main() {
 }`;
 /* Nombres: un rectángulo en coordenadas de pantalla, siempre de frente. */
 const VS2 = `
-attribute vec2 aPos; uniform vec2 uCenter; uniform vec2 uSize; varying vec2 vUv;
-void main() { vUv = vec2(aPos.x * 0.5 + 0.5, 0.5 - aPos.y * 0.5); gl_Position = vec4(uCenter + aPos * uSize, 0.0, 1.0); }`;
+attribute vec2 aPos; uniform vec2 uCenter; uniform vec2 uSize; uniform float uDepth; varying vec2 vUv;
+void main() { vUv = vec2(aPos.x * 0.5 + 0.5, 0.5 - aPos.y * 0.5); gl_Position = vec4(uCenter + aPos * uSize, uDepth, 1.0); }`;
+/* Nombres y la pelota del cliente. La pelota se recorta por su silueta para
+   que las fichas que pasan adelante la tapen bien. */
 const FS2 = `
-precision mediump float; varying vec2 vUv; uniform sampler2D uTex;
-void main() { gl_FragColor = texture2D(uTex, vUv); }`;
+precision mediump float; varying vec2 vUv; uniform sampler2D uTex; uniform float uCut;
+void main() { vec4 t = texture2D(uTex, vUv); if (t.a < uCut) discard; gl_FragColor = t; }`;
 
 /* ── Mallas (en espacio local: radio 1, alto 1) ──────────────────────── */
 function cylinderSide(seg) {
@@ -515,7 +528,7 @@ function install(view, opts = {}) {
     U.aNor = gl.getAttribLocation(prog, 'aNor');
     U.aUv = gl.getAttribLocation(prog, 'aUv');
     prog2 = program(VS2, FS2);
-    U2 = { uCenter: gl.getUniformLocation(prog2, 'uCenter'), uSize: gl.getUniformLocation(prog2, 'uSize'), uTex: gl.getUniformLocation(prog2, 'uTex'), aPos: gl.getAttribLocation(prog2, 'aPos') };
+    U2 = { uCenter: gl.getUniformLocation(prog2, 'uCenter'), uSize: gl.getUniformLocation(prog2, 'uSize'), uTex: gl.getUniformLocation(prog2, 'uTex'), uDepth: gl.getUniformLocation(prog2, 'uDepth'), uCut: gl.getUniformLocation(prog2, 'uCut'), aPos: gl.getAttribLocation(prog2, 'aPos') };
 
     mesh.side = buffer(cylinderSide(40));
     mesh.cap = buffer(cap(40));
@@ -638,46 +651,102 @@ function install(view, opts = {}) {
   }
 
   /*
-   * La camiseta sale del PATRÓN con el que el juego pinta la ficha en 2D, no del
-   * canvas de 64×64 de abajo. Es lo mismo que se ve en 2D, incluido lo que pone
-   * el cliente encima (tu avatar con imagen, el GIF, las formas de ficha), que
-   * reemplazan el patrón y no siempre ese canvas. Se rearma sólo cuando el
-   * patrón cambia: casi nunca, y con GIF una vez por cuadro del GIF (64×64).
+   * La tapa de la ficha: los MISMOS pasos con los que el juego dibuja la ficha
+   * en 2D (relleno con su camiseta, círculo, contorno), hechos sobre un canvas
+   * chico del documento del juego. Así se enganchan solos todos los ajustes del
+   * cliente que actúan sobre ese dibujo —avatar con imagen, GIF, formas y
+   * estilos de ficha, contornos, gráficos planos— y lo que ves en 3D es lo
+   * mismo que verías en 2D, sin copiar a mano cada ajuste.
+   *
+   * El disco ocupa KIT_R de los KIT/2 píxeles: el resto es margen para el
+   * contorno, y la tapa en 3D se agranda en esa misma proporción.
    */
+  const KIT = 128, KIT_R = 50;
+  const KIT_SCALE = (KIT / 2) / KIT_R;
   const kitCv = view.document.createElement('canvas');
-  kitCv.width = kitCv.height = 64;
+  kitCv.width = kitCv.height = KIT;
   const kitCtx = kitCv.getContext('2d');
-  function paintKit(t, L, N) {
-    const pat = L[N.pattern];
-    kitCtx.setTransform(1, 0, 0, 1, 0, 0);
-    kitCtx.clearRect(0, 0, 64, 64);
-    if (pat) {
-      kitCtx.fillStyle = pat;
-      kitCtx.fillRect(0, 0, 64, 64);
-    } else {
-      const ctx = L[N.tex];
-      if (ctx && ctx.canvas) kitCtx.drawImage(ctx.canvas, 0, 0);
-    }
+  function paintKit(t, L, N, d) {
+    const rad = d[N.radius] || 15, pos = d[N.pos];
+    const k = KIT_R / rad;
+    const ctx = kitCtx;
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, KIT, KIT);
+    // Coordenadas de cancha, igual que el juego: hay ajustes que miran dónde está la ficha.
+    ctx.setTransform(k, 0, 0, k, KIT / 2 - k * pos.x, KIT / 2 - k * pos.y);
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.fillStyle = L[N.pattern] || '#888';
+    ctx.strokeStyle = L[N.stroke] || 'black';
+    ctx.beginPath();
+    ctx.arc(pos.x, pos.y, rad, 0, 2 * Math.PI, false);
+    ctx.save();
+    const sc = rad / 32;
+    ctx.translate(pos.x, pos.y);
+    ctx.scale(sc, sc);
+    ctx.translate(-32, -32);
+    ctx.fill();
+    ctx.restore();
+    ctx.stroke();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
     upload(t.kit, kitCv);
     // Si sale vacía, que quede escrito: es lo primero que hay que mirar.
     if (kitChecks < 4) {
       kitChecks++;
       try {
-        const px = kitCtx.getImageData(0, 0, 64, 64).data;
-        let sum = 0;
-        for (let i = 0; i < px.length; i += 64) sum += px[i] + px[i + 1] + px[i + 2] + px[i + 3];
-        if (sum === 0) log('warn', `vista 3D: la camiseta salió vacía (patrón: ${pat ? 'sí' : 'no'})`);
-      } catch (e) { log('warn', `vista 3D: no se pudo revisar la camiseta (${e && e.message})`); }
+        const px = ctx.getImageData(KIT / 2 - 8, KIT / 2 - 8, 16, 16).data;
+        let lum = 0, alpha = 0;
+        for (let i = 0; i < px.length; i += 4) { lum += px[i] + px[i + 1] + px[i + 2]; alpha += px[i + 3]; }
+        if (!alpha) log('warn', 'vista 3D: la ficha salió vacía');
+        else if (!lum) log('warn', 'vista 3D: la ficha salió negra en el centro');
+      } catch (e) { log('warn', `vista 3D: no se pudo revisar la ficha (${e && e.message})`); }
     }
   }
-  function texturesFor(L, N) {
+
+  /*
+   * La pelota del cliente, igual: los pasos del 2D (color, círculo, el gancho
+   * de la pelota del cliente y el contorno) en un canvas propio, que después se
+   * pega de frente a la cámara. Sólo si hay algo personalizado: si no, va la
+   * esfera de siempre, que no cuesta nada.
+   */
+  const BALL = 128, BALL_R = 36;
+  const ballCv = view.document.createElement('canvas');
+  ballCv.width = ballCv.height = BALL;
+  const ballCtx = ballCv.getContext('2d');
+  let ballTex = null;
+  function paintBall(d, N) {
+    const rad = d[N.radius] || 10, pos = d[N.pos];
+    const k = BALL_R / rad;
+    const ctx = ballCtx;
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, BALL, BALL);
+    ctx.setTransform(k, 0, 0, k, BALL / 2 - k * pos.x, BALL / 2 - k * pos.y);
+    ctx.lineWidth = 2;
+    const col = d[N.color] | 0;
+    ctx.beginPath();
+    ctx.fillStyle = col === -1 ? 'rgba(255,255,255,255)' : `rgba(${(col >>> 16) & 255},${(col >>> 8) & 255},${col & 255},255)`;
+    ctx.strokeStyle = 'black';
+    ctx.beginPath();
+    ctx.arc(pos.x, pos.y, rad, 0, 2 * Math.PI, false);
+    let done = false;
+    try { done = typeof view.__tvmBall === 'function' && !!view.__tvmBall(ctx, pos.x, pos.y, rad, 0); } catch (e) { done = false; }
+    if (!done && col !== -1) ctx.fill();
+    ctx.stroke();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    if (!ballTex) ballTex = texture(null, true);
+    upload(ballTex, ballCv);
+  }
+
+  function texturesFor(L, N, d, mine) {
     let t = per.get(L);
-    if (!t) { t = { kit: texture(null, false), kitPat: undefined, name: texture(null, true), nameStr: undefined, seen: 0 }; per.set(L, t); }
+    if (!t) { t = { kit: texture(null, true), kitPat: undefined, kitStroke: undefined, kitRad: 0, name: texture(null, true), nameStr: undefined, seen: 0 }; per.set(L, t); }
     t.seen = frameNo;
-    const pat = L[N.pattern];
-    if (pat !== t.kitPat) {
-      paintKit(t, L, N);
-      t.kitPat = pat;
+    const pat = L[N.pattern], st = L[N.stroke], rad = d[N.radius];
+    // Se rehace cuando cambia la camiseta, el borde de la patada o el radio. La
+    // tuya además cada 3 cuadros: los estilos del cliente pueden ser animados.
+    if (pat !== t.kitPat || st !== t.kitStroke || rad !== t.kitRad || (mine && frameNo % 3 === 0)) {
+      paintKit(t, L, N, d);
+      t.kitPat = pat; t.kitStroke = st; t.kitRad = rad;
     }
     const nm = L[N.name];
     if (nm !== t.nameStr) {
@@ -700,6 +769,7 @@ function install(view, opts = {}) {
     const m = vp;
     clip[0] = m[0] * x + m[4] * y + m[8] * z + m[12];
     clip[1] = m[1] * x + m[5] * y + m[9] * z + m[13];
+    clip[2] = m[2] * x + m[6] * y + m[10] * z + m[14];
     clip[3] = m[3] * x + m[7] * y + m[11] * z + m[15];
     return clip[3] > 0;
   }
@@ -734,35 +804,60 @@ function install(view, opts = {}) {
     // Dónde se para la cámara respecto del punto que mira (en el piso): por
     // defecto, del lado de abajo de la cancha.
     let ox = 0, oz = 1;
-    let tx = mx * gameTarget.x, tz = gameTarget.y;
+    /*
+     * La cámara es propia y suave, a propósito.
+     *
+     * La del juego sigue a las posiciones EXTRAPOLADAS: con extrapolación alta,
+     * cada tecla que tocás mueve tu ficha (y la cámara) al toque y después se
+     * corrige, y en 3D eso se nota como tirones. Acá se mira lo mismo que mira
+     * HaxBall —la pelota y tu ficha, sin que tu ficha se salga de cuadro— pero
+     * el punto se persigue con un filtro de ~0,4 s: se mueve fluido y no
+     * responde a cada toque de tecla ni a cada corrección de la red.
+     */
+    const discsNow = world[N.discs] || [];
+    const ballD = discsNow[0];
+    const bp = ballD && ballD[N.pos];
+    const me = F.me && F.me[N.pos] ? F.me : null;
+    const mp = me ? me[N.pos] : null;
+    let gx, gz, attack = 0;
     if (cam.follow) {
-      const me = F.me;
       const team = F.pl && F.pl[N.team];
       const tid = team ? team[N.teamId] : 0;
-      if (me && (tid === 1 || tid === 2) && me[N.pos]) {
+      if (mp && (tid === 1 || tid === 2)) {
         // El rojo ataca hacia la derecha y el azul hacia la izquierda: la cámara
         // se para detrás de tu arco y mira al del rival.
-        const attack = (tid === 1 ? 1 : -1) * mx;
+        attack = (tid === 1 ? 1 : -1) * mx;
         ox = -attack; oz = 0;
         setRot(attack > 0 ? ROT_POS : ROT_NEG);
-        const p = me[N.pos];
-        const gx = mx * p.x + attack * visH * 0.2, gz = p.y;
-        const dt = Math.min(0.1, Math.max(0, Number(F.dt) || 0.016));
-        if (!follow || follow.attack !== attack || Math.abs(follow.x - gx) + Math.abs(follow.z - gz) > 600) {
-          follow = { x: gx, z: gz, attack };
-        } else {
-          const k = 1 - Math.exp(-dt * 9);
-          follow.x += (gx - follow.x) * k;
-          follow.z += (gz - follow.z) * k;
-        }
-        tx = follow.x; tz = follow.z;
       } else {
         // Mirando (sin ficha en la cancha): la de la tribuna.
         cam = CAMS.tribuna;
-        follow = null;
         setRot(null);
       }
-    } else { follow = null; setRot(null); }
+    } else setRot(null);
+    if (bp && mp) {
+      // Como HaxBall: el medio entre la pelota y vos, pero sin dejarte afuera.
+      gx = mx * (bp.x + mp.x) / 2; gz = (bp.y + mp.y) / 2;
+      const lim = visH * 0.3;
+      const mxp = mx * mp.x;
+      if (gx - mxp > lim) gx = mxp + lim; else if (mxp - gx > lim) gx = mxp - lim;
+      if (gz - mp.y > lim) gz = mp.y + lim; else if (mp.y - gz > lim) gz = mp.y - lim;
+    } else if (bp) {
+      gx = mx * bp.x; gz = bp.y;
+    } else {
+      gx = mx * gameTarget.x; gz = gameTarget.y;
+    }
+    // En la vertical se mira un poco más adelante, hacia el arco rival.
+    if (attack) gx += attack * visH * 0.12;
+    const dt = Math.min(0.1, Math.max(0, Number(F.dt) || 0.016));
+    if (!follow || follow.cam !== camName || follow.attack !== attack || Math.abs(follow.x - gx) + Math.abs(follow.z - gz) > 2500) {
+      follow = { x: gx, z: gz, cam: camName, attack };
+    } else {
+      const kf = 1 - Math.exp(-dt * 2.6);
+      follow.x += (gx - follow.x) * kf;
+      follow.z += (gz - follow.z) * kf;
+    }
+    const tx = follow.x, tz = follow.z;
     const tilt = cam.tilt * Math.PI / 180;
     const D = (visH / 2) / Math.tan(FOV / 2) * cam.dist;
     const back = D * Math.sin(tilt);
@@ -803,6 +898,7 @@ function install(view, opts = {}) {
     const map = r[N.draw];
     playerDiscs.clear();
     names.length = 0;
+    let ballSprite = null;
 
     // Sombras (sobre el piso, debajo de todo lo demás).
     gl.enable(gl.BLEND);
@@ -813,6 +909,11 @@ function install(view, opts = {}) {
       if (!(rad >= 0)) break;
       const pos = d[N.pos];
       draw(mesh.quad, 3, mx * pos.x + rad * 0.3, 0.3, pos.y + rad * 0.25, rad * 1.4, 1, rad * 1.4, 0, 0, 0, 0.42);
+    }
+    // Tu aro en el piso: el mismo círculo claro que pone el juego en 2D.
+    if (F.me && F.me[N.pos] && F.me[N.radius] >= 0) {
+      const mp = F.me[N.pos];
+      draw(mesh.quad, 6, mx * mp.x, 0.35, mp.y, 26, 1, 26, 1, 1, 1, 0.38);
     }
     gl.disable(gl.BLEND);
 
@@ -845,12 +946,14 @@ function install(view, opts = {}) {
       if (!(rad >= 0) || !L) continue;
       const pos = d[N.pos];
       const x = mx * pos.x, zz = pos.y;
-      const t = texturesFor(L, N);
+      const mine = d === F.me;
+      const t = texturesFor(L, N, d, mine);
       const kick = L[N.stroke] === 'white';
       const c = kick ? 0.95 : 0.09;
       draw(mesh.side, 0, x, 0, zz, rad, CONTACT_Y, rad, c, c, c, 1);
       gl.bindTexture(gl.TEXTURE_2D, t.kit);
-      draw(mesh.cap, 1, x, 0, zz, rad, CONTACT_Y, rad, 1, 1, 1, 1);
+      // La tapa un poco más grande: el dibujo trae su contorno alrededor.
+      draw(mesh.cap, 1, x, 0.02, zz, rad * KIT_SCALE, CONTACT_Y, rad * KIT_SCALE, 1, 1, 1, 1);
       names.push(t, x, zz, rad);
     }
 
@@ -873,6 +976,10 @@ function install(view, opts = {}) {
       const cg = col === -1 ? 1 : ((col >>> 8) & 255) / 255;
       const cb = col === -1 ? 1 : (col & 255) / 255;
       if (i === 0) {
+        // La del cliente (estilo, color, imagen, tamaño…) va de frente más abajo.
+        let custom = false;
+        try { custom = typeof opts.ballCustom === 'function' && !!opts.ballCustom(); } catch (e) { custom = false; }
+        if (custom) { paintBall(d, N); ballSprite = d; continue; }
         // El ecuador de la pelota, a la altura de las tapas de las fichas.
         draw(mesh.ball, 0, mx * pos.x, CONTACT_Y, pos.y, rad, rad, rad, cr, cg, cb, 1);
       } else {
@@ -930,17 +1037,37 @@ function install(view, opts = {}) {
     gl.disableVertexAttribArray(U.aNor);
     gl.disableVertexAttribArray(U.aUv);
 
+    // La pelota del cliente: de frente, con profundidad (la tapan las fichas que
+    // pasan adelante) y recortada por su silueta.
+    const half = H / 2;
+    if (ballSprite || names.length) {
+      gl.useProgram(prog2);
+      gl.bindBuffer(gl.ARRAY_BUFFER, quad2);
+      gl.vertexAttribPointer(U2.aPos, 2, gl.FLOAT, false, 0, 0);
+      gl.uniform1i(U2.uTex, 0);
+    }
+    if (ballSprite) {
+      const pos = ballSprite[N.pos], rad = ballSprite[N.radius];
+      if (project(mx * pos.x, CONTACT_Y, pos.y)) {
+        const ppu = (proj[5] * half) / clip[3];
+        const size = rad * ((BALL / 2) / BALL_R) * ppu;
+        gl.enable(gl.DEPTH_TEST);
+        gl.uniform1f(U2.uDepth, Math.max(-1, Math.min(1, clip[2] / clip[3])));
+        gl.uniform1f(U2.uCut, 0.5);
+        gl.bindTexture(gl.TEXTURE_2D, ballTex);
+        gl.uniform2f(U2.uCenter, clip[0] / clip[3], clip[1] / clip[3]);
+        gl.uniform2f(U2.uSize, size / (W / 2), size / half);
+        gl.drawArrays(gl.TRIANGLES, 0, 6);
+      }
+    }
     // Nombres: siempre de frente y debajo de la ficha en la pantalla, del tamaño
     // que le toca por la distancia (los de lejos, un poco más chicos).
     if (names.length) {
       gl.disable(gl.DEPTH_TEST);
       gl.enable(gl.BLEND);
       gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
-      gl.useProgram(prog2);
-      gl.bindBuffer(gl.ARRAY_BUFFER, quad2);
-      gl.vertexAttribPointer(U2.aPos, 2, gl.FLOAT, false, 0, 0);
-      gl.uniform1i(U2.uTex, 0);
-      const half = H / 2;
+      gl.uniform1f(U2.uDepth, 0);
+      gl.uniform1f(U2.uCut, 0.004);
       for (let i = 0; i < names.length; i += 4) {
         if (!project(names[i + 1], CONTACT_Y, names[i + 2])) continue;
         const cx = clip[0] / clip[3], cy = clip[1] / clip[3];

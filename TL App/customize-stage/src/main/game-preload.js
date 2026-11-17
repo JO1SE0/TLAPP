@@ -8011,6 +8011,10 @@ function installView3d(view) {
     cam: perf.view3dCam,
     antialias: !perf.lowEnd,
     lowLatency: !!perf.lowLatencyCanvas,
+    /* ¿La pelota tiene algo del cliente? Entonces la 3D la dibuja con los mismos
+       pasos del 2D (y se ve igual); si no, una esfera simple. */
+    ballCustom: () => !!(ballImage || ballGifOn() || (state.config.pitch && state.config.pitch.ball3d) ||
+      visual.ballStyle !== 'default' || visual.ballColor || visual.ballOutline || visual.ballSize !== 1 || visual.lines),
     log: (level, message) => log(level, message, 'juego')
   });
 }
