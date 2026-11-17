@@ -968,33 +968,34 @@ const GAME_BUNDLE_HOST = 'game-bundle';
 let patchedBundles = new Map();
 
 /*
- * Vista 3D: se decide UNA vez, al arrancar. Apagada (lo de fábrica), el juego
- * se sirve exactamente como siempre y esto no hace nada. Prendida, al juego ya
- * parcheado se le suma el enganche de view-3d-patch.js; si no encaja, se sirve
- * igual sin él y queda en 2D.
+ * Vista 3D y vista vertical (2D): sus enganches van SIEMPRE en el juego
+ * servido, dormidos, para poder prenderlas y apagarlas en vivo sin reiniciar.
+ * Las despierta el preload según el ajuste (`window.__tvm3d` y
+ * `window.__tvmVertOn`). Dormidos, sólo quedan comprobaciones de «¿está
+ * prendida?» por cuadro, como las del modo espejo: sin costo medible.
+ *
+ * Primero la 3D y después la vertical: la vertical se engancha alrededor del
+ * centro de la pantalla, que la 3D deja intacto. Si alguno no encaja, el juego
+ * se sirve sin él y esa vista simplemente no aparece.
  */
-const VIEW3D = (() => { try { return !!store.get().perf.view3d; } catch { return false; } })();
-/* Vista vertical en 2D: misma idea, también se decide al arrancar. Con la 3D prendida no hace falta. */
-const VERTICAL = !VIEW3D && (() => { try { return !!store.get().perf.vertical; } catch { return false; } })();
-const verticalBundles = new Map();
-function verticalBody(url, body) {
-  if (!VERTICAL || !body) return body;
-  const hit = verticalBundles.get(url);
+const viewBundles = new Map();
+function viewsBody(url, body) {
+  if (!body) return body;
+  const hit = viewBundles.get(url);
   if (hit && hit.from === body) return hit.out;
-  const res = require('./vertical-patch').patchVertical(body);
-  logToApp(res.applied ? 'info' : 'warn', res.applied ? 'vista vertical enganchada al juego' : `vista vertical sin enganchar (${res.reason}): sigue horizontal`);
-  verticalBundles.set(url, { from: body, out: res.source });
-  return res.source;
-}
-const view3dBundles = new Map();
-function view3dBody(url, body) {
-  if (!VIEW3D || !body) return body;
-  const hit = view3dBundles.get(url);
-  if (hit && hit.from === body) return hit.out;
-  const res = require('./view-3d-patch').patch3d(body);
-  logToApp(res.applied ? 'info' : 'warn', res.applied ? 'vista 3D enganchada al juego' : `vista 3D sin enganchar (${res.reason}): sigue en 2D`);
-  view3dBundles.set(url, { from: body, out: res.source });
-  return res.source;
+  let out = body;
+  try {
+    const r3 = require('./view-3d-patch').patch3d(out);
+    logToApp(r3.applied ? 'info' : 'warn', r3.applied ? 'vista 3D enganchada al juego' : `vista 3D sin enganchar (${r3.reason})`);
+    out = r3.source;
+  } catch (err) { logToApp('warn', `vista 3D sin enganchar (${err.message})`); }
+  try {
+    const rv = require('./vertical-patch').patchVertical(out);
+    logToApp(rv.applied ? 'info' : 'warn', rv.applied ? 'vista vertical enganchada al juego' : `vista vertical sin enganchar (${rv.reason})`);
+    out = rv.source;
+  } catch (err) { logToApp('warn', `vista vertical sin enganchar (${err.message})`); }
+  viewBundles.set(url, { from: body, out });
+  return out;
 }
 /** URLs que ya se están bajando, para no pedirlas dos veces. */
 const bundlesInFlight = new Set();
@@ -1232,7 +1233,7 @@ function registerAssetProtocol(partition) {
 
     if (kind === GAME_BUNDLE_HOST) {
       const original = parsed.searchParams.get('u') || '';
-      const body = view3dBody(original, verticalBody(original, patchedBundles.get(original)));
+      const body = viewsBody(original, patchedBundles.get(original));
       // Si no está, algo se desincronizó: que falle y el juego lo pida de nuevo
       // a haxball.com, en vez de servir un cuerpo vacío que lo rompería.
       if (!body) return notFound();
@@ -3855,8 +3856,6 @@ listen('game:bootstrap', (e) => {
       // El refresco real del monitor: con eso el preload calcula solo su ritmo de
       // cuadros cuando están desbloqueados, sin pedirle nada al jugador.
       displayHz: displayHz(),
-      // Si el juego que se sirve trae el enganche 3D (se decide al arrancar).
-      view3d: VIEW3D,
       // En desarrollo se dan por activos los cosméticos VIP, para poder probarlos
       // sin depender de que el sitio de verificación esté en línea.
       devMode: isDev

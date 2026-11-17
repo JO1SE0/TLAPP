@@ -1247,8 +1247,8 @@ function onNewGameDocument(doc) {
   installFrameLimiter(doc.defaultView);
   // El motor de estadísticas se cuelga del estado que publica el parche.
   installTracking(doc.defaultView);
-  // Vista 3D: sólo si estaba prendida al arrancar. Apagada, ni se carga el archivo.
-  if (state.view3d) safe(installView3d, doc.defaultView);
+  // Vistas de la cancha (3D y vertical): según el ajuste, y en vivo de acá en adelante.
+  safe(applyViews, doc.defaultView);
   /*
    * Los ganchos del canvas, antes de que se dibuje el primer cuadro.
    *
@@ -7997,12 +7997,32 @@ function flushStadiumCache(view) {
 }
 
 /*
- * Vista 3D (ver view-3d.js y view-3d-patch.js). Se instala una vez por
- * ventana del juego, y sólo con `state.view3d`. Lo único que se toca en vivo
- * es la perspectiva; prenderla o apagarla pide reiniciar.
+ * Vistas de la cancha, en vivo y sin reiniciar.
+ *
+ * Los enganches de las dos van siempre en el juego servido, dormidos (ver
+ * viewsBody en main.js). Acá se despiertan o se duermen cada vez que cambia el
+ * ajuste:
+ *  · 3D (view-3d.js): se arma al prenderla; al apagarla se desarma entera
+ *    (canvas, texturas, flechas) y vuelve a verse el 2D. Apagada, ni se carga.
+ *  · Vertical (vertical-patch.js): una bandera, `__tvmVertOn`. Con la 3D
+ *    prendida no se usa: la 3D tiene su propia cámara Vertical.
  */
 let view3dApi = null;
 let view3dView = null;
+function applyViews(view) {
+  if (!view) return;
+  const perf = state.config.perf || {};
+  const want3d = !!perf.view3d;
+  if (want3d && (!view3dApi || view3dView !== view)) installView3d(view);
+  if (!want3d && view3dApi) {
+    try { view3dApi.dispose(); } catch (e) { /* ya estaba desarmada */ }
+    view3dApi = null;
+    view3dView = null;
+  }
+  if (view3dApi) view3dApi.setCam(perf.view3dCam);
+  // La vertical: el juego la lee en el próximo cuadro y reacomoda las flechas solo.
+  view.__tvmVertOn = !!perf.vertical && !want3d;
+}
 function installView3d(view) {
   if (!view || view3dView === view) return;
   view3dView = view;
@@ -13210,9 +13230,6 @@ function boot() {
     const res = ipcRenderer.sendSync('game:bootstrap');
     if (!res || !res.ok) throw new Error((res && res.error) || 'bootstrap falló');
     state.config = res.data.config;
-    // La vista 3D vale lo que decidió el proceso principal al arrancar, no lo que
-    // diga la config ahora: así el preload y el juego servido nunca se desencuentran.
-    state.view3d = !!res.data.view3d;
     state.displayHz = res.data.displayHz || 60;
     state.devMode = !!res.data.devMode;
   } catch (err) {
@@ -13464,7 +13481,7 @@ function boot() {
         if (ballGifBytes) safe(buildBallFrames);
       }
       if (pitchSkinPrint() !== beforeSkin) safe(flushStadiumCache, doc.defaultView);
-      if (view3dApi) view3dApi.setCam((config.perf || {}).view3dCam);
+      safe(applyViews, doc.defaultView);
       // Silenciar a alguien tiene que llevarse también lo que ya había dicho:
       // si no, queda su última frase en pantalla justo después de silenciarlo.
       safe(sweepMutedChat, doc);

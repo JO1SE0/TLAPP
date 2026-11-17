@@ -4505,13 +4505,11 @@ function renderView3d() {
       ? 'The normal pitch turned goal to goal: your team always attacks upwards, and the arrows turn with it (up takes you to the rival goal). Names and numbers stay upright.'
       : 'La cancha de siempre girada de arco a arco: tu equipo ataca siempre hacia arriba y las flechas giran con ella (arriba te lleva al arco rival). Nombres y números quedan derechos.',
     hint: en
-      ? 'Same FPS as horizontal: the pitch cache and the disc sprites keep working. Mirror mode is off while this is on. With the 3D view on, the 3D Vertical camera is used instead.'
-      : 'Mismos FPS que en horizontal: el caché de la cancha y las fichas armadas siguen andando. El modo espejo se apaga mientras esté prendida. Con la vista 3D prendida, se usa la cámara Vertical de la 3D.',
-    restart: true,
+      ? 'Changes live, even mid-match. Same FPS as horizontal: the pitch cache and the disc sprites keep working. Mirror mode is off while this is on. With the 3D view on, the 3D Vertical camera is used instead.'
+      : 'Se cambia en vivo, aunque estés jugando. Mismos FPS que en horizontal: el caché de la cancha y las fichas armadas siguen andando. El modo espejo se apaga mientras esté prendida. Con la vista 3D prendida, se usa la cámara Vertical de la 3D.',
     value: () => !!(state.config.perf || {}).vertical
   }], async (_item, value) => {
     await patchConfig({ perf: { vertical: value } });
-    needsRestart();
     renderView3d();
   });
   host.append(vert);
@@ -4525,13 +4523,11 @@ function renderView3d() {
       ? 'Draws the pitch in 3D with a tilted camera: discs with depth, a real ball and shadows. Only you see it.'
       : 'Dibuja la cancha en 3D con la cámara inclinada: fichas con volumen, pelota de verdad y sombras. Sólo lo ves vos.',
     hint: en
-      ? 'It does not touch physics, keys or the network: it only changes how the frame is drawn. It costs more FPS than 2D. Turned off, the client is exactly the same as before. If 3D fails on your graphics card, the game goes back to 2D by itself.'
-      : 'No toca la física, las teclas ni la red: sólo cambia cómo se dibuja el cuadro. Cuesta más FPS que el 2D. Apagada, el cliente queda exactamente igual que antes. Si el 3D falla en tu placa de video, el juego vuelve solo al 2D.',
-    restart: true,
+      ? 'Changes live, even mid-match. It does not touch physics, keys or the network: it only changes how the frame is drawn. It costs more FPS than 2D. Turned off, it is fully taken down and the normal 2D comes back. If 3D fails on your graphics card, the game goes back to 2D by itself.'
+      : 'Se cambia en vivo, aunque estés jugando. No toca la física, las teclas ni la red: sólo cambia cómo se dibuja el cuadro. Cuesta más FPS que el 2D. Al apagarla se desarma entera y vuelve el 2D de siempre. Si el 3D falla en tu placa de video, el juego vuelve solo al 2D.',
     value: () => !!(state.config.perf || {}).view3d
   }], async (_item, value) => {
     await patchConfig({ perf: { view3d: value } });
-    needsRestart();
     renderView3d();
   });
   host.append(sw);

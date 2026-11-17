@@ -1194,7 +1194,7 @@ function install(view, opts = {}) {
     try { if (gameCv) gameCv.style.visibility = ''; } catch (e) { /* nada */ }
     try { if (glCv) glCv.remove(); if (hudCv) hudCv.remove(); } catch (e) { /* nada */ }
     try { view.removeEventListener('resize', place); } catch (e) { /* nada */ }
-    log('warn', `vista 3D apagada: ${why}. Sigue en 2D.`);
+    log(why === 'la apagaste' ? 'info' : 'warn', `vista 3D apagada: ${why}. Sigue en 2D.`);
   }
 
   view.__tvm3d = (F) => {
@@ -1210,7 +1210,7 @@ function install(view, opts = {}) {
   return {
     setCam(name) { if (CAMS[name]) camName = name; },
     refreshFloor() { floorDirty = true; },
-    dispose() { fallback('apagada'); }
+    dispose() { fallback('la apagaste'); }
   };
 }
 

@@ -16,11 +16,13 @@
  * manda cada flecha (lo mismo que ya hace el modo espejo con izquierda y
  * derecha). El modo espejo se apaga solo mientras esto esté prendido.
  *
- * ── Sólo existe si está prendida ─────────────────────────────────────────
+ * ── Se prende y se apaga en vivo ─────────────────────────────────────────
  *
- * Se aplica al servir el juego (ver `serveGameBundle` en main.js) y sólo con
- * `perf.vertical` prendido al arrancar. Apagada, el juego que se sirve es el
- * de siempre, byte por byte. Prender o apagar pide reiniciar por eso.
+ * El enganche va siempre en el juego servido (ver `serveGameBundle` en
+ * main.js), dormido. Lo despierta `window.__tvmVertOn`, que el preload pone
+ * según `perf.vertical` cada vez que cambia el ajuste: sin reiniciar.
+ * Apagada, lo único que queda son comprobaciones de «¿está girada?» —las
+ * mismas que ya hace el modo espejo—, sin costo medible.
  *
  * ── Rendimiento: lo mismo que en horizontal ──────────────────────────────
  *
@@ -129,11 +131,15 @@ function patchVertical(source) {
   // Se arma de atrás hacia adelante para que los índices no se corran.
   const edits = [];
   // Giro según tu equipo, y las flechas que le corresponden.
+  // Sólo con `__tvmVertOn` (lo prende el cliente en vivo): apagada, el giro vale 0
+  // y nada de lo de abajo hace nada. Si cambian las flechas (se prendió, se apagó
+  // o cambiaste de equipo), las teclas que ya apretás se reacomodan al toque.
   edits.push([center.index,
-    `window.__tvmRot=(null!=f&&null!=f.${teamF}&&2==f.${teamF}.${teamId})?Math.PI/2:-Math.PI/2;` +
-    'window.__tvmRotKeys=0<window.__tvmRot?window.__tvmKeysBlue:window.__tvmKeysRed;']);
+    `window.__tvmRot=window.__tvmVertOn?((null!=f&&null!=f.${teamF}&&2==f.${teamF}.${teamId})?Math.PI/2:-Math.PI/2):0;` +
+    'var __k=window.__tvmRot?(0<window.__tvmRot?window.__tvmKeysBlue:window.__tvmKeysRed):null;' +
+    'if(__k!==window.__tvmRotKeys){window.__tvmRotKeys=__k;try{window.__tvmInputSync&&window.__tvmInputSync.A()}catch(__e){}}']);
   // Después del centro, el giro.
-  edits.push([center.index + center[0].indexOf('this.c.scale('), 'this.c.rotate(window.__tvmRot);']);
+  edits.push([center.index + center[0].indexOf('this.c.scale('), 'window.__tvmRot&&this.c.rotate(window.__tvmRot);']);
   // Cámara: con la pantalla girada, lo que se ve de ancho es lo que antes era alto.
   edits.push([view.index + view[0].indexOf(';') + 1, 'if(window.__tvmRot){var __t=n;n=l;l=__t}']);
   // Camiseta derecha.

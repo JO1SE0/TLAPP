@@ -207,17 +207,12 @@ const DEFAULTS = {
     startFullscreen: true,
     /** Opcional: reusa la simulación del cuadro anterior si pasó <4 ms (ver patchLightSim). */
     lightSim: true,
-    /**
-     * Vista 3D de la cancha (ver view-3d.js). Apagada de fábrica. Se lee una sola
-     * vez al arrancar: apagada, el juego que se sirve y el preload son los de
-     * siempre, sin un solo gancho de más.
-     */
+    /** Vista 3D de la cancha (ver view-3d.js). Apagada de fábrica. Se prende y apaga en vivo. */
     view3d: false,
     /**
      * Vista vertical en 2D (ver vertical-patch.js): la cancha girada de arco a
-     * arco, tu equipo atacando hacia arriba. Se lee al arrancar: apagada, el
-     * juego se sirve como siempre. Con la vista 3D prendida no se usa (la 3D
-     * tiene su propia cámara Vertical).
+     * arco, tu equipo atacando hacia arriba. En vivo. Con la vista 3D prendida
+     * no se usa (la 3D tiene su propia cámara Vertical).
      */
     vertical: false,
     /** Perspectiva de la vista 3D: dron | tribuna | tv | vertical. Se cambia en vivo. */
