@@ -1247,6 +1247,8 @@ function onNewGameDocument(doc) {
   installFrameLimiter(doc.defaultView);
   // El motor de estadísticas se cuelga del estado que publica el parche.
   installTracking(doc.defaultView);
+  // Vista 3D: sólo si estaba prendida al arrancar. Apagada, ni se carga el archivo.
+  if (state.view3d) safe(installView3d, doc.defaultView);
   /*
    * Los ganchos del canvas, antes de que se dibuje el primer cuadro.
    *
@@ -7991,6 +7993,26 @@ function pitchSkinPrint() {
 /** Le tira el cache al estadio para que se vuelva a dibujar con el color nuevo. */
 function flushStadiumCache(view) {
   if (view && typeof view.__tvmStadiumFlush === 'function') view.__tvmStadiumFlush();
+  if (view3dApi) view3dApi.refreshFloor();
+}
+
+/*
+ * Vista 3D (ver view-3d.js y view-3d-patch.js). Se instala una vez por
+ * ventana del juego, y sólo con `state.view3d`. Lo único que se toca en vivo
+ * es la perspectiva; prenderla o apagarla pide reiniciar.
+ */
+let view3dApi = null;
+let view3dView = null;
+function installView3d(view) {
+  if (!view || view3dView === view) return;
+  view3dView = view;
+  const perf = state.config.perf || {};
+  view3dApi = require('./view-3d').install(view, {
+    cam: perf.view3dCam,
+    antialias: !perf.lowEnd,
+    lowLatency: !!perf.lowLatencyCanvas,
+    log: (level, message) => log(level, message, 'juego')
+  });
 }
 
 /** Un número de la config, acotado y con respaldo. Entra de afuera. */
@@ -13183,6 +13205,9 @@ function boot() {
     const res = ipcRenderer.sendSync('game:bootstrap');
     if (!res || !res.ok) throw new Error((res && res.error) || 'bootstrap falló');
     state.config = res.data.config;
+    // La vista 3D vale lo que decidió el proceso principal al arrancar, no lo que
+    // diga la config ahora: así el preload y el juego servido nunca se desencuentran.
+    state.view3d = !!res.data.view3d;
     state.displayHz = res.data.displayHz || 60;
     state.devMode = !!res.data.devMode;
   } catch (err) {
@@ -13434,6 +13459,7 @@ function boot() {
         if (ballGifBytes) safe(buildBallFrames);
       }
       if (pitchSkinPrint() !== beforeSkin) safe(flushStadiumCache, doc.defaultView);
+      if (view3dApi) view3dApi.setCam((config.perf || {}).view3dCam);
       // Silenciar a alguien tiene que llevarse también lo que ya había dicho:
       // si no, queda su última frase en pantalla justo después de silenciarlo.
       safe(sweepMutedChat, doc);
