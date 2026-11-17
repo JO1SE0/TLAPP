@@ -65,6 +65,14 @@ const FOV = 28 * Math.PI / 180;
 const CONTACT_Y = 6;
 const POST_H = 1.6;
 
+/*
+ * Flechas de la vista vertical. La máscara del juego: arriba 1, abajo 2,
+ * izquierda 4, derecha 8, patada 16. Con la cámara mirando hacia +x, arriba en
+ * la pantalla es la derecha de la cancha; mirando hacia -x, es la izquierda.
+ */
+const ROT_POS = (a) => (a & 1 ? 8 : 0) | (a & 2 ? 4 : 0) | (a & 8 ? 2 : 0) | (a & 4 ? 1 : 0) | (a & 16);
+const ROT_NEG = (a) => (a & 1 ? 4 : 0) | (a & 2 ? 8 : 0) | (a & 8 ? 1 : 0) | (a & 4 ? 2 : 0) | (a & 16);
+
 /* Tribunas: escalones alrededor de la cancha. Diseño propio y genérico. */
 const STEPS = 9;
 const STEP_D = 34;
@@ -118,7 +126,7 @@ void main() {
   gl_Position = uVP * vec4(aPos * uScale + uOff, 1.0);
 }`;
 /* uMode: 0 color con luz · 1 textura con luz (tapa de la ficha) · 2 textura sin
-   luz (piso) · 3 sombra redonda · 4 color sin luz */
+   luz (piso) · 3 sombra redonda · 4 color sin luz · 5 color por vértice (uniones) */
 const FS = `
 precision mediump float;
 varying vec3 vNor; varying vec2 vUv;
@@ -132,6 +140,7 @@ void main() {
   }
   float lit = 0.55 + 0.5 * max(dot(normalize(vNor), normalize(L)), 0.0);
   if (uMode == 4) { gl_FragColor = uColor; return; }
+  if (uMode == 5) { gl_FragColor = vec4(vNor, 1.0); return; }
   if (uMode == 2) { gl_FragColor = texture2D(uTex, vUv); return; }
   if (uMode == 1) {
     // La camiseta se gira con la cámara para que el número se lea derecho.
@@ -250,6 +259,25 @@ function install(view, opts = {}) {
   let standBufs = null;
   /* Cámara que sigue a tu ficha (vista vertical): se suaviza para que no tiemble. */
   let follow = null;
+  /* Uniones: un solo buffer que se rellena en cada cuadro (sin crear nada). */
+  let jointBuf = null, jointData = new Float32Array(48 * 64);
+  const jointMesh = { b: null, n: 0 };
+  function jv(n, x, z, r, g, b) {
+    jointData[n] = x; jointData[n + 1] = 1.2; jointData[n + 2] = z;
+    jointData[n + 3] = r; jointData[n + 4] = g; jointData[n + 5] = b;
+    jointData[n + 6] = 0; jointData[n + 7] = 0;
+    return n + 8;
+  }
+  /* Las flechas giradas que hay puestas ahora (o ninguna). */
+  let rotOn = null;
+  function setRot(fn) {
+    if (fn === rotOn) return;
+    rotOn = fn;
+    view.__tvm3dRot = fn || undefined;
+    // Que las teclas que ya estás apretando cambien de sentido ya, no en la próxima.
+    try { if (view.__tvmInputSync && typeof view.__tvmInputSync.A === 'function') view.__tvmInputSync.A(); } catch (e) { /* nada */ }
+  }
+
   /* Diagnóstico: las primeras camisetas que se suben se revisan una vez. */
   let kitChecks = 0;
 
@@ -337,6 +365,7 @@ function install(view, opts = {}) {
     gl.bindBuffer(gl.ARRAY_BUFFER, quad2);
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, 1, 1, -1, -1, 1, 1, -1, 1]), gl.STATIC_DRAW);
     floorTex = texture(null, true);
+    jointBuf = gl.createBuffer();
 
     // Las capas van pegadas al canvas del juego, que queda en su lugar pero sin verse.
     const parent = cv.parentNode;
@@ -534,6 +563,7 @@ function install(view, opts = {}) {
         // se para detrás de tu arco y mira al del rival.
         const attack = (tid === 1 ? 1 : -1) * mx;
         ox = -attack; oz = 0;
+        setRot(attack > 0 ? ROT_POS : ROT_NEG);
         const p = me[N.pos];
         const gx = mx * p.x + attack * visH * 0.2, gz = p.y;
         const dt = Math.min(0.1, Math.max(0, Number(F.dt) || 0.016));
@@ -549,8 +579,9 @@ function install(view, opts = {}) {
         // Mirando (sin ficha en la cancha): la de la tribuna.
         cam = CAMS.tribuna;
         follow = null;
+        setRot(null);
       }
-    } else follow = null;
+    } else { follow = null; setRot(null); }
     const tilt = cam.tilt * Math.PI / 180;
     const D = (visH / 2) / Math.tan(FOV / 2) * cam.dist;
     const back = D * Math.sin(tilt);
@@ -599,7 +630,6 @@ function install(view, opts = {}) {
       const d = discs[i];
       const rad = d[N.radius];
       if (!(rad >= 0)) break;
-      if ((d[N.color] | 0) === -1 && i !== 0) continue;
       const pos = d[N.pos];
       draw(mesh.quad, 3, mx * pos.x + rad * 0.3, 0.3, pos.y + rad * 0.25, rad * 1.4, 1, rad * 1.4, 0, 0, 0, 0.42);
     }
@@ -646,8 +676,13 @@ function install(view, opts = {}) {
       const rad = d[N.radius];
       if (!(rad >= 0)) break;
       const col = d[N.color] | 0;
-      if (col === -1 && i !== 0) continue;
       const pos = d[N.pos];
+      // Sin color: en 2D es sólo el aro negro (y la pelota rebota igual contra
+      // él). Acá, una pared fina negra a la misma altura: se ve y se entiende.
+      if (col === -1 && i !== 0) {
+        draw(mesh.side, 0, mx * pos.x, 0, pos.y, rad, CONTACT_Y, rad, 0.05, 0.05, 0.05, 1);
+        continue;
+      }
       // Sin arreglos nuevos: esto corre por cada disco en cada cuadro.
       const cr = col === -1 ? 1 : ((col >>> 16) & 255) / 255;
       const cg = col === -1 ? 1 : ((col >>> 8) & 255) / 255;
@@ -659,6 +694,37 @@ function install(view, opts = {}) {
         const h = Math.max(rad * POST_H, CONTACT_Y + 4);
         draw(mesh.side, 0, mx * pos.x, 0, pos.y, rad, h, rad, cr * 0.8, cg * 0.8, cb * 0.8, 1);
         draw(mesh.cap, 0, mx * pos.x, 0, pos.y, rad, h, rad, cr, cg, cb, 1);
+      }
+    }
+    // Uniones entre discos: cintas finas del color de la unión, como las líneas del 2D.
+    const js = world[N.joints];
+    if (js && js.length) {
+      if (jointData.length < js.length * 48) jointData = new Float32Array(js.length * 48);
+      let n = 0;
+      for (let i = 0; i < js.length; i++) {
+        const j = js[i];
+        const col = j[N.jointColor];
+        if (!(col >= 0)) continue;
+        const da = discs[j[N.jointA]], db = discs[j[N.jointB]];
+        if (!da || !db) continue;
+        const pa = da[N.pos], pb = db[N.pos];
+        const ax = mx * pa.x, az = pa.y, bx = mx * pb.x, bz = pb.y;
+        let px = -(bz - az), pz = bx - ax;
+        const len = Math.hypot(px, pz) || 1;
+        px = (px / len) * 1.5; pz = (pz / len) * 1.5;
+        const cr = ((col >>> 16) & 255) / 255, cg = ((col >>> 8) & 255) / 255, cb = (col & 255) / 255;
+        n = jv(n, ax - px, az - pz, cr, cg, cb);
+        n = jv(n, bx - px, bz - pz, cr, cg, cb);
+        n = jv(n, bx + px, bz + pz, cr, cg, cb);
+        n = jv(n, ax - px, az - pz, cr, cg, cb);
+        n = jv(n, bx + px, bz + pz, cr, cg, cb);
+        n = jv(n, ax + px, az + pz, cr, cg, cb);
+      }
+      if (n) {
+        gl.bindBuffer(gl.ARRAY_BUFFER, jointBuf);
+        gl.bufferData(gl.ARRAY_BUFFER, jointData.subarray(0, n), gl.DYNAMIC_DRAW);
+        jointMesh.b = jointBuf; jointMesh.n = n / 8;
+        draw(jointMesh, 5, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1);
       }
     }
     gl.disableVertexAttribArray(U.aNor);
@@ -700,6 +766,7 @@ function install(view, opts = {}) {
     if (dead) return;
     dead = true;
     try { view.__tvm3d = undefined; view.__tvm3dHud = undefined; } catch (e) { /* nada */ }
+    try { setRot(null); } catch (e) { /* nada */ }
     try { if (gameCv) gameCv.style.visibility = ''; } catch (e) { /* nada */ }
     try { if (glCv) glCv.remove(); if (hudCv) hudCv.remove(); } catch (e) { /* nada */ }
     try { view.removeEventListener('resize', place); } catch (e) { /* nada */ }

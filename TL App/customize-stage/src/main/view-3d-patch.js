@@ -57,7 +57,18 @@ const FIELDS = {
   bounds: /\w+\(a,b,c\)\{a>2\*c\.(\w+)\?this\.\w+\.x=0:[\s\S]*?b>2\*c\.(\w+)\?this\.\w+\.y=0/g,
   /* El equipo del jugador y su número (1 rojo, 2 azul): el mismo acceso aparece
      dos veces, idéntico, al elegir la camiseta. */
-  team: /\?b\.\w+\[a\.(\w+)\.(\w+)\]:a\.\1\.\w+/g
+  team: /\?b\.\w+\[a\.(\w+)\.(\w+)\]:a\.\1\.\w+/g,
+  /* Las uniones entre discos (cadenas, redes): color y los dos discos. */
+  joint: /\w+\(a,b\)\{if\(!\(0>a\.(\w+)\)\)\{this\.c\.beginPath\(\);this\.c\.strokeStyle=\w+\.\w+\(a\.\1\);var c=b\[a\.(\w+)\];a=b\[a\.(\w+)\];/g,
+  joints: /h=e\.\w+;r=0;for\(t=e\.(\w+);r<t\.length;\)this\.\w+\(t\[r\+\+\],h\)/g,
+  /*
+   * Donde el juego arma la máscara de teclas (arriba 1, abajo 2, izquierda 4,
+   * derecha 8, patada 16). La vista vertical gira la cámara, así que gira
+   * también las flechas, en el mismo lugar donde el modo espejo ya da vuelta
+   * izquierda y derecha. Va ANTES del espejo: las flechas se piensan en lo que
+   * se ve, y el espejo pasa de lo que se ve a la cancha.
+   */
+  input: /this\.(\w+)\.has\("Kick"\)&&\(a\|=16\);/g
 };
 
 /**
@@ -123,6 +134,11 @@ function patch3d(source) {
   if (!disc || !fill || !tex || !nameCv || !name || !bounds) return fail('faltan campos de discos o jugadores');
   const teams = [...source.matchAll(new RegExp(loose(FIELDS.team).source, 'g'))];
   if (!teams.length || teams.some((m) => m[1] !== teams[0][1] || m[2] !== teams[0][2])) return fail('no se encontró el equipo del jugador');
+  const joint = one(source, FIELDS.joint);
+  const joints = one(source, FIELDS.joints);
+  const input = one(source, FIELDS.input);
+  if (!joint || !joints) return fail('no se encontraron las uniones entre discos');
+  if (!input) return fail('no se encontró la lectura de teclas');
 
   const [, cv, tp, bp, cam] = hook;
   const N = {
@@ -138,6 +154,7 @@ function patch3d(source) {
     boundX: bounds[1], boundY: bounds[2],
     paused: tail[2],
     team: teams[0][1], teamId: teams[0][2],
+    joints: joints[1], jointColor: joint[1], jointA: joint[2], jointB: joint[3],
     cv
   };
   const [, hud, paused, notes, notesStep, notesDraw, ug, prune] = tail;
@@ -160,7 +177,12 @@ function patch3d(source) {
     'this.' + ug + '.clear();this.' + prune + '(a);return}}';
 
   const at = start + hook.index;
-  const out = `;window.__tvm3dN=${JSON.stringify(N)};\n` + source.slice(0, at) + inject + source.slice(at);
+  let out = source.slice(0, at) + inject + source.slice(at);
+  // Las flechas giradas: sólo cuando la vista vertical lo pide (`__tvm3dRot`).
+  const keyAt = out.indexOf(input[0]) + input[0].length;
+  if (out.indexOf(input[0]) < 0) return fail('no se encontró la lectura de teclas');
+  out = out.slice(0, keyAt) + 'window.__tvm3dRot&&(a=window.__tvm3dRot(a));' + out.slice(keyAt);
+  out = `;window.__tvm3dN=${JSON.stringify(N)};\n` + out;
   return { source: out, applied: true, reason: 'vista 3D enganchada' };
 }
 
