@@ -966,24 +966,6 @@ const GAME_BUNDLE_HOST = 'game-bundle';
  */
 /** URL original → texto ya parcheado, listo para servir. */
 let patchedBundles = new Map();
-
-/*
- * Vista 3D: se decide UNA vez, al arrancar. Apagada (lo de fábrica), el juego
- * se sirve exactamente como siempre y esto no hace nada. Prendida, al juego ya
- * parcheado se le suma el enganche de view-3d-patch.js; si no encaja, se sirve
- * igual sin él y queda en 2D.
- */
-const VIEW3D = (() => { try { return !!store.get().perf.view3d; } catch { return false; } })();
-const view3dBundles = new Map();
-function view3dBody(url, body) {
-  if (!VIEW3D || !body) return body;
-  const hit = view3dBundles.get(url);
-  if (hit && hit.from === body) return hit.out;
-  const res = require('./view-3d-patch').patch3d(body);
-  logToApp(res.applied ? 'info' : 'warn', res.applied ? 'vista 3D enganchada al juego' : `vista 3D sin enganchar (${res.reason}): sigue en 2D`);
-  view3dBundles.set(url, { from: body, out: res.source });
-  return res.source;
-}
 /** URLs que ya se están bajando, para no pedirlas dos veces. */
 const bundlesInFlight = new Set();
 
@@ -1220,7 +1202,7 @@ function registerAssetProtocol(partition) {
 
     if (kind === GAME_BUNDLE_HOST) {
       const original = parsed.searchParams.get('u') || '';
-      const body = view3dBody(original, patchedBundles.get(original));
+      const body = patchedBundles.get(original);
       // Si no está, algo se desincronizó: que falle y el juego lo pida de nuevo
       // a haxball.com, en vez de servir un cuerpo vacío que lo rompería.
       if (!body) return notFound();
@@ -3843,8 +3825,6 @@ listen('game:bootstrap', (e) => {
       // El refresco real del monitor: con eso el preload calcula solo su ritmo de
       // cuadros cuando están desbloqueados, sin pedirle nada al jugador.
       displayHz: displayHz(),
-      // Si el juego que se sirve trae el enganche 3D (se decide al arrancar).
-      view3d: VIEW3D,
       // En desarrollo se dan por activos los cosméticos VIP, para poder probarlos
       // sin depender de que el sitio de verificación esté en línea.
       devMode: isDev
