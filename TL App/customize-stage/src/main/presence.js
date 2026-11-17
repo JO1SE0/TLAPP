@@ -192,6 +192,22 @@ async function beat(ctx) {
  * Del contenido de la sala a la lista de peers. Sólo cuenta lo firmado por
  * alguien del plantel con su propia clave.
  */
+/*
+ * Con la sala en vivo, cada aviso de cualquiera vuelve a armar la lista entera.
+ * Una firma ya verificada no cambia: se recuerda el resultado y no se vuelve a
+ * hacer la cuenta (0,14 ms cada una, unas 3 por persona y por aviso).
+ */
+const verified = new Map();
+function verifyOnce(pub, text, sig) {
+  const k = `${pub}|${sig}|${text}`;
+  const hit = verified.get(k);
+  if (hit !== undefined) return hit;
+  const ok = identity.verify(pub, text, sig);
+  verified.set(k, ok);
+  if (verified.size > 600) verified.delete(verified.keys().next().value);
+  return ok;
+}
+
 function peersFromRoom(room, ctx, base, id, nick, iAmExternal, iAmSocio) {
 
   const byPid = new Map();
@@ -211,7 +227,7 @@ function peersFromRoom(room, ctx, base, id, nick, iAmExternal, iAmSocio) {
     // Las claves de prueba no son del plantel: no llevan insignia ni aura. Los ajenos tampoco.
     if (!member || member.trial || (member.ext && !member.soc)) continue;
     if (typeof entry.n !== 'string' || typeof entry.t !== 'number' || typeof entry.s !== 'string') continue;
-    if (!identity.verify(member.pub, signedText(ctx.fp, entry.n, entry.t), entry.s)) continue;
+    if (!verifyOnce(member.pub, signedText(ctx.fp, entry.n, entry.t), entry.s)) continue;
     const k = `${ctx.fp}|${pid}`;
     const prev = seen.get(k);
     if (!prev || prev.t !== entry.t) seen.set(k, { t: entry.t, at: now });
@@ -221,11 +237,11 @@ function peersFromRoom(room, ctx, base, id, nick, iAmExternal, iAmSocio) {
     let look = { gradient: baseG };
     if (entry.c && typeof entry.c === 'object' && typeof entry.cs === 'string') {
       const c = cleanLooks(entry.c);
-      if (identity.verify(member.pub, looksText(ctx.fp, entry.n, entry.t, c.g, c.f), entry.cs)) {
+      if (verifyOnce(member.pub, looksText(ctx.fp, entry.n, entry.t, c.g, c.f), entry.cs)) {
         look = { gradient: c.g || baseG, font: c.f || null };
         if (entry.x && typeof entry.x === 'object' && typeof entry.xs === 'string') {
           const c2 = cleanLooks2(entry.x);
-          if (identity.verify(member.pub, looksText2(ctx.fp, entry.n, entry.t, c2.y, c2.i), entry.xs)) {
+          if (verifyOnce(member.pub, looksText2(ctx.fp, entry.n, entry.t, c2.y, c2.i), entry.xs)) {
             look.style = c2.y || null; look.icon = c2.i || null;
           }
         }
@@ -233,7 +249,7 @@ function peersFromRoom(room, ctx, base, id, nick, iAmExternal, iAmSocio) {
     }
     // Su estilo de ficha y la versión de su foto, si vienen firmados por él.
     const d = cleanDisc(entry.d), av = cleanHash(entry.a);
-    if ((d || av) && typeof entry.ds === 'string' && identity.verify(member.pub, discText(ctx.fp, entry.n, entry.t, d, av), entry.ds)) {
+    if ((d || av) && typeof entry.ds === 'string' && verifyOnce(member.pub, discText(ctx.fp, entry.n, entry.t, d, av), entry.ds)) {
       if (d) look.disc = d;
       if (av) look.avatar = av;
     }

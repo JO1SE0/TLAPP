@@ -3289,7 +3289,20 @@ function withAvatars(list, ctx) {
 }
 function resendPeers() {
   if (!lastPeers.room || lastPeers.room !== roomInfo.room) return;
-  sendToGame('game:peers', withAvatars(lastPeers.list, presenceCtx()));
+  sendPeersIfChanged(withAvatars(lastPeers.list, presenceCtx()));
+}
+
+/*
+ * La lista va al juego sólo si cambió: con la sala en vivo llegan avisos cada
+ * pocos segundos (cada uno que sigue en la sala lo dice) y casi nunca traen
+ * nada nuevo. Así el juego no repinta las filas ni rearma fichas porque sí.
+ */
+let lastPeersSent = '';
+function sendPeersIfChanged(list) {
+  const sig = `${roomInfo.room}|${JSON.stringify(list)}`;
+  if (sig === lastPeersSent) return;
+  lastPeersSent = sig;
+  sendToGame('game:peers', list);
 }
 
 /** Llegó un cambio en vivo de la sala: la lista nueva va al juego en el acto. */
@@ -3299,7 +3312,7 @@ function onLiveRoom() {
   try { list = presence.peersNow(ctx); } catch { list = null; }
   if (!list) return;
   lastPeers = { room: roomInfo.room, list };
-  sendToGame('game:peers', withAvatars(list, ctx));
+  sendPeersIfChanged(withAvatars(list, ctx));
 }
 
 /*
@@ -3367,7 +3380,7 @@ async function beatPresence() {
    * el latido siguiente.
    */
   lastPeers = { room: roomInfo.room, list: res.peers };
-  sendToGame('game:peers', withAvatars(res.peers, presenceCtx()));
+  sendPeersIfChanged(withAvatars(res.peers, presenceCtx()));
   // Y desde ahora, la sala en vivo: los cambios de los demás llegan en ~1 s.
   try { presence.watchRoom(access.presenceUrl(), panel.roomFingerprint(roomInfo.room), onLiveRoom); } catch { /* sigue el latido */ }
 }
@@ -3399,6 +3412,7 @@ listen('game:room-info', (_e, info) => {
   const token = info && info.token ? String(info.token).slice(0, 64) : null;
   if (room === roomInfo.room && nick === roomInfo.nick && name === roomInfo.name) return;
   roomInfo = { room, token, name, nick };
+  lastPeersSent = ''; // otra sala (o la misma de nuevo): la próxima lista va sí o sí
   setTimeout(beatOnline, 800);
 
   /*
@@ -3408,7 +3422,8 @@ listen('game:room-info', (_e, info) => {
    * no se manda nada — el latido de abajo trae los que corresponden.
    */
   if (room && room === lastPeers.room && lastPeers.list.length) {
-    sendToGame('game:peers', withAvatars(lastPeers.list, presenceCtx()));
+    lastPeersSent = '';
+    sendPeersIfChanged(withAvatars(lastPeers.list, presenceCtx()));
   }
   if (!room) presence.stopWatch();
   beatPresence();
