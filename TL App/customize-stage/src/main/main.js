@@ -1915,8 +1915,17 @@ function themeVars(accentOverride, themeId) {
 }
 
 /** Avisa a los dos lados de un cambio de configuración. */
+/* Lo que ven los demás de vos (ver beatPresence): para publicar al toque si cambia. */
+let lastCosmeticsSig = '';
+/** Huella de tu foto de avatar ya subida ('' = sin foto compartida). */
+let myAvatarHash = '';
+let myAvatarData = null;
+
 function broadcastConfig(next) {
   sendToGames('game:config', gameConfig(next));
+  // Tu estilo de ficha (o tu fila) cambió: los demás lo ven ya, no en el próximo latido.
+  const sig = JSON.stringify(myCosmetics());
+  if (sig !== lastCosmeticsSig) { lastCosmeticsSig = sig; setTimeout(() => { beatPresence(); }, 300); }
   applyGameZoom();
   /*
    * Y si el rol está activo. El juego dibuja cosas que son del VIP —hoy el
@@ -3090,9 +3099,11 @@ function myCosmetics() {
     style: looks.style || null,
     icon: looks.icon || null,
     // Tu estilo de ficha: lo ven los demás de TL App en la misma sala.
-    disc: (store.get().visual || {}).discStyle && store.get().visual.discStyle !== 'default' ? store.get().visual.discStyle : null
+    disc: (store.get().visual || {}).discStyle && store.get().visual.discStyle !== 'default' ? store.get().visual.discStyle : null,
+    // La versión de tu foto de avatar (la foto va aparte: ver `game:my-avatar`).
+    avatar: myAvatarHash || null
   };
-  return out.gradient || out.font || out.style || out.icon || out.disc ? out : null;
+  return out.gradient || out.font || out.style || out.icon || out.disc || out.avatar ? out : null;
 }
 
 /* Plantel en vivo: quién del club tiene la app abierta y dónde. */
@@ -3253,6 +3264,59 @@ let lastPresenceError = '';
 let lastPresenceOk = '';
 let lastLooksIssue = '';
 
+function presenceCtx() {
+  return {
+    url: access.presenceUrl(),
+    key: access.getKey(),
+    roster: access.getRoster(),
+    fp: panel.roomFingerprint(roomInfo.room),
+    nick: roomInfo.nick,
+    selfName: access.get().name || '',
+    cosmetics: myCosmetics()
+  };
+}
+
+/*
+ * A cada peer con foto se le suma la foto (si ya se bajó). Las que faltan se
+ * bajan una vez y, cuando llegan, se vuelve a mandar la lista.
+ */
+function withAvatars(list, ctx) {
+  return (list || []).map((p) => {
+    if (!p || p.self || !p.cosmetics || !p.cosmetics.avatar) return p;
+    const data = presence.avatarOf(ctx, p, () => resendPeers());
+    return data ? { ...p, cosmetics: { ...p.cosmetics, avatarData: data } } : p;
+  });
+}
+function resendPeers() {
+  if (!lastPeers.room || lastPeers.room !== roomInfo.room) return;
+  sendToGame('game:peers', withAvatars(lastPeers.list, presenceCtx()));
+}
+
+/** Llegó un cambio en vivo de la sala: la lista nueva va al juego en el acto. */
+function onLiveRoom() {
+  const ctx = presenceCtx();
+  let list = null;
+  try { list = presence.peersNow(ctx); } catch { list = null; }
+  if (!list) return;
+  lastPeers = { room: roomInfo.room, list };
+  sendToGame('game:peers', withAvatars(list, ctx));
+}
+
+/*
+ * Tu foto de avatar, tal como se ve en tu ficha (la manda el juego, ya
+ * recortada y en 64×64): se sube firmada y su huella viaja en el casillero.
+ */
+listen('game:my-avatar', (_e, data) => {
+  const next = typeof data === 'string' && data ? data.slice(0, 20000) : null;
+  if (next === myAvatarData) return;
+  myAvatarData = next;
+  presence.putAvatar(presenceCtx(), next).then((h) => {
+    if (h === myAvatarHash) return;
+    myAvatarHash = h;
+    beatPresence();
+  }).catch((err) => recordFatal('presencia (foto de avatar)', err));
+});
+
 async function beatPresence() {
   const cfg = store.get();
 
@@ -3262,21 +3326,14 @@ async function beatPresence() {
    */
   let res = null;
   try {
-    res = await presence.beat({
-      url: access.presenceUrl(),
-      key: access.getKey(),
-      roster: access.getRoster(),
-      fp: panel.roomFingerprint(roomInfo.room),
-      nick: roomInfo.nick,
-      selfName: access.get().name || '',
-      cosmetics: myCosmetics()
-    });
+    res = await presence.beat(presenceCtx());
   } catch (err) {
     res = null;
     const msg = String(err && err.message);
     if (msg !== lastPresenceError) { lastPresenceError = msg; recordFatal('presencia (insignia)', err); }
   }
   if (!res) {
+    presence.stopWatch();
     const w = presence.why();
     if (w && w !== lastPresenceError) { lastPresenceError = w; recordFatal('presencia (insignia): no se envió', new Error(w)); }
     return;
@@ -3310,7 +3367,9 @@ async function beatPresence() {
    * el latido siguiente.
    */
   lastPeers = { room: roomInfo.room, list: res.peers };
-  sendToGame('game:peers', res.peers);
+  sendToGame('game:peers', withAvatars(res.peers, presenceCtx()));
+  // Y desde ahora, la sala en vivo: los cambios de los demás llegan en ~1 s.
+  try { presence.watchRoom(access.presenceUrl(), panel.roomFingerprint(roomInfo.room), onLiveRoom); } catch { /* sigue el latido */ }
 }
 
 /**
@@ -3349,8 +3408,9 @@ listen('game:room-info', (_e, info) => {
    * no se manda nada — el latido de abajo trae los que corresponden.
    */
   if (room && room === lastPeers.room && lastPeers.list.length) {
-    sendToGame('game:peers', lastPeers.list);
+    sendToGame('game:peers', withAvatars(lastPeers.list, presenceCtx()));
   }
+  if (!room) presence.stopWatch();
   beatPresence();
   voiceRoomChanged();
   /*

@@ -84,10 +84,14 @@ const looksText2 = (fp, nick, t, y, i) => `looks2|${fp}|${nick}|${t}|${y}|${i}`;
  * Sólo nombres de la lista cerrada: el que lo dibuja es el cliente del otro.
  */
 const DISCS = new Set(['sphere', 'glass', 'neon', 'metal', 'bubble', 'target', 'stripes', 'gem', 'cartoon', 'dots', ...require('./disc-art').STYLES]);
-const discText = (fp, nick, t, d) => `disc|${fp}|${nick}|${t}|${d}`;
+/* `a` = la versión de su foto de avatar (ver «Fotos de avatar» abajo). Una sola firma para los dos. */
+const discText = (fp, nick, t, d, a) => `disc|${fp}|${nick}|${t}|${d}|${a}`;
 const cleanDisc = (d) => (typeof d === 'string' && DISCS.has(d) ? d : '');
+const cleanHash = (h) => (typeof h === 'string' && /^[0-9a-f]{16}$/.test(h) ? h : '');
 let noDisc = false;
 let noDiscUntil = 0;
+/** La sala que se está escuchando en vivo (ver «Escucha en vivo»). */
+let live = null;
 function cleanLooks2(c) {
   return { y: c && STYLES.has(c.y) ? c.y : '', i: c && ICONS.has(c.i) ? c.i : '' };
 }
@@ -133,6 +137,7 @@ async function beat(ctx) {
   const mine = cleanLooks({ g: ctx.cosmetics && ctx.cosmetics.gradient, f: ctx.cosmetics && ctx.cosmetics.font });
   const mine2 = cleanLooks2({ y: ctx.cosmetics && ctx.cosmetics.style, i: ctx.cosmetics && ctx.cosmetics.icon });
   const myDisc = cleanDisc(ctx.cosmetics && ctx.cosmetics.disc);
+  const myAvatar = cleanHash(ctx.cosmetics && ctx.cosmetics.avatar);
   if (iAmExternal) {
     call(`${base}/rooms/${ctx.fp}/${id.pid}.json`, 'DELETE').catch(() => {});
   } else {
@@ -144,8 +149,12 @@ async function beat(ctx) {
       if (mine2.y || mine2.i) { slot.x = mine2; slot.xs = id.sign(looksText2(ctx.fp, nick, t, mine2.y, mine2.i)); }
     }
     if (noDisc && Date.now() > noDiscUntil) noDisc = false;
-    const withDisc = !noDisc && !!myDisc;
-    if (withDisc) { slot.d = myDisc; slot.ds = id.sign(discText(ctx.fp, nick, t, myDisc)); }
+    const withDisc = !noDisc && !!(myDisc || myAvatar);
+    if (withDisc) {
+      if (myDisc) slot.d = myDisc;
+      if (myAvatar) slot.a = myAvatar;
+      slot.ds = id.sign(discText(ctx.fp, nick, t, myDisc, myAvatar));
+    }
     try {
       await call(`${base}/rooms/${ctx.fp}/${id.pid}.json`, 'PUT', slot);
       if (withLooks) looksIssue = '';
@@ -153,12 +162,12 @@ async function beat(ctx) {
       // Si la base todavía no acepta el estilo de ficha, se prueba sin él y se
       // sigue como siempre: lo demás del casillero no se pierde.
       if (withDisc) {
-        delete slot.d; delete slot.ds;
+        delete slot.d; delete slot.a; delete slot.ds;
         try {
           await call(`${base}/rooms/${ctx.fp}/${id.pid}.json`, 'PUT', slot);
           noDisc = true;
           noDiscUntil = Date.now() + 10 * 60000;
-          looksIssue = `la base rechazó el estilo de ficha (${String(err && err.message).slice(0, 80)}): los demás no lo van a ver hasta que las reglas permitan los campos d y ds`;
+          looksIssue = `la base rechazó el estilo de ficha (${String(err && err.message).slice(0, 80)}): los demás no lo van a ver hasta que las reglas permitan los campos d, a y ds`;
           err = null;
         } catch (err2) { err = err2; }
       }
@@ -173,7 +182,17 @@ async function beat(ctx) {
       }
     }
   }
-  const room = (await call(`${base}/rooms/${ctx.fp}.json`, 'GET')) || {};
+  // Si la sala se está escuchando en vivo, ya está acá: no hace falta pedirla.
+  const room = live && live.fp === ctx.fp && live.room ? live.room
+    : ((await call(`${base}/rooms/${ctx.fp}.json`, 'GET')) || {});
+  return { everyMs: EVERY_MS, peers: peersFromRoom(room, ctx, base, id, nick, iAmExternal, iAmSocio) };
+}
+
+/**
+ * Del contenido de la sala a la lista de peers. Sólo cuenta lo firmado por
+ * alguien del plantel con su propia clave.
+ */
+function peersFromRoom(room, ctx, base, id, nick, iAmExternal, iAmSocio) {
 
   const byPid = new Map();
   for (const u of ctx.roster || []) if (u && u.pub && /^[0-9a-f]{64}$/i.test(u.pub)) byPid.set(identity.pidOf(u.pub), u);
@@ -212,12 +231,15 @@ async function beat(ctx) {
         }
       }
     }
-    // Su estilo de ficha, si viene firmado por él.
-    const d = cleanDisc(entry.d);
-    if (d && typeof entry.ds === 'string' && identity.verify(member.pub, discText(ctx.fp, entry.n, entry.t, d), entry.ds)) look.disc = d;
+    // Su estilo de ficha y la versión de su foto, si vienen firmados por él.
+    const d = cleanDisc(entry.d), av = cleanHash(entry.a);
+    if ((d || av) && typeof entry.ds === 'string' && identity.verify(member.pub, discText(ctx.fp, entry.n, entry.t, d, av), entry.ds)) {
+      if (d) look.disc = d;
+      if (av) look.avatar = av;
+    }
     // Socio: su fila como la eligió y su distintivo de socio, pero sin el escudo del plantel.
-    if (member.soc) { peers.push({ nick: entry.n, name: member.name, soc: true, noLogo: true, vip: false, cosmetics: look }); continue; }
-    peers.push({ nick: entry.n, name: member.name, vip: false, cosmetics: look });
+    if (member.soc) { peers.push({ nick: entry.n, pid, name: member.name, soc: true, noLogo: true, vip: false, cosmetics: look }); continue; }
+    peers.push({ nick: entry.n, pid, name: member.name, vip: false, cosmetics: look });
   }
   // Se olvidan los que ya no aparecen.
   for (const k of seen.keys()) if (k.startsWith(`${ctx.fp}|`) && !(k.slice(ctx.fp.length + 1) in room)) seen.delete(k);
@@ -227,7 +249,7 @@ async function beat(ctx) {
   if (iAmExternal) peers.push({ nick, self: true, name: '', noLogo: true, vip: false, cosmetics: { gradient: 'oro' } });
   else if (iAmSocio) peers.push({ nick, self: true, name: (selfEntry && selfEntry.name) || ctx.selfName || '', soc: true, noLogo: true, vip: false, cosmetics: { gradient: 'medianoche' } });
   else if (!(selfEntry && selfEntry.trial)) peers.push({ nick, self: true, name: ctx.selfName || '', vip: false, cosmetics: { gradient: 'oro' } });
-  return { everyMs: EVERY_MS, peers };
+  return peers;
 }
 
 /** Por qué el aspecto no viaja (vacío = todo bien). */
@@ -384,4 +406,197 @@ async function readStats(ctx) {
   return out;
 }
 
-module.exports = { looksProblem, putStats, readStats, call, online, leaveOnline, why: () => why, leave, beat, cleanUrl, signedText, EVERY_MS, ALIVE_MS };
+/* ── Escucha en vivo ─────────────────────────────────────────────────────
+ *
+ * En vez de pedir la sala entera cada 25 s, se deja una conexión abierta con
+ * Firebase («server-sent events» de su API REST): avisa en el acto cuando algo
+ * cambia y manda SÓLO lo que cambió. Un estilo o una foto nueva llega en ~1 s
+ * y se gasta menos que preguntando.
+ *
+ * El latido de 25 s sigue, pero sólo para escribir «sigo acá»: mientras haya
+ * escucha no vuelve a pedir la sala. Si la conexión se corta, se reintenta sola
+ * (3 s, 6 s… hasta 30 s) y mientras tanto el latido la pide como antes.
+ */
+
+/** Aplica un evento de Firebase (`put` o `patch` en `path`) a la copia local. */
+function applyEvent(root, kind, path, data) {
+  const keys = String(path || '/').split('/').filter(Boolean);
+  if (!keys.length) {
+    if (kind === 'put') return data && typeof data === 'object' ? data : {};
+    return Object.assign(root || {}, data || {});
+  }
+  const top = root && typeof root === 'object' ? root : {};
+  let o = top;
+  for (const k of keys.slice(0, -1)) { if (!o[k] || typeof o[k] !== 'object') o[k] = {}; o = o[k]; }
+  const last = keys[keys.length - 1];
+  if (kind === 'put') { if (data === null) delete o[last]; else o[last] = data; }
+  else { if (!o[last] || typeof o[last] !== 'object') o[last] = {}; Object.assign(o[last], data || {}); }
+  return top;
+}
+
+/** Corta el texto que llega en eventos completos (`event:` + `data:`, separados por una línea en blanco). */
+function sseParser(onEvent) {
+  let buf = '';
+  return (chunk) => {
+    buf += chunk;
+    let cut;
+    while ((cut = buf.indexOf('\n\n')) >= 0) {
+      const block = buf.slice(0, cut);
+      buf = buf.slice(cut + 2);
+      let ev = '', data = '';
+      for (const line of block.split('\n')) {
+        if (line.startsWith('event:')) ev = line.slice(6).trim();
+        else if (line.startsWith('data:')) data += line.slice(5).trim();
+      }
+      if (ev) onEvent(ev, data);
+    }
+  };
+}
+
+/** Abre la conexión con la red de Electron (el `fetch` de este proceso no deja leer de a pedazos). */
+function netOpen(url, onChunk, onEnd) {
+  const { net } = require('electron');
+  let done = false;
+  const end = (why) => { if (!done) { done = true; onEnd(why); } };
+  const req = net.request({ url, method: 'GET', redirect: 'follow' });
+  req.setHeader('Accept', 'text/event-stream');
+  req.on('response', (res) => {
+    if (res.statusCode !== 200) { end(`HTTP ${res.statusCode}`); return; }
+    res.on('data', (b) => onChunk(b.toString('utf8')));
+    res.on('end', () => end('se cerró'));
+    res.on('error', (e) => end(e && e.message));
+  });
+  req.on('error', (e) => end(e && e.message));
+  req.end();
+  return () => { done = true; try { req.abort(); } catch { /* ya estaba */ } };
+}
+
+/**
+ * Escucha `rooms/<fp>` en vivo. `onChange()` se llama (agrupado, ~150 ms) cada
+ * vez que cambia algo. Con otra sala o sin sala, se corta la anterior.
+ * `open` se puede cambiar (pruebas).
+ */
+function watchRoom(url, fp, onChange, open = netOpen) {
+  const base = cleanUrl(url);
+  if (live && live.fp === fp && live.base === base) return;
+  stopWatch();
+  if (!base || !fp) return;
+  const me2 = { fp, base, room: null, stop: null, wait: 3000, timer: null, notify: null, dead: false };
+  live = me2;
+  const kick = () => {
+    if (me2.notify) return;
+    me2.notify = setTimeout(() => { me2.notify = null; if (!me2.dead) { try { onChange(); } catch { /* el que escucha se cuida solo */ } } }, 150);
+  };
+  const connect = () => {
+    if (me2.dead) return;
+    const feed = sseParser((ev, raw) => {
+      if (ev === 'put' || ev === 'patch') {
+        let msg;
+        try { msg = JSON.parse(raw); } catch { return; }
+        me2.room = applyEvent(me2.room || {}, ev, msg && msg.path, msg && msg.data);
+        me2.wait = 3000;
+        kick();
+      } else if (ev === 'cancel' || ev === 'auth_revoked') {
+        if (me2.stop) me2.stop();
+      }
+    });
+    me2.stop = open(`${base}/rooms/${fp}.json`, feed, () => {
+      if (me2.dead) return;
+      // Sin conexión, el latido vuelve a pedir la sala: la copia vieja no sirve.
+      me2.room = null;
+      me2.timer = setTimeout(connect, me2.wait);
+      me2.wait = Math.min(30000, me2.wait * 2);
+    });
+  };
+  connect();
+}
+
+function stopWatch() {
+  if (!live) return;
+  live.dead = true;
+  clearTimeout(live.timer);
+  clearTimeout(live.notify);
+  try { if (live.stop) live.stop(); } catch { /* nada */ }
+  live = null;
+}
+
+/** Los peers con lo último que llegó en vivo (sin escribir nada). null si no hay escucha lista. */
+function peersNow(ctx) {
+  const base = cleanUrl(ctx && ctx.url);
+  if (!base || !ctx.key || !live || live.fp !== ctx.fp || !live.room) return null;
+  let id;
+  try { id = idOf(ctx.key); } catch { return null; }
+  const meEntry = (ctx.roster || []).find((u) => u && u.pub && /^[0-9a-f]{64}$/i.test(u.pub) && identity.pidOf(u.pub) === id.pid);
+  const iAmSocio = !!(meEntry && meEntry.soc);
+  const iAmExternal = !!(meEntry && meEntry.ext) && !iAmSocio;
+  return peersFromRoom(live.room, ctx, base, id, String(ctx.nick || '').slice(0, 40), iAmExternal, iAmSocio);
+}
+
+/* ── Fotos de avatar ─────────────────────────────────────────────────────
+ *
+ *     avatars/<pid> = { i: foto (JPG 64×64 en data URL), h: su huella, t, s: firma }
+ *
+ * La huella (16 hex del SHA-256 de la foto) viaja además en el casillero de la
+ * sala (`a`): así los demás saben si la que tienen guardada sigue siendo la
+ * última y la bajan UNA vez por versión. Se acepta sólo si la firma es de su
+ * dueño y la huella coincide con la foto.
+ */
+const crypto = require('crypto');
+const AVATAR_MAX = 12000;
+const AVATAR_PREFIX = 'data:image/jpeg;base64,';
+const avatarHash = (i) => crypto.createHash('sha256').update(String(i)).digest('hex').slice(0, 16);
+const avatarText = (h, t) => `avatar|${h}|${t}`;
+const validAvatar = (i) => typeof i === 'string' && i.length <= AVATAR_MAX && i.startsWith(AVATAR_PREFIX) && /^[A-Za-z0-9+/=]+$/.test(i.slice(AVATAR_PREFIX.length));
+
+let avatarUp = ''; // la huella que ya está arriba (en esta sesión)
+
+/** Sube tu foto (o la borra con `null`). Devuelve la huella, o '' si no hay foto. */
+async function putAvatar(ctx, data) {
+  const base = cleanUrl(ctx && ctx.url);
+  if (!base || !ctx.key) return '';
+  const id = idOf(ctx.key);
+  if (!data) {
+    if (avatarUp) { avatarUp = ''; await call(`${base}/avatars/${id.pid}.json`, 'DELETE').catch(() => {}); }
+    return '';
+  }
+  if (!validAvatar(data)) return '';
+  const h = avatarHash(data);
+  if (h === avatarUp) return h;
+  // Si ya estaba arriba (otra sesión), no se vuelve a subir.
+  const prev = await call(`${base}/avatars/${id.pid}/h.json`, 'GET').catch(() => null);
+  if (prev !== h) {
+    const t = Date.now();
+    await call(`${base}/avatars/${id.pid}.json`, 'PUT', { i: data, h, t, s: id.sign(avatarText(h, t)) });
+  }
+  avatarUp = h;
+  return h;
+}
+
+const avatarCache = new Map(); // pid → { h, data }
+const avatarLoading = new Map(); // pid → huella que se está bajando
+
+/**
+ * La foto de un peer: de la memoria si es la misma versión; si no, se baja
+ * (una vez) y se avisa con `onReady()`. Devuelve la data URL o ''.
+ */
+function avatarOf(ctx, peer, onReady) {
+  const h = peer && peer.cosmetics && peer.cosmetics.avatar;
+  if (!h || !peer.pid) return '';
+  const hit = avatarCache.get(peer.pid);
+  if (hit && hit.h === h) return hit.data;
+  if (avatarLoading.get(peer.pid) === h) return '';
+  const base = cleanUrl(ctx && ctx.url);
+  const member = (ctx.roster || []).find((u) => u && u.pub && /^[0-9a-f]{64}$/i.test(u.pub) && identity.pidOf(u.pub) === peer.pid);
+  if (!base || !member) return '';
+  avatarLoading.set(peer.pid, h);
+  call(`${base}/avatars/${peer.pid}.json`, 'GET').then((e) => {
+    if (!e || typeof e !== 'object' || !validAvatar(e.i) || e.h !== h || avatarHash(e.i) !== h) return;
+    if (typeof e.s !== 'string' || !identity.verify(member.pub, avatarText(e.h, Number(e.t) || 0), e.s)) return;
+    avatarCache.set(peer.pid, { h, data: e.i });
+    if (avatarCache.size > 80) avatarCache.delete(avatarCache.keys().next().value);
+    if (onReady) onReady();
+  }).catch(() => {}).finally(() => { if (avatarLoading.get(peer.pid) === h) avatarLoading.delete(peer.pid); });
+  return '';
+}
+
+module.exports = { watchRoom, stopWatch, peersNow, putAvatar, avatarOf, avatarHash, sseParser, applyEvent, looksProblem, putStats, readStats, call, online, leaveOnline, why: () => why, leave, beat, cleanUrl, signedText, EVERY_MS, ALIVE_MS };

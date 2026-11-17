@@ -5022,13 +5022,40 @@ function peerDiscOf(nick) {
   return typeof d === 'string' && (PEER_OVERLAY.has(d) || discArt.has(d)) ? d : '';
 }
 
+/*
+ * La foto de avatar de alguien de TL App (la baja el proceso principal, ya
+ * verificada: ver presence.js). Se decodifica una vez; mientras tanto, null.
+ */
+const peerAvatarImgs = new Map(); // data URL → { img, ok }
+function peerAvatarImg(nick) {
+  const p = nick ? peers.get(nick) : null;
+  const data = p && p.cosmetics ? p.cosmetics.avatarData : null;
+  if (typeof data !== 'string' || data.length > 12000 || !data.startsWith('data:image/jpeg;base64,')) return null;
+  let rec = peerAvatarImgs.get(data);
+  if (!rec) {
+    const img = new Image();
+    rec = { img, ok: false };
+    img.onload = () => { rec.ok = true; safe(syncPeerDiscs); };
+    img.src = data;
+    peerAvatarImgs.set(data, rec);
+    if (peerAvatarImgs.size > 80) peerAvatarImgs.delete(peerAvatarImgs.keys().next().value);
+  }
+  return rec.ok ? rec.img : null;
+}
+
+/** Lo que tiene que llevar la ficha de alguien: si cambia, se rearma. */
+function peerSig(nick) {
+  const p = nick ? peers.get(nick) : null;
+  return `${peerDiscOf(nick)}|${peerAvatarImg(nick) && p.cosmetics.avatar ? p.cosmetics.avatar : ''}`;
+}
+
 /** El juego está por armar la textura de una ficha: de quién es. */
 function noteDiscObj(obj) {
   const nick = obj && typeof obj.__tvmNick === 'string' ? obj.__tvmNick : '';
   textureNick = nick && !obj.__tvmMine ? nick : null;
   if (!textureNick) return;
   const prev = discObjs.get(textureNick);
-  discObjs.set(textureNick, { obj, style: prev && prev.obj === obj ? prev.style : '' });
+  discObjs.set(textureNick, { obj, sig: prev && prev.obj === obj ? prev.sig : '' });
   if (discObjs.size > 64) discObjs.delete(discObjs.keys().next().value);
 }
 
@@ -5038,7 +5065,7 @@ function notePeerPattern(obj, prop) {
   if (!nick || obj.__tvmMine) return;
   const style = peerDiscOf(nick);
   const rec = discObjs.get(nick);
-  if (rec && rec.obj === obj) rec.style = style;
+  if (rec && rec.obj === obj) rec.sig = peerSig(nick);
   const pat = obj[prop];
   if (pat && PEER_OVERLAY.has(style)) { peerPatStyle.set(pat, style); peerPatSet.add(pat); }
 }
@@ -5046,7 +5073,7 @@ function notePeerPattern(obj, prop) {
 /** Llegó la sala de nuevo: a las fichas cuyo estilo cambió se les pide rearmarse. */
 function syncPeerDiscs() {
   for (const [nick, rec] of discObjs) {
-    if (peerDiscOf(nick) !== rec.style) rec.obj.__tvmRedo = 1;
+    if (peerSig(nick) !== rec.sig) rec.obj.__tvmRedo = 1;
   }
   let fx = false;
   for (const p of peers.values()) if (p && p.cosmetics && PEER_OVERLAY.has(p.cosmetics.disc)) { fx = true; break; }
@@ -6028,6 +6055,7 @@ function loadAvatarImage(view) {
     avatarRaw = null;
     avatarImageSrc = '';
     stopGifAvatar();
+    safe(shareMyAvatar);
     if (habia) {
       myTextureCanvas = null;
       safe(refreshAvatarTexture);
@@ -11413,6 +11441,13 @@ function installCanvasHooks(doc) {
     if (texNick && !lastTextureMine) {
       const st = peerDiscOf(texNick);
       if (discArt.has(st)) safe(paintDiscArt, this, st, texNick);
+      // Y su foto, como la tuya en tu ficha: en lugar del texto del avatar.
+      const img = peerAvatarImg(texNick);
+      if (img) {
+        ownDraw++;
+        try { this.drawImage(img, 0, 0, 64, 64); } finally { ownDraw--; }
+        return undefined;
+      }
     }
     if (!esTextura && isGoalAnnounce(text, this)) return undefined;
     if (visual.names && !esTextura && ownDraw === 0) {
@@ -11491,7 +11526,33 @@ function paintDiscArt(ctx, style = visual.discStyle, nick = '') {
   }
 }
 
+/*
+ * Tu foto de avatar para los demás de TL App: la misma que se ve en tu ficha
+ * (ya recortada), en 64×64 y JPG (unos 4 KB). Se manda sólo si cambió; el
+ * proceso principal la sube firmada (presence.js). Sin foto, se manda null.
+ */
+let sharedAvatar = null;
+function shareMyAvatar() {
+  let data = '';
+  if (avatarImage) {
+    try {
+      const c = document.createElement('canvas');
+      c.width = c.height = 64;
+      const x = c.getContext('2d');
+      x.fillStyle = '#000';
+      x.fillRect(0, 0, 64, 64);
+      x.drawImage(avatarImage, 0, 0, 64, 64);
+      for (const q of [0.86, 0.72, 0.55]) { data = c.toDataURL('image/jpeg', q); if (data.length <= 12000) break; }
+      if (data.length > 12000) data = '';
+    } catch (e) { data = ''; }
+  }
+  if (data === sharedAvatar) return;
+  sharedAvatar = data;
+  ipcRenderer.send('game:my-avatar', data || null);
+}
+
 function refreshAvatarTexture() {
+  safe(shareMyAvatar);
   const doc = gameDocument();
   const face = currentAvatarText();
   if (!doc || !chatInput(doc) || !face) return;
