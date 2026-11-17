@@ -103,7 +103,7 @@ const PANEL_TABS = {
   ],
   ajustes: [
     { id: 'rapido', group: 'tabg.perf', label: 'tab.quick', hint: 'tab.quickHint', secs: ['perfil', 'respuesta'] },
-    { id: 'graficos', group: 'tabg.perf', label: 'tab.gfx', hint: 'tab.gfxHint', secs: ['graficos', 'graficosav'] },
+    { id: 'graficos', group: 'tabg.perf', label: 'tab.gfx', hint: 'tab.gfxHint', secs: ['graficos', 'vista3d', 'graficosav'] },
     { id: 'red', group: 'tabg.perf', label: 'tab.net', hint: 'tab.netHint', secs: ['latencia', 'sistemaperf', 'red'] },
     { id: 'controles', group: 'tabg.game', label: 'tab.controls', hint: 'tab.controlsHint', secs: ['teclas'] },
     { id: 'cliente', group: 'tabg.game', label: 'tab.client', hint: 'tab.clientHint', secs: ['cliente'] },
@@ -127,7 +127,7 @@ const MODAL_SECS = {
 
   // Lo de Rendimiento se muda a Configuración; las líneas y tamaños, a la cancha.
   if (perfPage) {
-    for (const id of ['perfil', 'respuesta', 'graficos', 'graficosav', 'red', 'teclas', 'latencia', 'sistemaperf']) {
+    for (const id of ['perfil', 'respuesta', 'graficos', 'vista3d', 'graficosav', 'red', 'teclas', 'latencia', 'sistemaperf']) {
       const sec = $(`[data-sec="${id}"]`, perfPage);
       if (sec) settingsPage.append(sec);
     }
@@ -4375,7 +4375,7 @@ function renderFpsCap() {
 /*
  * ── Modo «PC lenta» ─────────────────────────────────────────────────────
  * Un interruptor que apaga de una vez todo lo VISUAL que cuesta (animaciones,
- * partículas, pelota 3D, destellos, fondo animado, gráficos planos, marcador en
+ * partículas, pelota 3D, vista 3D, destellos, fondo animado, gráficos planos, marcador en
  * la cancha, estilos de ficha y pelota, sombras, cola y aro) y guarda lo
  * que había para poder volver. Al apagarlo se devuelve sólo lo que sigue con el
  * valor que puso el modo: si en el medio tocaste algo a mano, se respeta.
@@ -4387,7 +4387,8 @@ const LOW_END = {
   // guardado en el cache no cuesta por cuadro y se respeta).
   visual: { menuBg: 'none', pitchWeather: 'none', pitchScore: 'none', discStyle: 'default', softShadows: false, selfTrail: false, ringStyle: 'default', ballStyle: 'default' },
   pitch: { ball3d: false, goalFlash: false, goalShake: false },
-  perf: { flatGraphics: true, gpuRasterization: true, zeroCopy: true, highProcessPriority: true, disableBackgroundThrottling: true }
+  // La vista 3D cuesta más que el 2D: el modo PC lenta la apaga (y la devuelve al salir).
+  perf: { flatGraphics: true, gpuRasterization: true, zeroCopy: true, highProcessPriority: true, disableBackgroundThrottling: true, view3d: false }
 };
 
 async function setLowEnd(on) {
@@ -4440,8 +4441,8 @@ function renderLowEnd() {
   const row = settingRow({
     label: en ? 'Low-end PC mode' : 'Modo PC lenta',
     description: en
-      ? 'Turns off what costs FPS in one go: animations, particles, 3D ball, goal flashes, animated menu background, on-pitch score, disc and ball styles, shadows, trail and ring styles, plus flat graphics.'
-      : 'Apaga de una vez lo que cuesta FPS: animaciones, partículas, pelota 3D, destellos de gol, fondo animado del menú, marcador en la cancha, estilos de ficha y pelota, sombras, cola y aro, y pone gráficos planos.',
+      ? 'Turns off what costs FPS in one go: animations, particles, 3D ball, 3D view, goal flashes, animated menu background, on-pitch score, disc and ball styles, shadows, trail and ring styles, plus flat graphics.'
+      : 'Apaga de una vez lo que cuesta FPS: animaciones, partículas, pelota 3D, vista 3D, destellos de gol, fondo animado del menú, marcador en la cancha, estilos de ficha y pelota, sombras, cola y aro, y pone gráficos planos.',
     hint: en
       ? 'It remembers what you had and restores it when you turn it off (anything you changed by hand in the meantime is kept). Does not touch gameplay, sound or game resolution; for more FPS also lower “Resolution scale” in Graphics. Some changes need a restart.'
       : 'Recuerda lo que tenías y lo devuelve al apagarlo (lo que cambies a mano mientras tanto se respeta). No toca la jugabilidad, el sonido ni la resolución del juego; para ganar más FPS bajá también la «Escala de resolución» en Gráficos. Algunos cambios piden reiniciar.',
@@ -4477,6 +4478,66 @@ function renderPerf() {
   }
   renderPerfPresets();
   renderLowEnd();
+  renderView3d();
+}
+
+/*
+ * ═══ Vista 3D ═══
+ *
+ * Apagada de fábrica. Prenderla o apagarla pide reiniciar a propósito: así,
+ * apagada, el juego que se sirve y el preload son exactamente los de siempre
+ * (ver view-3d-patch.js). La perspectiva sí se cambia en vivo.
+ */
+function renderView3d() {
+  const host = $('#view3dBox');
+  if (!host || typeof settingRow !== 'function') return;
+  const en = isEn();
+  const perf = state.config.perf || {};
+  host.replaceChildren();
+
+  const sw = document.createElement('div');
+  sw.className = 'rows__flat';
+  buildSwitches(sw, [{
+    key: 'view3d',
+    label: en ? '3D view' : 'Vista 3D',
+    description: en
+      ? 'Draws the pitch in 3D with a tilted camera: discs with depth, a real ball and shadows. Only you see it.'
+      : 'Dibuja la cancha en 3D con la cámara inclinada: fichas con volumen, pelota de verdad y sombras. Sólo lo ves vos.',
+    hint: en
+      ? 'It does not touch physics, keys or the network: it only changes how the frame is drawn. It costs more FPS than 2D. Turned off, the client is exactly the same as before. If 3D fails on your graphics card, the game goes back to 2D by itself.'
+      : 'No toca la física, las teclas ni la red: sólo cambia cómo se dibuja el cuadro. Cuesta más FPS que el 2D. Apagada, el cliente queda exactamente igual que antes. Si el 3D falla en tu placa de video, el juego vuelve solo al 2D.',
+    restart: true,
+    value: () => !!(state.config.perf || {}).view3d
+  }], async (_item, value) => {
+    await patchConfig({ perf: { view3d: value } });
+    needsRestart();
+    renderView3d();
+  });
+  host.append(sw);
+
+  const cams = document.createElement('div');
+  cams.className = 'chips';
+  const CAM_LABELS = [
+    ['dron', 'Dron', 'Drone'],
+    ['tribuna', 'Tribuna', 'Stand'],
+    ['tv', 'TV', 'TV'],
+    ['vertical', 'Vertical', 'Vertical']
+  ];
+  for (const [id, es, eng] of CAM_LABELS) {
+    const c = document.createElement('button');
+    c.type = 'button';
+    c.className = `chip${(perf.view3dCam || 'tribuna') === id ? ' is-active' : ''}`;
+    c.textContent = en ? eng : es;
+    c.addEventListener('click', async () => { await patchConfig({ perf: { view3dCam: id } }); renderView3d(); });
+    cams.append(c);
+  }
+  host.append(settingRow({
+    label: en ? 'Camera' : 'Cámara',
+    description: en
+      ? 'Drone: almost from above. Stand: from the side stand. TV: low, like a broadcast. Vertical: from behind your goal, following your disc (keys do not turn: the key that moves you towards the rival goal is the same as always). Changes live.'
+      : 'Dron: casi desde arriba. Tribuna: desde la tribuna. TV: baja, como en la tele. Vertical: desde atrás de tu arco, siguiendo tu ficha (las teclas no giran: la que te lleva al arco rival es la de siempre). Se cambia en vivo.',
+    control: cams
+  }));
 }
 
 /*

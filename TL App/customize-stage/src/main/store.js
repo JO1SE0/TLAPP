@@ -207,6 +207,14 @@ const DEFAULTS = {
     startFullscreen: true,
     /** Opcional: reusa la simulación del cuadro anterior si pasó <4 ms (ver patchLightSim). */
     lightSim: true,
+    /**
+     * Vista 3D de la cancha (ver view-3d.js). Apagada de fábrica. Se lee una sola
+     * vez al arrancar: apagada, el juego que se sirve y el preload son los de
+     * siempre, sin un solo gancho de más.
+     */
+    view3d: false,
+    /** Perspectiva de la vista 3D: dron | tribuna | tv | vertical. Se cambia en vivo. */
+    view3dCam: 'tribuna',
     /** «Modo PC lenta»: apaga de una vez lo visual que cuesta. `lowEndBackup` guarda lo que había para volver. */
     lowEnd: false,
     lowEndBackup: null,
