@@ -5144,7 +5144,7 @@ function myNick() {
  * Con «Animaciones» apagado aparece quieto y se va igual.
  */
 const arrival = { room: '', shown: false };
-const ARRIVAL_MS = 5600;
+const ARRIVAL_MS = 5200;
 
 /*
  * Los del plantel que están en la sala, sacados de la presencia (llega en vivo,
@@ -5191,105 +5191,64 @@ function clubArrival(doc, members) {
   if (!(state.config.pitch && state.config.pitch.clubArrival !== false)) return;
   if (!doc.body) return;
   arrival.shown = true;
-  if (!doc.getElementById('tvm-arrival-css2')) {
+  if (!doc.getElementById('tvm-arrival-css3')) {
     doc.getElementById('tvm-arrival-css')?.remove();
+    doc.getElementById('tvm-arrival-css2')?.remove();
     const st = doc.createElement('style');
-    st.id = 'tvm-arrival-css2';
+    st.id = 'tvm-arrival-css3';
     st.textContent = `
-      #tvm-arrival { position: fixed; left: 50%; top: 58px; z-index: 2147482500; pointer-events: none; width: max-content; max-width: 92vw;
-        transform: translate(-50%, -30px) scale(.86); opacity: 0; contain: layout paint;
-        font-family: Outfit, Bahnschrift, 'Segoe UI', sans-serif; color: #f6f1de; }
-      #tvm-arrival .a-card { position: relative; display: flex; align-items: center; gap: 18px;
-        padding: 14px 26px 16px 16px; border-radius: 22px; overflow: hidden;
-        background:
-          radial-gradient(80% 120% at 0% 50%, rgba(236,213,147,.26), transparent 60%),
-          repeating-linear-gradient(115deg, rgba(255,255,255,.035) 0 10px, transparent 10px 22px),
-          linear-gradient(135deg, #1d3a70, #0b1630 72%);
-        border: 1px solid rgba(236,213,147,.7);
-        box-shadow: 0 22px 46px -18px rgba(0,0,0,.95), 0 0 0 1px rgba(0,0,0,.4), inset 0 1px 0 rgba(255,255,255,.16), inset 0 -2px 0 rgba(208,184,120,.35); }
-      #tvm-arrival .a-stripe { position: absolute; left: 0; top: 0; bottom: 0; width: 5px;
-        background: linear-gradient(180deg, #ecd593, #b8913f); transform: scaleY(0); transform-origin: top; }
-      #tvm-arrival .a-crest { position: relative; flex: none; width: 64px; height: 64px; }
-      #tvm-arrival .a-halo { position: absolute; left: 50%; top: 50%; width: 120px; height: 120px; margin: -60px 0 0 -60px;
-        border-radius: 50%; background: radial-gradient(circle, rgba(236,213,147,.55), rgba(236,213,147,0) 65%);
-        transform: scale(.3); opacity: 0; }
-      #tvm-arrival .a-rays { position: absolute; left: 50%; top: 50%; width: 130px; height: 130px; margin: -65px 0 0 -65px;
-        border-radius: 50%; opacity: 0;
-        background: repeating-conic-gradient(from 0deg, rgba(236,213,147,.22) 0 8deg, transparent 8deg 30deg);
-        -webkit-mask: radial-gradient(circle, #000 25%, transparent 68%); mask: radial-gradient(circle, #000 25%, transparent 68%); }
-      #tvm-arrival .a-crest img { position: relative; width: 64px; height: 64px; object-fit: contain;
-        transform: translateY(-20px) scale(.3) rotate(-25deg); opacity: 0; }
-      #tvm-arrival .a-ring { position: absolute; left: 50%; top: 50%; width: 72px; height: 72px; margin: -36px 0 0 -36px;
-        border-radius: 50%; border: 2px solid rgba(236,213,147,.9); transform: scale(.5); opacity: 0; }
+      #tvm-arrival { position: fixed; left: 50%; top: 56px; z-index: 2147482500; pointer-events: none;
+        width: max-content; max-width: 92vw; transform: translate(-50%, -26px) scale(.9); opacity: 0;
+        font-family: Outfit, Bahnschrift, 'Segoe UI', sans-serif; color: #13254a; }
+      #tvm-arrival .a-pill { position: relative; display: flex; align-items: center; gap: 14px;
+        padding: 6px 22px 6px 6px; border-radius: 999px; background: #faf7ee;
+        box-shadow: 0 16px 32px -12px rgba(0,0,0,.65), 0 0 0 1px rgba(0,0,0,.06); }
+      #tvm-arrival .a-gold { position: relative; overflow: hidden; flex: none; display: flex; align-items: center; gap: 6px;
+        height: 52px; padding: 0 16px 0 10px; border-radius: 999px;
+        background: linear-gradient(135deg, #f3dc98, #c39a45); transform: scaleX(.6); transform-origin: left center; opacity: 0; }
+      #tvm-arrival .a-gold img { width: 34px; height: 34px; object-fit: contain; transform: rotate(-20deg) scale(.5); opacity: 0; }
+      #tvm-arrival .a-gold b { font-size: 20px; font-weight: 900; letter-spacing: .02em; color: #13254a; transform: translateX(-6px); opacity: 0; }
+      #tvm-arrival .a-shine { position: absolute; top: -20%; bottom: -20%; left: 0; width: 45%;
+        background: linear-gradient(100deg, transparent, rgba(255,255,255,.65), transparent);
+        transform: translateX(-130%) skewX(-18deg); }
       #tvm-arrival .a-text { min-width: 0; }
-      #tvm-arrival .a-top { display: flex; align-items: baseline; gap: 12px; transform: translateX(-14px); opacity: 0; }
-      #tvm-arrival .a-top b { font-size: 19px; font-weight: 900; letter-spacing: .12em; white-space: nowrap; line-height: 1;
-        background: linear-gradient(180deg, #fff6d6 0%, #ecd593 45%, #b8913f 100%); -webkit-background-clip: text; background-clip: text; color: transparent; }
-      #tvm-arrival .a-sub { font-size: 10.5px; font-weight: 800; letter-spacing: .34em; color: rgba(236,213,147,.85);
-        margin-top: 4px; transform: translateX(-10px); opacity: 0; white-space: nowrap; }
-      #tvm-arrival .a-count { position: relative; flex: none; margin-left: 6px; text-align: center; transform: scale(.4); opacity: 0; }
-      #tvm-arrival .a-count i { display: block; font-style: normal; font-size: 34px; font-weight: 900; line-height: .9;
-        background: linear-gradient(180deg, #fff6d6, #d0b878); -webkit-background-clip: text; background-clip: text; color: transparent; }
-      #tvm-arrival .a-count small { display: block; font-size: 9px; font-weight: 800; letter-spacing: .25em; color: rgba(246,241,222,.7); margin-top: 3px; }
-      #tvm-arrival .a-names { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 9px; max-width: 64vw; }
-      #tvm-arrival .a-names span { display: inline-flex; align-items: center; gap: 7px; font-size: 14px; font-weight: 700;
-        white-space: nowrap; padding: 3px 11px 3px 3px; border-radius: 999px;
-        background: linear-gradient(180deg, rgba(255,255,255,.12), rgba(255,255,255,.04)); border: 1px solid rgba(236,213,147,.35);
-        transform: translateY(10px) scale(.85); opacity: 0; }
-      #tvm-arrival .a-names span.more { padding-left: 11px; }
-      #tvm-arrival .a-av { width: 22px; height: 22px; border-radius: 50%; flex: none; object-fit: cover;
-        border: 1.5px solid #ecd593; background: #0b1630; }
-      #tvm-arrival .a-dot { width: 22px; height: 22px; border-radius: 50%; flex: none; display: grid; place-items: center;
-        font-size: 11px; font-weight: 900; color: #0b1630; background: linear-gradient(180deg, #ecd593, #c9a85c); }
-      #tvm-arrival .a-shine { position: absolute; top: -30%; bottom: -30%; left: 0; width: 34%;
-        background: linear-gradient(100deg, transparent, rgba(255,244,210,.28), transparent);
-        transform: translateX(-160%) skewX(-18deg); opacity: 0; }
-      #tvm-arrival .a-line { position: absolute; left: 18px; right: 18px; bottom: 0; height: 2px; border-radius: 2px;
-        background: linear-gradient(90deg, transparent, #fff1c4, transparent); transform: scaleX(0); }
-      #tvm-arrival .a-spark { position: absolute; left: 48px; top: 46px; width: 6px; height: 6px; border-radius: 2px;
-        background: #ecd593; opacity: 0; }
+      #tvm-arrival .a-title { font-size: 15px; font-weight: 700; white-space: nowrap; transform: translateX(-8px); opacity: 0; }
+      #tvm-arrival .a-row { display: flex; align-items: center; margin-top: 4px; }
+      #tvm-arrival .a-av { width: 22px; height: 22px; border-radius: 50%; flex: none; margin-left: -6px; object-fit: cover;
+        border: 2px solid #faf7ee; background: #13254a; box-sizing: content-box; transform: scale(.3); opacity: 0; }
+      #tvm-arrival .a-av:first-child { margin-left: 0; }
+      #tvm-arrival i.a-av { display: grid; place-items: center; font-style: normal; font-size: 10px; font-weight: 800; color: #ecd593; }
+      #tvm-arrival .a-names { font-size: 12px; color: #5b6478; margin-left: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        max-width: 46vw; opacity: 0; }
 
       #tvm-arrival.is-on { animation: tvmArrIn ${ARRIVAL_MS}ms cubic-bezier(.2,.8,.2,1) both; }
-      #tvm-arrival.is-on .a-stripe { animation: tvmArrStripe .5s cubic-bezier(.2,.8,.2,1) .15s both; }
-      #tvm-arrival.is-on .a-halo { animation: tvmArrHalo 1.6s ease-out .2s both; }
-      #tvm-arrival.is-on .a-rays { animation: tvmArrRays 2.6s linear .25s both; }
-      #tvm-arrival.is-on .a-crest img { animation: tvmArrCrest .75s cubic-bezier(.3,1.6,.5,1) .18s both; }
-      #tvm-arrival.is-on .a-ring { animation: tvmArrRing 1s ease-out .6s both; }
-      #tvm-arrival.is-on .a-top { animation: tvmArrUp .45s cubic-bezier(.2,.8,.2,1) .38s both; }
-      #tvm-arrival.is-on .a-sub { animation: tvmArrUp .45s cubic-bezier(.2,.8,.2,1) .5s both; }
-      #tvm-arrival.is-on .a-count { animation: tvmArrPop .55s cubic-bezier(.3,1.7,.5,1) .55s both; }
-      #tvm-arrival.is-on .a-names span { animation: tvmArrName .45s cubic-bezier(.3,1.5,.5,1) both; }
-      #tvm-arrival.is-on .a-shine { animation: tvmArrShine 1.1s ease-in-out 1.2s both; }
-      #tvm-arrival.is-on .a-line { animation: tvmArrLine .9s cubic-bezier(.2,.8,.2,1) .5s both; }
-      #tvm-arrival.is-on .a-spark { animation: tvmArrSpark .9s cubic-bezier(.2,.7,.3,1) both; }
+      #tvm-arrival.is-on .a-gold { animation: tvmArrGold .5s cubic-bezier(.2,.9,.3,1) .12s both; }
+      #tvm-arrival.is-on .a-gold img { animation: tvmArrCrest .6s cubic-bezier(.3,1.6,.5,1) .3s both; }
+      #tvm-arrival.is-on .a-gold b { animation: tvmArrFade .4s ease-out .42s both; }
+      #tvm-arrival.is-on .a-shine { animation: tvmArrShine 1s ease-in-out 1s both; }
+      #tvm-arrival.is-on .a-title { animation: tvmArrFade .4s ease-out .38s both; }
+      #tvm-arrival.is-on .a-av { animation: tvmArrPop .4s cubic-bezier(.3,1.7,.5,1) both; }
+      #tvm-arrival.is-on .a-names { animation: tvmArrNames .4s ease-out both; }
 
       @keyframes tvmArrIn {
-        0% { transform: translate(-50%, -30px) scale(.86); opacity: 0; }
-        6% { transform: translate(-50%, 4px) scale(1.03); opacity: 1; }
-        10% { transform: translate(-50%, 0) scale(1); opacity: 1; }
-        89% { transform: translate(-50%, 0) scale(1); opacity: 1; }
-        100% { transform: translate(-50%, -18px) scale(.95); opacity: 0; } }
-      @keyframes tvmArrStripe { to { transform: scaleY(1); } }
-      @keyframes tvmArrHalo { 0% { transform: scale(.3); opacity: 0; } 25% { transform: scale(1); opacity: 1; } 100% { transform: scale(1.1); opacity: .35; } }
-      @keyframes tvmArrRays { 0% { transform: rotate(0deg) scale(.6); opacity: 0; } 15% { opacity: 1; } 100% { transform: rotate(80deg) scale(1); opacity: .4; } }
-      @keyframes tvmArrCrest { 0% { transform: translateY(-20px) scale(.3) rotate(-25deg); opacity: 0; } 100% { transform: none; opacity: 1; } }
-      @keyframes tvmArrRing { 0% { transform: scale(.5); opacity: 0; } 1% { transform: scale(.5); opacity: .95; } 100% { transform: scale(1.7); opacity: 0; } }
-      @keyframes tvmArrUp { to { transform: none; opacity: 1; } }
+        0% { transform: translate(-50%, -26px) scale(.9); opacity: 0; }
+        7% { transform: translate(-50%, 3px) scale(1.02); opacity: 1; }
+        11% { transform: translate(-50%, 0) scale(1); opacity: 1; }
+        90% { transform: translate(-50%, 0) scale(1); opacity: 1; }
+        100% { transform: translate(-50%, -14px) scale(.97); opacity: 0; } }
+      @keyframes tvmArrGold { to { transform: none; opacity: 1; } }
+      @keyframes tvmArrCrest { to { transform: none; opacity: 1; } }
+      @keyframes tvmArrFade { to { transform: none; opacity: 1; } }
       @keyframes tvmArrPop { to { transform: none; opacity: 1; } }
-      @keyframes tvmArrName { to { transform: none; opacity: 1; } }
-      @keyframes tvmArrShine { 0% { transform: translateX(-160%) skewX(-18deg); opacity: 1; } 100% { transform: translateX(420%) skewX(-18deg); opacity: 1; } }
-      @keyframes tvmArrLine { to { transform: scaleX(1); } }
-      @keyframes tvmArrSpark { 0% { transform: translate(0, 0) rotate(0) scale(1); opacity: 0; } 8% { opacity: 1; }
-        100% { transform: translate(var(--dx), var(--dy)) rotate(var(--r)) scale(.3); opacity: 0; } }
+      @keyframes tvmArrNames { to { opacity: 1; } }
+      @keyframes tvmArrShine { to { transform: translateX(330%) skewX(-18deg); } }
 
-      html.tvm-noanim #tvm-arrival.is-on { animation: tvmArrFade ${ARRIVAL_MS}ms linear both; }
+      html.tvm-noanim #tvm-arrival.is-on { animation: tvmArrStill ${ARRIVAL_MS}ms linear both; }
       html.tvm-noanim #tvm-arrival.is-on * { animation: none !important; }
-      html.tvm-noanim #tvm-arrival .a-crest img, html.tvm-noanim #tvm-arrival .a-top, html.tvm-noanim #tvm-arrival .a-sub,
-      html.tvm-noanim #tvm-arrival .a-count, html.tvm-noanim #tvm-arrival .a-names span { transform: none; opacity: 1; }
-      html.tvm-noanim #tvm-arrival .a-halo { transform: none; opacity: .4; }
-      html.tvm-noanim #tvm-arrival .a-line, html.tvm-noanim #tvm-arrival .a-stripe { transform: none; }
-      html.tvm-noanim #tvm-arrival .a-spark, html.tvm-noanim #tvm-arrival .a-rays { display: none; }
-      @keyframes tvmArrFade { 0%, 90% { transform: translate(-50%, 0); opacity: 1; } 100% { transform: translate(-50%, 0); opacity: 0; } }`;
+      html.tvm-noanim #tvm-arrival .a-gold, html.tvm-noanim #tvm-arrival .a-gold img, html.tvm-noanim #tvm-arrival .a-gold b,
+      html.tvm-noanim #tvm-arrival .a-title, html.tvm-noanim #tvm-arrival .a-av, html.tvm-noanim #tvm-arrival .a-names { transform: none; opacity: 1; }
+      html.tvm-noanim #tvm-arrival .a-shine { display: none; }
+      @keyframes tvmArrStill { 0%, 90% { transform: translate(-50%, 0); opacity: 1; } 100% { transform: translate(-50%, 0); opacity: 0; } }`;
     (doc.head || doc.documentElement).append(st);
   }
   doc.getElementById('tvm-arrival')?.remove();
@@ -5297,56 +5256,41 @@ function clubArrival(doc, members) {
   const box = el('div');
   box.id = 'tvm-arrival';
   box.setAttribute('aria-hidden', 'true');
-  const card = el('div', 'a-card');
-  const crest = el('div', 'a-crest');
+  const pill = el('div', 'a-pill');
+
+  const gold = el('div', 'a-gold');
   const img = el('img');
   img.src = assetUrl('crest');
   img.alt = '';
-  crest.append(el('div', 'a-halo'), el('div', 'a-rays'), el('div', 'a-ring'), img);
+  const tl = el('b');
+  tl.textContent = 'TL';
+  gold.append(img, tl, el('div', 'a-shine'));
+
   const txt = el('div', 'a-text');
-  const top = el('div', 'a-top');
-  const title = el('b');
-  title.textContent = 'TODA LA LECCE';
-  top.append(title);
-  const sub = el('div', 'a-sub');
-  sub.textContent = 'ESTÁ EN LA SALA';
-  const list = el('div', 'a-names');
-  const shown = members.slice(0, 6);
-  shown.forEach((m, i) => {
-    const chip = el('span');
-    if (m.photo) { const av = el('img', 'a-av'); av.src = m.photo; av.alt = ''; chip.append(av); }
-    else { const d = el('b', 'a-dot'); d.textContent = (m.name[0] || '?').toUpperCase(); chip.append(d); }
-    chip.append(doc.createTextNode(m.name));
-    // De a uno, después del título.
-    chip.style.animationDelay = `${650 + i * 110}ms`;
-    list.append(chip);
+  const title = el('div', 'a-title');
+  title.textContent = 'Toda la Lecce está en la sala';
+  const row = el('div', 'a-row');
+  const faces = members.slice(0, 6);
+  faces.forEach((m, i) => {
+    let f;
+    if (m.photo) { f = el('img', 'a-av'); f.src = m.photo; f.alt = ''; }
+    else { f = el('i', 'a-av'); f.textContent = (m.name[0] || '?').toUpperCase(); }
+    f.style.animationDelay = `${520 + i * 80}ms`;
+    row.append(f);
   });
-  if (members.length > shown.length) {
-    const more = el('span', 'more');
-    more.textContent = `+${members.length - shown.length}`;
-    more.style.animationDelay = `${650 + shown.length * 110}ms`;
-    list.append(more);
-  }
-  txt.append(top, sub, list);
-  const count = el('div', 'a-count');
-  const num = el('i');
-  num.textContent = String(members.length);
-  const lbl = el('small');
-  lbl.textContent = 'DEL CLUB';
-  count.append(num, lbl);
-  card.append(el('div', 'a-shine'), el('div', 'a-stripe'), crest, txt, count, el('div', 'a-line'));
-  // Unas chispas que salen del escudo: pocas y sólo transform/opacity.
-  for (let i = 0; i < 10; i++) {
-    const sp = el('i', 'a-spark');
-    const ang = (i / 10) * Math.PI * 2 + 0.3;
-    const dist = 46 + (i % 3) * 14;
-    sp.style.setProperty('--dx', `${Math.round(Math.cos(ang) * dist)}px`);
-    sp.style.setProperty('--dy', `${Math.round(Math.sin(ang) * dist)}px`);
-    sp.style.setProperty('--r', `${(i * 47) % 360}deg`);
-    sp.style.animationDelay = `${380 + (i % 4) * 40}ms`;
-    card.append(sp);
-  }
-  box.append(card);
+  // «Jefe, Santi, Lucho y Nico» (y «+2» si son muchos).
+  const list = members.map((m) => m.name);
+  const head = list.slice(0, 5);
+  const rest = list.length - head.length;
+  const names = el('span', 'a-names');
+  names.textContent = rest > 0 ? `${head.join(', ')} y ${rest} más`
+    : head.length > 1 ? `${head.slice(0, -1).join(', ')} y ${head[head.length - 1]}` : head.join('');
+  names.style.animationDelay = `${560 + faces.length * 80}ms`;
+  row.append(names);
+  txt.append(title, row);
+
+  pill.append(gold, txt);
+  box.append(pill);
   doc.body.append(box);
   if (state.config.appearance && state.config.appearance.animations === false) doc.documentElement.classList.add('tvm-noanim');
   else doc.documentElement.classList.remove('tvm-noanim');
