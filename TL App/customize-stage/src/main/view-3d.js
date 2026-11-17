@@ -83,6 +83,14 @@ const RISER = [0.36, 0.37, 0.4];
 const WALL_BACK = [0.1, 0.11, 0.14];
 const ROOF = [0.16, 0.17, 0.2];
 const GOLD = [0.66, 0.53, 0.22];
+const STAIRS = [0.42, 0.43, 0.46];
+const LAMP = [1, 0.96, 0.82];
+const SCREEN = [0.05, 0.07, 0.12];
+/* Camisetas del público: mucho del club (dorado y negro), algo de blanco y de los equipos. */
+const CROWD = [[0.72, 0.58, 0.24], [0.72, 0.58, 0.24], [0.08, 0.08, 0.1], [0.08, 0.08, 0.1], [0.9, 0.9, 0.9], [0.86, 0.33, 0.3], [0.32, 0.5, 0.86], [0.55, 0.44, 0.18]];
+const SKIN = [[0.86, 0.68, 0.55], [0.72, 0.53, 0.4], [0.55, 0.38, 0.27], [0.93, 0.78, 0.66]];
+/* Banderas: franjas de arriba a abajo. */
+const BANNERS = [[[0.72, 0.58, 0.24], [0.06, 0.06, 0.08], [0.72, 0.58, 0.24]], [[0.06, 0.06, 0.08], [0.95, 0.95, 0.95], [0.06, 0.06, 0.08]], [[0.95, 0.95, 0.95], [0.72, 0.58, 0.24]]];
 
 /* ── Matrices (columna mayor, como las quiere WebGL) ─────────────────── */
 function perspective(out, fovy, aspect, near, far) {
@@ -123,11 +131,19 @@ function multiply(out, a, b) {
 /* ── Sombreadores ────────────────────────────────────────────────────── */
 const VS = `
 attribute vec3 aPos; attribute vec3 aNor; attribute vec2 aUv;
-uniform mat4 uVP; uniform vec3 uOff; uniform vec3 uScale;
+uniform mat4 uVP; uniform vec3 uOff; uniform vec3 uScale; uniform float uTime; uniform float uAnim;
 varying vec3 vNor; varying vec2 vUv;
 void main() {
   vNor = aNor; vUv = aUv;
-  gl_Position = uVP * vec4(aPos * uScale + uOff, 1.0);
+  vec3 p = aPos * uScale + uOff;
+  // El público: cada persona salta a su ritmo (aUv.x es su fase). Lo calcula
+  // la placa: en JavaScript no corre nada por persona.
+  if (uAnim > 0.5 && aUv.y > 1.5) {
+    float ph = aUv.x;
+    float moving = step(0.5, fract(ph * 13.0));
+    p.y += abs(sin(uTime * (2.2 + fract(ph * 7.0) * 2.4) + ph * 6.2832)) * 2.2 * moving;
+  }
+  gl_Position = uVP * vec4(p, 1.0);
 }`;
 /* uMode: 0 color con luz · 1 textura con luz (tapa de la ficha) · 2 textura sin
    luz (piso) · 3 sombra redonda · 4 color sin luz · 5 color por vértice · 6 aro */
@@ -229,10 +245,19 @@ function stands(side, hx, hy, tiers = STEPS) {
   const a0 = (horiz ? hy : hx) + STAND_GAP;   // distancia del centro al primer escalón
   const l0 = (horiz ? hx : hy) + STAND_GAP;   // medio largo del primer escalón
   const sign = side === 0 || side === 2 ? 1 : -1;
-  const out = [[], [], []];
+  // 0 asientos A · 1 asientos B · 2 estructura · 3 público (se anima en la placa)
+  const out = [[], [], [], []];
   // De (a: hacia afuera, y, l: a lo largo) a coordenadas de cancha.
   const P = (a, y, l) => (horiz ? [l, y, sign * a] : [sign * a, y, l]);
   const quad = (arr, p, rgb) => face(arr, p, rgb, true);
+  const flat = (arr, p, rgb) => face(arr, p, rgb, false);
+  // Azar con semilla: el mismo estadio sale siempre igual.
+  let seed = 9301 + side * 4973 + Math.round(l0) * 7;
+  const rnd = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
+  // Escaleras: separan sectores cada ~200 de largo.
+  const aisleEvery = 200;
+  const isAisle = (l) => Math.abs(((l % aisleEvery) + aisleEvery) % aisleEvery - aisleEvery / 2) < 7;
+
   for (let i = 0; i < tiers; i++) {
     const ai = a0 + i * STEP_D, an = ai + STEP_D;
     const li = l0 + i * STEP_D, ln = li + STEP_D;
@@ -242,6 +267,38 @@ function stands(side, hx, hy, tiers = STEPS) {
     quad(out[i % 2], [P(ai, y, -li), P(an, y, -ln), P(an, y, ln), P(ai, y, li)], seat);
     // Frente del escalón, de hormigón: es lo que dibuja cada fila.
     quad(out[2], [P(ai, yb, -li), P(ai, y, -li), P(ai, y, li), P(ai, yb, li)], RISER);
+    // Escaleras, un poco más claras, encima de la tapa.
+    for (let l = -li + aisleEvery / 2; l < li; l += aisleEvery) {
+      const c = l - (((l % aisleEvery) + aisleEvery) % aisleEvery) + aisleEvery / 2;
+      quad(out[2], [P(ai, y + 0.15, c - 6), P(an, y + 0.15, c - 6), P(an, y + 0.15, c + 6), P(ai, y + 0.15, c + 6)], STAIRS);
+    }
+    // Público: uno cada ~9, con huecos, mirando a la cancha.
+    const am = ai + STEP_D * 0.55;
+    for (let l = -li + 6; l < li - 6; l += 8.5 + rnd() * 2) {
+      if (isAisle(l) || rnd() < 0.16) continue;
+      const shirt = CROWD[Math.floor(rnd() * CROWD.length)];
+      const skin = SKIN[Math.floor(rnd() * SKIN.length)];
+      const phase = rnd();
+      const k = 0.82 + rnd() * 0.3;
+      const bh = 8 * k, bw = 2.8 * k, hs = 1.9 * k;
+      const person = (p, rgb) => {
+        for (const j of [0, 1, 2, 0, 2, 3]) out[3].push(p[j][0], p[j][1], p[j][2], rgb[0], rgb[1], rgb[2], phase, 2);
+      };
+      person([P(am, y, l - bw), P(am, y + bh, l - bw), P(am, y + bh, l + bw), P(am, y, l + bw)], shirt);
+      person([P(am - 0.2, y + bh + 0.4, l - hs), P(am - 0.2, y + bh + 0.4 + 2 * hs, l - hs), P(am - 0.2, y + bh + 0.4 + 2 * hs, l + hs), P(am - 0.2, y + bh + 0.4, l + hs)], skin);
+    }
+  }
+  // Banderas del club colgadas del frente de la primera fila.
+  if (tiers >= 2) {
+    const fy0 = 1.5, fy1 = STEP_H * 2 - 2;
+    let n = 0;
+    for (let l = -l0 + 60; l < l0 - 60; l += 150, n++) {
+      const w = 34 + (n % 3) * 8;
+      const a = a0 - 0.6;
+      const stripes = BANNERS[n % BANNERS.length];
+      const sh = (fy1 - fy0) / stripes.length;
+      stripes.forEach((rgb, k) => flat(out[2], [P(a, fy0 + k * sh, l - w), P(a, fy0 + (k + 1) * sh, l - w), P(a, fy0 + (k + 1) * sh, l + w), P(a, fy0 + k * sh, l + w)], rgb));
+    }
   }
   // Del lado de la cámara: sólo los escalones de abajo, con su baranda dorada.
   if (tiers < STEPS) {
@@ -256,6 +313,16 @@ function stands(side, hx, hy, tiers = STEPS) {
   quad(out[2], [P(aR, yN + ROOF_H, -lR), P(aN + 6, yN + ROOF_H + 8, -lN - 6), P(aN + 6, yN + ROOF_H + 8, lN + 6), P(aR, yN + ROOF_H, lR)], ROOF);
   // Filo dorado del alero, lo que se ve de lejos.
   quad(out[1], [P(aR, yN + ROOF_H - 4, -lR), P(aR, yN + ROOF_H, -lR), P(aR, yN + ROOF_H, lR), P(aR, yN + ROOF_H - 4, lR)], GOLD);
+  // Focos debajo del alero: encendidos, siempre.
+  for (let l = -lR + 20; l < lR - 20; l += 46) {
+    flat(out[2], [P(aR - 0.4, yN + ROOF_H - 10, l - 6), P(aR - 0.4, yN + ROOF_H - 5, l - 6), P(aR - 0.4, yN + ROOF_H - 5, l + 6), P(aR - 0.4, yN + ROOF_H - 10, l + 6)], LAMP);
+  }
+  // Una pantalla en el medio del lado de enfrente.
+  if (side === 1) {
+    const sw = Math.min(160, l0 * 0.35), sy = yN + 6, sh = ROOF_H - 22;
+    flat(out[2], [P(aN - 0.6, sy, -sw - 4), P(aN - 0.6, sy + sh + 4, -sw - 4), P(aN - 0.6, sy + sh + 4, sw + 4), P(aN - 0.6, sy, sw + 4)], GOLD);
+    flat(out[2], [P(aN - 1.2, sy + 2, -sw), P(aN - 1.2, sy + sh + 2, -sw), P(aN - 1.2, sy + sh + 2, sw), P(aN - 1.2, sy + 2, sw)], SCREEN);
+  }
   return out.map((v) => new Float32Array(v));
 }
 
@@ -512,7 +579,7 @@ function install(view, opts = {}) {
 
     prog = program(VS, FS);
     U = {};
-    for (const n of ['uVP', 'uOff', 'uScale', 'uMode', 'uColor', 'uTex', 'uRot']) U[n] = gl.getUniformLocation(prog, n);
+    for (const n of ['uVP', 'uOff', 'uScale', 'uMode', 'uColor', 'uTex', 'uRot', 'uTime', 'uAnim']) U[n] = gl.getUniformLocation(prog, n);
     U.aPos = gl.getAttribLocation(prog, 'aPos');
     U.aNor = gl.getAttribLocation(prog, 'aNor');
     U.aUv = gl.getAttribLocation(prog, 'aUv');
@@ -881,6 +948,8 @@ function install(view, opts = {}) {
     gl.enableVertexAttribArray(U.aNor);
     gl.enableVertexAttribArray(U.aUv);
     gl.uniformMatrix4fv(U.uVP, false, vp);
+    gl.uniform1f(U.uTime, (performance.now() % 600000) / 1000);
+    gl.uniform1f(U.uAnim, 0);
     gl.uniform1i(U.uTex, 0);
     gl.activeTexture(gl.TEXTURE0);
     // En espejo se dan vuelta las posiciones y el piso, no las camisetas: igual que
@@ -942,7 +1011,14 @@ function install(view, opts = {}) {
       for (let side = 0; side < 4; side++) {
         // La del lado de la cámara, baja: cierra el estadio sin tapar la cancha.
         const set = side === behind ? standLow : standBufs;
-        for (const m of set[side]) if (m.n) draw(m, 5, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1);
+        const parts = set[side];
+        for (let k = 0; k < parts.length; k++) {
+          const m = parts[k];
+          if (!m.n) continue;
+          if (k === 3) gl.uniform1f(U.uAnim, 1);
+          draw(m, 5, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1);
+          if (k === 3) gl.uniform1f(U.uAnim, 0);
+        }
       }
     }
 
