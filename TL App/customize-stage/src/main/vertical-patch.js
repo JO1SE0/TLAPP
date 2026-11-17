@@ -63,7 +63,15 @@ const SITES = {
   /* Nombres y globito de chat, por jugador. */
   label: /let g=this\.[\w$]+\.get\(f\.[\w$]+\);(?=c&&g\.)/,
   /* Las flechas: la máscara del juego (arriba 1, abajo 2, izquierda 4, derecha 8). */
-  input: /this\.[\w$]+\.has\("Kick"\)&&\(a\|=16\);/
+  input: /this\.[\w$]+\.has\("Kick"\)&&\(a\|=16\);/,
+  /* Inclinación: el zoom ya calculado, justo antes de usarlo para la cámara. */
+  zoom: /;b=this\.[\w$]+\*this\.[\w$]+;var k=this\.[\w$]+\*this\.[\w$]+,l=c\.([\w$]+)\.[\w$]+,n=this\.[\w$]+\.width\//,
+  /* El tamaño del canvas: con la cancha inclinada se mide sin la inclinación. */
+  size: /let b=this\.([\w$]+)\.getBoundingClientRect\(\),c=Math\.round\(b\.width\*a\)/,
+  /* El ancho del estadio (límite de la cámara) y los discos del mundo (la pelota es el primero). */
+  width: /\w+\(a,b,c\)\{a>2\*c\.([\w$]+)\?this\.[\w$]+\.x=0:/,
+  discs: /h=e\.([\w$]+);r=0;for\(t=e\./,
+  pos: /this\.c\.arc\(a\.([\w$]+)\.x,a\.\1\.y,a\.[\w$]+,0,2\*Math\.PI,!1\)/
 };
 
 /* Dentro del caché de la cancha y de las fichas del cliente (PRELUDE de game-patch.js). */
@@ -74,7 +82,8 @@ const P = {
   grab: '    if (m.b !== 0 || m.c !== 0 || !m.a || !m.d) return;\n    dT.c = c; dT.a = m.a; dT.d = m.d; dT.e = m.e; dT.f = m.f; dT.burst = burst; dT.ok = true;',
   spot: '    var dx = a * x + dT.e, dy = d * y + dT.f;',
   back: '    c.setTransform(a, 0, 0, d, dT.e, dT.f);',
-  backErr: '    try { c.setTransform(dT.a, 0, 0, dT.d, dT.e, dT.f); } catch (e10) {}'
+  backErr: '    try { c.setTransform(dT.a, 0, 0, dT.d, dT.e, dT.f); } catch (e10) {}',
+  pad: '      var m = PAD / zoom;'
 };
 
 /* Lo que se ve de cancha con la pantalla girada: las cuatro esquinas, llevadas a la cancha. */
@@ -93,6 +102,44 @@ const CORNERS = (() => {
  * Las flechas giradas. Rojo (cancha girada -90°): arriba en la pantalla es la
  * derecha de la cancha. Azul (+90°): arriba es la izquierda.
  */
+/**
+ * Inclinación de la vista vertical (`__tvmTiltOn`).
+ *
+ * Cerca de tu arco la cancha queda plana. A medida que la pelota avanza hacia
+ * el arco rival, la cámara se inclina y mira hacia adelante: lo de cerca se ve
+ * del tamaño de siempre y lo de lejos se achica, así entra más cancha por
+ * delante en una pantalla apaisada.
+ *
+ *  · La inclinación la hace la placa de video (una transformación CSS del
+ *    canvas): no se redibuja nada por eso.
+ *  · El juego aleja un poco el zoom en la misma medida (`__tvmTiltK`), así lo
+ *    de abajo queda igual que sin inclinar.
+ *  · Son tres niveles (plana, media, completa) con margen entre zonas: no
+ *    tiembla con la pelota en el límite y casi siempre está quieta, que es
+ *    cuando el caché de la cancha y las fichas armadas trabajan.
+ *  · El caché se arma con un poco más de borde mientras está prendida, así
+ *    alejar el zoom no lo obliga a rearmarse en el medio de la transición.
+ */
+const TILT =
+  'window.__tvmTiltK=1;' +
+  'window.__tvmTiltTick=function(cv,u){' +
+  'var T=window.__tvmTiltS||(window.__tvmTiltS={t:0,at:0,css:"",lv:0});' +
+  'var now=window.performance.now(),dt=T.at?Math.min(.1,(now-T.at)/1e3):0;T.at=now;' +
+  'var lv=T.lv,cut=[-.4,.05],hy=.08;' +
+  'if(null==u)lv=0;else{while(lv<2&&u>cut[lv]+hy)lv++;while(lv>0&&u<cut[lv-1]-hy)lv--;}' +
+  'T.lv=lv;var g=lv/2;' +
+  'T.t+=(g-T.t)*(1-Math.exp(-dt/.22));if(Math.abs(g-T.t)<.004)T.t=g;' +
+  'var MAX=(window.__tvmTiltMax||20)*Math.PI/180,th=T.t*MAX;' +
+  'var H=cv.offsetHeight||cv.height||1,P=2*H;' +
+  'var S=th?(P+H*Math.sin(th))/(P*Math.cos(th)):1;' +
+  'window.__tvmTiltK=1/S;' +
+  'var sm=(P+H*Math.sin(MAX))/(P*Math.cos(MAX));' +
+  'window.__tvmTiltPad=window.__tvmTiltOn&&window.__tvmVertOn?Math.ceil(Math.max(cv.width,cv.height)*(1-1/sm)/2)+16:0;' +
+  'var css=th?"scale("+S.toFixed(4)+") perspective("+Math.round(P)+"px) rotateX("+(th*180/Math.PI).toFixed(2)+"deg)":"";' +
+  'if(css!==T.css){T.css=css;window.__tvmTiltCss=!!css;var st=cv.style;st.transformOrigin="50% 100%";st.transform=css;st.willChange=css?"transform":"";' +
+  'var pe=cv.parentElement;if(css&&pe&&"hidden"!==pe.style.overflow)pe.style.overflow="hidden"}' +
+  '};';
+
 const KEYS =
   'window.__tvmKeysRed=function(a){return(a&1?8:0)|(a&2?4:0)|(a&8?2:0)|(a&4?1:0)|(a&16)};' +
   'window.__tvmKeysBlue=function(a){return(a&1?4:0)|(a&2?8:0)|(a&8?1:0)|(a&4?2:0)|(a&16)};';
@@ -112,6 +159,11 @@ function patchVertical(source) {
   const kit = one(source, SITES.kit);
   const label = one(source, SITES.label);
   const input = one(source, SITES.input);
+  const zoomAt = one(source, SITES.zoom);
+  const size = one(source, SITES.size);
+  const width = one(source, SITES.width);
+  const discs = one(source, SITES.discs);
+  const pos = one(source, SITES.pos);
   const teams = all(source, SITES.team);
   if (!center) return fail('no se encontró el centro de la pantalla');
   if (!me) return fail('no se encontró el jugador propio');
@@ -153,6 +205,20 @@ function patchVertical(source) {
   // Flechas: antes del espejo (que igual queda apagado).
   edits.push([input.index + input[0].length, 'window.__tvmRotKeys&&(a=window.__tvmRotKeys(a));']);
 
+  // Inclinación: opcional. Si alguna forma no aparece, la vertical anda igual, plana.
+  let tilt = false;
+  const zoomVar = (source.slice(center.index + center[0].length).match(/^([\w$]+),\1\)/) || [])[1];
+  if (zoomAt && size && width && discs && pos && zoomVar) {
+    const stadiumF = zoomAt[1];
+    const u = `(window.__tvmVertOn&&window.__tvmTiltOn&&null!=f&&null!=f.${teamF}&&0!=f.${teamF}.${teamId}&&e.${discs[1]}&&e.${discs[1]}[0])` +
+      `?e.${discs[1]}[0].${pos[1]}.x*(2==f.${teamF}.${teamId}?-1:1)/(c.${stadiumF}.${width[1]}||1):null`;
+    edits.push([zoomAt.index + 1,
+      `if(window.__tvmTiltOn||1!==window.__tvmTiltK){window.__tvmTiltTick(this.oa,${u});${zoomVar}*=window.__tvmTiltK}`]);
+    // Con el canvas inclinado, su rectángulo en pantalla cambia: se mide su tamaño sin la inclinación.
+    edits.push([size.index + 'let b='.length, `window.__tvmTiltCss?{width:this.${size[1]}.offsetWidth,height:this.${size[1]}.offsetHeight}:`]);
+    tilt = true;
+  }
+
   edits.sort((a, b) => b[0] - a[0]);
   let out = source;
   for (const [at, ins] of edits) out = out.slice(0, at) + ins + out.slice(at);
@@ -176,9 +242,11 @@ function patchVertical(source) {
       '\n    if (dT.mb) { dx = dT.mc * y + dT.e; dy = dT.mb * x + dT.f; a = Math.abs(dT.mb); d = Math.abs(dT.mc); mir = false; }');
     out = out.replace(P.back, '    c.setTransform(dT.a, dT.mb || 0, dT.mc || 0, dT.d, dT.e, dT.f);');
     out = out.replace(P.backErr, '    try { c.setTransform(dT.a, dT.mb || 0, dT.mc || 0, dT.d, dT.e, dT.f); } catch (e10) {}');
+    // Un poco más de borde en el caché con la inclinación prendida (ver TILT).
+    if (tilt) out = out.replace(P.pad, '    var m = (PAD + (window.__tvmTiltPad || 0)) / zoom;');
   }
 
-  return { source: KEYS + '\n' + out, applied: true, reason: 'vista vertical enganchada' };
+  return { source: KEYS + (tilt ? TILT : '') + '\n' + out, applied: true, reason: tilt ? 'vista vertical enganchada (con inclinación)' : 'vista vertical enganchada (sin inclinación)' };
 }
 
 module.exports = { patchVertical };

@@ -4514,6 +4514,26 @@ function renderView3d() {
   });
   host.append(vert);
 
+  // Su inclinación: sólo tiene sentido con la vertical prendida.
+  if (perf.vertical) {
+    const tilt = document.createElement('div');
+    tilt.className = 'rows__flat';
+    buildSwitches(tilt, [{
+      key: 'verticalTilt',
+      label: en ? 'Tilt when attacking' : 'Inclinar al atacar',
+      description: en
+        ? 'Flat near your goal. As the ball moves toward the rival goal, the camera tilts and looks ahead: what is close stays the same size and you see more of the pitch in front.'
+        : 'Plana cerca de tu arco. A medida que la pelota avanza al arco rival, la cámara se inclina y mira hacia adelante: lo de cerca queda del mismo tamaño y ves más cancha por delante.',
+      hint: en
+        ? 'Changes live. The tilt is done by the graphics card and the game draws the same as always: no FPS cost while it holds still. Only when you are playing (not as a spectator).'
+        : 'Se cambia en vivo. La inclinación la hace la placa de video y el juego dibuja igual que siempre: no cuesta FPS mientras está quieta. Sólo cuando estás jugando (no de espectador).',
+      value: () => (state.config.perf || {}).verticalTilt !== false
+    }], async (_item, value) => {
+      await patchConfig({ perf: { verticalTilt: value } });
+    });
+    host.append(tilt);
+  }
+
   const sw = document.createElement('div');
   sw.className = 'rows__flat';
   buildSwitches(sw, [{

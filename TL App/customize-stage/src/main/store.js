@@ -215,6 +215,12 @@ const DEFAULTS = {
      * no se usa (la 3D tiene su propia cámara Vertical).
      */
     vertical: false,
+    /**
+     * Inclinación de la vista vertical: plana cerca de tu arco y, a medida que
+     * la pelota avanza al arco rival, la cámara se inclina para ver más cancha
+     * por delante (ver TILT en vertical-patch.js). En vivo.
+     */
+    verticalTilt: true,
     /** Perspectiva de la vista 3D: dron | tribuna | tv | vertical. Se cambia en vivo. */
     view3dCam: 'tribuna',
     /** «Modo PC lenta»: apaga de una vez lo visual que cuesta. `lowEndBackup` guarda lo que había para volver. */

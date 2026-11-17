@@ -8150,6 +8150,8 @@ function applyViews(view) {
   if (view3dApi) view3dApi.setCam(perf.view3dCam);
   // La vertical: el juego la lee en el próximo cuadro y reacomoda las flechas solo.
   view.__tvmVertOn = !!perf.vertical && !want3d;
+  // Su inclinación (ver TILT en vertical-patch.js): apagada, vuelve sola a plana.
+  view.__tvmTiltOn = view.__tvmVertOn && perf.verticalTilt !== false;
 }
 function installView3d(view) {
   if (!view || view3dView === view) return;
