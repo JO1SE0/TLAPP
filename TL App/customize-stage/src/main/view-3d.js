@@ -77,8 +77,12 @@ const ROT_NEG = (a) => (a & 1 ? 4 : 0) | (a & 2 ? 8 : 0) | (a & 8 ? 1 : 0) | (a 
 const STEPS = 9;
 const STEP_D = 34;
 const STEP_H = 17;
-const SEAT_A = [0.12, 0.13, 0.17];
-const SEAT_B = [0.55, 0.44, 0.17];
+const SEAT_A_ROW = [0.13, 0.15, 0.2];
+const SEAT_B_ROW = [0.17, 0.19, 0.25];
+const RISER = [0.36, 0.37, 0.4];
+const WALL_BACK = [0.1, 0.11, 0.14];
+const ROOF = [0.16, 0.17, 0.2];
+const GOLD = [0.66, 0.53, 0.22];
 
 /* ── Matrices (columna mayor, como las quiere WebGL) ─────────────────── */
 function perspective(out, fovy, aspect, near, far) {
@@ -211,35 +215,48 @@ function sphere(lat, lon) {
 }
 /*
  * Tribunas de un lado. `side`: 0 abajo (+z), 1 arriba (-z), 2 derecha (+x),
- * 3 izquierda (-x). Devuelve dos tandas de escalones (colores alternados).
- * Los lados de arriba y abajo se estiran hasta las esquinas; los costados no,
- * para que no se pisen dos caras en el mismo lugar.
+ * 3 izquierda (-x).
+ *
+ * Los cuatro lados forman UN anillo: cada escalón se corta a 45° en las
+ * esquinas (como un marco de cuadro), así no queda ningún hueco ni dos caras
+ * pisándose. Arriba de todo, una pared de fondo y un alero que cierran el
+ * estadio. Devuelve tres tandas: asientos A, asientos B y estructura.
  */
-function stands(side, hx, hy) {
-  const gap = 46;
-  const depth = STEPS * STEP_D;
+const STAND_GAP = 46;
+const ROOF_H = 54;
+function stands(side, hx, hy, tiers = STEPS) {
   const horiz = side < 2;
-  const a0 = (horiz ? hy : hx) + gap;
-  const lh = horiz ? hx + gap + depth : hy + gap;
+  const a0 = (horiz ? hy : hx) + STAND_GAP;   // distancia del centro al primer escalón
+  const l0 = (horiz ? hx : hy) + STAND_GAP;   // medio largo del primer escalón
   const sign = side === 0 || side === 2 ? 1 : -1;
-  const out = [[], []];
-  const put = (arr, a, y, l, na, ny) => {
-    const x = horiz ? l : sign * a, z = horiz ? sign * a : l;
-    const nx = horiz ? 0 : sign * na, nz = horiz ? sign * na : 0;
-    arr.push(x, y, z, nx, ny, nz, 0, 0);
-  };
-  const quad = (arr, p) => { for (const k of [0, 1, 2, 0, 2, 3]) put(arr, ...p[k]); };
-  for (let i = 0; i <= STEPS; i++) {
-    const last = i === STEPS;
-    const d0 = a0 + i * STEP_D, d1 = last ? d0 + 16 : d0 + STEP_D;
-    const top = last ? (STEPS * STEP_H + 46) : (i + 1) * STEP_H;
-    const arr = out[last ? 0 : i % 2];
-    // Tapa del escalón.
-    quad(arr, [[d0, top, -lh, 0, 1], [d1, top, -lh, 0, 1], [d1, top, lh, 0, 1], [d0, top, lh, 0, 1]]);
-    // Frente, mirando a la cancha.
-    quad(arr, [[d0, 0, -lh, -1, 0], [d0, top, -lh, -1, 0], [d0, top, lh, -1, 0], [d0, 0, lh, -1, 0]]);
+  const out = [[], [], []];
+  // De (a: hacia afuera, y, l: a lo largo) a coordenadas de cancha.
+  const P = (a, y, l) => (horiz ? [l, y, sign * a] : [sign * a, y, l]);
+  const quad = (arr, p, rgb) => face(arr, p, rgb, true);
+  for (let i = 0; i < tiers; i++) {
+    const ai = a0 + i * STEP_D, an = ai + STEP_D;
+    const li = l0 + i * STEP_D, ln = li + STEP_D;
+    const y = (i + 1) * STEP_H, yb = i * STEP_H;
+    const seat = i % 2 ? SEAT_B_ROW : SEAT_A_ROW;
+    // Tapa del escalón (trapecio: más largo afuera, por la esquina a 45°).
+    quad(out[i % 2], [P(ai, y, -li), P(an, y, -ln), P(an, y, ln), P(ai, y, li)], seat);
+    // Frente del escalón, de hormigón: es lo que dibuja cada fila.
+    quad(out[2], [P(ai, yb, -li), P(ai, y, -li), P(ai, y, li), P(ai, yb, li)], RISER);
   }
-  return [new Float32Array(out[0]), new Float32Array(out[1])];
+  // Del lado de la cámara: sólo los escalones de abajo, con su baranda dorada.
+  if (tiers < STEPS) {
+    const aT = a0 + tiers * STEP_D, lT = l0 + tiers * STEP_D, yT = tiers * STEP_H;
+    quad(out[1], [P(aT, yT, -lT), P(aT, yT + 3, -lT), P(aT, yT + 3, lT), P(aT, yT, lT)], GOLD);
+    return out.map((v) => new Float32Array(v));
+  }
+  // Pared de fondo y alero.
+  const aN = a0 + STEPS * STEP_D, lN = l0 + STEPS * STEP_D, yN = STEPS * STEP_H;
+  quad(out[2], [P(aN, yN, -lN), P(aN, yN + ROOF_H, -lN), P(aN, yN + ROOF_H, lN), P(aN, yN, lN)], WALL_BACK);
+  const aR = aN - STEP_D * 3.2, lR = lN - STEP_D * 3.2;
+  quad(out[2], [P(aR, yN + ROOF_H, -lR), P(aN + 6, yN + ROOF_H + 8, -lN - 6), P(aN + 6, yN + ROOF_H + 8, lN + 6), P(aR, yN + ROOF_H, lR)], ROOF);
+  // Filo dorado del alero, lo que se ve de lejos.
+  quad(out[1], [P(aR, yN + ROOF_H - 4, -lR), P(aR, yN + ROOF_H, -lR), P(aR, yN + ROOF_H, lR), P(aR, yN + ROOF_H - 4, lR)], GOLD);
+  return out.map((v) => new Float32Array(v));
 }
 
 /* ── Estadio: paredes, arcos, carteles y torres ─────────────────────────
@@ -248,8 +265,7 @@ function stands(side, hx, hy) {
  * horneada en el color de cada vértice: en cada cuadro es un solo dibujo.
  */
 const LIGHT = (() => { const l = [-0.35, 0.86, 0.38], n = Math.hypot(...l); return l.map((v) => v / n); })();
-const WALL_H = CONTACT_Y + 4;
-const BOARD_H = 14;
+const BOARD_H = 12;
 const BOARD_A = [0.07, 0.08, 0.11];
 const BOARD_B = [0.62, 0.5, 0.2];
 
@@ -298,53 +314,15 @@ function rgbOfInt(c) {
  * que la hacen rebotar se levantan (a la altura del ecuador de la pelota, para
  * que el toque se vea donde pasa), las demás quedan como líneas en el piso.
  */
-function decor(N, st, ball, bx, by) {
+function decor(N, st, discs, bx, by) {
+  const ball = discs[0];
   const solid = [], net = [], ends = [];
-  // Paredes.
-  const segs = st[N.segs] || [];
-  const bm = ball ? ball[N.mask] | 0 : 0, bg = ball ? ball[N.group] | 0 : 0;
-  for (const sg of segs) {
-    if (!sg || !sg[N.segVis]) continue;
-    if (!ball || !((sg[N.mask] & bg) && (sg[N.group] & bm))) continue;
-    const va = sg[N.segA], vb = sg[N.segB];
-    const A = va && va[N.pos], B = vb && vb[N.pos];
-    if (!A || !B) continue;
-    const pts = [];
-    const curve = sg[N.segCurve];
-    const c = sg[N.segCenter];
-    if (0 * curve !== 0 || !c) {
-      pts.push(A.x, A.y, B.x, B.y);
-    } else {
-      // Mismo arco que dibuja el 2D: de A a B, en sentido horario de la pantalla.
-      const r = Math.hypot(A.x - c.x, A.y - c.y);
-      const a0 = Math.atan2(A.y - c.y, A.x - c.x);
-      let sweep = Math.atan2(B.y - c.y, B.x - c.x) - a0;
-      while (sweep < 0) sweep += Math.PI * 2;
-      const n = Math.max(2, Math.min(64, Math.ceil((r * sweep) / 10)));
-      for (let i = 0; i <= n; i++) {
-        const a = a0 + (sweep * i) / n;
-        pts.push(c.x + Math.cos(a) * r, c.y + Math.sin(a) * r);
-      }
-    }
-    const col = rgbOfInt(sg[N.segColor] | 0);
-    const low = [col[0] * 0.55, col[1] * 0.55, col[2] * 0.55];
-    for (let i = 0; i + 3 < pts.length; i += 2) {
-      const x0 = pts[i], z0 = pts[i + 1], x1 = pts[i + 2], z1 = pts[i + 3];
-      // La cara: abajo más oscura, arriba con el color de la pared.
-      const k = Math.max(shade(-(z1 - z0), 0, x1 - x0), shade(z1 - z0, 0, -(x1 - x0)));
-      const L = Math.hypot(x1 - x0, z1 - z0) || 1;
-      const kk = k;
-      for (const [x, y, z, cc] of [[x0, 0, z0, low], [x1, 0, z1, low], [x1, WALL_H, z1, col], [x0, 0, z0, low], [x1, WALL_H, z1, col], [x0, WALL_H, z0, col]]) {
-        solid.push(x, y, z, cc[0] * kk, cc[1] * kk, cc[2] * kk, 0, 0);
-      }
-      // Canto de arriba, más claro: es lo que el ojo usa para ver el borde.
-      const px = -(z1 - z0) / L * 1.6, pz = (x1 - x0) / L * 1.6;
-      face(solid, [[x0 - px, WALL_H, z0 - pz], [x1 - px, WALL_H, z1 - pz], [x1 + px, WALL_H, z1 + pz], [x0 + px, WALL_H, z0 + pz]],
-        [Math.min(1, col[0] * 1.2 + 0.1), Math.min(1, col[1] * 1.2 + 0.1), Math.min(1, col[2] * 1.2 + 0.1)], false);
-    }
-  }
-
-  // Arcos: travesaño, palos de atrás y red.
+  /*
+   * Las paredes quedan como las dibuja el juego: líneas en el piso. Se probó
+   * levantarlas y en una cancha real quedaban como bordes blancos gruesos.
+   */
+  void ball;
+  // Arcos: travesaño y marco del color de sus palos, y red de verdad.
   const goals = st[N.goals] || [];
   for (const g of goals) {
     const p0 = g && g[N.goalA], p1 = g && g[N.goalB];
@@ -355,39 +333,50 @@ function decor(N, st, ball, bx, by) {
     let nx = -dz / w, nz = dx / w;
     // La red va hacia afuera de la cancha.
     if (nx * (p0.x + p1.x) + nz * (p0.y + p1.y) < 0) { nx = -nx; nz = -nz; }
-    const GH = Math.max(24, Math.min(64, w * 0.3));
-    const GD = Math.max(18, Math.min(48, GH * 0.8));
-    const BH = GH * 0.62;
+    const GH = Math.max(26, Math.min(56, w * 0.32));
+    const GD = Math.max(22, Math.min(46, GH * 0.85));
+    const BH = GH * 0.55;
     ends.push(p0.x, p0.y, GH, p1.x, p1.y, GH);
-    const white = [0.96, 0.96, 0.96];
-    // Travesaño: una barra de 5 de grueso.
-    const t = 2.5;
-    const q = (a, b, y0, y1) => [[p0.x + nx * a, y0, p0.y + nz * a], [p1.x + nx * a, y0, p1.y + nz * a], [p1.x + nx * b, y1, p1.y + nz * b], [p0.x + nx * b, y1, p0.y + nz * b]];
-    face(solid, q(-t, t, GH, GH), white, true);
-    face(solid, q(-t, -t, GH - 2 * t, GH), white, true);
-    face(solid, q(t, t, GH - 2 * t, GH), white, true);
-    // Palos de atrás y su barra.
+    // El color del marco: el de los palos que pone el estadio (si hay), si no blanco.
+    let frame = [0.95, 0.95, 0.95];
+    for (const d of discs) {
+      const q = d && d[N.pos];
+      if (!q || (d[N.color] | 0) < 0) continue;
+      if (Math.hypot(q.x - p0.x, q.y - p0.y) < 6 || Math.hypot(q.x - p1.x, q.y - p1.y) < 6) { frame = rgbOfInt(d[N.color] | 0); break; }
+    }
+    // Travesaño redondeado: cuatro caras finitas.
+    const t = 2.6;
+    const bar = (ax0, az0, ax1, az1, y) => {
+      const ox = nx * t, oz = nz * t;
+      face(solid, [[ax0 - ox, y + t, az0 - oz], [ax1 - ox, y + t, az1 - oz], [ax1 + ox, y + t, az1 + oz], [ax0 + ox, y + t, az0 + oz]], frame, true);
+      face(solid, [[ax0 - ox, y - t, az0 - oz], [ax1 - ox, y - t, az1 - oz], [ax1 - ox, y + t, az1 - oz], [ax0 - ox, y + t, az0 - oz]], frame, true);
+      face(solid, [[ax0 + ox, y - t, az0 + oz], [ax1 + ox, y - t, az1 + oz], [ax1 + ox, y + t, az1 + oz], [ax0 + ox, y + t, az0 + oz]], frame, true);
+    };
+    bar(p0.x, p0.y, p1.x, p1.y, GH - t);
+    // Marco de atrás: dos parantes bajos y una barra en el piso, finitos y claros.
     const bx0 = p0.x + nx * GD, bz0 = p0.y + nz * GD, bx1 = p1.x + nx * GD, bz1 = p1.y + nz * GD;
-    pole(solid, bx0, bz0, 1.6, BH, white);
-    pole(solid, bx1, bz1, 1.6, BH, white);
-    // Red: techo, fondo y costados, con una trama que se repite cada 8.
-    const uv = (len, hgt) => [[0, 0], [len / 8, 0], [len / 8, hgt / 8], [0, hgt / 8]];
-    face(net, [[p0.x, GH, p0.y], [p1.x, GH, p1.y], [bx1, BH, bz1], [bx0, BH, bz0]], white, false, uv(w, Math.hypot(GD, GH - BH)));
-    face(net, [[bx0, 0, bz0], [bx1, 0, bz1], [bx1, BH, bz1], [bx0, BH, bz0]], white, false, uv(w, BH));
-    face(net, [[p0.x, 0, p0.y], [bx0, 0, bz0], [bx0, BH, bz0], [p0.x, GH, p0.y]], white, false, uv(GD, GH));
-    face(net, [[p1.x, 0, p1.y], [bx1, 0, bz1], [bx1, BH, bz1], [p1.x, GH, p1.y]], white, false, uv(GD, GH));
+    const light = [Math.min(1, frame[0] * 0.6 + 0.4), Math.min(1, frame[1] * 0.6 + 0.4), Math.min(1, frame[2] * 0.6 + 0.4)];
+    pole(solid, bx0, bz0, 1.3, BH, light);
+    pole(solid, bx1, bz1, 1.3, BH, light);
+    // Red: techo inclinado, fondo y costados. Trama cada 6 y un velo suave.
+    const uv = (len, hgt) => [[0, 0], [len / 6, 0], [len / 6, hgt / 6], [0, hgt / 6]];
+    const roofLen = Math.hypot(GD, GH - BH);
+    face(net, [[p0.x, GH, p0.y], [p1.x, GH, p1.y], [bx1, BH, bz1], [bx0, BH, bz0]], [1, 1, 1], false, uv(w, roofLen));
+    face(net, [[bx0, 0, bz0], [bx1, 0, bz1], [bx1, BH, bz1], [bx0, BH, bz0]], [1, 1, 1], false, uv(w, BH));
+    face(net, [[p0.x, 0, p0.y], [bx0, 0, bz0], [bx0, BH, bz0], [p0.x, GH, p0.y]], [1, 1, 1], false, uv(GD, GH));
+    face(net, [[p1.x, 0, p1.y], [bx1, 0, bz1], [bx1, BH, bz1], [p1.x, GH, p1.y]], [1, 1, 1], false, uv(GD, GH));
   }
 
   // Carteles alrededor de la cancha: bajos, oscuros, con el filo dorado del club.
   const ax = bx + 24, az = by + 24;
   for (const [x0, z0, x1, z1] of [[-ax, -az, ax, -az], [ax, -az, ax, az], [ax, az, -ax, az], [-ax, az, -ax, -az]]) {
-    face(solid, [[x0, 0, z0], [x1, 0, z1], [x1, BOARD_H - 3, z1], [x0, BOARD_H - 3, z0]], BOARD_A, true);
-    face(solid, [[x0, BOARD_H - 3, z0], [x1, BOARD_H - 3, z1], [x1, BOARD_H, z1], [x0, BOARD_H, z0]], BOARD_B, true);
+    face(solid, [[x0, 0, z0], [x1, 0, z1], [x1, BOARD_H - 2.5, z1], [x0, BOARD_H - 2.5, z0]], BOARD_A, true);
+    face(solid, [[x0, BOARD_H - 2.5, z0], [x1, BOARD_H - 2.5, z1], [x1, BOARD_H, z1], [x0, BOARD_H, z0]], BOARD_B, true);
   }
 
   // Torres de luz en las cuatro esquinas, detrás de las tribunas.
-  const tx = bx + 46 + STEPS * STEP_D + 40, tz = by + 46 + STEPS * STEP_D + 40;
-  const towerH = STEPS * STEP_H + 230;
+  const tx = bx + STAND_GAP + STEPS * STEP_D + 30, tz = by + STAND_GAP + STEPS * STEP_D + 30;
+  const towerH = STEPS * STEP_H + ROOF_H + 150;
   for (const [x, z] of [[-tx, -tz], [tx, -tz], [tx, tz], [-tx, tz]]) {
     pole(solid, x, z, 7, towerH, [0.32, 0.33, 0.36]);
     const sx = x > 0 ? -1 : 1, sz = z > 0 ? -1 : 1;
@@ -427,7 +416,7 @@ function install(view, opts = {}) {
   const floorCv = view.document.createElement('canvas');
 
   /* Tribunas: por lado, dos tandas de escalones. Se rearman con el piso. */
-  let standBufs = null;
+  let standBufs = null, standLow = null;
   /* Estadio fijo (paredes, arcos, carteles, torres), la red y las puntas de los arcos. */
   let decorSolid = null, decorNet = null, goalEnds = new Float32Array(0), netTex = null;
   /* Cámara que sigue a tu ficha (vista vertical): se suaviza para que no tiemble. */
@@ -543,7 +532,10 @@ function install(view, opts = {}) {
       const c = doc.createElement('canvas');
       c.width = c.height = 32;
       const x = c.getContext('2d');
-      x.strokeStyle = 'rgba(255,255,255,0.85)';
+      // Un velo apenas blanco (para que la red se lea como superficie) y la trama.
+      x.fillStyle = 'rgba(255,255,255,0.13)';
+      x.fillRect(0, 0, 32, 32);
+      x.strokeStyle = 'rgba(255,255,255,0.9)';
       x.lineWidth = 2;
       x.beginPath();
       x.moveTo(0, 1); x.lineTo(32, 1); x.moveTo(1, 0); x.lineTo(1, 32);
@@ -621,11 +613,13 @@ function install(view, opts = {}) {
     upload(floorTex, floorCv);
     floorX = hx; floorY = hy;
     if (standBufs) for (const side of standBufs) for (const m of side) gl.deleteBuffer(m.b);
-    standBufs = [0, 1, 2, 3].map((side) => stands(side, bx || hx, by || hy).map(buffer));
+    standBufs = [0, 1, 2, 3].map((side) => stands(side, bx || hx - 140, by || hy - 140).map(buffer));
+    if (standLow) for (const side of standLow) for (const m of side) gl.deleteBuffer(m.b);
+    standLow = [0, 1, 2, 3].map((side) => stands(side, bx || hx - 140, by || hy - 140, 2).map(buffer));
     if (decorSolid) gl.deleteBuffer(decorSolid.b);
     if (decorNet) gl.deleteBuffer(decorNet.b);
     const discs0 = (F.world && F.world[N.discs]) || [];
-    const d = decor(N, st, discs0[0], bx || hx - 140, by || hy - 140);
+    const d = decor(N, st, discs0, bx || hx - 140, by || hy - 140);
     decorSolid = d.solid.length ? buffer(d.solid) : null;
     decorNet = d.net.length ? buffer(d.net) : null;
     goalEnds = d.ends;
@@ -666,7 +660,7 @@ function install(view, opts = {}) {
   const kitCv = view.document.createElement('canvas');
   kitCv.width = kitCv.height = KIT;
   const kitCtx = kitCv.getContext('2d');
-  function paintKit(t, L, N, d) {
+  function paintKit(t, L, N, d, pl, check) {
     const rad = d[N.radius] || 15, pos = d[N.pos];
     const k = KIT_R / rad;
     const ctx = kitCtx;
@@ -689,18 +683,28 @@ function install(view, opts = {}) {
     ctx.restore();
     ctx.stroke();
     ctx.setTransform(1, 0, 0, 1, 0, 0);
-    upload(t.kit, kitCv);
-    // Si sale vacía, que quede escrito: es lo primero que hay que mirar.
-    if (kitChecks < 4) {
-      kitChecks++;
+    /*
+     * Respaldo: si el dibujo salió vacío en el centro (no debería), la ficha
+     * va con el color de su equipo y no negra. Se mira sólo cuando cambió la
+     * camiseta, que es casi nunca: leer el canvas cuesta.
+     */
+    if (check) {
       try {
-        const px = ctx.getImageData(KIT / 2 - 8, KIT / 2 - 8, 16, 16).data;
-        let lum = 0, alpha = 0;
-        for (let i = 0; i < px.length; i += 4) { lum += px[i] + px[i + 1] + px[i + 2]; alpha += px[i + 3]; }
-        if (!alpha) log('warn', 'vista 3D: la ficha salió vacía');
-        else if (!lum) log('warn', 'vista 3D: la ficha salió negra en el centro');
-      } catch (e) { log('warn', `vista 3D: no se pudo revisar la ficha (${e && e.message})`); }
+        const px = ctx.getImageData(KIT / 2 - 6, KIT / 2 - 6, 12, 12).data;
+        let alpha = 0;
+        for (let i = 3; i < px.length; i += 4) alpha += px[i];
+        if (!alpha) {
+          const team = pl && pl[N.team];
+          const c = team ? team[N.color] | 0 : 0x888888;
+          ctx.fillStyle = `rgb(${(c >>> 16) & 255},${(c >>> 8) & 255},${c & 255})`;
+          ctx.beginPath();
+          ctx.arc(KIT / 2, KIT / 2, KIT_R, 0, 2 * Math.PI);
+          ctx.fill();
+          if (!t.warned) { t.warned = true; log('warn', 'vista 3D: una ficha salió vacía, va con el color del equipo'); }
+        }
+      } catch (e) { /* sin lectura: queda lo que hay */ }
     }
+    upload(t.kit, kitCv);
   }
 
   /*
@@ -737,7 +741,7 @@ function install(view, opts = {}) {
     upload(ballTex, ballCv);
   }
 
-  function texturesFor(L, N, d, mine) {
+  function texturesFor(L, N, d, mine, pl) {
     let t = per.get(L);
     if (!t) { t = { kit: texture(null, true), kitPat: undefined, kitStroke: undefined, kitRad: 0, name: texture(null, true), nameStr: undefined, seen: 0 }; per.set(L, t); }
     t.seen = frameNo;
@@ -745,7 +749,7 @@ function install(view, opts = {}) {
     // Se rehace cuando cambia la camiseta, el borde de la patada o el radio. La
     // tuya además cada 3 cuadros: los estilos del cliente pueden ser animados.
     if (pat !== t.kitPat || st !== t.kitStroke || rad !== t.kitRad || (mine && frameNo % 3 === 0)) {
-      paintKit(t, L, N, d);
+      paintKit(t, L, N, d, pl, pat !== t.kitPat);
       t.kitPat = pat; t.kitStroke = st; t.kitRad = rad;
     }
     const nm = L[N.name];
@@ -868,7 +872,7 @@ function install(view, opts = {}) {
     const behind = oz === 1 ? 0 : oz === -1 ? 1 : ox === 1 ? 2 : 3;
 
     gl.viewport(0, 0, W, H);
-    gl.clearColor(0.05, 0.06, 0.08, 1);
+    gl.clearColor(0.035, 0.045, 0.08, 1); // cielo de noche
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
     gl.useProgram(prog);
@@ -899,6 +903,9 @@ function install(view, opts = {}) {
     playerDiscs.clear();
     names.length = 0;
     let ballSprite = null;
+    // Los discos de los jugadores, antes de todo: las sombras y los aros los necesitan.
+    const playerSet = playerDiscs;
+    for (let i = 0; i < players.length; i++) { const d = players[i][N.disc]; if (d) playerSet.add(d); }
 
     // Sombras (sobre el piso, debajo de todo lo demás).
     gl.enable(gl.BLEND);
@@ -908,6 +915,11 @@ function install(view, opts = {}) {
       const rad = d[N.radius];
       if (!(rad >= 0)) break;
       const pos = d[N.pos];
+      // Sin color: en 2D es sólo un aro negro fino en el piso. Igual acá, y sin sombra.
+      if (i !== 0 && (d[N.color] | 0) === -1 && !playerSet.has(d)) {
+        draw(mesh.quad, 6, mx * pos.x, 0.4, pos.y, rad + 1.2, 1, rad + 1.2, 0, 0, 0, 0.85);
+        continue;
+      }
       draw(mesh.quad, 3, mx * pos.x + rad * 0.3, 0.3, pos.y + rad * 0.25, rad * 1.4, 1, rad * 1.4, 0, 0, 0, 0.42);
     }
     // Tu aro en el piso: el mismo círculo claro que pone el juego en 2D.
@@ -928,9 +940,9 @@ function install(view, opts = {}) {
     // Tribunas.
     if (standBufs) {
       for (let side = 0; side < 4; side++) {
-        if (side === behind) continue;
-        draw(standBufs[side][0], 0, 0, 0, 0, 1, 1, 1, SEAT_A[0], SEAT_A[1], SEAT_A[2], 1);
-        draw(standBufs[side][1], 0, 0, 0, 0, 1, 1, 1, SEAT_B[0], SEAT_B[1], SEAT_B[2], 1);
+        // La del lado de la cámara, baja: cierra el estadio sin tapar la cancha.
+        const set = side === behind ? standLow : standBufs;
+        for (const m of set[side]) if (m.n) draw(m, 5, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1);
       }
     }
 
@@ -947,7 +959,7 @@ function install(view, opts = {}) {
       const pos = d[N.pos];
       const x = mx * pos.x, zz = pos.y;
       const mine = d === F.me;
-      const t = texturesFor(L, N, d, mine);
+      const t = texturesFor(L, N, d, mine, pl);
       const kick = L[N.stroke] === 'white';
       const c = kick ? 0.95 : 0.09;
       draw(mesh.side, 0, x, 0, zz, rad, CONTACT_Y, rad, c, c, c, 1);
@@ -967,10 +979,7 @@ function install(view, opts = {}) {
       const pos = d[N.pos];
       // Sin color: en 2D es sólo el aro negro (y la pelota rebota igual contra
       // él). Acá, una pared fina negra a la misma altura: se ve y se entiende.
-      if (col === -1 && i !== 0) {
-        draw(mesh.side, 0, mx * pos.x, 0, pos.y, rad, CONTACT_Y, rad, 0.05, 0.05, 0.05, 1);
-        continue;
-      }
+      if (col === -1 && i !== 0) continue; // ya va como aro en el piso
       // Sin arreglos nuevos: esto corre por cada disco en cada cuadro.
       const cr = col === -1 ? 1 : ((col >>> 16) & 255) / 255;
       const cg = col === -1 ? 1 : ((col >>> 8) & 255) / 255;
