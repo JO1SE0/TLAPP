@@ -984,6 +984,12 @@ function viewsBody(url, body) {
   const hit = viewBundles.get(url);
   if (hit && hit.from === body) return hit.out;
   let out = body;
+  // Estilo de ficha compartido (disc-share-patch.js): antes que las vistas.
+  try {
+    const rd = require('./disc-share-patch').patchDiscShare(out);
+    logToApp(rd.applied ? 'info' : 'warn', rd.applied ? 'estilo de ficha compartido enganchado al juego' : `estilo de ficha compartido sin enganchar (${rd.reason})`);
+    out = rd.source;
+  } catch (err) { logToApp('warn', `estilo de ficha compartido sin enganchar (${err.message})`); }
   try {
     const r3 = require('./view-3d-patch').patch3d(out);
     logToApp(r3.applied ? 'info' : 'warn', r3.applied ? 'vista 3D enganchada al juego' : `vista 3D sin enganchar (${r3.reason})`);
@@ -3082,9 +3088,11 @@ function myCosmetics() {
     font: looks.font && looks.font !== 'default' ? looks.font : null,
     // Vidrio viaja explícito: sin forma, el que recibe pone la de entrada (Galaxia).
     style: looks.style || null,
-    icon: looks.icon || null
+    icon: looks.icon || null,
+    // Tu estilo de ficha: lo ven los demás de TL App en la misma sala.
+    disc: (store.get().visual || {}).discStyle && store.get().visual.discStyle !== 'default' ? store.get().visual.discStyle : null
   };
-  return out.gradient || out.font || out.style || out.icon ? out : null;
+  return out.gradient || out.font || out.style || out.icon || out.disc ? out : null;
 }
 
 /* Plantel en vivo: quién del club tiene la app abierta y dónde. */

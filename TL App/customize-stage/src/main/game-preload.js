@@ -1204,6 +1204,7 @@ function onNewGameDocument(doc) {
     doc.defaultView.__tvmAvatar = (obj, texto, prop) => {
       if (obj && obj.__tvmP && avatarFields.length < 2) safe(learnAvatarField, obj.__tvmP, texto, true);
       safe(onAvatarTexture, obj, texto, prop);
+      safe(notePeerPattern, obj, prop);
     };
     /*
      * Llega un instante antes que el anterior, con la textura todavía en
@@ -1214,6 +1215,7 @@ function onNewGameDocument(doc) {
       textureOwner = obj && typeof obj.__tvmMine === 'boolean' ? obj.__tvmMine : null;
       textureMineHint = textureOwner;
       if (textureOwner !== null) ownerVerdictSeen = true;
+      safe(noteDiscObj, obj);
     };
     doc.defaultView.__tvmTeamKit = teamKit;
   }
@@ -4987,6 +4989,68 @@ function setPeers(list) {
   }
   const doc = gameDocument();
   if (doc) safe(paintPeers, doc);
+  safe(syncPeerDiscs);
+}
+
+/*
+ * ═══ Estilo de ficha de los demás de TL App ═══
+ *
+ * Cada uno manda su estilo de ficha en su casillero de la sala (presence.js) y
+ * acá se le pinta a SU ficha, igual que el tuyo a la tuya:
+ *  · las formas (disc-art.js) se pintan en la textura de su ficha cuando el
+ *    juego la arma: cero costo por cuadro;
+ *  · los que van encima (burbuja, vidrio, neón…) se dibujan al trazar su ficha,
+ *    y sólo esas fichas salen del atajo «figurita» (`__tvmPeerPat`).
+ * Para saber de quién es cada ficha y pedir que se rearme cuando llega o cambia
+ * un estilo, ver disc-share-patch.js (`__tvmNick` y `__tvmRedo`).
+ */
+const PEER_OVERLAY = new Set(['sphere', 'glass', 'neon', 'metal', 'bubble', 'target', 'stripes', 'gem', 'cartoon', 'dots']);
+/** ¿Hay alguien en la sala con un estilo de los que se dibujan encima? Prende los ganchos que hacen falta. */
+let peerFxOn = false;
+/** Patrón de la ficha de alguien → su estilo (de los que van encima). */
+const peerPatStyle = new WeakMap();
+/** Los mismos patrones, para que el atajo «figurita» los deje pasar al dibujo real. */
+const peerPatSet = new WeakSet();
+/** Nick → la ficha (objeto del juego) y el estilo con que se pintó la última vez. */
+const discObjs = new Map();
+/** El nick de la ficha cuya textura está armando el juego ahora (lo consume el `fillText`). */
+let textureNick = null;
+
+function peerDiscOf(nick) {
+  const p = nick ? peers.get(nick) : null;
+  const d = p && p.cosmetics ? p.cosmetics.disc : '';
+  return typeof d === 'string' && (PEER_OVERLAY.has(d) || discArt.has(d)) ? d : '';
+}
+
+/** El juego está por armar la textura de una ficha: de quién es. */
+function noteDiscObj(obj) {
+  const nick = obj && typeof obj.__tvmNick === 'string' ? obj.__tvmNick : '';
+  textureNick = nick && !obj.__tvmMine ? nick : null;
+  if (!textureNick) return;
+  const prev = discObjs.get(textureNick);
+  discObjs.set(textureNick, { obj, style: prev && prev.obj === obj ? prev.style : '' });
+  if (discObjs.size > 64) discObjs.delete(discObjs.keys().next().value);
+}
+
+/** La textura ya está armada y tiene su patrón: se anota con qué estilo quedó. */
+function notePeerPattern(obj, prop) {
+  const nick = obj && typeof obj.__tvmNick === 'string' ? obj.__tvmNick : '';
+  if (!nick || obj.__tvmMine) return;
+  const style = peerDiscOf(nick);
+  const rec = discObjs.get(nick);
+  if (rec && rec.obj === obj) rec.style = style;
+  const pat = obj[prop];
+  if (pat && PEER_OVERLAY.has(style)) { peerPatStyle.set(pat, style); peerPatSet.add(pat); }
+}
+
+/** Llegó la sala de nuevo: a las fichas cuyo estilo cambió se les pide rearmarse. */
+function syncPeerDiscs() {
+  for (const [nick, rec] of discObjs) {
+    if (peerDiscOf(nick) !== rec.style) rec.obj.__tvmRedo = 1;
+  }
+  let fx = false;
+  for (const p of peers.values()) if (p && p.cosmetics && PEER_OVERLAY.has(p.cosmetics.disc)) { fx = true; break; }
+  if (fx !== peerFxOn) { peerFxOn = fx; safe(syncProtoHooks); }
 }
 
 /**
@@ -5577,7 +5641,7 @@ const hookedWindows = new WeakSet();
 const protoHooks = [];
 function syncProtoHooks() {
   const flat = flatOn();
-  const arcOn = visual.ownRing || visual.sizes || visual.lines || visual.discFx;
+  const arcOn = visual.ownRing || visual.sizes || visual.lines || visual.discFx || peerFxOn;
   const strokeOn = flat || arcOn || !!visual.lineColor || visual.lineGlow;
   // Lo que quedó a medias de un disco se descarta: al cambiar de método no
   // llega el trazo que lo cerraba.
@@ -5586,7 +5650,7 @@ function syncProtoHooks() {
   // apartan cuando algo de acá tiene que ver el dibujo real de cada ficha.
   const discOff = !!(flat || visual.sizes || visual.lines || visual.discFx);
   for (const h of protoHooks) {
-    try { if (h.view) h.view.__tvmDiscOff = discOff; } catch (e) { /* ventana cerrada */ }
+    try { if (h.view) { h.view.__tvmDiscOff = discOff; h.view.__tvmPeerPat = peerPatSet; } } catch (e) { /* ventana cerrada */ }
     const want = { arc: arcOn, fill: flat, stroke: strokeOn };
     for (const m of ['arc', 'fill', 'stroke']) {
       const next = want[m] ? h[m][1] : h[m][0];
@@ -6519,6 +6583,8 @@ let myTextureCanvas = null;
 
 /** El canvas de tu disco deja de valer cuando se recarga el juego. */
 function forgetMyTexture() {
+  discObjs.clear();
+  textureNick = null;
   myTextureCanvas = null;
 }
 
@@ -10886,7 +10952,7 @@ const playerPatterns = new WeakSet();
  * Lo que está esperando su `stroke()`: el disco que se acaba de armar y cómo
  * deshacer su agrandado. `kind`: `disc` (ficha) · `ball` · `post` (palos).
  */
-const pend = { on: false, kind: '', k: 1, x: 0, y: 0, r: 0, mine: false };
+const pend = { on: false, kind: '', k: 1, x: 0, y: 0, r: 0, mine: false, peer: '' };
 
 /** > 0 mientras dibuja el propio cliente (ayudas, color de cancha): no se toca. */
 let ownDraw = 0;
@@ -11062,10 +11128,11 @@ function installCanvasHooks(doc) {
   const baseStroke = function (args) {
     if (!flatOn()) {
       // Grosor y colores propios. «Gráficos planos» manda sobre esto.
-      if (!(visual.lines || visual.discFx || visual.lineColor || visual.lineGlow) || ownDraw > 0) return origStroke.apply(this, args);
+      if (!(visual.lines || visual.discFx || visual.lineColor || visual.lineGlow || peerFxOn) || ownDraw > 0) return origStroke.apply(this, args);
       let mul = 1;
       let color = '';
       let overlay = false;
+      let overlayStyle = '';
       let ballFx = false;
       let glow = '';
       if (pend.on) {
@@ -11076,7 +11143,9 @@ function installCanvasHooks(doc) {
         } else if (pend.kind === 'disc') {
           mul = visual.discLine;
           color = visual.discOutline;
-          overlay = visual.discStyle !== 'default' && pend.mine && !discArt.has(visual.discStyle);
+          // Tu estilo en tu ficha; el de cada uno de TL App en la suya.
+          overlayStyle = pend.mine ? visual.discStyle : pend.peer;
+          overlay = !!overlayStyle && overlayStyle !== 'default' && !discArt.has(overlayStyle);
         } else {
           mul = visual.pitchLine;
         }
@@ -11091,7 +11160,7 @@ function installCanvasHooks(doc) {
       if (overlay) {
         ownDraw++;
         try {
-          lookfx.discOverlay(this, visual.discStyle, pend.x, pend.y, pend.r, origStroke);
+          lookfx.discOverlay(this, overlayStyle, pend.x, pend.y, pend.r, origStroke);
         } finally {
           ownDraw--;
         }
@@ -11148,12 +11217,13 @@ function installCanvasHooks(doc) {
     // Con gráficos planos tu estilo de ficha (metal, vidrio…) se ve igual: es
     // del cliente, no de HaxBall.
     if (pend.on && ownDraw === 0) {
-      const discFx = pend.kind === 'disc' && pend.mine && visual.discStyle !== 'default' && !discArt.has(visual.discStyle);
+      const dStyle = pend.kind === 'disc' ? (pend.mine ? visual.discStyle : pend.peer) : '';
+      const discFx = !!dStyle && dStyle !== 'default' && !discArt.has(dStyle);
       const ballFx = pend.kind === 'ball' && (visual.ballStyle !== 'default' || !!visual.ballColor);
       if (discFx || ballFx) {
         ownDraw++;
         try {
-          if (discFx) lookfx.discOverlay(this, visual.discStyle, pend.x, pend.y, pend.r, origStroke);
+          if (discFx) lookfx.discOverlay(this, dStyle, pend.x, pend.y, pend.r, origStroke);
           else lookfx.ballOverlay(this, visual.ballStyle, pend.x, pend.y, pend.r, origStroke, visual.ballColor, ballFx3dOn ? ballFx3d : null);
         } finally {
           ownDraw--;
@@ -11238,7 +11308,7 @@ function installCanvasHooks(doc) {
       this.beginPath();
       return undefined;
     }
-    if ((visual.sizes || visual.lines || visual.discFx) && ownDraw === 0 && playerPatterns.has(this.fillStyle)) {
+    if ((visual.sizes || visual.lines || visual.discFx || peerFxOn) && ownDraw === 0 && playerPatterns.has(this.fillStyle)) {
       // Red de seguridad: si el disco anterior quedó agrandado y su `stroke` nunca
       // llegó, se deshace acá. Sin esto la escala se acumulaba y corría todo lo que
       // se dibujaba después (puntos del mapa, pelota, fichas de otros).
@@ -11260,6 +11330,8 @@ function installCanvasHooks(doc) {
       // Los estilos de ficha son sólo para la tuya (o para todas si el juego
       // no nos dice cuál es la tuya: ver `ownerVerdictSeen`).
       pend.mine = !ownerVerdictSeen || minePatterns.has(this.fillStyle);
+      // Si no es la tuya y es de alguien de TL App con un estilo de los que van encima.
+      pend.peer = pend.mine ? '' : (peerPatStyle.get(this.fillStyle) || '');
       if (k !== 1) {
         this.translate(x, y);
         this.scale(k, k);
@@ -11284,6 +11356,9 @@ function installCanvasHooks(doc) {
   const originalFillText = proto.fillText;
   proto.fillText = function (text, x, y, ...rest) {
     const esTextura = this.canvas && this.canvas.width === 64 && this.canvas.height === 64;
+    // De quién es esta textura, si es de alguien de TL App (se consume acá).
+    const texNick = esTextura ? textureNick : null;
+    if (esTextura) textureNick = null;
     if (esTextura && (avatarImage || gifOn())) {
       try {
         /*
@@ -11333,6 +11408,11 @@ function installCanvasHooks(doc) {
       if (mia) { if (deQuienEs === null) myTextureCanvas = this.canvas; safe(paintDiscArt, this); }
     } else if (esTextura) {
       lastTextureMine = false;
+    }
+    // La forma de ficha de otro de TL App, en SU textura, debajo de su número.
+    if (texNick && !lastTextureMine) {
+      const st = peerDiscOf(texNick);
+      if (discArt.has(st)) safe(paintDiscArt, this, st, texNick);
     }
     if (!esTextura && isGoalAnnounce(text, this)) return undefined;
     if (visual.names && !esTextura && ownDraw === 0) {
@@ -11389,8 +11469,8 @@ let avatarNoiseUntil = 0;
 // Los dorados del escudo se arman fuera del dibujo de la textura: también van protegidos.
 discArt.setGuard((fn) => { ownDraw++; try { return fn(); } finally { ownDraw--; } });
 
-function paintDiscArt(ctx) {
-  if (!discArt.has(visual.discStyle)) return;
+function paintDiscArt(ctx, style = visual.discStyle, nick = '') {
+  if (!discArt.has(style)) return;
   /*
    * `ownDraw` arriba: lo que dibuja el cliente no pasa por los ganchos de
    * «Gráficos planos» ni de «Líneas simples». Sin esto, con gráficos planos los
@@ -11401,7 +11481,11 @@ function paintDiscArt(ctx) {
   ownDraw++;
   try {
     // paint() guarda y restaura el estado del lienzo: el número sale igual que siempre.
-    discArt.paint(ctx, visual.discStyle, 32, 32, 32, () => { myTextureCanvas = null; safe(refreshAvatarTexture); });
+    // Las del club esperan al escudo: cuando llega, se rehace la textura (la tuya o la del otro).
+    const ready = nick
+      ? () => { const rec = discObjs.get(nick); if (rec) rec.obj.__tvmRedo = 1; }
+      : () => { myTextureCanvas = null; safe(refreshAvatarTexture); };
+    discArt.paint(ctx, style, 32, 32, 32, ready);
   } finally {
     ownDraw--;
   }

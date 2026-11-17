@@ -78,6 +78,16 @@ const looksText = (fp, nick, t, g, f) => `${fp}|${nick}|${t}|${g}|${f}`;
 const STYLES = new Set(['glass', 'solid', 'outline', 'neon', 'bar', 'minimal', 'galaxia', 'lujo', 'pincel', 'marmol', 'acuarela', 'acuanoche', 'humo']);
 const ICONS = new Set(['⚡', '🔥', '👑', '⭐', '🎯', '🧤', '🐐', '🦁', '🐺', '🚀', '💀', '🍀']);
 const looksText2 = (fp, nick, t, y, i) => `looks2|${fp}|${nick}|${t}|${y}|${i}`;
+/*
+ * Estilo de ficha: viaja en `d` con su propia firma (`ds`), aparte de todo lo
+ * anterior, así las versiones que no lo conocen siguen leyendo el casillero.
+ * Sólo nombres de la lista cerrada: el que lo dibuja es el cliente del otro.
+ */
+const DISCS = new Set(['sphere', 'glass', 'neon', 'metal', 'bubble', 'target', 'stripes', 'gem', 'cartoon', 'dots', ...require('./disc-art').STYLES]);
+const discText = (fp, nick, t, d) => `disc|${fp}|${nick}|${t}|${d}`;
+const cleanDisc = (d) => (typeof d === 'string' && DISCS.has(d) ? d : '');
+let noDisc = false;
+let noDiscUntil = 0;
 function cleanLooks2(c) {
   return { y: c && STYLES.has(c.y) ? c.y : '', i: c && ICONS.has(c.i) ? c.i : '' };
 }
@@ -122,6 +132,7 @@ async function beat(ctx) {
   const nick = String(ctx.nick).slice(0, 40);
   const mine = cleanLooks({ g: ctx.cosmetics && ctx.cosmetics.gradient, f: ctx.cosmetics && ctx.cosmetics.font });
   const mine2 = cleanLooks2({ y: ctx.cosmetics && ctx.cosmetics.style, i: ctx.cosmetics && ctx.cosmetics.icon });
+  const myDisc = cleanDisc(ctx.cosmetics && ctx.cosmetics.disc);
   if (iAmExternal) {
     call(`${base}/rooms/${ctx.fp}/${id.pid}.json`, 'DELETE').catch(() => {});
   } else {
@@ -132,17 +143,34 @@ async function beat(ctx) {
       slot.c = mine; slot.cs = id.sign(looksText(ctx.fp, nick, t, mine.g, mine.f));
       if (mine2.y || mine2.i) { slot.x = mine2; slot.xs = id.sign(looksText2(ctx.fp, nick, t, mine2.y, mine2.i)); }
     }
+    if (noDisc && Date.now() > noDiscUntil) noDisc = false;
+    const withDisc = !noDisc && !!myDisc;
+    if (withDisc) { slot.d = myDisc; slot.ds = id.sign(discText(ctx.fp, nick, t, myDisc)); }
     try {
       await call(`${base}/rooms/${ctx.fp}/${id.pid}.json`, 'PUT', slot);
       if (withLooks) looksIssue = '';
     } catch (err) {
-      if (!withLooks) throw err;
-      // Primero se prueba el casillero simple. Si TAMBIÉN falla, fue la red (no las reglas) y se reintenta
-      // en el próximo latido con el aspecto; sólo si el simple pasa se concluye que la base rechaza los campos extra.
-      await call(`${base}/rooms/${ctx.fp}/${id.pid}.json`, 'PUT', { n: nick, t, s: slot.s });
-      noLooks = true;
-      noLooksUntil = Date.now() + 10 * 60000;
-      looksIssue = `la base rechazó el aspecto de la fila (${String(err && err.message).slice(0, 80)}): los demás no lo van a ver hasta que las reglas permitan los campos c, cs, x y xs`;
+      // Si la base todavía no acepta el estilo de ficha, se prueba sin él y se
+      // sigue como siempre: lo demás del casillero no se pierde.
+      if (withDisc) {
+        delete slot.d; delete slot.ds;
+        try {
+          await call(`${base}/rooms/${ctx.fp}/${id.pid}.json`, 'PUT', slot);
+          noDisc = true;
+          noDiscUntil = Date.now() + 10 * 60000;
+          looksIssue = `la base rechazó el estilo de ficha (${String(err && err.message).slice(0, 80)}): los demás no lo van a ver hasta que las reglas permitan los campos d y ds`;
+          err = null;
+        } catch (err2) { err = err2; }
+      }
+      if (err) {
+        if (!withLooks) throw err;
+        // Primero se prueba el casillero simple. Si TAMBIÉN falla, fue la red (no las reglas) y se reintenta
+        // en el próximo latido con el aspecto; sólo si el simple pasa se concluye que la base rechaza los campos extra.
+        await call(`${base}/rooms/${ctx.fp}/${id.pid}.json`, 'PUT', { n: nick, t, s: slot.s });
+        noLooks = true;
+        noLooksUntil = Date.now() + 10 * 60000;
+        looksIssue = `la base rechazó el aspecto de la fila (${String(err && err.message).slice(0, 80)}): los demás no lo van a ver hasta que las reglas permitan los campos c, cs, x y xs`;
+      }
     }
   }
   const room = (await call(`${base}/rooms/${ctx.fp}.json`, 'GET')) || {};
@@ -184,6 +212,9 @@ async function beat(ctx) {
         }
       }
     }
+    // Su estilo de ficha, si viene firmado por él.
+    const d = cleanDisc(entry.d);
+    if (d && typeof entry.ds === 'string' && identity.verify(member.pub, discText(ctx.fp, entry.n, entry.t, d), entry.ds)) look.disc = d;
     // Socio: su fila como la eligió y su distintivo de socio, pero sin el escudo del plantel.
     if (member.soc) { peers.push({ nick: entry.n, name: member.name, soc: true, noLogo: true, vip: false, cosmetics: look }); continue; }
     peers.push({ nick: entry.n, name: member.name, vip: false, cosmetics: look });
