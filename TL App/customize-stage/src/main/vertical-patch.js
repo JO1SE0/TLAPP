@@ -105,8 +105,9 @@ const CORNERS = (() => {
 /**
  * Inclinación de la vista vertical (`__tvmTiltOn`).
  *
- * Cerca de tu arco la cancha queda plana. A medida que la pelota avanza hacia
- * el arco rival, la cámara se inclina y mira hacia adelante: lo de cerca se ve
+ * En tu mitad la cancha queda plana. Apenas la pelota pasa la mitad de la
+ * cancha, la cámara se inclina (y un poco más pasando el 35 % del campo
+ * rival) y mira hacia adelante: lo de cerca se ve
  * del tamaño de siempre y lo de lejos se achica, así entra más cancha por
  * delante en una pantalla apaisada.
  *
@@ -125,11 +126,11 @@ const TILT =
   'window.__tvmTiltTick=function(cv,u){' +
   'var T=window.__tvmTiltS||(window.__tvmTiltS={t:0,at:0,css:"",lv:0});' +
   'var now=window.performance.now(),dt=T.at?Math.min(.1,(now-T.at)/1e3):0;T.at=now;' +
-  'var lv=T.lv,cut=[-.4,.05],hy=.08;' +
+  'var lv=T.lv,cut=[-.02,.35],hy=.04;' +
   'if(null==u)lv=0;else{while(lv<2&&u>cut[lv]+hy)lv++;while(lv>0&&u<cut[lv-1]-hy)lv--;}' +
-  'T.lv=lv;var g=lv/2;' +
+  'T.lv=lv;var g=lv?(1==lv?.65:1):0;' +
   'T.t+=(g-T.t)*(1-Math.exp(-dt/.22));if(Math.abs(g-T.t)<.004)T.t=g;' +
-  'var MAX=(window.__tvmTiltMax||20)*Math.PI/180,th=T.t*MAX;' +
+  'var MAX=(window.__tvmTiltMax||26)*Math.PI/180,th=T.t*MAX;' +
   'var H=cv.offsetHeight||cv.height||1,P=2*H;' +
   'var S=th?(P+H*Math.sin(th))/(P*Math.cos(th)):1;' +
   'window.__tvmTiltK=1/S;' +
