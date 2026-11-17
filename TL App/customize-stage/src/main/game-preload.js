@@ -4990,6 +4990,8 @@ function setPeers(list) {
   const doc = gameDocument();
   if (doc) safe(paintPeers, doc);
   safe(syncPeerDiscs);
+  // El cartel del club sale apenas se cumple, esté o no abierto el menú de la sala.
+  safe(checkArrival);
 }
 
 /*
@@ -5142,77 +5144,151 @@ function myNick() {
  * Con «Animaciones» apagado aparece quieto y se va igual.
  */
 const arrival = { room: '', shown: false };
-const ARRIVAL_MS = 5200;
-function clubArrival(doc, names) {
+const ARRIVAL_MS = 5600;
+
+/*
+ * Los del plantel que están en la sala, sacados de la presencia (llega en vivo,
+ * ~1 s) y no de la lista de jugadores: esa sólo existe en pantalla con el menú
+ * de la sala abierto, y por eso el cartel salía tarde o recién al apretar Esc.
+ * Cada uno con su foto, si la compartió.
+ */
+function clubMembersNow() {
+  const out = [];
+  const seen = new Set();
+  const add = (name, photo) => { if (name && !seen.has(name)) { seen.add(name); out.push({ name, photo: photo || '' }); } };
+  if (selfClub && selfClub.name && !selfClub.soc) {
+    let mine = '';
+    try { mine = sharedAvatar || ''; } catch { mine = ''; }
+    add(selfClub.name, mine);
+  }
+  for (const p of peers.values()) {
+    if (!p || !p.name || p.soc) continue;
+    const ph = p.cosmetics && typeof p.cosmetics.avatarData === 'string' && p.cosmetics.avatarData.startsWith('data:image/jpeg;base64,') ? p.cosmetics.avatarData : '';
+    add(p.name, ph);
+  }
+  return out;
+}
+function checkArrival() {
+  const doc = gameDocument();
+  if (doc) clubArrival(doc, clubMembersNow());
+}
+
+/*
+ * ── Llegada del club ────────────────────────────────────────────────────
+ *
+ * Con tres o más del plantel en la sala sale, una vez por sala, un cartel
+ * arriba: escudo con halo, título dorado, el número grande y cada uno con su
+ * foto. Entra, se queda un rato y se va; después se borra entero.
+ *
+ * Todo lo que se mueve es transform y opacity (lo resuelve el compositor, no
+ * toca el dibujo de la cancha). Nada de filtros, desenfoques ni sombras
+ * animadas, que son lo que gasta. Con «Animaciones» apagado aparece quieto.
+ */
+function clubArrival(doc, members) {
   const room = String(state.roomName || engineRoomName || '');
   if (room !== arrival.room) { arrival.room = room; arrival.shown = false; }
-  if (arrival.shown || names.length < 3) return;
+  if (!room || arrival.shown || members.length < 3) return;
   if (!(state.config.pitch && state.config.pitch.clubArrival !== false)) return;
   if (!doc.body) return;
   arrival.shown = true;
-  if (!doc.getElementById('tvm-arrival-css')) {
+  if (!doc.getElementById('tvm-arrival-css2')) {
+    doc.getElementById('tvm-arrival-css')?.remove();
     const st = doc.createElement('style');
-    st.id = 'tvm-arrival-css';
+    st.id = 'tvm-arrival-css2';
     st.textContent = `
-      #tvm-arrival { position: fixed; left: 50%; top: 64px; z-index: 2147482500; pointer-events: none;
-        transform: translate(-50%, -24px) scale(.9); opacity: 0;
-        font-family: Outfit, Bahnschrift, 'Segoe UI', sans-serif; color: #f4f0df; }
-      #tvm-arrival .a-card { position: relative; display: flex; align-items: center; gap: 16px;
-        padding: 12px 22px 14px 14px; border-radius: 20px; overflow: hidden;
-        background: radial-gradient(120% 140% at 0% 0%, rgba(208,184,120,.20), transparent 55%), linear-gradient(135deg, #18305d, #0c1834 70%);
-        border: 1px solid rgba(208,184,120,.6);
-        box-shadow: 0 18px 40px -16px rgba(0,0,0,.9), 0 0 0 1px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.14); }
-      #tvm-arrival .a-crest { position: relative; flex: none; width: 52px; height: 52px; }
-      #tvm-arrival .a-crest img { position: relative; width: 52px; height: 52px; object-fit: contain;
-        transform: translateY(-14px) scale(.4) rotate(-14deg); opacity: 0; }
-      #tvm-arrival .a-ring { position: absolute; left: 50%; top: 50%; width: 60px; height: 60px; margin: -30px 0 0 -30px;
-        border-radius: 50%; border: 2px solid rgba(208,184,120,.85); transform: scale(.5); opacity: 0; }
+      #tvm-arrival { position: fixed; left: 50%; top: 58px; z-index: 2147482500; pointer-events: none; width: max-content; max-width: 92vw;
+        transform: translate(-50%, -30px) scale(.86); opacity: 0; contain: layout paint;
+        font-family: Outfit, Bahnschrift, 'Segoe UI', sans-serif; color: #f6f1de; }
+      #tvm-arrival .a-card { position: relative; display: flex; align-items: center; gap: 18px;
+        padding: 14px 26px 16px 16px; border-radius: 22px; overflow: hidden;
+        background:
+          radial-gradient(80% 120% at 0% 50%, rgba(236,213,147,.26), transparent 60%),
+          repeating-linear-gradient(115deg, rgba(255,255,255,.035) 0 10px, transparent 10px 22px),
+          linear-gradient(135deg, #1d3a70, #0b1630 72%);
+        border: 1px solid rgba(236,213,147,.7);
+        box-shadow: 0 22px 46px -18px rgba(0,0,0,.95), 0 0 0 1px rgba(0,0,0,.4), inset 0 1px 0 rgba(255,255,255,.16), inset 0 -2px 0 rgba(208,184,120,.35); }
+      #tvm-arrival .a-stripe { position: absolute; left: 0; top: 0; bottom: 0; width: 5px;
+        background: linear-gradient(180deg, #ecd593, #b8913f); transform: scaleY(0); transform-origin: top; }
+      #tvm-arrival .a-crest { position: relative; flex: none; width: 64px; height: 64px; }
+      #tvm-arrival .a-halo { position: absolute; left: 50%; top: 50%; width: 120px; height: 120px; margin: -60px 0 0 -60px;
+        border-radius: 50%; background: radial-gradient(circle, rgba(236,213,147,.55), rgba(236,213,147,0) 65%);
+        transform: scale(.3); opacity: 0; }
+      #tvm-arrival .a-rays { position: absolute; left: 50%; top: 50%; width: 130px; height: 130px; margin: -65px 0 0 -65px;
+        border-radius: 50%; opacity: 0;
+        background: repeating-conic-gradient(from 0deg, rgba(236,213,147,.22) 0 8deg, transparent 8deg 30deg);
+        -webkit-mask: radial-gradient(circle, #000 25%, transparent 68%); mask: radial-gradient(circle, #000 25%, transparent 68%); }
+      #tvm-arrival .a-crest img { position: relative; width: 64px; height: 64px; object-fit: contain;
+        transform: translateY(-20px) scale(.3) rotate(-25deg); opacity: 0; }
+      #tvm-arrival .a-ring { position: absolute; left: 50%; top: 50%; width: 72px; height: 72px; margin: -36px 0 0 -36px;
+        border-radius: 50%; border: 2px solid rgba(236,213,147,.9); transform: scale(.5); opacity: 0; }
       #tvm-arrival .a-text { min-width: 0; }
-      #tvm-arrival .a-top { display: flex; align-items: center; gap: 10px; transform: translateX(-10px); opacity: 0; }
-      #tvm-arrival .a-top b { font-size: 11px; font-weight: 800; letter-spacing: .3em; color: #d0b878; white-space: nowrap; }
-      #tvm-arrival .a-top em { font-style: normal; font-size: 10px; font-weight: 800; letter-spacing: .08em; color: #0c1834;
-        background: linear-gradient(180deg, #ecd593, #c9a85c); border-radius: 999px; padding: 2px 8px; white-space: nowrap; }
-      #tvm-arrival .a-names { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 7px; max-width: 54vw; }
-      #tvm-arrival .a-names span { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 700;
-        white-space: nowrap; padding: 3px 10px 3px 8px; border-radius: 999px;
-        background: rgba(255,255,255,.07); border: 1px solid rgba(208,184,120,.28);
-        transform: translateY(8px) scale(.9); opacity: 0; }
-      #tvm-arrival .a-names span::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: #d0b878;
-        box-shadow: 0 0 6px rgba(208,184,120,.9); }
-      #tvm-arrival .a-shine { position: absolute; top: -20%; bottom: -20%; left: 0; width: 38%;
-        background: linear-gradient(100deg, transparent, rgba(255,240,200,.22), transparent);
-        transform: translateX(-140%) skewX(-18deg); opacity: 0; }
-      #tvm-arrival .a-line { position: absolute; left: 16px; right: 16px; bottom: 0; height: 2px; border-radius: 2px;
-        background: linear-gradient(90deg, transparent, #ecd593, transparent); transform: scaleX(0); }
+      #tvm-arrival .a-top { display: flex; align-items: baseline; gap: 12px; transform: translateX(-14px); opacity: 0; }
+      #tvm-arrival .a-top b { font-size: 19px; font-weight: 900; letter-spacing: .12em; white-space: nowrap; line-height: 1;
+        background: linear-gradient(180deg, #fff6d6 0%, #ecd593 45%, #b8913f 100%); -webkit-background-clip: text; background-clip: text; color: transparent; }
+      #tvm-arrival .a-sub { font-size: 10.5px; font-weight: 800; letter-spacing: .34em; color: rgba(236,213,147,.85);
+        margin-top: 4px; transform: translateX(-10px); opacity: 0; white-space: nowrap; }
+      #tvm-arrival .a-count { position: relative; flex: none; margin-left: 6px; text-align: center; transform: scale(.4); opacity: 0; }
+      #tvm-arrival .a-count i { display: block; font-style: normal; font-size: 34px; font-weight: 900; line-height: .9;
+        background: linear-gradient(180deg, #fff6d6, #d0b878); -webkit-background-clip: text; background-clip: text; color: transparent; }
+      #tvm-arrival .a-count small { display: block; font-size: 9px; font-weight: 800; letter-spacing: .25em; color: rgba(246,241,222,.7); margin-top: 3px; }
+      #tvm-arrival .a-names { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 9px; max-width: 64vw; }
+      #tvm-arrival .a-names span { display: inline-flex; align-items: center; gap: 7px; font-size: 14px; font-weight: 700;
+        white-space: nowrap; padding: 3px 11px 3px 3px; border-radius: 999px;
+        background: linear-gradient(180deg, rgba(255,255,255,.12), rgba(255,255,255,.04)); border: 1px solid rgba(236,213,147,.35);
+        transform: translateY(10px) scale(.85); opacity: 0; }
+      #tvm-arrival .a-names span.more { padding-left: 11px; }
+      #tvm-arrival .a-av { width: 22px; height: 22px; border-radius: 50%; flex: none; object-fit: cover;
+        border: 1.5px solid #ecd593; background: #0b1630; }
+      #tvm-arrival .a-dot { width: 22px; height: 22px; border-radius: 50%; flex: none; display: grid; place-items: center;
+        font-size: 11px; font-weight: 900; color: #0b1630; background: linear-gradient(180deg, #ecd593, #c9a85c); }
+      #tvm-arrival .a-shine { position: absolute; top: -30%; bottom: -30%; left: 0; width: 34%;
+        background: linear-gradient(100deg, transparent, rgba(255,244,210,.28), transparent);
+        transform: translateX(-160%) skewX(-18deg); opacity: 0; }
+      #tvm-arrival .a-line { position: absolute; left: 18px; right: 18px; bottom: 0; height: 2px; border-radius: 2px;
+        background: linear-gradient(90deg, transparent, #fff1c4, transparent); transform: scaleX(0); }
+      #tvm-arrival .a-spark { position: absolute; left: 48px; top: 46px; width: 6px; height: 6px; border-radius: 2px;
+        background: #ecd593; opacity: 0; }
 
       #tvm-arrival.is-on { animation: tvmArrIn ${ARRIVAL_MS}ms cubic-bezier(.2,.8,.2,1) both; }
-      #tvm-arrival.is-on .a-crest img { animation: tvmArrCrest .7s cubic-bezier(.3,1.5,.5,1) .18s both; }
-      #tvm-arrival.is-on .a-ring { animation: tvmArrRing 1s ease-out .55s both; }
-      #tvm-arrival.is-on .a-top { animation: tvmArrUp .45s cubic-bezier(.2,.8,.2,1) .4s both; }
-      #tvm-arrival.is-on .a-names span { animation: tvmArrName .45s cubic-bezier(.3,1.4,.5,1) both; }
-      #tvm-arrival.is-on .a-shine { animation: tvmArrShine 1.1s ease-in-out 1.15s both; }
+      #tvm-arrival.is-on .a-stripe { animation: tvmArrStripe .5s cubic-bezier(.2,.8,.2,1) .15s both; }
+      #tvm-arrival.is-on .a-halo { animation: tvmArrHalo 1.6s ease-out .2s both; }
+      #tvm-arrival.is-on .a-rays { animation: tvmArrRays 2.6s linear .25s both; }
+      #tvm-arrival.is-on .a-crest img { animation: tvmArrCrest .75s cubic-bezier(.3,1.6,.5,1) .18s both; }
+      #tvm-arrival.is-on .a-ring { animation: tvmArrRing 1s ease-out .6s both; }
+      #tvm-arrival.is-on .a-top { animation: tvmArrUp .45s cubic-bezier(.2,.8,.2,1) .38s both; }
+      #tvm-arrival.is-on .a-sub { animation: tvmArrUp .45s cubic-bezier(.2,.8,.2,1) .5s both; }
+      #tvm-arrival.is-on .a-count { animation: tvmArrPop .55s cubic-bezier(.3,1.7,.5,1) .55s both; }
+      #tvm-arrival.is-on .a-names span { animation: tvmArrName .45s cubic-bezier(.3,1.5,.5,1) both; }
+      #tvm-arrival.is-on .a-shine { animation: tvmArrShine 1.1s ease-in-out 1.2s both; }
       #tvm-arrival.is-on .a-line { animation: tvmArrLine .9s cubic-bezier(.2,.8,.2,1) .5s both; }
+      #tvm-arrival.is-on .a-spark { animation: tvmArrSpark .9s cubic-bezier(.2,.7,.3,1) both; }
 
       @keyframes tvmArrIn {
-        0% { transform: translate(-50%, -24px) scale(.9); opacity: 0; }
-        7% { transform: translate(-50%, 3px) scale(1.02); opacity: 1; }
-        11% { transform: translate(-50%, 0) scale(1); opacity: 1; }
-        88% { transform: translate(-50%, 0) scale(1); opacity: 1; }
-        100% { transform: translate(-50%, -16px) scale(.96); opacity: 0; } }
-      @keyframes tvmArrCrest { 0% { transform: translateY(-14px) scale(.4) rotate(-14deg); opacity: 0; }
-        100% { transform: none; opacity: 1; } }
-      @keyframes tvmArrRing { 0% { transform: scale(.5); opacity: 0; } 1% { transform: scale(.5); opacity: .9; } 100% { transform: scale(1.5); opacity: 0; } }
+        0% { transform: translate(-50%, -30px) scale(.86); opacity: 0; }
+        6% { transform: translate(-50%, 4px) scale(1.03); opacity: 1; }
+        10% { transform: translate(-50%, 0) scale(1); opacity: 1; }
+        89% { transform: translate(-50%, 0) scale(1); opacity: 1; }
+        100% { transform: translate(-50%, -18px) scale(.95); opacity: 0; } }
+      @keyframes tvmArrStripe { to { transform: scaleY(1); } }
+      @keyframes tvmArrHalo { 0% { transform: scale(.3); opacity: 0; } 25% { transform: scale(1); opacity: 1; } 100% { transform: scale(1.1); opacity: .35; } }
+      @keyframes tvmArrRays { 0% { transform: rotate(0deg) scale(.6); opacity: 0; } 15% { opacity: 1; } 100% { transform: rotate(80deg) scale(1); opacity: .4; } }
+      @keyframes tvmArrCrest { 0% { transform: translateY(-20px) scale(.3) rotate(-25deg); opacity: 0; } 100% { transform: none; opacity: 1; } }
+      @keyframes tvmArrRing { 0% { transform: scale(.5); opacity: 0; } 1% { transform: scale(.5); opacity: .95; } 100% { transform: scale(1.7); opacity: 0; } }
       @keyframes tvmArrUp { to { transform: none; opacity: 1; } }
+      @keyframes tvmArrPop { to { transform: none; opacity: 1; } }
       @keyframes tvmArrName { to { transform: none; opacity: 1; } }
-      @keyframes tvmArrShine { 0% { transform: translateX(-140%) skewX(-18deg); opacity: 1; }
-        100% { transform: translateX(380%) skewX(-18deg); opacity: 1; } }
+      @keyframes tvmArrShine { 0% { transform: translateX(-160%) skewX(-18deg); opacity: 1; } 100% { transform: translateX(420%) skewX(-18deg); opacity: 1; } }
       @keyframes tvmArrLine { to { transform: scaleX(1); } }
+      @keyframes tvmArrSpark { 0% { transform: translate(0, 0) rotate(0) scale(1); opacity: 0; } 8% { opacity: 1; }
+        100% { transform: translate(var(--dx), var(--dy)) rotate(var(--r)) scale(.3); opacity: 0; } }
 
       html.tvm-noanim #tvm-arrival.is-on { animation: tvmArrFade ${ARRIVAL_MS}ms linear both; }
       html.tvm-noanim #tvm-arrival.is-on * { animation: none !important; }
-      html.tvm-noanim #tvm-arrival .a-crest img, html.tvm-noanim #tvm-arrival .a-top,
-      html.tvm-noanim #tvm-arrival .a-names span { transform: none; opacity: 1; }
-      html.tvm-noanim #tvm-arrival .a-line { transform: scaleX(1); }
+      html.tvm-noanim #tvm-arrival .a-crest img, html.tvm-noanim #tvm-arrival .a-top, html.tvm-noanim #tvm-arrival .a-sub,
+      html.tvm-noanim #tvm-arrival .a-count, html.tvm-noanim #tvm-arrival .a-names span { transform: none; opacity: 1; }
+      html.tvm-noanim #tvm-arrival .a-halo { transform: none; opacity: .4; }
+      html.tvm-noanim #tvm-arrival .a-line, html.tvm-noanim #tvm-arrival .a-stripe { transform: none; }
+      html.tvm-noanim #tvm-arrival .a-spark, html.tvm-noanim #tvm-arrival .a-rays { display: none; }
       @keyframes tvmArrFade { 0%, 90% { transform: translate(-50%, 0); opacity: 1; } 100% { transform: translate(-50%, 0); opacity: 0; } }`;
     (doc.head || doc.documentElement).append(st);
   }
@@ -5226,31 +5302,50 @@ function clubArrival(doc, names) {
   const img = el('img');
   img.src = assetUrl('crest');
   img.alt = '';
-  crest.append(el('div', 'a-ring'), img);
+  crest.append(el('div', 'a-halo'), el('div', 'a-rays'), el('div', 'a-ring'), img);
   const txt = el('div', 'a-text');
   const top = el('div', 'a-top');
   const title = el('b');
-  title.textContent = 'TODA LA LECCE EN LA SALA';
-  const count = el('em');
-  count.textContent = `${names.length} SOCIOS`;
-  top.append(title, count);
+  title.textContent = 'TODA LA LECCE';
+  top.append(title);
+  const sub = el('div', 'a-sub');
+  sub.textContent = 'ESTÁ EN LA SALA';
   const list = el('div', 'a-names');
-  const shown = names.slice(0, 6);
-  shown.forEach((n, i) => {
+  const shown = members.slice(0, 6);
+  shown.forEach((m, i) => {
     const chip = el('span');
-    chip.textContent = n;
+    if (m.photo) { const av = el('img', 'a-av'); av.src = m.photo; av.alt = ''; chip.append(av); }
+    else { const d = el('b', 'a-dot'); d.textContent = (m.name[0] || '?').toUpperCase(); chip.append(d); }
+    chip.append(doc.createTextNode(m.name));
     // De a uno, después del título.
-    chip.style.animationDelay = `${620 + i * 110}ms`;
+    chip.style.animationDelay = `${650 + i * 110}ms`;
     list.append(chip);
   });
-  if (names.length > shown.length) {
-    const more = el('span');
-    more.textContent = `+${names.length - shown.length}`;
-    more.style.animationDelay = `${620 + shown.length * 110}ms`;
+  if (members.length > shown.length) {
+    const more = el('span', 'more');
+    more.textContent = `+${members.length - shown.length}`;
+    more.style.animationDelay = `${650 + shown.length * 110}ms`;
     list.append(more);
   }
-  txt.append(top, list);
-  card.append(el('div', 'a-shine'), crest, txt, el('div', 'a-line'));
+  txt.append(top, sub, list);
+  const count = el('div', 'a-count');
+  const num = el('i');
+  num.textContent = String(members.length);
+  const lbl = el('small');
+  lbl.textContent = 'DEL CLUB';
+  count.append(num, lbl);
+  card.append(el('div', 'a-shine'), el('div', 'a-stripe'), crest, txt, count, el('div', 'a-line'));
+  // Unas chispas que salen del escudo: pocas y sólo transform/opacity.
+  for (let i = 0; i < 10; i++) {
+    const sp = el('i', 'a-spark');
+    const ang = (i / 10) * Math.PI * 2 + 0.3;
+    const dist = 46 + (i % 3) * 14;
+    sp.style.setProperty('--dx', `${Math.round(Math.cos(ang) * dist)}px`);
+    sp.style.setProperty('--dy', `${Math.round(Math.sin(ang) * dist)}px`);
+    sp.style.setProperty('--r', `${(i * 47) % 360}deg`);
+    sp.style.animationDelay = `${380 + (i % 4) * 40}ms`;
+    card.append(sp);
+  }
   box.append(card);
   doc.body.append(box);
   if (state.config.appearance && state.config.appearance.animations === false) doc.documentElement.classList.add('tvm-noanim');
@@ -5263,8 +5358,6 @@ function paintPeers(doc) {
   const me = selfPeer();
   const rows = playerRows(doc);
   safe(sparkleJoiners, doc, rows);
-  // Socios verificados en la sala (con nombre del plantel), para la llegada del club.
-  const socios = [];
 
   for (const row of rows) {
     const name = row.querySelector('[data-hook="name"]');
@@ -5273,8 +5366,6 @@ function paintPeers(doc) {
     const nick = (name.textContent || '').trim();
     const peer = nick ? (me && nick === me.nick ? me : peers.get(nick)) : null;
 
-    // (La llegada es del plantel: los socios no cuentan.)
-    if (peer && peer.name && !peer.soc && !socios.includes(peer.name)) socios.push(peer.name);
     const marks = ensureMarks(doc, row, !!peer);
     if (!peer) {
       applyPeerLook(row, name, null);
@@ -5308,7 +5399,6 @@ function paintPeers(doc) {
     if (box) box.style.display = (marks.logo.hidden && marks.friend.hidden && marks.socio.hidden) ? 'none' : '';
     applyPeerLook(row, name, peer.cosmetics);
   }
-  safe(clubArrival, doc, socios);
 }
 
 /**
