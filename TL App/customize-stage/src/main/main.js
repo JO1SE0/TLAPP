@@ -974,6 +974,18 @@ let patchedBundles = new Map();
  * igual sin él y queda en 2D.
  */
 const VIEW3D = (() => { try { return !!store.get().perf.view3d; } catch { return false; } })();
+/* Vista vertical en 2D: misma idea, también se decide al arrancar. Con la 3D prendida no hace falta. */
+const VERTICAL = !VIEW3D && (() => { try { return !!store.get().perf.vertical; } catch { return false; } })();
+const verticalBundles = new Map();
+function verticalBody(url, body) {
+  if (!VERTICAL || !body) return body;
+  const hit = verticalBundles.get(url);
+  if (hit && hit.from === body) return hit.out;
+  const res = require('./vertical-patch').patchVertical(body);
+  logToApp(res.applied ? 'info' : 'warn', res.applied ? 'vista vertical enganchada al juego' : `vista vertical sin enganchar (${res.reason}): sigue horizontal`);
+  verticalBundles.set(url, { from: body, out: res.source });
+  return res.source;
+}
 const view3dBundles = new Map();
 function view3dBody(url, body) {
   if (!VIEW3D || !body) return body;
@@ -1220,7 +1232,7 @@ function registerAssetProtocol(partition) {
 
     if (kind === GAME_BUNDLE_HOST) {
       const original = parsed.searchParams.get('u') || '';
-      const body = view3dBody(original, patchedBundles.get(original));
+      const body = view3dBody(original, verticalBody(original, patchedBundles.get(original)));
       // Si no está, algo se desincronizó: que falle y el juego lo pida de nuevo
       // a haxball.com, en vez de servir un cuerpo vacío que lo rompería.
       if (!body) return notFound();

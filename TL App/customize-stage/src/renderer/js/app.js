@@ -4495,6 +4495,27 @@ function renderView3d() {
   const perf = state.config.perf || {};
   host.replaceChildren();
 
+  // Vista vertical en 2D: la cancha de arco a arco, tu equipo hacia arriba.
+  const vert = document.createElement('div');
+  vert.className = 'rows__flat';
+  buildSwitches(vert, [{
+    key: 'vertical',
+    label: en ? 'Vertical view (2D)' : 'Vista vertical (2D)',
+    description: en
+      ? 'The normal pitch turned goal to goal: your team always attacks upwards, and the arrows turn with it (up takes you to the rival goal). Names and numbers stay upright.'
+      : 'La cancha de siempre girada de arco a arco: tu equipo ataca siempre hacia arriba y las flechas giran con ella (arriba te lleva al arco rival). Nombres y números quedan derechos.',
+    hint: en
+      ? 'Same FPS as horizontal: the pitch cache and the disc sprites keep working. Mirror mode is off while this is on. With the 3D view on, the 3D Vertical camera is used instead.'
+      : 'Mismos FPS que en horizontal: el caché de la cancha y las fichas armadas siguen andando. El modo espejo se apaga mientras esté prendida. Con la vista 3D prendida, se usa la cámara Vertical de la 3D.',
+    restart: true,
+    value: () => !!(state.config.perf || {}).vertical
+  }], async (_item, value) => {
+    await patchConfig({ perf: { vertical: value } });
+    needsRestart();
+    renderView3d();
+  });
+  host.append(vert);
+
   const sw = document.createElement('div');
   sw.className = 'rows__flat';
   buildSwitches(sw, [{

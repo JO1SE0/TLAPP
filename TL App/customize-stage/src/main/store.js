@@ -213,6 +213,13 @@ const DEFAULTS = {
      * siempre, sin un solo gancho de más.
      */
     view3d: false,
+    /**
+     * Vista vertical en 2D (ver vertical-patch.js): la cancha girada de arco a
+     * arco, tu equipo atacando hacia arriba. Se lee al arrancar: apagada, el
+     * juego se sirve como siempre. Con la vista 3D prendida no se usa (la 3D
+     * tiene su propia cámara Vertical).
+     */
+    vertical: false,
     /** Perspectiva de la vista 3D: dron | tribuna | tv | vertical. Se cambia en vivo. */
     view3dCam: 'tribuna',
     /** «Modo PC lenta»: apaga de una vez lo visual que cuesta. `lowEndBackup` guarda lo que había para volver. */
