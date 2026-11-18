@@ -65,7 +65,7 @@ const SITES = {
   /* Las flechas: la máscara del juego (arriba 1, abajo 2, izquierda 4, derecha 8). */
   input: /this\.[\w$]+\.has\("Kick"\)&&\(a\|=16\);/,
   /* Inclinación: el zoom ya calculado, justo antes de usarlo para la cámara. */
-  zoom: /;b=this\.[\w$]+\*this\.[\w$]+;var k=this\.[\w$]+\*this\.[\w$]+,l=c\.([\w$]+)\.[\w$]+,n=this\.[\w$]+\.width\//,
+  zoom: /;b=this\.[\w$]+\*this\.[\w$]+;var k=this\.[\w$]+\*this\.[\w$]+,l=c\.([\w$]+)\.([\w$]+),n=this\.[\w$]+\.width\//,
   /* El tamaño del canvas: con la cancha inclinada se mide sin la inclinación. */
   size: /let b=this\.([\w$]+)\.getBoundingClientRect\(\),c=Math\.round\(b\.width\*a\)/,
   /* El ancho del estadio (límite de la cámara) y los discos del mundo (la pelota es el primero). */
@@ -106,8 +106,8 @@ const CORNERS = (() => {
  * Inclinación de la vista vertical (`__tvmTiltOn`).
  *
  * En tu mitad la cancha queda plana. Apenas la pelota pasa la mitad de la
- * cancha, la cámara se inclina (y un poco más pasando el 35 % del campo
- * rival) y mira hacia adelante: lo de cerca se ve
+ * cancha, la cámara se inclina (34°; y 52°, como la cámara Vertical de la 3D,
+ * pasando el 35 % del campo rival) y mira hacia adelante: lo de cerca se ve
  * del tamaño de siempre y lo de lejos se achica, así entra más cancha por
  * delante en una pantalla apaisada.
  *
@@ -123,19 +123,22 @@ const CORNERS = (() => {
  */
 const TILT =
   'window.__tvmTiltK=1;' +
-  'window.__tvmTiltTick=function(cv,u){' +
+  'window.__tvmTiltTick=function(cv,u,kMin){' +
   'var T=window.__tvmTiltS||(window.__tvmTiltS={t:0,at:0,css:"",lv:0});' +
   'var now=window.performance.now(),dt=T.at?Math.min(.1,(now-T.at)/1e3):0;T.at=now;' +
   'var lv=T.lv,cut=[-.02,.35],hy=.04;' +
   'if(null==u)lv=0;else{while(lv<2&&u>cut[lv]+hy)lv++;while(lv>0&&u<cut[lv-1]-hy)lv--;}' +
   'T.lv=lv;var g=lv?(1==lv?.65:1):0;' +
   'T.t+=(g-T.t)*(1-Math.exp(-dt/.22));if(Math.abs(g-T.t)<.004)T.t=g;' +
-  'var MAX=(window.__tvmTiltMax||26)*Math.PI/180,th=T.t*MAX;' +
+  'var MAX=(window.__tvmTiltMax||52)*Math.PI/180,th=T.t*MAX;' +
   'var H=cv.offsetHeight||cv.height||1,P=2*H;' +
   'var S=th?(P+H*Math.sin(th))/(P*Math.cos(th)):1;' +
+  // La sala limita cuánto se ve: no se aleja más de lo que deja, y se inclina menos.
+  'if(kMin>0&&1/S<kMin){var lo=0,hi=th;for(var it=0;it<12;it++){var mid=(lo+hi)/2,Sm=(P+H*Math.sin(mid))/(P*Math.cos(mid));if(1/Sm<kMin)hi=mid;else lo=mid}th=lo;S=th?(P+H*Math.sin(th))/(P*Math.cos(th)):1}' +
   'window.__tvmTiltK=1/S;' +
   'var sm=(P+H*Math.sin(MAX))/(P*Math.cos(MAX));' +
-  'window.__tvmTiltPad=window.__tvmTiltOn&&window.__tvmVertOn?Math.ceil(Math.max(cv.width,cv.height)*(1-1/sm)/2)+16:0;' +
+  // Un poco más de borde en el caché (acotado: un caché enorme cuesta FPS en cada cuadro).
+  'window.__tvmTiltPad=window.__tvmTiltOn&&window.__tvmVertOn?Math.min(256,Math.ceil(Math.max(cv.width,cv.height)*(1-1/sm)/2)+16):0;' +
   'var css=th?"scale("+S.toFixed(4)+") perspective("+Math.round(P)+"px) rotateX("+(th*180/Math.PI).toFixed(2)+"deg)":"";' +
   'if(css!==T.css){T.css=css;window.__tvmTiltCss=!!css;var st=cv.style;st.transformOrigin="50% 100%";st.transform=css;st.willChange=css?"transform":"";' +
   'var pe=cv.parentElement;if(css&&pe&&"hidden"!==pe.style.overflow)pe.style.overflow="hidden"}' +
@@ -214,7 +217,7 @@ function patchVertical(source) {
     const u = `(window.__tvmVertOn&&window.__tvmTiltOn&&null!=f&&null!=f.${teamF}&&0!=f.${teamF}.${teamId}&&e.${discs[1]}&&e.${discs[1]}[0])` +
       `?e.${discs[1]}[0].${pos[1]}.x*(2==f.${teamF}.${teamId}?-1:1)/(c.${stadiumF}.${width[1]}||1):null`;
     edits.push([zoomAt.index + 1,
-      `if(window.__tvmTiltOn||1!==window.__tvmTiltK){window.__tvmTiltTick(this.oa,${u});${zoomVar}*=window.__tvmTiltK}`]);
+      `if(window.__tvmTiltOn||1!==window.__tvmTiltK){window.__tvmTiltTick(this.oa,${u},0<c.${stadiumF}.${zoomAt[2]}?this.oa.width/(c.${stadiumF}.${zoomAt[2]}*${zoomVar}):0);${zoomVar}*=window.__tvmTiltK}`]);
     // Con el canvas inclinado, su rectángulo en pantalla cambia: se mide su tamaño sin la inclinación.
     edits.push([size.index + 'let b='.length, `window.__tvmTiltCss?{width:this.${size[1]}.offsetWidth,height:this.${size[1]}.offsetHeight}:`]);
     tilt = true;
