@@ -2228,20 +2228,21 @@ function refreshQuickMenu() {
  * mapa está prendido, ver `__tvmWantView` en game-patch.js).
  */
 const MINI_W = 220, MINI_MS = 50;
-const minimap = { on: false, el: null, cv: null, ctx: null, at: 0, faded: false, vert: false, w: 0, h: 0, box: null };
+const minimap = { on: false, el: null, cv: null, ctx: null, at: 0, faded: false, vert: false, mirror: false, w: 0, h: 0, box: null,
+  bg: null, bgKey: '', sum: NaN, dpr: 1, fx: 0 };
 function syncMinimap() {
   const doc = gameDocument();
   const want = !!(state.config.pitch && state.config.pitch.minimap) && !!doc;
   minimap.on = want;
-  if (doc && doc.defaultView) doc.defaultView.__tvmWantView = want;
-  if (!want) { if (minimap.el) { minimap.el.remove(); minimap.el = null; } return; }
+  if (doc && doc.defaultView && !want) { doc.defaultView.__tvmWantView = 0; doc.defaultView.__tvmView = null; }
+  if (!want) { if (minimap.el) { minimap.el.remove(); minimap.el = null; minimap.bg = null; } return; }
   if (minimap.el && minimap.el.ownerDocument === doc && minimap.el.isConnected) return;
   if (!doc.getElementById('tvm-mini-css')) {
     const st = doc.createElement('style');
     st.id = 'tvm-mini-css';
     st.textContent = `
       #tvm-mini { position: fixed; right: 14px; bottom: 14px; z-index: 2147482300; padding: 6px; border-radius: 14px; pointer-events: none;
-        background: rgba(250,247,238,.9); box-shadow: 0 10px 24px -12px rgba(0,0,0,.6); transition: opacity .15s ease; }
+        background: rgb(250,247,238); box-shadow: 0 6px 14px -8px rgba(0,0,0,.6); transition: opacity .15s ease; contain: layout paint; will-change: opacity; }
       #tvm-mini.fade { opacity: .18; }
       #tvm-mini canvas { display: block; border-radius: 8px; }`;
     (doc.head || doc.documentElement).append(st);
@@ -2252,7 +2253,39 @@ function syncMinimap() {
   const cv = doc.createElement('canvas');
   el.append(cv);
   doc.body.append(el);
-  minimap.el = el; minimap.cv = cv; minimap.ctx = cv.getContext('2d'); minimap.w = 0; minimap.box = null;
+  minimap.el = el; minimap.cv = cv; minimap.ctx = cv.getContext('2d', { alpha: false }); minimap.w = 0; minimap.box = null; minimap.bg = null; minimap.bgKey = '';
+  const win = doc.defaultView;
+  if (win && !win.__tvmMiniResize) { win.__tvmMiniResize = 1; win.addEventListener('resize', () => { minimap.box = null; }, { passive: true }); }
+}
+
+/*
+ * La cancha del mapa (pasto, líneas, círculo) se pinta una sola vez en un
+ * canvas aparte y se pega entera en cada dibujo: lo único que se dibuja de
+ * nuevo son las fichas y la pelota.
+ */
+function minimapBackground(doc, W, H, b, vert) {
+  const key = `${W}x${H}|${b.halfW}|${b.halfH}|${vert ? 1 : 0}|${minimap.dpr}`;
+  if (minimap.bg && minimap.bgKey === key) return minimap.bg;
+  const dpr = minimap.dpr;
+  const cv = minimap.bg || doc.createElement('canvas');
+  cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
+  const c = cv.getContext('2d', { alpha: false });
+  const fx = minimap.fx;
+  c.setTransform(dpr, 0, 0, dpr, 0, 0);
+  c.fillStyle = '#4f8a45';
+  c.fillRect(0, 0, W, H);
+  c.strokeStyle = 'rgba(255,255,255,.65)';
+  c.lineWidth = 1.2;
+  const hw = b.halfW * fx, hh = b.halfH * fx, cx = W / 2, cy = H / 2;
+  c.beginPath();
+  if (vert) { c.rect(cx - hh, cy - hw, hh * 2, hw * 2); c.moveTo(cx - hh, cy); c.lineTo(cx + hh, cy); }
+  else { c.rect(cx - hw, cy - hh, hw * 2, hh * 2); c.moveTo(cx, cy - hh); c.lineTo(cx, cy + hh); }
+  const rc = 75 * fx;
+  c.moveTo(cx + rc, cy);
+  c.arc(cx, cy, rc, 0, Math.PI * 2);
+  c.stroke();
+  minimap.bg = cv; minimap.bgKey = key;
+  return cv;
 }
 
 function minimapTick(f, room, match) {
@@ -2260,88 +2293,107 @@ function minimapTick(f, room, match) {
   if (now - minimap.at < MINI_MS) return;
   minimap.at = now;
   if (!minimap.el || !minimap.el.isConnected) { syncMinimap(); if (!minimap.el) return; }
+  const doc = minimap.el.ownerDocument;
+  if (doc.hidden) return;
+  const view = doc.defaultView;
   const b = pitchBounds(currentStadium) || matchGeom(currentStadium);
   const world = match[f.world];
   const discs = world && world[f.discs];
-  if (!b || !(b.halfW > 0) || !(b.halfH > 0) || !discs) { minimap.el.hidden = true; return; }
-  const view = gameWindow(gameDocument());
+  if (!b || !(b.halfW > 0) || !(b.halfH > 0) || !discs) { if (!minimap.el.hidden) minimap.el.hidden = true; return; }
   const vert = !!(view && view.__tvmVertOn);
   const mirror = !!(view && view.__tvmMirror);
-  // Tamaño: el ancho fijo y el alto según la cancha (parado en la vertical).
   const ratio = (b.halfH * 2 + 40) / (b.halfW * 2 + 40);
   const W = vert ? Math.round(MINI_W * ratio) : MINI_W;
   const H = vert ? MINI_W : Math.round(MINI_W * ratio);
   const dpr = Math.min(2, (view && view.devicePixelRatio) || 1);
-  if (minimap.w !== W || minimap.h !== H || minimap.vert !== vert) {
-    minimap.w = W; minimap.h = H; minimap.vert = vert;
+  if (minimap.w !== W || minimap.h !== H || minimap.vert !== vert || minimap.mirror !== mirror || minimap.dpr !== dpr) {
+    minimap.w = W; minimap.h = H; minimap.vert = vert; minimap.mirror = mirror; minimap.dpr = dpr;
     minimap.cv.width = Math.round(W * dpr); minimap.cv.height = Math.round(H * dpr);
     minimap.cv.style.width = `${W}px`; minimap.cv.style.height = `${H}px`;
-    minimap.box = null;
+    minimap.box = null; minimap.sum = NaN;
   }
-  minimap.el.hidden = false;
-  const c = minimap.ctx;
-  const fx = (W - 8) / ((vert ? b.halfH : b.halfW) * 2 + 40);
-  // Cancha → mapa: centro, escala, giro (vertical: el rojo ataca para arriba) y espejo.
-  const toMap = (x, y) => {
-    let px = mirror ? -x : x, py = y;
-    if (vert) { const t = px; px = py; py = -t; }
-    return [W / 2 + px * fx, H / 2 + py * fx];
-  };
-  c.setTransform(dpr, 0, 0, dpr, 0, 0);
-  c.fillStyle = '#4f8a45';
-  c.fillRect(0, 0, W, H);
-  c.strokeStyle = 'rgba(255,255,255,.65)';
-  c.lineWidth = 1.2;
-  const hw = b.halfW * fx, hh = b.halfH * fx;
-  c.beginPath();
-  if (vert) { c.rect(W / 2 - hh, H / 2 - hw, hh * 2, hw * 2); c.moveTo(W / 2 - hh, H / 2); c.lineTo(W / 2 + hh, H / 2); }
-  else { c.rect(W / 2 - hw, H / 2 - hh, hw * 2, hh * 2); c.moveTo(W / 2, H / 2 - hh); c.lineTo(W / 2, H / 2 + hh); }
-  c.moveTo(W / 2 + 15 * fx * 5, H / 2);
-  c.arc(W / 2, H / 2, 15 * fx * 5, 0, Math.PI * 2);
-  c.stroke();
+  minimap.fx = (W - 8) / ((vert ? b.halfH : b.halfW) * 2 + 40);
+  const bk = b.halfW * 10007 + b.halfH;
+  if (bk !== minimap.bk) { minimap.bk = bk; minimap.sum = NaN; }
+  if (minimap.el.hidden) { minimap.el.hidden = false; minimap.box = null; }
 
-  // Fichas y pelota; de paso, ¿alguna cae debajo del mapa en pantalla?
   const players = room[f.players] || [];
-  let under = false;
+  const ball = discs[0] && discs[0][f.pos];
+  // ¿Se movió algo? Con la partida en pausa (o todos quietos) no se redibuja.
+  let sum = ball ? ball.x * 1.3 + ball.y * 2.7 : 0;
+  for (let i = 0; i < players.length; i++) {
+    const d = players[i] && players[i][f.disc];
+    const at = d && d[f.pos];
+    if (at) sum += (at.x + i * 7.1) * (i + 3.3) + at.y * (i + 1.7);
+  }
   const T = view && view.__tvmView;
-  const gcv = view && view.__tvmViewCv;
+  // La posición de la cancha en pantalla se pide para el próximo cuadro (una vez, no todos).
+  if (view) view.__tvmWantView = 1;
+  const moved = sum !== minimap.sum;
+  minimap.sum = sum;
+
+  const fx = minimap.fx, cx = W / 2, cy = H / 2;
+  const sgn = mirror ? -1 : 1;
+  const c = minimap.ctx;
+  if (moved) {
+    c.setTransform(dpr, 0, 0, dpr, 0, 0);
+    c.drawImage(minimapBackground(doc, W, H, b, vert), 0, 0, W, H);
+  }
+
+  // Fichas: un solo trazo por equipo (tres llamadas de dibujo en vez de una por ficha).
+  const me = myNick();
+  let meX = NaN, meY = 0, under = false;
   if (!minimap.box) {
     const r = minimap.el.getBoundingClientRect();
     minimap.box = { l: r.left - 12, t: r.top - 12, r: r.right + 12, bo: r.bottom + 12 };
   }
-  const scaleCss = gcv && gcv.width ? (gcv.clientWidth || gcv.width) / gcv.width : 1;
-  const onScreen = (x, y) => {
+  const bx = minimap.box;
+  const gcv = view && view.__tvmViewCv;
+  const sc = gcv && gcv.width ? (gcv.clientWidth || gcv.width) / gcv.width : 1;
+  const hit = (x, y) => {
     if (!T || under) return;
-    const sx = (T.a * x + T.c * y + T.e) * scaleCss, sy = (T.b * x + T.d * y + T.f) * scaleCss;
-    const bx = minimap.box;
+    const sx = (T.a * x + T.c * y + T.e) * sc, sy = (T.b * x + T.d * y + T.f) * sc;
     if (sx > bx.l && sx < bx.r && sy > bx.t && sy < bx.bo) under = true;
   };
-  for (let i = 0; i < players.length; i++) {
-    const p = players[i];
-    const d = p && p[f.disc];
-    const at = d && d[f.pos];
-    if (!at) continue;
-    const t = p[f.team];
-    const side = t ? canonicalTeam(String(t[f.name] || '')) : '';
-    const [mx, my] = toMap(at.x, at.y);
-    c.beginPath();
-    c.arc(mx, my, 4, 0, Math.PI * 2);
-    c.fillStyle = side === 'Blue' ? '#5689e5' : side === 'Red' ? '#e56b6b' : '#ccc';
-    c.fill();
-    c.lineWidth = 1;
-    c.strokeStyle = '#13254a';
-    c.stroke();
-    if (String(p[f.name] || '') === myNick()) {
-      c.beginPath(); c.arc(mx, my, 6.5, 0, Math.PI * 2); c.strokeStyle = '#ecd593'; c.lineWidth = 1.8; c.stroke();
+  for (let pass = 0; pass < 3; pass++) {
+    let any = false;
+    if (moved) c.beginPath();
+    for (let i = 0; i < players.length; i++) {
+      const p = players[i];
+      const d = p && p[f.disc];
+      const at = d && d[f.pos];
+      if (!at) continue;
+      const t = p[f.team];
+      const side = t ? canonicalTeam(String(t[f.name] || '')) : '';
+      const k = side === 'Red' ? 0 : side === 'Blue' ? 1 : 2;
+      if (k !== pass) continue;
+      if (moved) {
+        const px = sgn * at.x, py = at.y;
+        const mx = cx + (vert ? py : px) * fx, my = cy + (vert ? -px : py) * fx;
+        c.moveTo(mx + 4, my);
+        c.arc(mx, my, 4, 0, Math.PI * 2);
+        any = true;
+        if (me && p[f.name] === me) { meX = mx; meY = my; }
+      }
+      hit(at.x, at.y);
     }
-    onScreen(at.x, at.y);
+    if (any) {
+      c.fillStyle = pass === 0 ? '#e56b6b' : pass === 1 ? '#5689e5' : '#cccccc';
+      c.fill();
+      c.lineWidth = 1;
+      c.strokeStyle = '#13254a';
+      c.stroke();
+    }
   }
-  const ball = discs[0] && discs[0][f.pos];
-  if (ball) {
-    const [bx, by] = toMap(ball.x, ball.y);
-    c.beginPath(); c.arc(bx, by, 2.6, 0, Math.PI * 2); c.fillStyle = '#fff'; c.fill(); c.lineWidth = 1; c.strokeStyle = '#000'; c.stroke();
-    onScreen(ball.x, ball.y);
+  if (moved) {
+    if (meX === meX) { c.beginPath(); c.arc(meX, meY, 6.5, 0, Math.PI * 2); c.strokeStyle = '#ecd593'; c.lineWidth = 1.8; c.stroke(); }
+    if (ball) {
+      const px = sgn * ball.x, py = ball.y;
+      const mx = cx + (vert ? py : px) * fx, my = cy + (vert ? -px : py) * fx;
+      c.beginPath(); c.arc(mx, my, 2.6, 0, Math.PI * 2); c.fillStyle = '#fff'; c.fill(); c.lineWidth = 1; c.strokeStyle = '#000'; c.stroke();
+    }
   }
+  if (ball) hit(ball.x, ball.y);
   if (under !== minimap.faded) { minimap.faded = under; minimap.el.classList.toggle('fade', under); }
 }
 

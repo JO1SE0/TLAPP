@@ -593,9 +593,11 @@ window.__tvmStadium = function (self, cvKey, camKey, zoom, topPad, botPad, lineW
   }
 
   /* Dónde cae la cancha en pantalla, para el mapa chico (que se vuelve
-     transparente si algo pasa por debajo). Sólo con el mapa prendido: es un
-     objeto por cuadro y nadie más lo necesita. */
+     transparente si algo pasa por debajo). Lo pide el mapa cuando se dibuja
+     (20 veces por segundo) y se toma en el cuadro siguiente, una sola vez:
+     no en todos los cuadros. */
   if (window.__tvmWantView) {
+    window.__tvmWantView = 0;
     try { window.__tvmView = self.c.getTransform(); window.__tvmViewCv = cv; } catch (e7) { window.__tvmView = null; }
   }
 
