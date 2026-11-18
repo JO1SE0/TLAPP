@@ -2034,6 +2034,7 @@ function quickCss(doc) {
     #tvm-qm .qm-h { font-size: 10px; letter-spacing: .24em; color: #ecd593; font-weight: 800; padding: 10px 8px 4px; }
     #tvm-qm .qm-row { display: flex; align-items: center; gap: 10px; min-height: 34px; padding: 3px 8px; border-radius: 12px; font-size: 13.5px; }
     #tvm-qm .qm-row:hover { background: rgba(255,255,255,.04); }
+    #tvm-qm .qm-row[hidden] { display: none; }
     #tvm-qm .qm-row > span { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     #tvm-qm .qm-tg { flex: none; width: 32px; height: 18px; border-radius: 999px; background: rgba(255,255,255,.18); position: relative; cursor: pointer; transition: background .15s; }
     #tvm-qm .qm-tg::after { content: ''; position: absolute; left: 2px; top: 2px; width: 14px; height: 14px; border-radius: 50%; background: #fff; transition: left .15s; }
@@ -2108,11 +2109,14 @@ function buildQuickMenu() {
   qm.rows = [];
   const el = (tag, cls, text) => { const n = doc.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; };
   const head = (t) => panel.append(el('div', 'qm-h', t));
+  // `when`: la fila sólo se muestra si da verdadero (las del mapa, con el mapa prendido).
+  let when = null;
   const row = (label, ctl, sync) => {
     const r = el('div', 'qm-row');
     r.append(el('span', null, label), ctl);
     panel.append(r);
-    qm.rows.push(sync);
+    const w = when;
+    qm.rows.push(w ? () => { r.hidden = !w(); if (!r.hidden) sync(); } : sync);
   };
   const cfg = () => state.config;
   const toggle = (label, get, set) => {
@@ -2167,6 +2171,10 @@ function buildQuickMenu() {
   seg('Lado fijo', [['off', 'No'], ['red', 'Rojo'], ['blue', 'Azul']], () => cfg().pitch.mirror || 'off', (v) => quickSet({ pitch: { mirror: v } }));
   toggle('Gráficos planos', () => cfg().perf.flatGraphics, (v) => quickSet({ perf: { flatGraphics: v } }));
   toggle('Mapa chico', () => cfg().pitch.minimap, (v) => quickSet({ pitch: { minimap: v } }));
+  when = () => !!cfg().pitch.minimap;
+  slider('↳ Tamaño', 0.6, 1.6, () => cfg().pitch.miniSize, (v) => quickSet({ pitch: { miniSize: v } }));
+  seg('↳ Esquina', [['tl', '↖'], ['bl', '↙'], ['br', '↘']], () => cfg().pitch.miniCorner || 'br', (v) => quickSet({ pitch: { miniCorner: v } }));
+  when = null;
   pick('Cancha', QM_TEXTURES, () => cfg().visual.texture || 'none', (v) => quickSet({ visual: { texture: v } }));
   pick('Clima', QM_WEATHER, () => cfg().visual.pitchWeather || 'none', (v) => quickSet({ visual: { pitchWeather: v } }));
 
@@ -2228,22 +2236,64 @@ function refreshQuickMenu() {
  * mapa está prendido, ver `__tvmWantView` en game-patch.js).
  */
 const MINI_W = 220, MINI_MS = 50;
+const MINI_STYLES = {
+  grass: { frame: 'rgb(250,247,238)', field: '#4f8a45', line: 'rgba(255,255,255,.65)', pad: 6 },
+  dark: { frame: 'rgb(19,37,74)', field: '#0e1a33', line: 'rgba(236,213,147,.55)', pad: 5 },
+  lines: { frame: 'transparent', field: 'rgba(8,14,28,.35)', line: 'rgba(255,255,255,.8)', pad: 0 }
+};
+/** Lo que se eligió para el mapa, ya acotado (el panel también puede escribir la config). */
+function miniOpts() {
+  const p = state.config.pitch || {};
+  const clamp = (v, a, b, d) => { v = Number(v); return v >= a && v <= b ? v : d; };
+  return {
+    size: clamp(p.miniSize, 0.6, 1.6, 1),
+    corner: ['br', 'bl', 'tl'].includes(p.miniCorner) ? p.miniCorner : 'br',
+    opacity: clamp(p.miniOpacity, 0.3, 1, 1),
+    style: MINI_STYLES[p.miniStyle] ? p.miniStyle : 'grass',
+    fade: p.miniFade !== false,
+    club: p.miniClub !== false,
+    bigMe: !!p.miniBigMe,
+    bigBall: !!p.miniBigBall
+  };
+}
 const minimap = { on: false, el: null, cv: null, ctx: null, at: 0, faded: false, vert: false, mirror: false, w: 0, h: 0, box: null,
-  bg: null, bgKey: '', sum: NaN, dpr: 1, fx: 0 };
+  bg: null, bgKey: '', sum: NaN, dpr: 1, fx: 0, o: miniOpts(), optKey: '' };
+
+/** Esquina, transparencia y estilo van en el estilo del recuadro: se ponen cuando cambian, no por dibujo. */
+function applyMiniLook() {
+  const el = minimap.el;
+  if (!el) return;
+  const o = minimap.o = miniOpts();
+  const key = JSON.stringify(o);
+  if (key === minimap.optKey) return;
+  minimap.optKey = key;
+  const st = MINI_STYLES[o.style];
+  const s = el.style;
+  s.left = s.right = s.top = s.bottom = '';
+  if (o.corner === 'tl') { s.left = '14px'; s.top = '14px'; }
+  else if (o.corner === 'bl') { s.left = '14px'; s.bottom = '14px'; }
+  else { s.right = '14px'; s.bottom = '14px'; }
+  s.setProperty('--o', String(o.opacity));
+  s.background = st.frame;
+  s.padding = `${st.pad}px`;
+  s.boxShadow = o.style === 'lines' ? 'none' : '';
+  if (!o.fade && minimap.faded) { minimap.faded = false; el.classList.remove('fade'); }
+  minimap.box = null; minimap.sum = NaN; minimap.bgKey = '';
+}
 function syncMinimap() {
   const doc = gameDocument();
   const want = !!(state.config.pitch && state.config.pitch.minimap) && !!doc;
   minimap.on = want;
   if (doc && doc.defaultView && !want) { doc.defaultView.__tvmWantView = 0; doc.defaultView.__tvmView = null; }
   if (!want) { if (minimap.el) { minimap.el.remove(); minimap.el = null; minimap.bg = null; } return; }
-  if (minimap.el && minimap.el.ownerDocument === doc && minimap.el.isConnected) return;
+  if (minimap.el && minimap.el.ownerDocument === doc && minimap.el.isConnected) { applyMiniLook(); return; }
   if (!doc.getElementById('tvm-mini-css')) {
     const st = doc.createElement('style');
     st.id = 'tvm-mini-css';
     st.textContent = `
-      #tvm-mini { position: fixed; right: 14px; bottom: 14px; z-index: 2147482300; padding: 6px; border-radius: 14px; pointer-events: none;
+      #tvm-mini { position: fixed; z-index: 2147482300; padding: 6px; border-radius: 14px; pointer-events: none; opacity: var(--o, 1);
         background: rgb(250,247,238); box-shadow: 0 6px 14px -8px rgba(0,0,0,.6); transition: opacity .15s ease; contain: layout paint; will-change: opacity; }
-      #tvm-mini.fade { opacity: .18; }
+      #tvm-mini.fade { opacity: calc(var(--o, 1) * .2); }
       #tvm-mini canvas { display: block; border-radius: 8px; }`;
     (doc.head || doc.documentElement).append(st);
   }
@@ -2253,7 +2303,8 @@ function syncMinimap() {
   const cv = doc.createElement('canvas');
   el.append(cv);
   doc.body.append(el);
-  minimap.el = el; minimap.cv = cv; minimap.ctx = cv.getContext('2d', { alpha: false }); minimap.w = 0; minimap.box = null; minimap.bg = null; minimap.bgKey = '';
+  minimap.el = el; minimap.cv = cv; minimap.ctx = cv.getContext('2d'); minimap.w = 0; minimap.box = null; minimap.bg = null; minimap.bgKey = ''; minimap.optKey = '';
+  applyMiniLook();
   const win = doc.defaultView;
   if (win && !win.__tvmMiniResize) { win.__tvmMiniResize = 1; win.addEventListener('resize', () => { minimap.box = null; }, { passive: true }); }
 }
@@ -2264,17 +2315,19 @@ function syncMinimap() {
  * nuevo son las fichas y la pelota.
  */
 function minimapBackground(doc, W, H, b, vert) {
-  const key = `${W}x${H}|${b.halfW}|${b.halfH}|${vert ? 1 : 0}|${minimap.dpr}`;
+  const sty = MINI_STYLES[minimap.o.style];
+  const key = `${W}x${H}|${b.halfW}|${b.halfH}|${vert ? 1 : 0}|${minimap.dpr}|${minimap.o.style}`;
   if (minimap.bg && minimap.bgKey === key) return minimap.bg;
   const dpr = minimap.dpr;
   const cv = minimap.bg || doc.createElement('canvas');
   cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
-  const c = cv.getContext('2d', { alpha: false });
+  const c = cv.getContext('2d');
   const fx = minimap.fx;
   c.setTransform(dpr, 0, 0, dpr, 0, 0);
-  c.fillStyle = '#4f8a45';
+  c.clearRect(0, 0, W, H);
+  c.fillStyle = sty.field;
   c.fillRect(0, 0, W, H);
-  c.strokeStyle = 'rgba(255,255,255,.65)';
+  c.strokeStyle = sty.line;
   c.lineWidth = 1.2;
   const hw = b.halfW * fx, hh = b.halfH * fx, cx = W / 2, cy = H / 2;
   c.beginPath();
@@ -2286,6 +2339,13 @@ function minimapBackground(doc, W, H, b, vert) {
   c.stroke();
   minimap.bg = cv; minimap.bgKey = key;
   return cv;
+}
+
+/** ¿Es del club (verificado)? Para el puntito dorado del mapa. */
+function isClubPeer(nick) {
+  if (!nick) return false;
+  const p = peers.get(nick);
+  return !!(p && !p.self && (p.name || p.soc));
 }
 
 function minimapTick(f, room, match) {
@@ -2303,8 +2363,10 @@ function minimapTick(f, room, match) {
   const vert = !!(view && view.__tvmVertOn);
   const mirror = !!(view && view.__tvmMirror);
   const ratio = (b.halfH * 2 + 40) / (b.halfW * 2 + 40);
-  const W = vert ? Math.round(MINI_W * ratio) : MINI_W;
-  const H = vert ? MINI_W : Math.round(MINI_W * ratio);
+  const o = minimap.o;
+  const base = Math.round(MINI_W * o.size);
+  const W = vert ? Math.round(base * ratio) : base;
+  const H = vert ? base : Math.round(base * ratio);
   const dpr = Math.min(2, (view && view.devicePixelRatio) || 1);
   if (minimap.w !== W || minimap.h !== H || minimap.vert !== vert || minimap.mirror !== mirror || minimap.dpr !== dpr) {
     minimap.w = W; minimap.h = H; minimap.vert = vert; minimap.mirror = mirror; minimap.dpr = dpr;
@@ -2326,9 +2388,10 @@ function minimapTick(f, room, match) {
     const at = d && d[f.pos];
     if (at) sum += (at.x + i * 7.1) * (i + 3.3) + at.y * (i + 1.7);
   }
-  const T = view && view.__tvmView;
+  // Con «transparente al pasar» apagado no hace falta saber dónde cae nada en pantalla.
+  const T = o.fade && view ? view.__tvmView : null;
   // La posición de la cancha en pantalla se pide para el próximo cuadro (una vez, no todos).
-  if (view) view.__tvmWantView = 1;
+  if (view && o.fade) view.__tvmWantView = 1;
   const moved = sum !== minimap.sum;
   minimap.sum = sum;
 
@@ -2337,12 +2400,14 @@ function minimapTick(f, room, match) {
   const c = minimap.ctx;
   if (moved) {
     c.setTransform(dpr, 0, 0, dpr, 0, 0);
+    c.clearRect(0, 0, W, H);
     c.drawImage(minimapBackground(doc, W, H, b, vert), 0, 0, W, H);
   }
 
   // Fichas: un solo trazo por equipo (tres llamadas de dibujo en vez de una por ficha).
   const me = myNick();
-  let meX = NaN, meY = 0, under = false;
+  let meX = NaN, meY = 0, under = false, clubN = 0;
+  const clubXY = minimap.clubXY || (minimap.clubXY = new Float32Array(64));
   if (!minimap.box) {
     const r = minimap.el.getBoundingClientRect();
     minimap.box = { l: r.left - 12, t: r.top - 12, r: r.right + 12, bo: r.bottom + 12 };
@@ -2370,10 +2435,14 @@ function minimapTick(f, room, match) {
       if (moved) {
         const px = sgn * at.x, py = at.y;
         const mx = cx + (vert ? py : px) * fx, my = cy + (vert ? -px : py) * fx;
-        c.moveTo(mx + 4, my);
-        c.arc(mx, my, 4, 0, Math.PI * 2);
+        const nick = p[f.name];
+        const mine = !!me && nick === me;
+        const r = mine && o.bigMe ? 6 : 4;
+        c.moveTo(mx + r, my);
+        c.arc(mx, my, r, 0, Math.PI * 2);
         any = true;
-        if (me && p[f.name] === me) { meX = mx; meY = my; }
+        if (mine) { meX = mx; meY = my; }
+        else if (o.club && clubN < 32 && isClubPeer(nick)) { clubXY[clubN * 2] = mx; clubXY[clubN * 2 + 1] = my; clubN++; }
       }
       hit(at.x, at.y);
     }
@@ -2386,11 +2455,22 @@ function minimapTick(f, room, match) {
     }
   }
   if (moved) {
-    if (meX === meX) { c.beginPath(); c.arc(meX, meY, 6.5, 0, Math.PI * 2); c.strokeStyle = '#ecd593'; c.lineWidth = 1.8; c.stroke(); }
+    if (clubN) {
+      c.beginPath();
+      for (let i = 0; i < clubN; i++) { const x = clubXY[i * 2], y = clubXY[i * 2 + 1]; c.moveTo(x + 1.7, y); c.arc(x, y, 1.7, 0, Math.PI * 2); }
+      c.fillStyle = '#ecd593';
+      c.fill();
+    }
+    if (meX === meX) {
+      const rr = o.bigMe ? 9 : 6.5;
+      c.beginPath(); c.arc(meX, meY, rr, 0, Math.PI * 2); c.strokeStyle = '#ecd593'; c.lineWidth = o.bigMe ? 2.4 : 1.8; c.stroke();
+    }
     if (ball) {
       const px = sgn * ball.x, py = ball.y;
       const mx = cx + (vert ? py : px) * fx, my = cy + (vert ? -px : py) * fx;
-      c.beginPath(); c.arc(mx, my, 2.6, 0, Math.PI * 2); c.fillStyle = '#fff'; c.fill(); c.lineWidth = 1; c.strokeStyle = '#000'; c.stroke();
+      const br = o.bigBall ? 3.8 : 2.6;
+      if (o.bigBall) { c.beginPath(); c.arc(mx, my, br + 2.6, 0, Math.PI * 2); c.strokeStyle = '#ffd84a'; c.lineWidth = 2; c.stroke(); }
+      c.beginPath(); c.arc(mx, my, br, 0, Math.PI * 2); c.fillStyle = '#fff'; c.fill(); c.lineWidth = 1; c.strokeStyle = '#000'; c.stroke();
     }
   }
   if (ball) hit(ball.x, ball.y);

@@ -636,6 +636,19 @@ const DEFAULTS = {
     plainKits: false,
     /** Mapa chico de la cancha en la esquina de abajo a la derecha. */
     minimap: false,
+    /** Mapa chico: tamaño (0.6–1.6), esquina (br, bl, tl), transparencia fija (0.3–1) y estilo (grass, dark, lines). */
+    miniSize: 1,
+    miniCorner: 'br',
+    miniOpacity: 1,
+    miniStyle: 'grass',
+    /** Mapa chico: casi transparente cuando algo pasa por debajo. */
+    miniFade: true,
+    /** Mapa chico: puntito dorado en los del club. */
+    miniClub: true,
+    /** Mapa chico: tu ficha más grande. */
+    miniBigMe: false,
+    /** Mapa chico: pelota más grande, con aro amarillo. */
+    miniBigBall: false,
     /** Cartel con el escudo cuando hay 3+ socios en la sala. */
     clubArrival: true,
     /** Resumen al final del partido: resultado, goles en su minuto y la figura. */

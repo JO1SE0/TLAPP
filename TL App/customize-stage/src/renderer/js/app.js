@@ -888,6 +888,7 @@ function applyConfig(config) {
   if (window.TLSfx) window.TLSfx.configure(config.appearance.uiSounds !== false, config.appearance.uiSoundStyle);
   if (window.TLVoiceUI) { try { window.TLVoiceUI.onConfig(config); } catch (e) { /* la voz no frena la config */ } }
   try { paintGreeting(); } catch (e) { /* todavía no se armó */ }
+  try { renderMiniPanel(); } catch (e) { /* la página todavía no se armó */ }
   if (typeof paintAudio === 'function' && document.getElementById('audMusic')) paintAudio();
   if (window.TLSparks) {
     window.TLSparks.setStyle(config.appearance.sparkStyle || 'oro');
@@ -5512,6 +5513,62 @@ function skinRange({ id, label, min, max, step, value, format, hint, onChange })
  * el equipo, que es la confusión que tiene la función: lo que se elige no es un
  * equipo, es un lugar de la pantalla.
  */
+/*
+ * Mapa chico: prendido o no, y cómo se ve. Lo mismo se toca desde el menú del
+ * escudo en la partida; por eso esta lista se vuelve a armar cuando la config
+ * cambia desde allá (ver `applyConfig`).
+ */
+let miniPanelKey = '';
+function renderMiniPanel(force) {
+  const box = $('#miniRows');
+  if (!box) return;
+  const p = state.config.pitch || {};
+  const key = ['minimap', 'miniSize', 'miniCorner', 'miniOpacity', 'miniStyle', 'miniFade', 'miniClub', 'miniBigMe', 'miniBigBall', isEn() ? 'en' : 'es'].map((k) => String(p[k] ?? k)).join('|');
+  if (!force && key === miniPanelKey) return;
+  miniPanelKey = key;
+  box.replaceChildren();
+  const en = isEn();
+  const live = (k, d) => { const v = (state.config.pitch || {})[k]; return v === undefined ? d : v; };
+  const save = (k, v) => patchConfig({ pitch: { [k]: v } });
+  box.append(switchRow({
+    key: 'minimap',
+    label: en ? 'Minimap' : 'Mapa chico',
+    description: en ? 'The whole pitch in a corner, with every disc and the ball.' : 'La cancha entera en una esquina, con todas las fichas y la pelota.',
+    hint: en ? 'Also from the crest menu during a match.' : 'También se prende desde el menú del escudo, en la partida.',
+    value: () => !!live('minimap', false)
+  }, (item, v) => save('minimap', v)));
+  if (!p.minimap) return;
+  const pct = (v) => `${Math.round(v * 100)}%`;
+  box.append(rangeRow({
+    label: en ? 'Size' : 'Tamaño', min: 0.6, max: 1.6, step: 0.05, value: Number(live('miniSize', 1)) || 1,
+    format: pct, onChange: (v) => save('miniSize', v)
+  }));
+  box.append(selectRow({
+    label: en ? 'Corner' : 'Esquina',
+    hint: en ? 'Top right is the crest menu.' : 'Arriba a la derecha está el menú del escudo.',
+    options: en ? [['br', 'Bottom right'], ['bl', 'Bottom left'], ['tl', 'Top left']] : [['br', 'Abajo a la derecha'], ['bl', 'Abajo a la izquierda'], ['tl', 'Arriba a la izquierda']],
+    value: live('miniCorner', 'br'), onChange: (v) => save('miniCorner', v)
+  }));
+  box.append(rangeRow({
+    label: en ? 'Opacity' : 'Opacidad', min: 0.3, max: 1, step: 0.05, value: Number(live('miniOpacity', 1)) || 1,
+    format: pct, onChange: (v) => save('miniOpacity', v)
+  }));
+  box.append(selectRow({
+    label: en ? 'Style' : 'Estilo',
+    options: en ? [['grass', 'Classic grass'], ['dark', 'Dark TL blue'], ['lines', 'Lines only']] : [['grass', 'Clásico de pasto'], ['dark', 'Oscuro azul TL'], ['lines', 'Sólo líneas']],
+    value: live('miniStyle', 'grass'), onChange: (v) => save('miniStyle', v)
+  }));
+  const sw = [
+    ['miniFade', true, en ? 'Fade when something passes under' : 'Transparente cuando algo pasa por debajo', en ? 'So it never covers the play.' : 'Para que nunca te tape la jugada.'],
+    ['miniClub', true, en ? 'Club on the map' : 'Club en el mapa', en ? 'Club members get a golden dot.' : 'Los del club llevan un puntito dorado.'],
+    ['miniBigMe', false, en ? 'Bigger me' : 'Mi ficha más grande', en ? 'To find yourself at a glance.' : 'Para encontrarte al toque.'],
+    ['miniBigBall', false, en ? 'More visible ball' : 'Pelota más visible', en ? 'Bigger, with a yellow ring.' : 'Más grande, con un aro amarillo.']
+  ];
+  for (const [k, d, label, description] of sw) {
+    box.append(switchRow({ key: k, label, description, value: () => !!live(k, d) }, (item, v) => save(k, v)));
+  }
+}
+
 function renderPitchMirror() {
   const box = $('#pitchMirror');
   if (!box) return;
@@ -5589,6 +5646,7 @@ function renderPitch() {
   const lang = isEn() ? 'en' : 'es';
   renderPitchSkin();
   renderPitchMirror();
+  renderMiniPanel(true);
 
   /*
    * El valor se lee de `state.config` en cada consulta y NO de una copia
