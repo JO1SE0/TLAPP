@@ -4030,6 +4030,15 @@ listen('game:log', (_e, payload) => {
   // en el devtools de la interfaz, que es justo el que nadie tiene abierto
   // cuando algo del juego no arranca; la terminal de `npm run dev` sí.
   if (isDev && payload) console.log(`[juego:${payload.level}] ${payload.source}: ${payload.message}`);
+  // Los problemas de la vista 3D quedan en errores.log: sin eso no hay forma de saber
+  // por qué se apagó o se vio negra en la PC de alguien.
+  try {
+    const msg = payload && String(payload.message || '');
+    if (msg.startsWith('vista 3D') && (payload.level === 'warn' || payload.level === 'error')) {
+      const f = crashLogPath();
+      if (f) fs.appendFileSync(f, `[${new Date().toISOString()}] ${msg.slice(0, 400)}\n`, 'utf8');
+    }
+  } catch { /* el log no puede romper nada */ }
   send('game:log', payload);
 });
 /** El preload pide mostrar un aviso: hay un solo sistema de carteles, el de la app. */

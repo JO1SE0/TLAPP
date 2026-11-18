@@ -386,6 +386,13 @@ function box(arr, x0, y0, z0, x1, y1, z1, rgb) {
   face(arr, [[x0, y0, z0], [x0, y0, z1], [x0, y1, z1], [x0, y1, z0]], rgb, true);
   face(arr, [[x1, y0, z0], [x1, y0, z1], [x1, y1, z1], [x1, y1, z0]], rgb, true);
 }
+/** '#rrggbb' → [r, g, b] de 0 a 1 (o null). */
+function rgbOfHex(h) {
+  const m = /^#?([0-9a-f]{6})$/i.exec(String(h || ''));
+  if (!m) return null;
+  const n = parseInt(m[1], 16);
+  return [((n >> 16) & 255) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255];
+}
 function rgbOfInt(c) {
   return c < 0 ? [0.85, 0.85, 0.85] : [((c >>> 16) & 255) / 255, ((c >>> 8) & 255) / 255, (c & 255) / 255];
 }
@@ -494,6 +501,7 @@ function install(view, opts = {}) {
 
   /* Piso */
   let floorTex = null, floorFor = null, floorDirty = true, floorX = 0, floorY = 0, groundRgb = [0.18, 0.3, 0.14];
+  let blackFloors = 0;
   const floorCv = view.document.createElement('canvas');
 
   /* Tribunas: por lado, dos tandas de escalones. Se rearman con el piso. */
@@ -722,6 +730,25 @@ function install(view, opts = {}) {
       const px = ctx.getImageData(1, 1, 1, 1).data;
       groundRgb = [px[0] / 255, px[1] / 255, px[2] / 255];
     } catch (e) { /* queda el anterior */ }
+    /*
+     * Piso negro: si el estadio no llegó a dibujarse (quedó el negro con el que
+     * nace el canvas), la cancha se ve negra y así queda. Se mira en cinco
+     * puntos; se reintenta un par de cuadros y, si sigue, se vuelve al 2D y se
+     * deja anotado el porqué.
+     */
+    let black = false;
+    try {
+      black = true;
+      for (const [fx, fy] of [[0.5, 0.5], [0.3, 0.3], [0.7, 0.3], [0.3, 0.7], [0.7, 0.7]]) {
+        const q = ctx.getImageData(Math.floor(W * fx), Math.floor(H * fy), 1, 1).data;
+        if (q[0] || q[1] || q[2]) { black = false; break; }
+      }
+    } catch (e) { black = false; }
+    if (black) {
+      blackFloors++;
+      log('warn', `vista 3D: el piso salió negro (intento ${blackFloors})`);
+      if (blackFloors >= 3) throw new Error('el piso de la cancha sale negro');
+    } else blackFloors = 0;
     upload(floorTex, floorCv, true);
     floorX = hx; floorY = hy;
     if (standBufs) for (const side of standBufs) for (const m of side) gl.deleteBuffer(m.b);
@@ -736,7 +763,8 @@ function install(view, opts = {}) {
     decorNet = d.net.length ? buffer(d.net) : null;
     goalEnds = d.ends;
     floorFor = st;
-    floorDirty = false;
+    // Negro: se vuelve a armar en el cuadro que viene.
+    floorDirty = black;
   }
 
   /* ── Dibujo ── */
@@ -862,7 +890,7 @@ function install(view, opts = {}) {
 
   function texturesFor(L, N, d, mine, pl) {
     let t = per.get(L);
-    if (!t) { t = { kit: texture(null, true), kitPat: undefined, kitStroke: undefined, kitRad: 0, name: texture(null, true), nameStr: undefined, seen: 0 }; per.set(L, t); }
+    if (!t) { t = { kit: texture(null, true), kitPat: undefined, kitStroke: undefined, kitRad: 0, name: texture(null, true), nameStr: undefined, nameCv: null, nameAt: 0, seen: 0 }; per.set(L, t); }
     t.seen = frameNo;
     const pat = L[N.pattern], st = L[N.stroke], rad = d[N.radius];
     // Se rehace cuando cambia la camiseta, el borde de la patada o el radio. La
@@ -871,11 +899,18 @@ function install(view, opts = {}) {
       paintKit(t, L, N, d, pl, pat !== t.kitPat);
       t.kitPat = pat; t.kitStroke = st; t.kitRad = rad;
     }
+    /*
+     * El nombre se copia del canvas donde lo escribe el juego: cuando cambia el
+     * nombre o el canvas, y además cada ~1 s. Si se copiaba sólo al cambiar, un
+     * nombre que todavía no estaba escrito (letra que cargaba, estilo del
+     * cliente) quedaba en blanco para siempre.
+     */
     const nm = L[N.name];
-    if (nm !== t.nameStr) {
-      const ctx = L[N.nameCv];
-      if (ctx && ctx.canvas) upload(t.name, ctx.canvas);
-      t.nameStr = nm;
+    const nctx = L[N.nameCv];
+    const ncv = nctx && nctx.canvas;
+    if (ncv && (nm !== t.nameStr || ncv !== t.nameCv || frameNo - t.nameAt > 60)) {
+      upload(t.name, ncv);
+      t.nameStr = nm; t.nameCv = ncv; t.nameAt = frameNo;
     }
     return t;
   }
@@ -1022,6 +1057,17 @@ function install(view, opts = {}) {
     // Juntar lo que hay en la cancha.
     const discs = world[N.discs] || [];
     const players = F.room[N.players] || [];
+    /*
+     * Ajustes del cliente que en 2D se dibujan aparte (no en la camiseta) y la
+     * 3D tiene que hacer a su manera: sombras suaves, tamaño de fichas y
+     * pelota, tu aro y el tamaño de los nombres.
+     */
+    let look = null;
+    try { look = typeof opts.look === 'function' ? opts.look() : null; } catch (e) { look = null; }
+    const discK = look && look.discSize > 0 ? look.discSize : 1;
+    const ballK = look && look.ballSize > 0 ? look.ballSize : 1;
+    const softSh = !!(look && look.shadows);
+    const nameK = look && look.nameScale > 0 ? look.nameScale : 1;
     const map = r[N.draw];
     playerDiscs.clear();
     names.length = 0;
@@ -1037,8 +1083,9 @@ function install(view, opts = {}) {
       if (!d) continue;
       playerDiscs.add(d);
       const L = map && map.get(pl[N.id]);
-      const rad = d[N.radius];
-      if (!(rad >= 0) || !L) continue;
+      const rad0 = d[N.radius];
+      if (!(rad0 >= 0) || !L) continue;
+      const rad = rad0 * discK;
       const pos = d[N.pos];
       const x = mx * pos.x, zz = pos.y;
       const mine = d === F.me;
@@ -1074,9 +1121,10 @@ function install(view, opts = {}) {
          * estilo, contorno). Tapa a la altura de las de las fichas.
          */
         paintBall(d, N);
-        draw(mesh.side, 0, mx * pos.x, 0, pos.y, rad, CONTACT_Y, rad, 0.09, 0.09, 0.09, 1);
+        const br = rad * ballK;
+        draw(mesh.side, 0, mx * pos.x, 0, pos.y, br, CONTACT_Y, br, 0.09, 0.09, 0.09, 1);
         gl.bindTexture(gl.TEXTURE_2D, ballTex);
-        draw(mesh.cap, 1, mx * pos.x, 0.02, pos.y, rad * BALL_SCALE, CONTACT_Y, rad * BALL_SCALE, 1, 1, 1, 1);
+        draw(mesh.cap, 1, mx * pos.x, 0.02, pos.y, br * BALL_SCALE, CONTACT_Y, br * BALL_SCALE, 1, 1, 1, 1);
       } else {
         let h = Math.max(rad * POST_H, CONTACT_Y + 4);
         // Si está en la punta de un arco, es un palo: llega hasta el travesaño.
@@ -1157,12 +1205,19 @@ function install(view, opts = {}) {
         draw(mesh.quad, 6, mx * pos.x, 0.4, pos.y, rad + 1.2, 1, rad + 1.2, 0, 0, 0, 0.85);
         continue;
       }
-      draw(mesh.quad, 3, mx * pos.x + rad * 0.3, 0.3, pos.y + rad * 0.25, rad * 1.4, 1, rad * 1.4, 0, 0, 0, 0.42);
+      const k = i === 0 ? ballK : (playerSet.has(d) ? discK : 1);
+      const sr = rad * k;
+      // «Sombras suaves»: más grande, más corrida hacia el lado contrario a la luz y más difusa.
+      if (softSh) draw(mesh.quad, 3, mx * pos.x + sr * 0.55, 0.3, pos.y + sr * 0.5, sr * 2.2, 1, sr * 2.2, 0, 0, 0, 0.5);
+      else draw(mesh.quad, 3, mx * pos.x + sr * 0.3, 0.3, pos.y + sr * 0.25, sr * 1.4, 1, sr * 1.4, 0, 0, 0, 0.42);
     }
     // Tu aro en el piso: el mismo círculo claro que pone el juego en 2D.
     if (F.me && F.me[N.pos] && F.me[N.radius] >= 0) {
       const mp = F.me[N.pos];
-      draw(mesh.quad, 6, mx * mp.x, 0.35, mp.y, 26, 1, 26, 1, 1, 1, 0.38);
+      const rc = (look && rgbOfHex(look.ringColor)) || [1, 1, 1];
+      const ra = look && look.ringAlpha > 0 ? Math.min(1, look.ringAlpha * 1.27) : 0.38;
+      const rr = (look && look.ringRadius > 0 ? look.ringRadius + 1 : 26) * discK;
+      draw(mesh.quad, 6, mx * mp.x, 0.35, mp.y, rr, 1, rr, rc[0], rc[1], rc[2], ra);
     }
     gl.depthMask(true);
     gl.disable(gl.BLEND);
@@ -1214,7 +1269,7 @@ function install(view, opts = {}) {
         const cx = clip[0] / clip[3], cy = clip[1] / clip[3];
         // Píxeles por unidad de cancha a esa distancia, acotado para que se lea.
         const ppu = Math.max(z * 0.7, Math.min(z * 1.3, (proj[5] * half) / clip[3]));
-        const sw = (40 * ppu) / (W / 2), sh = (8.5 * ppu) / half;
+        const sw = (40 * nameK * ppu) / (W / 2), sh = (8.5 * nameK * ppu) / half;
         const down = ((names[i + 3] + 6) * ppu) / half;
         gl.bindTexture(gl.TEXTURE_2D, names[i].name);
         gl.uniform2f(U2.uCenter, cx, cy - down - sh);
@@ -1246,7 +1301,9 @@ function install(view, opts = {}) {
     try {
       return frame(F);
     } catch (err) {
-      fallback(err && err.message ? err.message : String(err));
+      // Con la línea donde pasó: así el errores.log dice algo útil.
+      const at = err && err.stack ? String(err.stack).split('\n')[1] : '';
+      fallback((err && err.message ? err.message : String(err)) + (at ? ` (${at.trim().slice(0, 160)})` : ''));
       return false;
     }
   };

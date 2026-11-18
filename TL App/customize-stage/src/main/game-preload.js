@@ -8148,7 +8148,8 @@ function applyViews(view) {
     view3dApi = null;
     view3dView = null;
   }
-  if (view3dApi) view3dApi.setCam(perf.view3dCam);
+  // «Vista vertical» con la 3D prendida es la cámara Vertical de la 3D (detrás de tu arco).
+  if (view3dApi) view3dApi.setCam(perf.vertical ? 'vertical' : perf.view3dCam);
   // La vertical: el juego la lee en el próximo cuadro y reacomoda las flechas solo.
   view.__tvmVertOn = !!perf.vertical && !want3d;
   // Su inclinación (ver TILT en vertical-patch.js): apagada, vuelve sola a plana.
@@ -8171,12 +8172,22 @@ function installView3d(view) {
   view3dView = view;
   const perf = state.config.perf || {};
   view3dApi = require('./view-3d').install(view, {
-    cam: perf.view3dCam,
+    cam: perf.vertical ? 'vertical' : perf.view3dCam,
     // Sin antialias: cuesta ~1/3 del dibujo y medido en partida, sin él suben mucho los FPS.
     antialias: false,
     lowLatency: !!perf.lowLatencyCanvas,
     /* Con «Gráficos planos» la 3D no dibuja la red de los arcos. */
     flat: () => flatOn(),
+    /* Lo del cliente que en 2D se dibuja aparte y la 3D hace a su manera. */
+    look: () => ({
+      shadows: !!visual.shadows,
+      discSize: visual.discSize,
+      ballSize: visual.ballSize,
+      ringColor: visual.ownRingColor,
+      ringAlpha: visual.ownRingAlpha,
+      ringRadius: visual.ownRingRadius,
+      nameScale: visual.nameScale
+    }),
     /* ¿La pelota tiene algo del cliente? Entonces la 3D la dibuja con los mismos
        pasos del 2D (y se ve igual); si no, una esfera simple. */
     ballCustom: () => !!(ballImage || ballGifOn() || (state.config.pitch && state.config.pitch.ball3d) ||

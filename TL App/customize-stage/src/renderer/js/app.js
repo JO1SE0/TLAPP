@@ -4505,8 +4505,8 @@ function renderView3d() {
       ? 'The normal pitch turned goal to goal: your team always attacks upwards, and the arrows turn with it (up takes you to the rival goal). Names and numbers stay upright.'
       : 'La cancha de siempre girada de arco a arco: tu equipo ataca siempre hacia arriba y las flechas giran con ella (arriba te lleva al arco rival). Nombres y números quedan derechos.',
     hint: en
-      ? 'Changes live, even mid-match. Same FPS as horizontal: the pitch cache and the disc sprites keep working. Mirror mode is off while this is on. With the 3D view on, the 3D Vertical camera is used instead.'
-      : 'Se cambia en vivo, aunque estés jugando. Mismos FPS que en horizontal: el caché de la cancha y las fichas armadas siguen andando. El modo espejo se apaga mientras esté prendida. Con la vista 3D prendida, se usa la cámara Vertical de la 3D.',
+      ? 'Changes live, even mid-match. There are two: in 2D it turns the pitch (same FPS as horizontal); with the 3D view on it uses the 3D Vertical camera, behind your goal. Mirror mode is off while this is on.'
+      : 'Se cambia en vivo, aunque estés jugando. Hay dos: en 2D gira la cancha (mismos FPS que en horizontal); con la vista 3D prendida usa la cámara Vertical de la 3D, detrás de tu arco. El modo espejo se apaga mientras esté prendida.',
     value: () => !!(state.config.perf || {}).vertical
   }], async (_item, value) => {
     await patchConfig({ perf: { vertical: value } });
@@ -4563,9 +4563,11 @@ function renderView3d() {
   for (const [id, es, eng] of CAM_LABELS) {
     const c = document.createElement('button');
     c.type = 'button';
-    c.className = `chip${(perf.view3dCam || 'tribuna') === id ? ' is-active' : ''}`;
+    // «Vista vertical» prendida manda: con la 3D es la cámara Vertical. Elegir otra la apaga.
+    const activeCam = perf.vertical ? 'vertical' : (perf.view3dCam || 'tribuna');
+    c.className = `chip${activeCam === id ? ' is-active' : ''}`;
     c.textContent = en ? eng : es;
-    c.addEventListener('click', async () => { await patchConfig({ perf: { view3dCam: id } }); renderView3d(); });
+    c.addEventListener('click', async () => { await patchConfig({ perf: { view3dCam: id, vertical: id === 'vertical' } }); renderView3d(); });
     cams.append(c);
   }
   host.append(settingRow({
