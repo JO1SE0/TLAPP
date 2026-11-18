@@ -4886,6 +4886,7 @@ const PITCH_SWITCHES = {
     { key: 'goalClub', label: 'Festejo del plantel', description: 'Lluvia dorada y «Toda la Lecce» cuando mete un gol alguien del plantel.', hint: 'Sólo se activa con jugadores verificados con su clave, así que nadie puede fingirlo.' },
     { key: 'clubKit', label: 'Camiseta del club', description: 'Si en un equipo hay dos o más socios, ese equipo se ve con la camiseta de Toda la Lecce.', hint: 'Sólo en tu pantalla y sólo con socios verificados. Si elegiste colores propios para los equipos, mandan los tuyos.' },
     { key: 'clubArrival', label: 'Llegada del club', description: 'Un cartel con el escudo cuando hay tres o más socios en la sala.', hint: 'Sale una vez por sala y dura unos segundos.' },
+    { key: 'matchSummary', label: 'Resumen del partido', description: 'Al terminar: el resultado, cada gol en su minuto y la figura del partido.', hint: 'Dura unos segundos; se cierra tocándolo o con Esc. La figura sale de 3 puntos por gol y 2 por asistencia.' },
   ],
   en: [
     { key: 'selfRing', label: 'Mark your disc', description: 'A ring in your colour on your disc.', hint: 'In a 4v4 it saves you from hunting for yourself.' },
@@ -4895,6 +4896,7 @@ const PITCH_SWITCHES = {
     { key: 'goalClub', label: 'Squad celebration', description: 'Golden rain and "Toda la Lecce" when a squad member scores.', hint: 'Only fires for players verified with their key, so nobody can fake it.' },
     { key: 'clubKit', label: 'Club kit', description: 'If a team has two or more club members, that team shows the Toda la Lecce kit.', hint: 'Only on your screen and only with verified members. If you picked your own team colours, yours win.' },
     { key: 'clubArrival', label: 'Club arrival', description: 'A banner with the crest when three or more club members are in the room.', hint: 'Shows once per room and lasts a few seconds.' },
+    { key: 'matchSummary', label: 'Match summary', description: 'When the match ends: the score, every goal at its minute and the man of the match.', hint: 'Lasts a few seconds; tap it or press Esc to close. Man of the match: 3 points per goal, 2 per assist.' },
   ]
 };
 
@@ -5599,7 +5601,7 @@ function renderPitch() {
   // Los aros van con las fichas y los festejos con lo de la partida; la cancha
   // se queda con lo que es de la cancha.
   const RING_KEYS = ['selfRing', 'teamRings'];
-  const GOAL_KEYS = ['goalFlash', 'goalShake', 'goalClub', 'clubKit', 'clubArrival'];
+  const GOAL_KEYS = ['goalFlash', 'goalShake', 'goalClub', 'clubKit', 'clubArrival', 'matchSummary'];
   const pitchSwitch = (i) => ({ ...i, value: () => live(i.key) });
   const pitchSave = (item, value) => patchConfig({ pitch: { [item.key]: value } });
   buildSwitches(

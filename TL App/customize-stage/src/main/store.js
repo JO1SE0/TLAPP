@@ -630,6 +630,8 @@ const DEFAULTS = {
     clubKit: true,
     /** Cartel con el escudo cuando hay 3+ socios en la sala. */
     clubArrival: true,
+    /** Resumen al final del partido: resultado, goles en su minuto y la figura. */
+    matchSummary: true,
     /**
      * Estela de la pelota: por dónde ESTUVO, nunca por dónde va.
      *

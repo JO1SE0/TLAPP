@@ -1433,6 +1433,7 @@ function watchScore(doc) {
             // porque un marcador que sube y baja es una ilusión de la
             // extrapolación.
             noteGoalNames(goal);
+            safe(summaryGoal, goal);
             ipcRenderer.send('game:goal', goal);
           }
         }
@@ -9874,6 +9875,7 @@ function onGameTick(view, room) {
       tracker.match = null;
       sendHeatmap();
       ipcRenderer.send('game:match-end', { red: lastScore.red, blue: lastScore.blue });
+      safe(showSummary, f, room);
     }
     return;
   }
@@ -9885,6 +9887,7 @@ function onGameTick(view, room) {
     if (tracker.match) { sendHeatmap(); ipcRenderer.send('game:match-end', { red: lastScore.red, blue: lastScore.blue }); }
     resetTracker();
     tracker.match = match;
+    safe(summaryReset);
     ipcRenderer.send('game:match-start');
   }
 
@@ -10355,14 +10358,199 @@ function realGoal(view, teamObj, room) {
 
   const credit = creditGoal(real, team, REAL_GOAL_GRACE_MS);
   noteGoalNames(credit);
-  ipcRenderer.send('game:goal', {
+  const goalMsg = {
     ...credit,
     clock: Number.isFinite(seconds) ? formatMatchSeconds(seconds) : matchClock(doc),
     score,
     replay: state.view === 'replay',
     speed: replaySpeed(view) || 1
-  });
+  };
+  safe(summaryGoal, goalMsg);
+  ipcRenderer.send('game:goal', goalMsg);
   return team;
+}
+
+/* ------------------------------------------------------------------ *
+ * Resumen del partido
+ * ------------------------------------------------------------------ *
+ * Al terminar: arriba una píldora con el resultado (rojo y azul que se
+ * funden hacia el escudo) y abajo una barra con cada gol en su minuto y la
+ * figura. Los goles se anotan en vivo, con los mismos avisos que ya usa el
+ * cartel de gol (autor y asistencia). La figura: 3 por gol, 2 por
+ * asistencia, -2 por gol en contra; en empate, más goles.
+ *
+ * DOM quieto: entra con transform/opacity, se queda unos segundos y se va.
+ * Durante el partido sólo se anota un gol cuando hay gol.
+ */
+const msum = { goals: [], keys: new Set() };
+const SUMMARY_MS = 9000;
+function summaryReset() {
+  msum.goals.length = 0;
+  msum.keys.clear();
+  const doc = gameDocument();
+  if (doc) doc.getElementById('tvm-summary')?.remove();
+}
+const clockSec = (c) => {
+  const m = /^(\d+):(\d{2})$/.exec(String(c || '').trim());
+  return m ? Number(m[1]) * 60 + Number(m[2]) : NaN;
+};
+function summaryGoal(g) {
+  if (!g || g.replay || state.view === 'replay') return;
+  const sc = g.score;
+  // El mismo gol puede llegar por los dos caminos (motor y marcador): uno por marcador.
+  const key = sc ? `${sc.red}-${sc.blue}` : `${g.team}|${g.scorer}|${g.clock}`;
+  if (msum.keys.has(key)) return;
+  msum.keys.add(key);
+  msum.goals.push({ team: g.team === 'Blue' ? 'Blue' : 'Red', scorer: g.scorer || null, scorerTeam: g.scorerTeam || null, assist: g.assist || null, own: !!g.own, sec: clockSec(g.clock) });
+}
+function summaryPhoto(name) {
+  if (!name) return '';
+  if (name === myNick()) return sharedAvatar || '';
+  const p = peers.get(name);
+  const d = p && p.cosmetics && p.cosmetics.avatarData;
+  return typeof d === 'string' && d.startsWith('data:image/jpeg;base64,') ? d : '';
+}
+function summaryCss(doc) {
+  if (doc.getElementById('tvm-summary-css')) return;
+  const st = doc.createElement('style');
+  st.id = 'tvm-summary-css';
+  st.textContent = `
+    #tvm-summary { position: fixed; inset: 0; z-index: 2147482550; pointer-events: none; font-family: Outfit, Bahnschrift, 'Segoe UI', sans-serif; color: #fff; }
+    #tvm-summary .top, #tvm-summary .bot { pointer-events: auto; cursor: pointer; position: absolute; left: 24px; right: 24px; display: flex; align-items: center;
+      box-shadow: 0 14px 30px -12px rgba(0,0,0,.7), inset 0 0 0 1px rgba(255,255,255,.08); }
+    #tvm-summary .top { top: 18px; height: 84px; border-radius: 999px; overflow: hidden;
+      background: linear-gradient(90deg, #c24848 0%, #0b1224 34%, #0b1224 66%, #3768c4 100%); animation: tvmSmTop .5s cubic-bezier(.2,.9,.3,1.1) both; }
+    #tvm-summary .side { width: 30%; font-weight: 900; letter-spacing: .3em; font-size: 16px; }
+    #tvm-summary .side.r { padding-left: 48px; } #tvm-summary .side.b { text-align: right; padding-right: 48px; }
+    #tvm-summary .mid { flex: 1; display: flex; justify-content: center; align-items: center; gap: 20px; }
+    #tvm-summary .mid b { font-size: 54px; font-weight: 900; line-height: 1; }
+    #tvm-summary .mid img { width: 44px; height: 44px; padding: 8px; border-radius: 50%; object-fit: contain; background: rgba(255,255,255,.08); box-shadow: inset 0 0 0 1px rgba(236,213,147,.45); }
+    #tvm-summary .bot { bottom: 18px; height: 100px; border-radius: 28px; gap: 20px; padding: 0 10px 0 36px; background: #0b1224; animation: tvmSmBot .5s cubic-bezier(.2,.9,.3,1.1) .12s both; }
+    #tvm-summary .lbl { font-size: 11px; letter-spacing: .3em; color: #ecd593; font-weight: 800; }
+    #tvm-summary .tl { position: relative; flex: 1; height: 80px; }
+    #tvm-summary .ln { position: absolute; left: 0; right: 0; top: 38px; height: 3px; border-radius: 3px; background: rgba(255,255,255,.18); }
+    #tvm-summary .none { position: absolute; left: 0; right: 0; top: 30px; text-align: center; font-size: 13px; opacity: .7; }
+    #tvm-summary .ev { position: absolute; top: 24px; transform: translateX(-50%); animation: tvmSmEv .35s cubic-bezier(.3,1.6,.5,1) both; }
+    #tvm-summary .ev .av { width: 30px; height: 30px; border-radius: 50%; object-fit: cover; border: 2.5px solid; box-sizing: border-box; display: grid; place-items: center;
+      background: #24427e; color: #ecd593; font-size: 12px; font-weight: 800; font-style: normal; }
+    #tvm-summary .ev.r .av { border-color: #ff8a8a; } #tvm-summary .ev.b .av { border-color: #8ab4ff; }
+    #tvm-summary .ev span { position: absolute; left: 50%; transform: translateX(-50%); bottom: 34px; font-size: 12.5px; white-space: nowrap;
+      background: rgba(255,255,255,.07); padding: 2px 9px; border-radius: 999px; }
+    #tvm-summary .ev.dn span { bottom: auto; top: 34px; }
+    #tvm-summary .ev small { opacity: .6; }
+    #tvm-summary .mv { display: flex; align-items: center; gap: 10px; height: 80px; padding: 0 24px 0 10px; border-radius: 22px;
+      background: linear-gradient(135deg, #f3dc98, #c39a45); color: #13254a; animation: tvmSmMv .45s cubic-bezier(.3,1.6,.5,1) .5s both; }
+    #tvm-summary .mv .mav { width: 56px; height: 56px; border-radius: 50%; object-fit: cover; border: 3px solid #13254a; box-sizing: border-box; display: grid; place-items: center;
+      background: #13254a; color: #ecd593; font-size: 22px; font-weight: 900; font-style: normal; }
+    #tvm-summary .mv small { display: block; font-size: 9.5px; letter-spacing: .26em; font-weight: 900; }
+    #tvm-summary .mv b { display: block; font-size: 20px; max-width: 180px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    #tvm-summary .mv span { font-size: 12px; }
+    #tvm-summary.out .top { animation: tvmSmTopOut .35s ease-in both; }
+    #tvm-summary.out .bot { animation: tvmSmBotOut .35s ease-in both; }
+    @keyframes tvmSmTop { from { transform: translateY(-130%); opacity: 0; } }
+    @keyframes tvmSmBot { from { transform: translateY(130%); opacity: 0; } }
+    @keyframes tvmSmTopOut { to { transform: translateY(-130%); opacity: 0; } }
+    @keyframes tvmSmBotOut { to { transform: translateY(130%); opacity: 0; } }
+    @keyframes tvmSmEv { from { transform: translateX(-50%) scale(.3); opacity: 0; } }
+    @keyframes tvmSmMv { from { transform: scale(.6); opacity: 0; } }
+    html.tvm-noanim #tvm-summary * { animation: none !important; }`;
+  (doc.head || doc.documentElement).append(st);
+}
+function showSummary(f, room) {
+  if (!(state.config.pitch && state.config.pitch.matchSummary !== false)) return;
+  if (state.view === 'replay') return;
+  const doc = gameDocument();
+  if (!doc || !doc.body) return;
+  const red = lastScore.red | 0, blue = lastScore.blue | 0;
+  // Un partido sin goles y que casi no se jugó (lo pararon de una) no se resume.
+  const endSec = clockSec(matchClock(doc));
+  if (!msum.goals.length && !(endSec >= 30)) return;
+
+  // Figura.
+  const pts = new Map();
+  const add = (name, team, k, g, a) => {
+    if (!name) return;
+    const e = pts.get(name) || { name, team, pts: 0, g: 0, a: 0 };
+    e.pts += k; e.g += g; e.a += a; if (!e.team) e.team = team;
+    pts.set(name, e);
+  };
+  for (const g of msum.goals) {
+    if (g.own) add(g.scorer, g.scorerTeam, -2, 0, 0);
+    else { add(g.scorer, g.team, 3, 1, 0); add(g.assist, g.team, 2, 0, 1); }
+  }
+  let mvp = null;
+  for (const e of pts.values()) {
+    if (e.pts <= 0) continue;
+    if (!mvp || e.pts > mvp.pts || (e.pts === mvp.pts && e.g > mvp.g)) mvp = e;
+  }
+
+  summaryCss(doc);
+  doc.getElementById('tvm-summary')?.remove();
+  const el = (tag, cls, text) => { const n = doc.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; };
+  const face = (name, cls) => {
+    const ph = summaryPhoto(name);
+    if (ph) { const i = el('img', cls); i.src = ph; i.alt = ''; return i; }
+    return el('i', cls, (String(name || '?')[0] || '?').toUpperCase());
+  };
+  const box = el('div');
+  box.id = 'tvm-summary';
+  box.setAttribute('aria-hidden', 'true');
+
+  const top = el('div', 'top');
+  const crest = el('img');
+  crest.src = assetUrl('crest');
+  crest.alt = '';
+  const mid = el('div', 'mid');
+  mid.append(el('b', null, String(red)), crest, el('b', null, String(blue)));
+  top.append(el('div', 'side r', 'ROJO'), mid, el('div', 'side b', 'AZUL'));
+
+  const bot = el('div', 'bot');
+  const tl = el('div', 'tl');
+  tl.append(el('div', 'ln'));
+  const goals = msum.goals.slice().sort((a, b) => (a.sec || 0) - (b.sec || 0));
+  const last = goals.length ? Math.max(...goals.map((g) => g.sec || 0)) : 0;
+  const total = Math.max(60, Number.isFinite(endSec) ? endSec : 0, last + 15);
+  if (!goals.length) tl.append(el('div', 'none', 'Sin goles'));
+  let lastX = -99, flip = false;
+  goals.slice(0, 14).forEach((g, i) => {
+    const x = Math.min(97, Math.max(3, ((g.sec || 0) / total) * 100));
+    // Dos goles muy juntos: un nombre arriba y otro abajo, para que no se pisen.
+    flip = x - lastX < 9 ? !flip : false;
+    lastX = x;
+    const ev = el('div', `ev ${g.team === 'Blue' ? 'b' : 'r'}${flip ? ' dn' : ''}`);
+    ev.style.left = `${x}%`;
+    ev.style.animationDelay = `${350 + i * 90}ms`;
+    const who = g.scorer || '?';
+    const label = el('span', null, `${who}${g.own ? ' (e/c)' : ''} `);
+    label.append(el('small', null, Number.isFinite(g.sec) ? `${Math.floor(g.sec / 60)}'${String(g.sec % 60).padStart(2, '0')}` : ''));
+    ev.append(face(who, 'av'), label);
+    tl.append(ev);
+  });
+  bot.append(el('div', 'lbl', 'GOLES'), tl);
+  if (mvp) {
+    const mv = el('div', 'mv');
+    const t = el('div');
+    t.append(el('small', null, 'FIGURA'), el('b', null, mvp.name), el('span', null, `${mvp.g} G · ${mvp.a} A`));
+    mv.append(face(mvp.name, 'mav'), t);
+    bot.append(mv);
+  }
+  box.append(top, bot);
+  doc.body.append(box);
+  if (state.config.appearance && state.config.appearance.animations === false) doc.documentElement.classList.add('tvm-noanim');
+
+  let gone = false;
+  const close = () => {
+    if (gone) return;
+    gone = true;
+    doc.removeEventListener('keydown', onKey, true);
+    box.classList.add('out');
+    setTimeout(() => box.remove(), 380);
+  };
+  const onKey = (e) => { if (e.key === 'Escape') close(); };
+  doc.addEventListener('keydown', onKey, true);
+  top.addEventListener('click', close);
+  bot.addEventListener('click', close);
+  setTimeout(close, SUMMARY_MS);
 }
 
 /** «MM:SS» a partir de los segundos de partido, como lo escribe el HUD. */
