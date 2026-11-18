@@ -5966,7 +5966,8 @@ function drawBallInner(ctx, x, y, r, indice) {
   if (indice !== 0) return false;
   if (!(r > 0)) return false;
   const animada = ballGifOn();
-  const depth = !!(state.config.pitch && state.config.pitch.ball3d);
+  // En la vista 3D la pelota se dibuja plana: la esfera, el giro y la luz los pone la 3D (ver FS3 en view-3d.js).
+  const depth = !!(state.config.pitch && state.config.pitch.ball3d) && !(ctx.canvas && ctx.canvas.__tvmFlat);
   ballFx3dOn = false;
   if (!animada && !ballImage && !depth) return false;
   if (depth && !ball3dLogged) { ball3dLogged = true; log('info', 'pelota 3D: dibujando', 'juego'); }

@@ -184,6 +184,37 @@ const FS2 = `
 precision mediump float; varying vec2 vUv; uniform sampler2D uTex; uniform float uCut;
 void main() { vec4 t = texture2D(uTex, vUv); if (t.a < uCut) discard; gl_FragColor = t; }`;
 
+/*
+ * La pelota del cliente como esfera de verdad.
+ *
+ * Antes se pegaba de frente, plana, como una figurita: se veía 2D. Ahora el
+ * dibujo plano de la pelota (su imagen, color o estilo) se envuelve sobre una
+ * esfera en la placa: cada píxel del cuadrado calcula su punto en la bola, lo
+ * gira con la rotación acumulada (`uRot`, la pelota rueda según hacia dónde se
+ * mueve) y le pone luz, brillo y el contorno negro de HaxBall. Es un solo
+ * cuadrado, igual que antes: no cuesta más.
+ */
+const FS3 = `
+precision mediump float; varying vec2 vUv; uniform sampler2D uTex; uniform mat3 uRot; uniform float uR; uniform float uS;
+void main() {
+  vec2 p = (vUv - 0.5) / uR; float r2 = dot(p, p); if (r2 > 1.0) discard;
+  vec3 n = vec3(p.x, -p.y, sqrt(1.0 - r2));
+  vec3 o = uRot * n;
+  // Cada mitad de la bola lleva la imagen entera, medida en ángulo desde su
+  // polo: no se estira en los costados y las dos mitades se tocan sin costura.
+  float l = length(o.xy);
+  vec2 dir = l > 1e-5 ? o.xy / l : vec2(0.0);
+  float rr = acos(clamp(abs(o.z), 0.0, 1.0)) / 1.5707963;
+  vec2 tc = vec2(dir.x, -dir.y) * rr * uS + 0.5;
+  vec3 c = texture2D(uTex, tc).rgb;
+  vec3 L = normalize(vec3(-0.45, 0.65, 0.62));
+  float diff = max(dot(n, L), 0.0);
+  float spec = pow(max(dot(reflect(-L, n), vec3(0.0, 0.0, 1.0)), 0.0), 28.0);
+  vec3 col = c * (0.4 + 0.7 * diff) + vec3(0.5) * spec;
+  col = mix(col, vec3(0.0), smoothstep(0.84, 0.97, r2) * 0.92);
+  gl_FragColor = vec4(col, 1.0);
+}`;
+
 /* ── Mallas (en espacio local: radio 1, alto 1) ──────────────────────── */
 function cylinderSide(seg) {
   const v = [];
@@ -464,7 +495,11 @@ function install(view, opts = {}) {
   let camName = CAMS[opts.cam] ? opts.cam : 'tribuna';
   let dead = false;
   let gl = null, glCv = null, hudCv = null, hudCtx = null, gameCv = null;
-  let prog = null, prog2 = null, U = null, U2 = null;
+  let prog = null, prog2 = null, U = null, U2 = null, prog3 = null, U3 = null;
+  /* Giro acumulado de la pelota (3×3, por filas) y dónde estaba en el cuadro anterior. */
+  const ballRot = new Float32Array([1, 0, 0, 0, 1, 0, 0, 0, 1]);
+  const ballRotUni = new Float32Array(9);
+  let rollX = NaN, rollZ = NaN, rollN = 0;
   const mesh = {};
   let quad2 = null;
   const vp = new Float32Array(16), proj = new Float32Array(16), viewM = new Float32Array(16);
@@ -585,6 +620,10 @@ function install(view, opts = {}) {
     U.aUv = gl.getAttribLocation(prog, 'aUv');
     prog2 = program(VS2, FS2);
     U2 = { uCenter: gl.getUniformLocation(prog2, 'uCenter'), uSize: gl.getUniformLocation(prog2, 'uSize'), uTex: gl.getUniformLocation(prog2, 'uTex'), uDepth: gl.getUniformLocation(prog2, 'uDepth'), uCut: gl.getUniformLocation(prog2, 'uCut'), aPos: gl.getAttribLocation(prog2, 'aPos') };
+    prog3 = program(VS2, FS3);
+    U3 = {};
+    for (const n of ['uCenter', 'uSize', 'uTex', 'uDepth', 'uRot', 'uR', 'uS']) U3[n] = gl.getUniformLocation(prog3, n);
+    U3.aPos = gl.getAttribLocation(prog3, 'aPos');
 
     mesh.side = buffer(cylinderSide(28));
     mesh.cap = buffer(cap(28));
@@ -789,6 +828,8 @@ function install(view, opts = {}) {
   const ballCv = view.document.createElement('canvas');
   ballCv.width = ballCv.height = BALL;
   const ballCtx = ballCv.getContext('2d');
+  // Plana: el giro y la luz los pone la esfera (FS3), no el dibujo 2D.
+  ballCv.__tvmFlat = true;
   let ballTex = null;
   function paintBall(d, N) {
     const rad = d[N.radius] || 10, pos = d[N.pos];
@@ -814,6 +855,30 @@ function install(view, opts = {}) {
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     if (!ballTex) ballTex = texture(null, true);
     upload(ballTex, ballCv, true);
+  }
+
+  /* La pelota rueda: gira sobre el eje perpendicular a su movimiento, tanto como avanzó. */
+  function rollBall(wx, wz, rad) {
+    const dx = wx - rollX, dz = wz - rollZ;
+    rollX = wx; rollZ = wz;
+    const dist = Math.hypot(dx, dz);
+    if (!(dist > 1e-4) || dist > rad * 8) return; // quieta, o saltó (saque, gol)
+    const ax = dz / dist, az = -dx / dist, ang = dist / Math.max(1, rad);
+    const c = Math.cos(ang), sn = Math.sin(ang), t = 1 - c;
+    // Rodrigues con eje (ax, 0, az).
+    const q = [t * ax * ax + c, -sn * az, t * ax * az,
+      sn * az, c, -sn * ax,
+      t * ax * az, sn * ax, t * az * az + c];
+    const r = ballRot, o = new Array(9);
+    for (let i = 0; i < 3; i++) for (let j = 0; j < 3; j++) o[i * 3 + j] = q[i * 3] * r[j] + q[i * 3 + 1] * r[3 + j] + q[i * 3 + 2] * r[6 + j];
+    for (let k = 0; k < 9; k++) r[k] = o[k];
+    // Cada tanto se la vuelve a dejar ortonormal (los errores de redondeo se suman).
+    if (++rollN % 240 === 0) {
+      let l = Math.hypot(r[0], r[3], r[6]); r[0] /= l; r[3] /= l; r[6] /= l;
+      let d = r[0] * r[1] + r[3] * r[4] + r[6] * r[7]; r[1] -= d * r[0]; r[4] -= d * r[3]; r[7] -= d * r[6];
+      l = Math.hypot(r[1], r[4], r[7]); r[1] /= l; r[4] /= l; r[7] /= l;
+      r[2] = r[3] * r[7] - r[6] * r[4]; r[5] = r[6] * r[1] - r[0] * r[7]; r[8] = r[0] * r[4] - r[3] * r[1];
+    }
   }
 
   function texturesFor(L, N, d, mine, pl) {
@@ -1145,16 +1210,40 @@ function install(view, opts = {}) {
     }
     if (ballSprite) {
       const pos = ballSprite[N.pos], rad = ballSprite[N.radius];
+      rollBall(mx * pos.x, pos.y, rad);
       if (project(mx * pos.x, CONTACT_Y, pos.y)) {
         const ppu = (proj[5] * half) / clip[3];
         const size = rad * ((BALL / 2) / BALL_R) * ppu;
+        /*
+         * uRot lleva un punto de la bola visto desde la cámara a la imagen de la
+         * pelota: (cámara × giro)ᵀ. La cámara es la parte de giro de `viewM`.
+         * Como GLSL lee las matrices por columnas, la traspuesta es esa misma
+         * multiplicación escrita por filas.
+         */
+        const R = ballRot, V = viewM, u = ballRotUni;
+        for (let i = 0; i < 3; i++) {
+          for (let j = 0; j < 3; j++) {
+            u[i * 3 + j] = V[i] * R[j] + V[4 + i] * R[3 + j] + V[8 + i] * R[6 + j];
+          }
+        }
+        gl.useProgram(prog3);
+        gl.bindBuffer(gl.ARRAY_BUFFER, quad2);
+        gl.vertexAttribPointer(U3.aPos, 2, gl.FLOAT, false, 0, 0);
+        gl.enableVertexAttribArray(U3.aPos);
+        gl.uniform1i(U3.uTex, 0);
         gl.enable(gl.DEPTH_TEST);
-        gl.uniform1f(U2.uDepth, Math.max(-1, Math.min(1, clip[2] / clip[3])));
-        gl.uniform1f(U2.uCut, 0.5);
+        gl.uniform1f(U3.uDepth, Math.max(-1, Math.min(1, clip[2] / clip[3])));
+        gl.uniformMatrix3fv(U3.uRot, false, u);
+        // El círculo ocupa BALL_R de los BALL/2 del cuadrado; se lee un poco
+        // adentro para no agarrar el contorno del dibujo plano.
+        gl.uniform1f(U3.uR, (BALL_R + 0.6) / BALL);
+        gl.uniform1f(U3.uS, (BALL_R - 1.8) / BALL);
         gl.bindTexture(gl.TEXTURE_2D, ballTex);
-        gl.uniform2f(U2.uCenter, clip[0] / clip[3], clip[1] / clip[3]);
-        gl.uniform2f(U2.uSize, size / (W / 2), size / half);
+        gl.uniform2f(U3.uCenter, clip[0] / clip[3], clip[1] / clip[3]);
+        gl.uniform2f(U3.uSize, size / (W / 2), size / half);
         gl.drawArrays(gl.TRIANGLES, 0, 6);
+        gl.useProgram(prog2);
+        gl.vertexAttribPointer(U2.aPos, 2, gl.FLOAT, false, 0, 0);
       }
     }
     // Nombres: siempre de frente y debajo de la ficha en la pantalla, del tamaño
