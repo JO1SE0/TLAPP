@@ -686,6 +686,27 @@ function install(view, opts = {}) {
       c.style.height = `${r.height}px`;
     }
   }
+  /*
+   * Cada sala nueva trae su propio canvas del juego. La 3D se armó sobre el
+   * de la primera: sin esto seguía dibujando junto a un canvas que ya no está
+   * en pantalla, el nuevo quedaba sin dibujar y la cancha se veía negra.
+   * Se mudan las capas al lado del canvas nuevo y el viejo vuelve a verse
+   * (por si HaxBall lo reusa).
+   */
+  function rebind(cv) {
+    if (!cv || cv === gameCv) return;
+    try { if (gameCv) gameCv.style.visibility = ''; } catch (e) { /* ya no está */ }
+    gameCv = cv;
+    const parent = cv.parentNode;
+    if (parent) {
+      parent.insertBefore(glCv, cv.nextSibling);
+      parent.insertBefore(hudCv, glCv.nextSibling);
+    }
+    cv.style.visibility = 'hidden';
+    lastW = 0; lastH = 0;
+    floorDirty = true;
+    log('info', 'vista 3D: canvas nuevo (otra sala)');
+  }
   function syncSize() {
     const w = gameCv.width, h = gameCv.height;
     if (w === lastW && h === lastH) return;
@@ -935,8 +956,11 @@ function install(view, opts = {}) {
   function frame(F) {
     const N = view.__tvm3dN;
     if (!N) return false;
+    // Canvas que todavía no está en pantalla (entrando a una sala): ese cuadro, el 2D.
+    if (F.cv && !F.cv.isConnected) return false;
     if (!gl) setup(F.cv);
     if (gl.isContextLost()) return false;
+    if (F.cv && F.cv !== gameCv) rebind(F.cv);
     syncSize();
     frameNo++;
 
@@ -988,8 +1012,10 @@ function install(view, opts = {}) {
         ox = -attack; oz = 0;
         setRot(attack > 0 ? ROT_POS : ROT_NEG);
       } else {
-        // Mirando (sin ficha en la cancha): la de la tribuna.
-        cam = CAMS.tribuna;
+        // Mirando (sin ficha en la cancha): igual vertical, como si fueras del
+        // rojo (de abajo hacia arriba), siguiendo la pelota. Las flechas no giran.
+        attack = mx;
+        ox = -attack; oz = 0;
         setRot(null);
       }
     } else setRot(null);
