@@ -474,9 +474,56 @@ ${bar} > .scoreboard .teamicon { width: 6px !important; height: 6px !important; 
 ${sc} { font-size: 28px !important; font-weight: 800 !important; color: #fff !important; background: #1b2230; padding: 0 8px; border-radius: 4px; }
 ${bar} > .scoreboard .teamicon { width: 6px !important; height: 22px !important; border-radius: 2px !important; }
 ${bar} > .game-timer-view { color: #ffd34d !important; font-weight: 800 !important; }`;
+    /* Como el resumen del partido: rojo y azul que se funden hacia el centro oscuro. */
+    case 'match':
+      return `html ${bar} { background: linear-gradient(90deg, #c24848 0%, #0b1224 32%, #0b1224 68%, #3768c4 100%) !important; border: 0 !important; border-radius: 0 0 22px 22px !important; box-shadow: 0 8px 18px -8px rgba(0,0,0,.7) !important; padding: 8px 34px !important; }
+html ${sc} { color: #fff !important; font-size: 26px !important; font-weight: 900 !important; }
+html ${bar} > .scoreboard .teamicon { display: none !important; }
+html ${bar} > .game-timer-view, html ${bar} > .game-timer-view:not(.time-warn) > .digit { color: #ecd593 !important; border-left-color: rgba(255,255,255,.18) !important; }`;
+    /* Crema y dorado, como el cartel de llegada del club. */
+    case 'cream':
+      return `html ${bar} { background: #faf7ee !important; border: 0 !important; border-radius: 0 0 999px 999px !important; box-shadow: 0 8px 18px -8px rgba(0,0,0,.6), inset 0 -3px 0 #c39a45 !important; padding: 6px 30px 9px !important; }
+html ${sc} { color: #13254a !important; font-size: 24px !important; font-weight: 900 !important; }
+html ${bar} > .scoreboard > div:not(.score):not(.teamicon) { color: #c39a45 !important; }
+html ${bar} > .game-timer-view, html ${bar} > .game-timer-view:not(.time-warn) > .digit, html ${bar} > .game-timer-view:not(.time-warn) > .null { color: #a3833c !important; border-left-color: #e3dccb !important; }`;
+    /* Mitad y mitad: cada número sobre el color de su equipo. */
+    case 'split':
+      return `html ${bar} { background: #0e1320 !important; border: 0 !important; border-radius: 0 0 12px 12px !important; padding: 0 18px 0 0 !important; overflow: hidden; box-shadow: 0 6px 16px -6px rgba(0,0,0,.7) !important; }
+html ${bar} > .scoreboard { gap: 0 !important; align-self: stretch; }
+html ${sc} { color: #fff !important; font-size: 24px !important; font-weight: 900 !important; padding: 6px 16px !important; display: flex !important; align-items: center; justify-content: center; min-width: 48px !important; }
+html ${bar} > .scoreboard > .score:nth-child(2) { background: #c24848; }
+html ${bar} > .scoreboard > .score:nth-child(4) { background: #3768c4; }
+html ${bar} > .scoreboard > div:not(.score):not(.teamicon) { display: none !important; }
+html ${bar} > .scoreboard .teamicon { display: none !important; }
+html ${bar} > .game-timer-view { margin-left: 16px !important; padding-left: 0 !important; border-left: 0 !important; color: #fff !important; }`;
+    /* Tablero de estadio: números ámbar de luces sobre negro. */
+    case 'led':
+      return `html ${bar} { background: #050505 !important; border: 2px solid #222 !important; border-top: 0 !important; border-radius: 0 0 8px 8px !important; box-shadow: inset 0 0 0 1px #000, 0 6px 14px rgba(0,0,0,.6) !important; }
+html ${sc}, html ${bar} > .game-timer-view, html ${bar} > .game-timer-view:not(.time-warn) > .digit { color: #ffb02e !important; font-family: "Consolas", "Courier New", monospace !important; font-weight: 700 !important; text-shadow: 0 0 6px rgba(255,176,46,.75), 0 0 1px #ffb02e; }
+html ${sc} { font-size: 28px !important; background: #120c02; padding: 0 8px !important; border-radius: 3px; }
+html ${bar} > .scoreboard .teamicon { width: 8px !important; height: 8px !important; border-radius: 50% !important; }
+html ${bar} > .game-timer-view { border-left-color: #222 !important; }`;
+    /* Píldora oscura flotante, separada del borde de arriba. */
+    case 'float':
+      return `html ${bar} { margin-top: 10px !important; background: rgba(12,16,28,.92) !important; border: 1px solid rgba(255,255,255,.1) !important; border-radius: 999px !important; box-shadow: 0 10px 24px -10px rgba(0,0,0,.8) !important; padding: 6px 26px !important; }
+html ${sc} { color: #fff !important; font-size: 22px !important; font-weight: 800 !important; }
+html ${bar} > .scoreboard .teamicon { width: 10px !important; height: 10px !important; border-radius: 50% !important; }
+html ${bar} > .game-timer-view { border-left-color: rgba(255,255,255,.12) !important; }`;
+    /* Sólo los números, con un contorno: casi no tapa. */
+    case 'outline':
+      return `html ${bar} { background: transparent !important; border: 1.5px solid rgba(255,255,255,.55) !important; border-top: 0 !important; border-radius: 0 0 14px 14px !important; box-shadow: none !important; }
+html ${sc} { color: #fff !important; font-size: 24px !important; font-weight: 800 !important; text-shadow: 0 1px 4px rgba(0,0,0,.8); }
+html ${bar} > .game-timer-view, html ${bar} > .game-timer-view:not(.time-warn) > .digit { color: #fff !important; text-shadow: 0 1px 4px rgba(0,0,0,.8); border-left-color: rgba(255,255,255,.35) !important; }`;
     default:
       return '';
   }
+}
+
+/** El tamaño del marcador (0.7 a 1.8). Va con transform: no cambia el lugar de nada. */
+function scoreboardScaleCss(k) {
+  const s = Math.min(1.8, Math.max(0.7, Number(k) || 1));
+  if (Math.abs(s - 1) < 0.01) return '';
+  return `.game-state-view .bar-container { transform: scale(${s.toFixed(2)}) !important; transform-origin: top center !important; }`;
 }
 
 /**
@@ -1321,6 +1368,7 @@ ${each(FIELDS, ':focus')} {
 .game-state-view .bar > .scoreboard .teamicon.red { background: ${p.red} !important; color: ${p.red} !important; }
 .game-state-view .bar > .scoreboard .teamicon.blue { background: ${p.blue} !important; color: ${p.blue} !important; }
 ${scoreboardCss(p, options.scoreboard)}
+${scoreboardScaleCss(options.scoreboardScale)}
 
 /* El reloj se separa solo del marcador: aire a los dos lados de una línea. */
 .game-state-view .bar > .game-timer-view {

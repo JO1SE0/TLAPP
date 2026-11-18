@@ -156,8 +156,10 @@ const DEFAULTS = {
     hideChat: false,
     /** El cartel de gol estilo TV, con autor y asistencia. */
     goalBanner: true,
-    /** Cartel de marcador: default | club | neon | minimal | tv. */
+    /** Cartel de marcador: default | club | neon | minimal | tv | match | cream | split | led | float | outline. */
     scoreboard: 'default',
+    /** Tamaño del cartel de marcador (0.7 a 1.8). */
+    scoreboardScale: 1,
     /** Sonido de gol incluido: default | bocina | campanas | aplausos | silbato | tribuna | retro. */
     goalSfx: 'default',
     goalSfxVolume: 0.7,

@@ -666,7 +666,7 @@ function applyGameTheme(doc) {
   const mount = doc.head || doc.documentElement;
   if (!mount) return;
 
-  const css = themes.gameCss(currentPalette(), { hudScale: state.config.appearance.hudScale, scoreboard: state.config.appearance.scoreboard });
+  const css = themes.gameCss(currentPalette(), { hudScale: state.config.appearance.hudScale, scoreboard: state.config.appearance.scoreboard, scoreboardScale: state.config.appearance.scoreboardScale });
   let style = doc.getElementById('tvm-theme');
   if (!css) {
     if (style) style.remove();

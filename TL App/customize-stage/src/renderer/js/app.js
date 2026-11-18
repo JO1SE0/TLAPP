@@ -6849,7 +6849,9 @@ function syncAccentDrift() {
 /* Sonido de gol incluido y estilo del cartel de marcador. */
 const SCOREBOARDS = [
   ['default', 'Normal', 'Default'], ['club', 'Club dorado', 'Gold club'], ['neon', 'Neón', 'Neon'],
-  ['minimal', 'Minimal', 'Minimal'], ['tv', 'Clásico TV', 'TV classic']
+  ['minimal', 'Minimal', 'Minimal'], ['tv', 'Clásico TV', 'TV classic'],
+  ['match', 'Partido', 'Match'], ['cream', 'Crema', 'Cream'], ['split', 'Mitad y mitad', 'Split'],
+  ['led', 'Tablero LED', 'LED board'], ['float', 'Flotante', 'Floating'], ['outline', 'Contorno', 'Outline']
 ];
 function paintGameExtras() {
   const ap = (state.config && state.config.appearance) || {};
@@ -6881,6 +6883,11 @@ function paintGameExtras() {
   $('#kickSfxVolumeValue').textContent = `${Math.round(kv * 100)}%`;
   syncRangeFill(kr);
   fill($('#scoreboardChips'), SCOREBOARDS, ap.scoreboard || 'default', 'sb');
+  $('#scoreboardScaleLabel').textContent = en ? 'Scoreboard size' : 'Tamaño del marcador';
+  const sbk = Number(ap.scoreboardScale) || 1;
+  $('#scoreboardScale').value = sbk;
+  $('#scoreboardScaleValue').textContent = `${Math.round(sbk * 100)}%`;
+  syncRangeFill($('#scoreboardScale'));
   const v = typeof ap.goalSfxVolume === 'number' ? ap.goalSfxVolume : 0.7;
   const r = $('#goalSfxVolume');
   if (document.activeElement !== r) r.value = String(v);
@@ -6945,6 +6952,11 @@ $('#hudScale').addEventListener('input', (e) => {
   $('#hudScaleValue').textContent = `${Math.round(Number(e.target.value) * 100)}%`;
 });
 $('#hudScale').addEventListener('change', (e) => patchConfig({ appearance: { hudScale: Number(e.target.value) } }));
+$('#scoreboardScale').addEventListener('input', (e) => {
+  syncRangeFill(e.target);
+  $('#scoreboardScaleValue').textContent = `${Math.round(Number(e.target.value) * 100)}%`;
+});
+$('#scoreboardScale').addEventListener('change', (e) => patchConfig({ appearance: { scoreboardScale: Number(e.target.value) } }));
 
 /* ── Avatar ─────────────────────────────────────────────── */
 function avatarFrames(text) {
