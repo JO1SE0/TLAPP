@@ -8175,6 +8175,8 @@ function installView3d(view) {
     // Sin antialias: cuesta ~1/3 del dibujo y medido en partida, sin él suben mucho los FPS.
     antialias: false,
     lowLatency: !!perf.lowLatencyCanvas,
+    /* Con «Gráficos planos» la 3D no dibuja la red de los arcos. */
+    flat: () => flatOn(),
     /* ¿La pelota tiene algo del cliente? Entonces la 3D la dibuja con los mismos
        pasos del 2D (y se ve igual); si no, una esfera simple. */
     ballCustom: () => !!(ballImage || ballGifOn() || (state.config.pitch && state.config.pitch.ball3d) ||

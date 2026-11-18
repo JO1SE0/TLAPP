@@ -215,6 +215,29 @@ void main() {
   gl_FragColor = vec4(col, 1.0);
 }`;
 
+/*
+ * La red de los arcos, dibujada por la placa línea por línea.
+ *
+ * Con una textura de trama, de lejos la placa se salteaba las líneas (miden
+ * menos de un píxel) y quedaba sólo el velo: la red no se veía. Acá cada
+ * línea se calcula en el momento y mide siempre ~1 píxel, esté cerca o lejos;
+ * si la trama queda tan chica que las líneas se pisan, se apaga hacia un velo
+ * suave en vez de volverse una pared blanca. Necesita las «derivadas» de
+ * WebGL 1 (casi todas las placas): sin ellas queda la textura de antes.
+ */
+const FS_NET = `#extension GL_OES_standard_derivatives : enable
+precision mediump float;
+varying vec3 vNor; varying vec2 vUv; uniform vec4 uColor;
+void main() {
+  vec2 g = vUv;
+  vec2 w = fwidth(g);
+  vec2 f = abs(fract(g - 0.5) - 0.5) / max(w, vec2(1e-4));
+  float line = 1.0 - min(min(f.x, f.y), 1.0);
+  float far = clamp((max(w.x, w.y) - 0.42) * 3.0, 0.0, 1.0);
+  float a = mix(max(line * 0.95, 0.08), 0.35, far);
+  gl_FragColor = vec4(1.0, 1.0, 1.0, a * uColor.a);
+}`;
+
 /* ── Mallas (en espacio local: radio 1, alto 1) ──────────────────────── */
 function cylinderSide(seg) {
   const v = [];
@@ -495,7 +518,7 @@ function install(view, opts = {}) {
   let camName = CAMS[opts.cam] ? opts.cam : 'tribuna';
   let dead = false;
   let gl = null, glCv = null, hudCv = null, hudCtx = null, gameCv = null;
-  let prog = null, prog2 = null, U = null, U2 = null, prog3 = null, U3 = null;
+  let prog = null, prog2 = null, U = null, U2 = null, prog3 = null, U3 = null, prog4 = null, U4 = null;
   /* Giro acumulado de la pelota (3×3, por filas) y dónde estaba en el cuadro anterior. */
   const ballRot = new Float32Array([1, 0, 0, 0, 1, 0, 0, 0, 1]);
   const ballRotUni = new Float32Array(9);
@@ -620,6 +643,24 @@ function install(view, opts = {}) {
     U.aUv = gl.getAttribLocation(prog, 'aUv');
     prog2 = program(VS2, FS2);
     U2 = { uCenter: gl.getUniformLocation(prog2, 'uCenter'), uSize: gl.getUniformLocation(prog2, 'uSize'), uTex: gl.getUniformLocation(prog2, 'uTex'), uDepth: gl.getUniformLocation(prog2, 'uDepth'), uCut: gl.getUniformLocation(prog2, 'uCut'), aPos: gl.getAttribLocation(prog2, 'aPos') };
+    // La red con líneas de la placa (ver FS_NET). Mismas entradas que el programa
+    // principal, así la malla se lee igual; si algo falla, queda la textura.
+    try {
+      if (gl.getExtension('OES_standard_derivatives')) {
+        const p4 = gl.createProgram();
+        gl.attachShader(p4, shader(gl.VERTEX_SHADER, VS));
+        gl.attachShader(p4, shader(gl.FRAGMENT_SHADER, FS_NET));
+        gl.bindAttribLocation(p4, U.aPos, 'aPos');
+        gl.bindAttribLocation(p4, U.aNor, 'aNor');
+        gl.bindAttribLocation(p4, U.aUv, 'aUv');
+        gl.linkProgram(p4);
+        if (gl.getProgramParameter(p4, gl.LINK_STATUS)) {
+          prog4 = p4;
+          U4 = {};
+          for (const n of ['uVP', 'uOff', 'uScale', 'uColor']) U4[n] = gl.getUniformLocation(p4, n);
+        }
+      }
+    } catch (e) { prog4 = null; }
     prog3 = program(VS2, FS3);
     U3 = {};
     for (const n of ['uCenter', 'uSize', 'uTex', 'uDepth', 'uRot', 'uR', 'uS']) U3[n] = gl.getUniformLocation(prog3, n);
@@ -1187,12 +1228,26 @@ function install(view, opts = {}) {
     gl.disable(gl.BLEND);
 
     // La red: transparente, después de todo lo sólido y sin tapar profundidad.
-    if (decorNet) {
+    // Con «Gráficos planos» no va (como el resto de lo que adorna).
+    let noNet = false;
+    try { noNet = typeof opts.flat === 'function' && !!opts.flat(); } catch (e) { noNet = false; }
+    if (decorNet && !noNet) {
       gl.enable(gl.BLEND);
       gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
       gl.depthMask(false);
-      gl.bindTexture(gl.TEXTURE_2D, netTex);
-      draw(decorNet, 2, 0, 0, 0, mx, 1, 1, 1, 1, 1, 1);
+      if (prog4) {
+        gl.useProgram(prog4);
+        gl.uniformMatrix4fv(U4.uVP, false, vp);
+        use(decorNet);
+        gl.uniform3f(U4.uOff, 0, 0, 0);
+        gl.uniform3f(U4.uScale, mx, 1, 1);
+        gl.uniform4f(U4.uColor, 1, 1, 1, 1);
+        gl.drawArrays(gl.TRIANGLES, 0, decorNet.n);
+        gl.useProgram(prog);
+      } else {
+        gl.bindTexture(gl.TEXTURE_2D, netTex);
+        draw(decorNet, 2, 0, 0, 0, mx, 1, 1, 1, 1, 1, 1);
+      }
       gl.depthMask(true);
       gl.disable(gl.BLEND);
     }
