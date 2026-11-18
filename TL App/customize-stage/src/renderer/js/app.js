@@ -12084,7 +12084,10 @@ async function boot() {
     $('#statsSub').textContent = statsSubtitle(summary, goals);
     paintStatsNote(summary, goals);
 
-    $('#statsMvp').hidden = busy || !mvp;
+    // En vivo la figura va marcada en la tabla y el resultado ya está en el juego.
+    $('#statsMvp').hidden = busy || !mvp || !isReplay;
+    $('#tvmStatsPanel').classList.toggle('is-live', !isReplay);
+    $('#statsFoot').textContent = t(isReplay ? 'stats.close' : 'stats.release');
     if (mvp && !busy) {
       $('#statsMvpName').textContent = mvp.name;
       // Los toques sólo existen si se analizó la grabación: en vivo no se cuentan
@@ -12219,8 +12222,12 @@ async function boot() {
   }
 
   function paintStatsPlayers(list) {
-    $('#statsPlayers').replaceChildren(...list.map((row) => {
+    // El que más puntos lleva (figura por ahora): fila dorada y estrella.
+    let lead = null;
+    for (const r of list) if (r.points > 0 && (!lead || r.points > lead.points)) lead = r;
+    const rowOf = (row) => {
       const tr = document.createElement('tr');
+      if (row === lead) tr.classList.add('is-lead');
 
       const cell = document.createElement('td');
       const who = document.createElement('div');
@@ -12240,7 +12247,11 @@ async function boot() {
         tr.append(cell);
       }
       return tr;
-    }));
+    };
+    // Una tabla por equipo: rojo a la izquierda, azul a la derecha.
+    $('#statsPlayers').replaceChildren(...list.filter((r) => r.team !== 'Blue').map(rowOf));
+    $('#statsPlayersBlue').replaceChildren(...list.filter((r) => r.team === 'Blue').map(rowOf));
+    $('#statsPlayersBlueTable').hidden = !list.some((r) => r.team === 'Blue');
   }
 
   /*
@@ -12361,6 +12372,16 @@ async function boot() {
   tvm.game.onToggleStats((info) => {
     // El botón «Resumen» del reproductor abre y analiza; estando abierto, cierra.
     if (info && info.analyze && $('#tvmStatsPanel').hidden) return toggleStatsPanel(true);
+    /*
+     * En vivo, las estadísticas se ven mientras se mantiene la tecla (como el
+     * marcador de cualquier juego de equipos). En un replay siguen siendo
+     * abrir/cerrar: ahí se usan los botones y el carrete con el mouse.
+     */
+    if (info && info.hold) {
+      if (state.gameView === 'replay') { if (info.hold === 'down') toggleStatsPanel(); return; }
+      toggleStatsPanel(info.hold === 'down');
+      return;
+    }
     toggleStatsPanel();
   });
 
@@ -12384,7 +12405,15 @@ async function boot() {
     const tag = active && active.tagName;
     if (tag === 'INPUT' || tag === 'TEXTAREA' || (active && active.isContentEditable)) return;
     e.preventDefault();
-    toggleStatsPanel();
+    if (e.repeat) return;
+    // En vivo se ve mientras se mantiene (ver onToggleStats); en un replay, abre/cierra.
+    if (state.gameView === 'replay') toggleStatsPanel(); else toggleStatsPanel(true);
+  });
+  window.addEventListener('keyup', (e) => {
+    const wanted = state.config.general.summaryKey;
+    const key = typeof wanted === 'string' ? wanted : 'Tab';
+    if (!key || e.key !== key || state.stage !== 'game' || state.gameView === 'replay') return;
+    toggleStatsPanel(false);
   });
 
   /*

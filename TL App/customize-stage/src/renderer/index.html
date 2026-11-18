@@ -390,7 +390,7 @@
         <div id="tvmStatsPanel" class="stats-panel" hidden>
           <div class="stats-panel__header">
             <div>
-              <h2 id="statsTitle" data-i18n="stats.title">Resumen del partido</h2>
+              <h2 id="statsTitle" data-i18n="stats.title">Estadísticas</h2>
               <p class="stats-panel__sub" id="statsSub"></p>
             </div>
             <button id="closeStatsPanel" class="btn btn--ghost btn--sm" data-i18n-title="friends.close" title="Cerrar" aria-label="Cerrar"><svg data-icon viewBox="0 0 24 24"><path d="M6.4 6.4l11.2 11.2M17.6 6.4 6.4 17.6"/></svg></button>
@@ -415,18 +415,32 @@
 
             <section class="stats-block" id="statsPlayersBlock" hidden>
               <h3 data-i18n="stats.players">Jugadores</h3>
-              <table class="stats-table">
-                <thead>
-                  <tr>
-                    <th data-i18n="stats.colPlayer">Jugador</th>
-                    <th data-i18n="stats.colGoals" data-i18n-title="stats.colGoalsFull">G</th>
-                    <th data-i18n="stats.colAssists" data-i18n-title="stats.colAssistsFull">A</th>
-                    <th data-i18n="stats.colTouches">Toques</th>
-                    <th data-i18n="stats.colPoints" data-i18n-title="stats.pointsHelp">Pts</th>
-                  </tr>
-                </thead>
-                <tbody id="statsPlayers"></tbody>
-              </table>
+              <div class="stats-teams">
+                <table class="stats-table stats-table--red">
+                  <thead>
+                    <tr>
+                      <th data-i18n="stats.red">Rojo</th>
+                      <th data-i18n="stats.colGoals" data-i18n-title="stats.colGoalsFull">G</th>
+                      <th data-i18n="stats.colAssists" data-i18n-title="stats.colAssistsFull">A</th>
+                      <th data-i18n="stats.colTouches">Toques</th>
+                      <th data-i18n="stats.colPoints" data-i18n-title="stats.pointsHelp">Pts</th>
+                    </tr>
+                  </thead>
+                  <tbody id="statsPlayers"></tbody>
+                </table>
+                <table class="stats-table stats-table--blue" id="statsPlayersBlueTable">
+                  <thead>
+                    <tr>
+                      <th data-i18n="stats.blue">Azul</th>
+                      <th data-i18n="stats.colGoals" data-i18n-title="stats.colGoalsFull">G</th>
+                      <th data-i18n="stats.colAssists" data-i18n-title="stats.colAssistsFull">A</th>
+                      <th data-i18n="stats.colTouches">Toques</th>
+                      <th data-i18n="stats.colPoints" data-i18n-title="stats.pointsHelp">Pts</th>
+                    </tr>
+                  </thead>
+                  <tbody id="statsPlayersBlue"></tbody>
+                </table>
+              </div>
               <p class="stats-block__help" data-i18n="stats.pointsHelp">Puntos: 3 por gol, 2 por asistencia, −2 en contra.</p>
             </section>
 

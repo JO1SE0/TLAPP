@@ -8718,3 +8718,42 @@ html[data-scheme="light"] .vhud__p, html[data-scheme="light"] .vhud__me { color:
 .looksroom .looksdemo__marks { margin: 0 2px; padding: 1px 4px; }
 .looksroom .looksdemo__logo { width: 14px; height: 14px; }
 .looksroom .looksdemo.is-on .looksdemo__ping { border-radius: 99px; }
+
+
+/* ═══ Estadísticas (Tab), con el estilo del resumen del partido ═══
+   Azul noche redondeado, títulos en dorado, una tabla por equipo con su
+   raya de color arriba y el que más puntos lleva en dorado. En vivo no
+   lleva el marcador grande ni la tarjeta de MVP: ya están en el juego y
+   en la tabla. */
+.stats-panel { top: 5%; width: 840px; border-radius: 26px; background: rgba(11, 18, 36, 0.95); border: 0;
+  box-shadow: 0 24px 50px -18px rgba(0, 0, 0, 0.85), inset 0 0 0 1px rgba(255, 255, 255, 0.07); animation: tvmStatsIn2 0.22s cubic-bezier(.2,.9,.3,1.1); }
+@keyframes tvmStatsIn2 { from { opacity: 0; transform: translate(-50%, 10px) scale(.98); } }
+.stats-panel__header { background: transparent; border-bottom: 0; padding: 16px 24px 4px; }
+.stats-panel__header h2 { font-size: 12px; font-weight: 800; letter-spacing: 0.3em; text-transform: uppercase; color: #ecd593; }
+.stats-panel.is-live .stats-score { display: none; }
+.stats-score { background: transparent; border-bottom: 0; }
+.stats-panel__body { gap: 14px; padding: 10px 20px 14px; }
+.stats-block { background: rgba(255, 255, 255, 0.04); border-radius: 18px; padding: 12px 14px; }
+.stats-block h3 { color: #ecd593; opacity: 1; font-size: 10.5px; font-weight: 800; letter-spacing: 0.26em; }
+.stats-block__help { opacity: 0.35; }
+.stats-teams { display: flex; gap: 14px; }
+.stats-teams .stats-table { flex: 1; min-width: 0; }
+.stats-teams .stats-table th:first-child { letter-spacing: 0.3em; opacity: 0.7; }
+.stats-table--red thead tr { box-shadow: inset 0 -2px 0 #e56b6b; }
+.stats-table--blue thead tr { box-shadow: inset 0 -2px 0 #5689e5; }
+.stats-teams .stats-table th:not(:first-child), .stats-teams .stats-table td:not(:first-child) { width: 34px; padding-left: 4px; text-align: center; }
+.stats-teams .stats-table th:nth-child(4), .stats-teams .stats-table td:nth-child(4) { width: 58px; }
+.stats-teams .stats-table th:last-child, .stats-teams .stats-table td:last-child { width: 40px; }
+.stats-table td:last-child { color: #ecd593; font-weight: 700; }
+.stats-table tr:first-child td { font-weight: inherit; }
+.stats-table tr.is-lead td { background: rgba(236, 213, 147, 0.12); }
+.stats-table tr.is-lead td:first-child { border-radius: 10px 0 0 10px; }
+.stats-table tr.is-lead td:last-child { border-radius: 0 10px 10px 0; }
+.stats-table tr.is-lead .stats-table__name::after { content: ' ★'; color: #ecd593; }
+.stats-table td:first-child { padding-left: 6px; }
+.possbar__track { border-radius: 999px; overflow: hidden; }
+.stats-mvp { background: linear-gradient(135deg, rgba(243, 220, 152, 0.22), rgba(195, 154, 69, 0.08)); border-color: rgba(236, 213, 147, 0.35); border-radius: 16px; }
+.stats-mvp__tag { color: #ecd593; }
+.stats-panel__foot { border-top: 0; padding: 4px 24px 14px; }
+.stats-panel .possbar__track { height: 8px; background: #3768c4; }
+.stats-panel .possbar__red { display: block; height: 100%; background: #c24848; border-radius: 999px; }

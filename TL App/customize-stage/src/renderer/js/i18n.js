@@ -731,7 +731,8 @@ const STRINGS = {
     'replays.goalsN': '{n} goles',
     'replays.matchesN': '{n} partidos',
 
-    'stats.title': 'Resumen del partido',
+    'stats.title': 'Estadísticas',
+    'stats.release': 'Soltá Tab para cerrar',
     'stats.titleReplay': 'Resumen de la grabación',
     'stats.reel': 'Carrete de goles',
     'stats.jump': 'Saltar a esta jugada',
@@ -1637,7 +1638,8 @@ const STRINGS = {
     'replays.goalsN': '{n} goals',
     'replays.matchesN': '{n} matches',
 
-    'stats.title': 'Match summary',
+    'stats.title': 'Stats',
+    'stats.release': 'Release Tab to close',
     'stats.titleReplay': 'Replay summary',
     'stats.reel': 'Goal reel',
     'stats.jump': 'Jump to this play',

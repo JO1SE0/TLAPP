@@ -3165,6 +3165,18 @@ function togglePerfProbe(view) {
   log('info', `Medidor F6: ${msg}`, 'rendimiento');
 }
 
+/** Soltar la tecla de las estadísticas las cierra (en vivo; en un replay siguen siendo abrir/cerrar). */
+function onKeyUp(event) {
+  const wanted = summaryKey();
+  if (!wanted || event.key !== wanted) return;
+  const active = event.target && event.target.ownerDocument ? event.target.ownerDocument.activeElement : null;
+  const tag = active && active.tagName;
+  if (tag === 'INPUT' || tag === 'TEXTAREA' || (active && active.isContentEditable)) return;
+  event.preventDefault();
+  event.stopPropagation();
+  ipcRenderer.send('game:toggle-stats', { hold: 'up' });
+}
+
 function onKeyDown(event) {
   /*
    * El resumen del partido, con la tecla que diga la config (Tab de fábrica).
@@ -3190,7 +3202,9 @@ function onKeyDown(event) {
     event.preventDefault();
     // Que no le llegue a HaxBall, que si no abre el chat además del resumen.
     event.stopPropagation();
-    ipcRenderer.send('game:toggle-stats');
+    // Las estadísticas se ven MIENTRAS se mantiene la tecla: la repetición
+    // del teclado no cuenta, y al soltarla `onKeyUp` las cierra.
+    if (!event.repeat) ipcRenderer.send('game:toggle-stats', { hold: 'down' });
     return;
   }
 
@@ -12339,6 +12353,8 @@ function attachHotkeys(doc) {
   // el `capture` no saca nada y se irían apilando manejadores.
   doc.removeEventListener('keydown', onKeyDown, HOTKEY_OPTS);
   doc.addEventListener('keydown', onKeyDown, HOTKEY_OPTS);
+  doc.removeEventListener('keyup', onKeyUp, HOTKEY_OPTS);
+  doc.addEventListener('keyup', onKeyUp, HOTKEY_OPTS);
   attachChatCommands(doc);
   attachChatCommands(doc);
   // El cartel de teclas mira lo mismo, pero sin tocar el evento.
@@ -13806,6 +13822,7 @@ function boot() {
     setTimeout(reportGeo, 7000);
     setTimeout(reportAuth, 4000); // la identidad se genera en el primer arranque
     window.addEventListener('keydown', onKeyDown, HOTKEY_OPTS);
+    window.addEventListener('keyup', onKeyUp, HOTKEY_OPTS);
     // El avatar animado quedaba guardado pero no se volvía a arrancar al abrir
     // la app: la animación se perdía en cada reinicio.
     syncAvatar();
