@@ -592,6 +592,13 @@ window.__tvmStadium = function (self, cvKey, camKey, zoom, topPad, botPad, lineW
     self.c.translate(-cam.x, 0);
   }
 
+  /* Dónde cae la cancha en pantalla, para el mapa chico (que se vuelve
+     transparente si algo pasa por debajo). Sólo con el mapa prendido: es un
+     objeto por cuadro y nadie más lo necesita. */
+  if (window.__tvmWantView) {
+    try { window.__tvmView = self.c.getTransform(); window.__tvmViewCv = cv; } catch (e7) { window.__tvmView = null; }
+  }
+
   if (broken || !cv || !cam) {
     draw(self, stadium);
     /* Sin cache esto se paga en cada cuadro. Se hace igual: el cache apagado es
@@ -1942,7 +1949,7 @@ const KEEP = 4;
  * 30: las fichas de los jugadores se pegan como figuritas ya dibujadas.
  * 31: la patada propia avisa desde la simulación que se dibuja (sin ping).
  */
-const PATCH_VERSION = 31;
+const PATCH_VERSION = 32;
 
 /** El idioma es parte de la clave: el mismo bundle parchea distinto en cada uno. */
 function keyOf(url, lang) {

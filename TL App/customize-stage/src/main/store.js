@@ -630,6 +630,12 @@ const DEFAULTS = {
     goalClub: true,
     /** Con 2+ socios en un equipo, ese equipo se ve con la camiseta del club (sólo en tu pantalla). */
     clubKit: true,
+    /** Aro dorado en las fichas de los del club (sólo en tu pantalla). */
+    clubGlow: false,
+    /** Camisetas lisas: cada equipo en su color, sin las camisetas de la sala (sólo en tu pantalla). */
+    plainKits: false,
+    /** Mapa chico de la cancha en la esquina de abajo a la derecha. */
+    minimap: false,
     /** Cartel con el escudo cuando hay 3+ socios en la sala. */
     clubArrival: true,
     /** Resumen al final del partido: resultado, goles en su minuto y la figura. */

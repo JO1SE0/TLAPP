@@ -624,7 +624,21 @@ function clubKitFor(team) {
   if (!obj) { obj = kit; clubKitCache.set(key, obj); }
   return obj;
 }
+/*
+ * Camisetas lisas (pitch.plainKits): cada equipo en su color liso con el número
+ * en blanco, sin las camisetas que puso la sala. Sólo en tu pantalla. El
+ * objeto se arma una vez por color: mismo objeto, misma textura.
+ */
+const plainKitCache = new Map();
+function plainKit(team) {
+  const col = teamPick.on ? (team === 1 ? teamPick.red : team === 2 ? teamPick.blue : -1) : -1;
+  const c = col >= 0 ? col : team === 1 ? HB_RED : HB_BLUE;
+  let k = plainKitCache.get(c);
+  if (!k) { k = { sd: 0, pd: 0xffffff, ib: [c] }; plainKitCache.set(c, k); }
+  return k;
+}
 function teamKit(team, kit) {
+  if (kit && (team === 1 || team === 2) && state.config.pitch && state.config.pitch.plainKits) return plainKit(team);
   // Los colores que eligió el jugador mandan sobre la camiseta del club.
   if (!teamPick.on && kit && clubKit.teams[team]) return clubKitFor(team) || kit;
   if (!teamPick.on || !kit) return kit;
@@ -1829,6 +1843,8 @@ function watchViews(doc) {
        * solo que la sala aparezca y desaparezca con el botón Menu.
        */
       kind === 'room' || kind === 'game' ? watchRoomPanel(doc) : stopRoomPanel();
+      // El menú del escudo es de la sala y la partida: en la lista de salas no va.
+      if (qm && qm.root) { qm.root.hidden = !(kind === 'game' || kind === 'room' || kind === 'replay'); if (qm.root.hidden) toggleQuickMenu(false); }
       // El festejo de gol queda listo antes del primer gol (estilo y escudo ya cargados).
       if (kind === 'room' || kind === 'game') { safe(() => clubGoal.warm(doc, assetUrl('crest'))); safe(warmGoalFx, doc); }
       // El selector de estadios sale del panel de la sala, así que sigue la
@@ -1838,6 +1854,7 @@ function watchViews(doc) {
       if (kind === 'game' || kind === 'room' || kind === 'replay') {
         attachChatCommands(doc);
         attachHudActions(doc);
+        safe(installQuickMenu, doc);
         watchChatLogSoon(doc);
       }
       if (kind === 'replay') safe(watchReplayView, doc);
@@ -1963,6 +1980,369 @@ function attachHudActions(doc) {
     event.stopPropagation();
     ipcRenderer.send('game:open-settings');
   }, true);
+}
+
+/* ------------------------------------------------------------------ *
+ * Menú del escudo (arriba a la derecha de la partida)
+ * ------------------------------------------------------------------ *
+ * Reemplaza la botonera de HaxBall: un botón dorado con el escudo que
+ * despliega, por grupos, lo que se cambia seguido. Cada cambio va a la
+ * config (main.js: `game:quick-set`, con lista blanca) y vuelve como
+ * siempre, así que se ve en vivo en la cancha y queda guardado igual que si
+ * se tocara en el panel.
+ *
+ * Nada de esto corre por cuadro. Los controles no se quedan con el foco del
+ * teclado (mousedown sin foco, sin <input>): las flechas siguen yendo al
+ * juego aunque tengas el menú abierto.
+ */
+const QM_TEXTURES = [['none', 'Normal'], ...Object.entries({"wood": "Wood", "ice": "Ice", "sand": "Sand", "concrete": "Concrete", "night": "Night grass", "clay": "Clay", "checker": "Checkerboard", "carbon": "Carbon fibre", "marble": "Marble", "hex": "Honeycomb", "stars": "Galaxy", "brick": "Brick", "snow": "Snow", "neon": "Neon", "lava": "Lava", "waves": "Water"})];
+const QM_WEATHER = [['none', 'Sin clima'], ...Object.entries({"rain": "Lluvia", "storm": "Tormenta", "snow": "Nieve", "fog": "Niebla", "dust": "Polvo y viento", "leaves": "Hojas de otoño", "embers": "Brasas", "fireflies": "Luciérnagas", "blizzard": "Ventisca"})];
+const QM_BALLS = [['default', 'Como viene'], ...Object.entries({"soccer": "Futbolera", "neon": "Neón", "gold": "Dorada", "beach": "Playera", "eight": "Bola 8", "star": "Estrella", "triangles": "Fútbol triángulos", "vintage": "Fútbol de cuero", "tennis": "Tenis", "basket": "Básquet", "volley": "Vóley", "baseball": "Béisbol", "golf": "Golf", "bowling": "Bowling", "earth": "Planeta Tierra", "moon": "Luna", "disco": "Bola de espejos", "orb": "Orbe místico", "pumpkin": "Calabaza", "melon": "Sandía", "eye": "Ojo", "argentina": "Celeste y blanca", "fire": "Bola de fuego", "ice": "Hielo", "yinyang": "Yin yang", "smile": "Carita", "sun": "Sol", "donut": "Dona", "checker": "Cuadros", "candy": "Caramelo", "heart": "Corazón", "saturn": "Planeta", "lava": "Lava", "peso": "Moneda de un peso"})];
+const qmDiscs = () => [['default', 'Como viene'], ...Object.entries(DISC_NAMES)];
+const QM_KICKS = [['default', 'El del juego'], ['real1', 'Pelotazo real'], ['real2', 'Golpe seco'], ['real3', 'Patada real'], ['real4', 'Toque rápido'], ['real5', 'Bombazo'], ['real6', 'Zapatazo']];
+const QM_OUTLINES = [['', 'Como viene'], ['#ffffff', 'Blanco'], ['#000000', 'Negro'], ['#ecd593', 'Dorado'], ['#e56b6b', 'Rojo'], ['#5689e5', 'Azul']];
+let qm = null; // { doc, root, panel, open, rows: Map }
+let recBtn = null;
+
+function quickSet(patch) { ipcRenderer.send('game:quick-set', patch); }
+
+/** El botón «Rec» de HaxBall vive en la vista de la sala; se lo guarda apenas aparece (sigue andando aunque no esté a la vista). */
+function noteRecButton(doc) {
+  const b = doc && doc.querySelector('.room-view [data-hook="rec-btn"]');
+  if (b) recBtn = b;
+}
+function hbSoundButton(doc) { return doc && doc.querySelector('.game-view > .buttons [data-hook="sound-btn"]'); }
+
+function quickCss(doc) {
+  if (doc.getElementById('tvm-qm-css')) return;
+  const st = doc.createElement('style');
+  st.id = 'tvm-qm-css';
+  st.textContent = `
+    .game-view > .buttons { display: none !important; }
+    #tvm-qm { position: fixed; right: 14px; top: 10px; z-index: 2147482400; font-family: Outfit, Bahnschrift, 'Segoe UI', sans-serif; user-select: none; }
+    #tvm-qm .qm-btn { width: 44px; height: 44px; border-radius: 50%; border: 0; padding: 0; cursor: pointer; display: grid; place-items: center;
+      background: linear-gradient(135deg, #f3dc98, #c39a45); box-shadow: 0 8px 18px -8px rgba(0,0,0,.8), inset 0 0 0 1px rgba(255,255,255,.35);
+      transition: transform .15s ease; }
+    #tvm-qm .qm-btn:hover { transform: scale(1.06); }
+    #tvm-qm .qm-btn img { width: 26px; height: 26px; object-fit: contain; pointer-events: none; }
+    #tvm-qm .qm-panel { position: absolute; right: 0; top: 54px; width: 300px; max-height: calc(100vh - 80px); overflow-y: auto; overscroll-behavior: contain;
+      padding: 6px 8px 8px; border-radius: 18px; background: rgba(11,18,36,.97); color: #e9edf6;
+      box-shadow: 0 18px 36px -12px rgba(0,0,0,.85), inset 0 0 0 1px rgba(255,255,255,.08);
+      transform-origin: top right; animation: tvmQmIn .16s cubic-bezier(.2,.9,.3,1.15) both; scrollbar-width: thin; scrollbar-color: rgba(255,255,255,.2) transparent; }
+    #tvm-qm .qm-panel[hidden] { display: none; }
+    @keyframes tvmQmIn { from { opacity: 0; transform: translateY(-6px) scale(.97); } }
+    #tvm-qm .qm-h { font-size: 10px; letter-spacing: .24em; color: #ecd593; font-weight: 800; padding: 10px 8px 4px; }
+    #tvm-qm .qm-row { display: flex; align-items: center; gap: 10px; min-height: 34px; padding: 3px 8px; border-radius: 12px; font-size: 13.5px; }
+    #tvm-qm .qm-row:hover { background: rgba(255,255,255,.04); }
+    #tvm-qm .qm-row > span { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    #tvm-qm .qm-tg { flex: none; width: 32px; height: 18px; border-radius: 999px; background: rgba(255,255,255,.18); position: relative; cursor: pointer; transition: background .15s; }
+    #tvm-qm .qm-tg::after { content: ''; position: absolute; left: 2px; top: 2px; width: 14px; height: 14px; border-radius: 50%; background: #fff; transition: left .15s; }
+    #tvm-qm .qm-tg.on { background: #c39a45; } #tvm-qm .qm-tg.on::after { left: 16px; }
+    #tvm-qm .qm-seg { flex: none; display: flex; gap: 2px; background: rgba(255,255,255,.07); border-radius: 999px; padding: 2px; }
+    #tvm-qm .qm-seg b { font-weight: 700; font-size: 12px; padding: 4px 9px; border-radius: 999px; cursor: pointer; color: #cfd5e3; }
+    #tvm-qm .qm-seg b.on { background: #ecd593; color: #13254a; }
+    #tvm-qm .qm-pick { flex: none; display: flex; align-items: center; gap: 4px; max-width: 150px; }
+    #tvm-qm .qm-pick i { font-style: normal; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; cursor: pointer;
+      background: rgba(255,255,255,.08); font-size: 13px; color: #fff; }
+    #tvm-qm .qm-pick i:hover { background: rgba(236,213,147,.25); }
+    #tvm-qm .qm-pick em { font-style: normal; font-size: 12.5px; font-weight: 700; color: #ecd593; min-width: 0; max-width: 98px; text-align: center;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    #tvm-qm .qm-sl { flex: none; width: 120px; height: 18px; position: relative; cursor: pointer; touch-action: none; }
+    #tvm-qm .qm-sl::before { content: ''; position: absolute; left: 0; right: 0; top: 7px; height: 4px; border-radius: 4px; background: rgba(255,255,255,.15); }
+    #tvm-qm .qm-sl u { position: absolute; left: 0; top: 7px; height: 4px; border-radius: 4px; background: #ecd593; }
+    #tvm-qm .qm-sl s { position: absolute; top: 2px; width: 14px; height: 14px; margin-left: -7px; border-radius: 50%; background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,.5); }
+    #tvm-qm .qm-val { flex: none; width: 36px; text-align: right; font-size: 11.5px; opacity: .7; }
+    #tvm-qm .qm-sw { flex: none; display: flex; gap: 5px; }
+    #tvm-qm .qm-sw i { width: 18px; height: 18px; border-radius: 50%; cursor: pointer; box-shadow: inset 0 0 0 1.5px rgba(255,255,255,.25); }
+    #tvm-qm .qm-sw i.on { box-shadow: 0 0 0 2px #ecd593, inset 0 0 0 1.5px rgba(0,0,0,.3); }
+    #tvm-qm .qm-sw i.none { background: repeating-linear-gradient(135deg, #3a4560 0 3px, #2a3350 3px 6px); }
+    #tvm-qm .qm-act { flex: none; border: 0; border-radius: 999px; padding: 4px 12px; font: 700 12px inherit; cursor: pointer; background: rgba(255,255,255,.1); color: #fff; }
+    #tvm-qm .qm-act.on { background: #e05252; }
+    html.tvm-noanim #tvm-qm .qm-panel { animation: none; }`;
+  (doc.head || doc.documentElement).append(st);
+}
+
+function installQuickMenu(doc) {
+  if (!doc || !doc.body) return;
+  noteRecButton(doc);
+  if (qm && qm.doc === doc && qm.root.isConnected) { qm.root.hidden = false; return; }
+  quickCss(doc);
+  const el = (tag, cls, text) => { const n = doc.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; };
+  const root = el('div');
+  root.id = 'tvm-qm';
+  const btn = el('button', 'qm-btn');
+  btn.type = 'button';
+  btn.tabIndex = -1;
+  btn.title = 'Opciones rápidas';
+  const img = el('img');
+  img.src = assetUrl('crest');
+  img.alt = '';
+  btn.append(img);
+  const panel = el('div', 'qm-panel');
+  panel.hidden = true;
+  root.append(btn, panel);
+  // Nada de foco: el teclado sigue siendo del juego.
+  root.addEventListener('mousedown', (e) => { e.preventDefault(); e.stopPropagation(); });
+  btn.addEventListener('click', (e) => { e.stopPropagation(); toggleQuickMenu(); });
+  doc.addEventListener('mousedown', (e) => { if (qm && qm.open && !root.contains(e.target)) toggleQuickMenu(false); }, true);
+  doc.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && qm && qm.open) { e.preventDefault(); e.stopPropagation(); toggleQuickMenu(false); }
+  }, true);
+  doc.body.append(root);
+  qm = { doc, root, panel, open: false, rows: [] };
+  buildQuickMenu();
+  safe(syncMinimap);
+}
+
+function toggleQuickMenu(force) {
+  if (!qm) return;
+  qm.open = force === undefined ? !qm.open : !!force;
+  qm.panel.hidden = !qm.open;
+  if (qm.open) { noteRecButton(qm.doc); refreshQuickMenu(); }
+}
+
+function buildQuickMenu() {
+  const doc = qm.doc;
+  const panel = qm.panel;
+  panel.replaceChildren();
+  qm.rows = [];
+  const el = (tag, cls, text) => { const n = doc.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; };
+  const head = (t) => panel.append(el('div', 'qm-h', t));
+  const row = (label, ctl, sync) => {
+    const r = el('div', 'qm-row');
+    r.append(el('span', null, label), ctl);
+    panel.append(r);
+    qm.rows.push(sync);
+  };
+  const cfg = () => state.config;
+  const toggle = (label, get, set) => {
+    const t = el('i', 'qm-tg');
+    t.addEventListener('click', () => set(!get()));
+    row(label, t, () => t.classList.toggle('on', !!get()));
+  };
+  const seg = (label, opts, get, set) => {
+    const box = el('div', 'qm-seg');
+    const bs = opts.map(([v, t]) => { const b = el('b', null, t); b.addEventListener('click', () => set(v)); box.append(b); return [v, b]; });
+    row(label, box, () => { const cur = get(); for (const [v, b] of bs) b.classList.toggle('on', v === cur); });
+  };
+  const pick = (label, list, get, set) => {
+    const box = el('div', 'qm-pick');
+    const prev = el('i', null, '‹'), next = el('i', null, '›'), name = el('em');
+    const step = (d) => { const i = Math.max(0, list.findIndex(([v]) => v === get())); set(list[(i + d + list.length) % list.length][0]); };
+    prev.addEventListener('click', () => step(-1));
+    next.addEventListener('click', () => step(1));
+    box.append(prev, name, next);
+    row(label, box, () => { const cur = list.find(([v]) => v === get()); name.textContent = cur ? cur[1] : list[0][1]; });
+  };
+  const slider = (label, min, max, get, set) => {
+    const wrap = el('div');
+    wrap.style.display = 'flex'; wrap.style.alignItems = 'center'; wrap.style.gap = '6px';
+    const sl = el('div', 'qm-sl'), fill = el('u'), knob = el('s'), val = el('span', 'qm-val');
+    sl.append(fill, knob);
+    wrap.append(sl, val);
+    let live = null;
+    const paint = (v) => { const t = (v - min) / (max - min); fill.style.width = `${t * 100}%`; knob.style.left = `${t * 100}%`; val.textContent = `${Math.round(v * 100)}%`; };
+    const at = (e) => { const r = sl.getBoundingClientRect(); const t = Math.min(1, Math.max(0, (e.clientX - r.left) / r.width)); return Math.round((min + t * (max - min)) * 20) / 20; };
+    sl.addEventListener('pointerdown', (e) => {
+      sl.setPointerCapture(e.pointerId);
+      live = at(e); paint(live);
+      const move = (ev) => { live = at(ev); paint(live); };
+      const up = () => { sl.removeEventListener('pointermove', move); sl.removeEventListener('pointerup', up); sl.removeEventListener('pointercancel', up); if (live != null) set(live); live = null; };
+      sl.addEventListener('pointermove', move);
+      sl.addEventListener('pointerup', up);
+      sl.addEventListener('pointercancel', up);
+    });
+    row(label, wrap, () => { if (live == null) paint(Number(get()) || 1); });
+  };
+  const swatches = (label, list, get, set) => {
+    const box = el('div', 'qm-sw');
+    const is = list.map(([v, t]) => { const i = el('i', v ? null : 'none'); if (v) i.style.background = v; i.title = t; i.addEventListener('click', () => set(v)); box.append(i); return [v, i]; });
+    row(label, box, () => { const cur = get() || ''; for (const [v, i] of is) i.classList.toggle('on', v.toLowerCase() === cur.toLowerCase()); });
+  };
+
+  head('VISTA');
+  seg('Vista', [['2d', '2D'], ['vertical', 'Vertical'], ['3d', '3D']],
+    () => (cfg().perf.view3d ? '3d' : cfg().perf.vertical ? 'vertical' : '2d'),
+    (v) => quickSet({ perf: { view3d: v === '3d', vertical: v === 'vertical' } }));
+  seg('Lado fijo', [['off', 'No'], ['red', 'Rojo'], ['blue', 'Azul']], () => cfg().pitch.mirror || 'off', (v) => quickSet({ pitch: { mirror: v } }));
+  toggle('Gráficos planos', () => cfg().perf.flatGraphics, (v) => quickSet({ perf: { flatGraphics: v } }));
+  toggle('Mapa chico', () => cfg().pitch.minimap, (v) => quickSet({ pitch: { minimap: v } }));
+  pick('Cancha', QM_TEXTURES, () => cfg().visual.texture || 'none', (v) => quickSet({ visual: { texture: v } }));
+  pick('Clima', QM_WEATHER, () => cfg().visual.pitchWeather || 'none', (v) => quickSet({ visual: { pitchWeather: v } }));
+
+  head('FICHAS');
+  slider('Tamaño', 0.6, 1.6, () => cfg().visual.discSize, (v) => quickSet({ visual: { discSize: v } }));
+  pick('Estilo de tu ficha', qmDiscs(), () => cfg().visual.discStyle || 'default', (v) => quickSet({ visual: { discStyle: v } }));
+  swatches('Contorno', QM_OUTLINES, () => cfg().visual.discOutline, (v) => quickSet({ visual: { discOutline: v } }));
+  toggle('Sombras suaves', () => cfg().visual.softShadows, (v) => quickSet({ visual: { softShadows: v } }));
+  toggle('Club resaltado', () => cfg().pitch.clubGlow, (v) => quickSet({ pitch: { clubGlow: v } }));
+  toggle('Camiseta del club', () => cfg().pitch.clubKit !== false, (v) => quickSet({ pitch: { clubKit: v } }));
+  toggle('Camisetas lisas', () => cfg().pitch.plainKits, (v) => quickSet({ pitch: { plainKits: v } }));
+
+  head('PELOTA');
+  pick('Estilo', QM_BALLS, () => cfg().visual.ballStyle || 'default', (v) => quickSet({ visual: { ballStyle: v } }));
+  slider('Tamaño', 0.6, 1.8, () => cfg().visual.ballSize, (v) => quickSet({ visual: { ballSize: v } }));
+  toggle('Pelota 3D', () => cfg().pitch.ball3d, (v) => quickSet({ pitch: { ball3d: v } }));
+
+  head('SONIDO');
+  toggle('Sonido del juego', () => gameSoundLevel() > 0, () => {
+    const b = hbSoundButton(doc);
+    if (b) { b.click(); setTimeout(() => safe(refreshQuickMenu), 60); }
+  });
+  pick('Sonido de patada', QM_KICKS, () => cfg().appearance.kickSfx || 'default', (v) => quickSet({ appearance: { kickSfx: v } }));
+
+  head('PARTIDO');
+  const rec = el('button', 'qm-act', 'Grabar');
+  rec.type = 'button';
+  rec.tabIndex = -1;
+  rec.addEventListener('click', () => {
+    if (!recBtn) noteRecButton(doc);
+    if (recBtn) { recBtn.click(); setTimeout(() => safe(refreshQuickMenu), 80); }
+  });
+  row('Grabar partido', rec, () => {
+    const on = !!(recBtn && recBtn.classList.contains('active'));
+    rec.classList.toggle('on', on);
+    rec.textContent = on ? 'Grabando' : 'Grabar';
+    rec.disabled = !recBtn;
+    rec.style.opacity = recBtn ? '' : '.45';
+  });
+  refreshQuickMenu();
+}
+
+function refreshQuickMenu() {
+  if (!qm || !qm.open) return;
+  for (const fn of qm.rows) safe(fn);
+}
+
+/* ------------------------------------------------------------------ *
+ * Mapa chico
+ * ------------------------------------------------------------------ *
+ * Abajo a la derecha: la cancha entera con las fichas y la pelota. Se
+ * dibuja 20 veces por segundo en un canvas chiquito (unos círculos), así que
+ * el costo no se nota. Con la vertical se para; con el espejo se da vuelta,
+ * igual que la cancha. Si una ficha o la pelota pasa por debajo, se vuelve
+ * casi transparente para no tapar la jugada.
+ *
+ * Para saber qué hay debajo hace falta dónde cae cada ficha en pantalla: el
+ * parche deja la transformación de la cancha en `__tvmView` (sólo mientras el
+ * mapa está prendido, ver `__tvmWantView` en game-patch.js).
+ */
+const MINI_W = 220, MINI_MS = 50;
+const minimap = { on: false, el: null, cv: null, ctx: null, at: 0, faded: false, vert: false, w: 0, h: 0, box: null };
+function syncMinimap() {
+  const doc = gameDocument();
+  const want = !!(state.config.pitch && state.config.pitch.minimap) && !!doc;
+  minimap.on = want;
+  if (doc && doc.defaultView) doc.defaultView.__tvmWantView = want;
+  if (!want) { if (minimap.el) { minimap.el.remove(); minimap.el = null; } return; }
+  if (minimap.el && minimap.el.ownerDocument === doc && minimap.el.isConnected) return;
+  if (!doc.getElementById('tvm-mini-css')) {
+    const st = doc.createElement('style');
+    st.id = 'tvm-mini-css';
+    st.textContent = `
+      #tvm-mini { position: fixed; right: 14px; bottom: 14px; z-index: 2147482300; padding: 6px; border-radius: 14px; pointer-events: none;
+        background: rgba(250,247,238,.9); box-shadow: 0 10px 24px -12px rgba(0,0,0,.6); transition: opacity .15s ease; }
+      #tvm-mini.fade { opacity: .18; }
+      #tvm-mini canvas { display: block; border-radius: 8px; }`;
+    (doc.head || doc.documentElement).append(st);
+  }
+  const el = doc.createElement('div');
+  el.id = 'tvm-mini';
+  el.hidden = true;
+  const cv = doc.createElement('canvas');
+  el.append(cv);
+  doc.body.append(el);
+  minimap.el = el; minimap.cv = cv; minimap.ctx = cv.getContext('2d'); minimap.w = 0; minimap.box = null;
+}
+
+function minimapTick(f, room, match) {
+  const now = Date.now();
+  if (now - minimap.at < MINI_MS) return;
+  minimap.at = now;
+  if (!minimap.el || !minimap.el.isConnected) { syncMinimap(); if (!minimap.el) return; }
+  const b = pitchBounds(currentStadium) || matchGeom(currentStadium);
+  const world = match[f.world];
+  const discs = world && world[f.discs];
+  if (!b || !(b.halfW > 0) || !(b.halfH > 0) || !discs) { minimap.el.hidden = true; return; }
+  const view = gameWindow(gameDocument());
+  const vert = !!(view && view.__tvmVertOn);
+  const mirror = !!(view && view.__tvmMirror);
+  // Tamaño: el ancho fijo y el alto según la cancha (parado en la vertical).
+  const ratio = (b.halfH * 2 + 40) / (b.halfW * 2 + 40);
+  const W = vert ? Math.round(MINI_W * ratio) : MINI_W;
+  const H = vert ? MINI_W : Math.round(MINI_W * ratio);
+  const dpr = Math.min(2, (view && view.devicePixelRatio) || 1);
+  if (minimap.w !== W || minimap.h !== H || minimap.vert !== vert) {
+    minimap.w = W; minimap.h = H; minimap.vert = vert;
+    minimap.cv.width = Math.round(W * dpr); minimap.cv.height = Math.round(H * dpr);
+    minimap.cv.style.width = `${W}px`; minimap.cv.style.height = `${H}px`;
+    minimap.box = null;
+  }
+  minimap.el.hidden = false;
+  const c = minimap.ctx;
+  const fx = (W - 8) / ((vert ? b.halfH : b.halfW) * 2 + 40);
+  // Cancha → mapa: centro, escala, giro (vertical: el rojo ataca para arriba) y espejo.
+  const toMap = (x, y) => {
+    let px = mirror ? -x : x, py = y;
+    if (vert) { const t = px; px = py; py = -t; }
+    return [W / 2 + px * fx, H / 2 + py * fx];
+  };
+  c.setTransform(dpr, 0, 0, dpr, 0, 0);
+  c.fillStyle = '#4f8a45';
+  c.fillRect(0, 0, W, H);
+  c.strokeStyle = 'rgba(255,255,255,.65)';
+  c.lineWidth = 1.2;
+  const hw = b.halfW * fx, hh = b.halfH * fx;
+  c.beginPath();
+  if (vert) { c.rect(W / 2 - hh, H / 2 - hw, hh * 2, hw * 2); c.moveTo(W / 2 - hh, H / 2); c.lineTo(W / 2 + hh, H / 2); }
+  else { c.rect(W / 2 - hw, H / 2 - hh, hw * 2, hh * 2); c.moveTo(W / 2, H / 2 - hh); c.lineTo(W / 2, H / 2 + hh); }
+  c.moveTo(W / 2 + 15 * fx * 5, H / 2);
+  c.arc(W / 2, H / 2, 15 * fx * 5, 0, Math.PI * 2);
+  c.stroke();
+
+  // Fichas y pelota; de paso, ¿alguna cae debajo del mapa en pantalla?
+  const players = room[f.players] || [];
+  let under = false;
+  const T = view && view.__tvmView;
+  const gcv = view && view.__tvmViewCv;
+  if (!minimap.box) {
+    const r = minimap.el.getBoundingClientRect();
+    minimap.box = { l: r.left - 12, t: r.top - 12, r: r.right + 12, bo: r.bottom + 12 };
+  }
+  const scaleCss = gcv && gcv.width ? (gcv.clientWidth || gcv.width) / gcv.width : 1;
+  const onScreen = (x, y) => {
+    if (!T || under) return;
+    const sx = (T.a * x + T.c * y + T.e) * scaleCss, sy = (T.b * x + T.d * y + T.f) * scaleCss;
+    const bx = minimap.box;
+    if (sx > bx.l && sx < bx.r && sy > bx.t && sy < bx.bo) under = true;
+  };
+  for (let i = 0; i < players.length; i++) {
+    const p = players[i];
+    const d = p && p[f.disc];
+    const at = d && d[f.pos];
+    if (!at) continue;
+    const t = p[f.team];
+    const side = t ? canonicalTeam(String(t[f.name] || '')) : '';
+    const [mx, my] = toMap(at.x, at.y);
+    c.beginPath();
+    c.arc(mx, my, 4, 0, Math.PI * 2);
+    c.fillStyle = side === 'Blue' ? '#5689e5' : side === 'Red' ? '#e56b6b' : '#ccc';
+    c.fill();
+    c.lineWidth = 1;
+    c.strokeStyle = '#13254a';
+    c.stroke();
+    if (String(p[f.name] || '') === myNick()) {
+      c.beginPath(); c.arc(mx, my, 6.5, 0, Math.PI * 2); c.strokeStyle = '#ecd593'; c.lineWidth = 1.8; c.stroke();
+    }
+    onScreen(at.x, at.y);
+  }
+  const ball = discs[0] && discs[0][f.pos];
+  if (ball) {
+    const [bx, by] = toMap(ball.x, ball.y);
+    c.beginPath(); c.arc(bx, by, 2.6, 0, Math.PI * 2); c.fillStyle = '#fff'; c.fill(); c.lineWidth = 1; c.strokeStyle = '#000'; c.stroke();
+    onScreen(ball.x, ball.y);
+  }
+  if (under !== minimap.faded) { minimap.faded = under; minimap.el.classList.toggle('fade', under); }
 }
 
 /* ------------------------------------------------------------------ *
@@ -5063,7 +5443,30 @@ function peerAvatarImg(nick) {
 /** Lo que tiene que llevar la ficha de alguien: si cambia, se rearma. */
 function peerSig(nick) {
   const p = nick ? peers.get(nick) : null;
-  return `${peerDiscOf(nick)}|${peerAvatarImg(nick) && p.cosmetics.avatar ? p.cosmetics.avatar : ''}`;
+  return `${peerDiscOf(nick)}|${peerAvatarImg(nick) && p.cosmetics.avatar ? p.cosmetics.avatar : ''}|${clubGlowFor(nick) ? 1 : 0}`;
+}
+
+/*
+ * «Fichas del club resaltadas» (pitch.clubGlow): un borde dorado adentro de
+ * la ficha de cada uno del club. Va pintado en SU textura, que se arma una
+ * vez: no cuesta nada por cuadro.
+ */
+function clubGlowFor(nick) {
+  if (!(state.config.pitch && state.config.pitch.clubGlow) || !nick) return false;
+  const p = peers.get(nick);
+  return !!(p && !p.self && (p.name || p.soc));
+}
+function paintClubGlow(ctx) {
+  ownDraw++;
+  try {
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(32, 32, 29.5, 0, Math.PI * 2);
+    ctx.lineWidth = 5;
+    ctx.strokeStyle = '#ecd593';
+    ctx.stroke();
+    ctx.restore();
+  } finally { ownDraw--; }
 }
 
 /** El juego está por armar la textura de una ficha: de quién es. */
@@ -9882,6 +10285,7 @@ function onGameTick(view, room) {
   }
 
   const match = room[f.game];
+  if (!match && minimap.el && !minimap.el.hidden) minimap.el.hidden = true;
   if (!match) {
     // Se terminó. El resumen NO se vacía acá: al terminar un partido se quiere
     // poder mirarlo. Se vacía cuando arranca el siguiente.
@@ -9939,6 +10343,7 @@ function onGameTick(view, room) {
 
   // La ficha del partido: posesión y distancia se cobran por cuadro.
   cardTick(tracker.card, f, room, advanced);
+  if (minimap.on) safe(minimapTick, f, room, match);
 
   /*
    * La posición se lee acá y NO de `tracker.ball`, que es la memoria interna
@@ -11845,13 +12250,16 @@ function installCanvasHooks(doc) {
     if (texNick && !lastTextureMine) {
       const st = peerDiscOf(texNick);
       if (discArt.has(st)) safe(paintDiscArt, this, st, texNick);
+      const glow = clubGlowFor(texNick);
       // Y su foto, como la tuya en tu ficha: en lugar del texto del avatar.
       const img = peerAvatarImg(texNick);
       if (img) {
         ownDraw++;
         try { this.drawImage(img, 0, 0, 64, 64); } finally { ownDraw--; }
+        if (glow) safe(paintClubGlow, this);
         return undefined;
       }
+      if (glow) safe(paintClubGlow, this);
     }
     if (!esTextura && isGoalAnnounce(text, this)) return undefined;
     if (visual.names && !esTextura && ownDraw === 0) {
@@ -14049,6 +14457,10 @@ function boot() {
     // y tus colores— se repinta acá, que es donde llegan los cosméticos nuevos.
     safe(reportRoomInfo, state.view);
     if (doc) safe(paintPeers, doc);
+    // Menú del escudo, aro del club y mapa chico: al día con lo que cambió.
+    safe(refreshQuickMenu);
+    safe(syncPeerDiscs);
+    safe(syncMinimap);
   });
 }
 

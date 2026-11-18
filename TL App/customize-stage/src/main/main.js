@@ -2653,6 +2653,47 @@ handle('cfg:set', (_e, patch) => {
 handle('cfg:reset', () => broadcastConfig(store.reset()));
 
 /*
+ * El menú rápido del escudo (arriba a la derecha de la partida) cambia
+ * opciones sin abrir el panel. Viene de la página del juego, así que sólo se
+ * aceptan ESTAS claves y con valores de su tipo: nada más se puede tocar.
+ */
+const QUICK_KEYS = {
+  perf: { vertical: 'bool', view3d: 'bool', flatGraphics: 'bool' },
+  pitch: { mirror: ['off', 'red', 'blue'], ball3d: 'bool', clubKit: 'bool', clubGlow: 'bool', plainKits: 'bool', minimap: 'bool' },
+  visual: {
+    discSize: [0.6, 1.6], ballSize: [0.6, 1.8], softShadows: 'bool', discOutline: 'color',
+    discStyle: 'id', ballStyle: 'id', texture: 'id', pitchWeather: 'id'
+  },
+  appearance: { kickSfx: 'id' }
+};
+function cleanQuick(patch) {
+  const out = {};
+  for (const [group, keys] of Object.entries(QUICK_KEYS)) {
+    const src = patch && patch[group];
+    if (!src || typeof src !== 'object') continue;
+    for (const [key, kind] of Object.entries(keys)) {
+      if (!(key in src)) continue;
+      const v = src[key];
+      let ok;
+      if (kind === 'bool') ok = typeof v === 'boolean';
+      else if (kind === 'color') ok = v === '' || (typeof v === 'string' && /^#[0-9a-f]{6}$/i.test(v));
+      else if (kind === 'id') ok = typeof v === 'string' && /^[a-z0-9]{1,24}$/i.test(v);
+      else if (Array.isArray(kind) && typeof kind[0] === 'number') ok = typeof v === 'number' && v >= kind[0] && v <= kind[1];
+      else if (Array.isArray(kind)) ok = kind.includes(v);
+      if (ok) (out[group] = out[group] || {})[key] = v;
+    }
+  }
+  return Object.keys(out).length ? out : null;
+}
+listen('game:quick-set', (_e, patch) => {
+  const clean = cleanQuick(patch);
+  if (!clean) return;
+  const next = store.set(clean);
+  if (clean.perf) applyRuntimeFlags(next.perf);
+  broadcastConfig(next);
+});
+
+/*
  * Lo que viaja en «Exportar config»: todo lo portable (temas, interfaz, juego, teclas,
  * chat, cancha…) más gráficos (perf), ficha/pelota/líneas (visual) y los looks
  * guardados. No viajan canciones, imágenes/sonidos de la ficha (son archivos de esta
