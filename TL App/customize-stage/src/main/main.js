@@ -3305,6 +3305,34 @@ function sendPeersIfChanged(list) {
   sendToGame('game:peers', list);
 }
 
+/*
+ * Perfil de alguien del club (botón del escudo en la lista de la sala). El
+ * juego pide por nick; acá se lo busca en la lista de la sala para saber su
+ * id, se leen sus números y se contesta. Se pide sólo al abrir: no cuesta nada
+ * mientras se juega.
+ */
+listen('game:profile', async (_e, req) => {
+  const id = req && Number(req.id) || 0;
+  const nick = req && typeof req.nick === 'string' ? req.nick.slice(0, 40) : '';
+  let data = null;
+  try {
+    const peer = (lastPeers.list || []).find((p) => p && p.nick === nick);
+    if (peer && (peer.pid || peer.self)) {
+      const ctx = presenceCtx();
+      data = await presence.profileOf(ctx, peer.self ? 'self' : peer.pid);
+      if (data) {
+        data.nick = nick;
+        data.self = !!peer.self;
+        const cos = peer.self ? (myCosmetics() || {}) : (peer.cosmetics || {});
+        data.disc = typeof cos.disc === 'string' ? cos.disc : '';
+        data.photo = peer.self ? (myAvatarData || '') : (presence.avatarOf(ctx, peer, null) || '');
+        data.sameRoom = true;
+      }
+    }
+  } catch (err) { data = null; }
+  sendToGame('game:profile', { id, data });
+});
+
 /** Llegó un cambio en vivo de la sala: la lista nueva va al juego en el acto. */
 function onLiveRoom() {
   const ctx = presenceCtx();

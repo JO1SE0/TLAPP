@@ -615,4 +615,38 @@ function avatarOf(ctx, peer, onReady) {
   return '';
 }
 
-module.exports = { watchRoom, stopWatch, peersNow, putAvatar, avatarOf, avatarHash, sseParser, applyEvent, looksProblem, putStats, readStats, call, online, leaveOnline, why: () => why, leave, beat, cleanUrl, signedText, EVERY_MS, ALIVE_MS };
+/*
+ * Perfil de alguien del club: sus números (stats/<pid>) y dónde anda
+ * (online/<pid>). Dos lecturas chicas, sólo cuando se abre el perfil; las dos
+ * firmadas por su dueño, si no se descartan.
+ */
+async function profileOf(ctx, pid) {
+  const base = cleanUrl(ctx && ctx.url);
+  if (pid === 'self') { try { pid = idOf(ctx.key).pid; } catch { return null; } }
+  if (!base || !/^[0-9a-f]{16}$/i.test(String(pid || ''))) return null;
+  const member = (ctx.roster || []).find((u) => u && u.pub && /^[0-9a-f]{64}$/i.test(u.pub) && identity.pidOf(u.pub) === pid);
+  if (!member) return null;
+  const [st, on] = await Promise.all([
+    call(`${base}/stats/${pid}.json`, 'GET').catch(() => null),
+    call(`${base}/online/${pid}.json`, 'GET').catch(() => null)
+  ]);
+  const out = { name: member.name, soc: !!member.soc, host: !!member.host, rep: !!member.rep, stats: null, room: '', lastSeen: 0, online: false };
+  if (st && typeof st === 'object' && typeof st.sig === 'string') {
+    const [g, a, o, m, s] = [num(st.g), num(st.a), num(st.o), num(st.m), num(st.s)];
+    const t = Number(st.t) || 0;
+    if (identity.verify(member.pub, statsText(g, a, o, m, s, t), st.sig)) out.stats = { goals: g, assists: a, ownGoals: o, matches: m, seconds: s };
+  }
+  if (on && typeof on === 'object' && typeof on.t === 'number' && typeof on.s === 'string') {
+    const r = typeof on.r === 'string' ? on.r : '';
+    const v = typeof on.v === 'string' ? on.v : '';
+    const x = on.x === 1 ? 1 : 0;
+    if (identity.verify(member.pub, onlineText(r, v, x, on.t), on.s)) {
+      out.lastSeen = on.t;
+      out.online = !x && Math.abs(Date.now() - on.t) <= ONLINE_ALIVE_MS;
+      out.room = out.online ? r : '';
+    }
+  }
+  return out;
+}
+
+module.exports = { profileOf, watchRoom, stopWatch, peersNow, putAvatar, avatarOf, avatarHash, sseParser, applyEvent, looksProblem, putStats, readStats, call, online, leaveOnline, why: () => why, leave, beat, cleanUrl, signedText, EVERY_MS, ALIVE_MS };

@@ -5509,12 +5509,152 @@ function ensureMarks(doc, row, wanted) {
 }
 
 /** El escudo del club, servido por el proceso principal (la página es https). */
+/* ------------------------------------------------------------------ *
+ * Perfil de alguien del club
+ * ------------------------------------------------------------------ *
+ * Se abre tocando el escudo de TL en su fila de la lista de la sala. Los
+ * números los busca el proceso principal (presence.profileOf: stats y
+ * online, firmados) recién al abrir: mientras se juega no cuesta nada. La
+ * tarjeta es DOM quieto, con una entrada corta de transform/opacity.
+ */
+const DISC_NAMES = {"sphere": "Esfera", "glass": "Cristal", "neon": "Neón", "bubble": "Burbuja", "target": "Diana", "stripes": "Rayas", "gem": "Gema", "cartoon": "Dibujo", "dots": "Lunares", "half": "Mitad y mitad", "sash": "Banda", "eclipse": "Eclipse", "galaxy": "Galaxia", "sunset": "Atardecer", "crystal": "Bola de cristal", "jelly": "Gelatina", "ink": "Mancha de tinta", "embers": "Brasas", "tigereye": "Ojo de tigre", "kintsugi": "Kintsugi", "enamel": "Pin esmaltado", "chrome": "Cromo líquido", "bevel": "Botón biselado", "satin": "Satinado", "rimlight": "Contraluz", "window": "Reflejo de ventana", "treerelief": "Árbol en relieve", "goldtree": "Árbol dorado", "nightwolf": "Lobo de noche", "crestpin": "Pin del escudo", "golddrip": "Oro chorreado", "goldleaf": "Pan de oro", "goldsplash": "Salpicón dorado", "crown": "Corona dorada", "metal": "Metálico"};
+let profileSeq = 0;
+const profileWait = new Map();
+ipcRenderer.on('game:profile', (_e, msg) => {
+  const fn = msg && profileWait.get(msg.id);
+  if (!fn) return;
+  profileWait.delete(msg.id);
+  fn(msg.data);
+});
+function profileCss(doc) {
+  if (doc.getElementById('tvm-profile-css')) return;
+  const st = doc.createElement('style');
+  st.id = 'tvm-profile-css';
+  st.textContent = `
+    #tvm-profile { position: fixed; inset: 0; z-index: 2147482600; display: grid; place-items: center;
+      background: rgba(5, 8, 16, .45); font-family: Outfit, Bahnschrift, 'Segoe UI', sans-serif; animation: tvmPfBg .18s ease-out both; }
+    #tvm-profile .pf { position: relative; width: 380px; max-width: 92vw; background: #faf7ee; color: #13254a; border-radius: 20px; overflow: hidden;
+      box-shadow: 0 30px 60px -20px rgba(0,0,0,.85); animation: tvmPfIn .26s cubic-bezier(.2,.9,.3,1.15) both; }
+    #tvm-profile .cover { height: 70px; background: linear-gradient(135deg, #1d3a70, #0b1630); position: relative; }
+    #tvm-profile .cover img { position: absolute; right: 14px; top: 12px; width: 32px; height: 32px; object-fit: contain; }
+    #tvm-profile .role { position: absolute; left: 16px; top: 14px; font-size: 10px; font-weight: 900; letter-spacing: .24em; color: #ecd593; }
+    #tvm-profile .x { position: absolute; right: 56px; top: 12px; width: 28px; height: 28px; border-radius: 50%; border: 0; cursor: pointer;
+      background: rgba(255,255,255,.12); color: #fff; font-size: 16px; line-height: 28px; padding: 0; }
+    #tvm-profile .who { position: relative; z-index: 1; display: flex; align-items: flex-end; gap: 12px; padding: 0 18px; margin-top: -32px; }
+    #tvm-profile .ph { width: 72px; height: 72px; flex: none; border-radius: 50%; object-fit: cover; border: 4px solid #faf7ee; background: #13254a;
+      box-shadow: 0 6px 14px rgba(0,0,0,.3); display: grid; place-items: center; color: #ecd593; font-size: 28px; font-weight: 900; box-sizing: border-box; }
+    #tvm-profile .nm { min-width: 0; padding-bottom: 4px; }
+    #tvm-profile .nm b { display: block; font-size: 21px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    #tvm-profile .nm span { display: block; font-size: 12px; color: #6b7184; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    #tvm-profile .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; padding: 14px 18px 6px; }
+    #tvm-profile .stats div { background: #f1ecdf; border-radius: 12px; padding: 8px 0; text-align: center; }
+    #tvm-profile .stats b { display: block; font-size: 19px; font-weight: 900; }
+    #tvm-profile .stats small { font-size: 9px; font-weight: 800; letter-spacing: .12em; color: #a3833c; }
+    #tvm-profile .sub { display: flex; gap: 8px; padding: 0 18px; font-size: 12px; color: #6b7184; }
+    #tvm-profile .sub span { flex: 1; text-align: center; }
+    #tvm-profile .now { display: flex; align-items: center; gap: 8px; margin: 12px 18px 16px; font-size: 13px; background: #13254a; color: #fff;
+      border-radius: 12px; padding: 10px 12px; }
+    #tvm-profile .now i { width: 8px; height: 8px; border-radius: 50%; flex: none; background: #9aa0ad; }
+    #tvm-profile .now.on i { background: #4ade80; box-shadow: 0 0 0 3px rgba(74,222,128,.25); }
+    #tvm-profile .now b { color: #ecd593; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    #tvm-profile .load { padding: 26px 18px 30px; text-align: center; color: #6b7184; font-size: 13px; }
+    @keyframes tvmPfBg { from { opacity: 0; } }
+    @keyframes tvmPfIn { from { opacity: 0; transform: translateY(14px) scale(.96); } }
+    html.tvm-noanim #tvm-profile, html.tvm-noanim #tvm-profile .pf { animation: none; }`;
+  (doc.head || doc.documentElement).append(st);
+}
+function closeProfile(doc) { doc.getElementById('tvm-profile')?.remove(); }
+function openProfile(doc, nick) {
+  profileCss(doc);
+  closeProfile(doc);
+  const el = (tag, cls, text) => { const n = doc.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; };
+  const wrap = el('div');
+  wrap.id = 'tvm-profile';
+  const card = el('div', 'pf');
+  const cover = el('div', 'cover');
+  const role = el('span', 'role', 'TODA LA LECCE');
+  const crest = el('img');
+  crest.src = assetUrl('crest');
+  crest.alt = '';
+  const x = el('button', 'x', '×');
+  x.type = 'button';
+  cover.append(role, x, crest);
+  const body = el('div', 'load', 'Cargando…');
+  card.append(cover, body);
+  wrap.append(card);
+  wrap.addEventListener('mousedown', (e) => { if (e.target === wrap) closeProfile(doc); });
+  x.addEventListener('click', () => closeProfile(doc));
+  const onKey = (e) => { if (e.key === 'Escape') { closeProfile(doc); doc.removeEventListener('keydown', onKey, true); } };
+  doc.addEventListener('keydown', onKey, true);
+  doc.body.append(wrap);
+
+  const id = ++profileSeq;
+  const timer = setTimeout(() => { if (profileWait.delete(id)) body.textContent = 'No se pudo cargar el perfil.'; }, 8000);
+  profileWait.set(id, (data) => {
+    clearTimeout(timer);
+    if (!doc.getElementById('tvm-profile') || wrap.parentNode == null) return;
+    if (!data) { body.textContent = 'No hay datos de este jugador.'; return; }
+    role.textContent = data.soc ? 'SOCIO' : data.host ? 'ANFITRIÓN' : 'PLANTEL';
+    body.remove();
+    const who = el('div', 'who');
+    let ph;
+    if (data.photo && /^data:image\/jpeg;base64,/.test(data.photo)) { ph = el('img', 'ph'); ph.src = data.photo; ph.alt = ''; }
+    else ph = el('div', 'ph', (String(data.name || nick)[0] || '?').toUpperCase());
+    const nm = el('div', 'nm');
+    nm.append(el('b', null, data.name || nick));
+    const disc = DISC_NAMES[data.disc] ? ` · Ficha: ${DISC_NAMES[data.disc]}` : '';
+    nm.append(el('span', null, `${data.nick && data.nick !== data.name ? `«${data.nick}»` : 'Toda la Lecce'}${disc}`));
+    who.append(ph, nm);
+    card.append(who);
+    const s = data.stats;
+    const stats = el('div', 'stats');
+    const cell = (n, l) => { const c = el('div'); c.append(el('b', null, n), el('small', null, l)); return c; };
+    stats.append(
+      cell(s ? String(s.matches) : '–', 'PARTIDOS'),
+      cell(s ? String(s.goals) : '–', 'GOLES'),
+      cell(s ? String(s.assists) : '–', 'ASIST.'),
+      cell(s && s.matches ? (s.goals / s.matches).toFixed(2) : '–', 'GOL/PART.')
+    );
+    card.append(stats);
+    if (s) {
+      const sub = el('div', 'sub');
+      const hrs = Math.floor((s.seconds || 0) / 3600), mins = Math.round(((s.seconds || 0) % 3600) / 60);
+      sub.append(el('span', null, `${hrs ? `${hrs} h ` : ''}${mins} min jugados`), el('span', null, `${s.ownGoals} en contra`));
+      card.append(sub);
+    }
+    const now = el('div', `now${data.online ? ' on' : ''}`);
+    now.append(el('i'));
+    if (data.self || data.sameRoom) {
+      now.append(doc.createTextNode('Está en esta sala'));
+    } else if (data.online && data.room) {
+      now.append(doc.createTextNode('Jugando en '), el('b', null, data.room));
+    } else if (data.lastSeen) {
+      const ago = Math.max(1, Math.round((Date.now() - data.lastSeen) / 60000));
+      now.append(doc.createTextNode(ago < 60 ? `Visto hace ${ago} min` : ago < 1440 ? `Visto hace ${Math.round(ago / 60)} h` : `Visto hace ${Math.round(ago / 1440)} días`));
+    } else now.append(doc.createTextNode('Sin conexión'));
+    card.append(now);
+  });
+  ipcRenderer.send('game:profile', { id, nick });
+}
+
 function logoMark(doc) {
   const img = doc.createElement('img');
   img.className = 'tvm-mark tvm-mark--logo';
   img.src = assetUrl('logo');
   img.alt = '';
   img.title = 'Está jugando con TL App';
+  // Tocarlo abre su perfil. Se frena el evento: el clic en la fila es el de
+  // HaxBall (menú de admin) y no tiene que saltar.
+  img.style.cursor = 'pointer';
+  const stop = (e) => { e.stopPropagation(); e.preventDefault(); };
+  img.addEventListener('mousedown', stop);
+  img.addEventListener('click', (e) => {
+    stop(e);
+    const row = img.closest('.player-list-item');
+    const name = row && row.querySelector('[data-hook="name"]');
+    const nick = name ? (name.textContent || '').trim() : '';
+    if (nick) safe(openProfile, doc, nick);
+  });
   /*
    * Si no cargó, se saca. No es rendirse: `ensureMarks` repone lo que falta en
    * la pasada siguiente —y hay una por segundo—, así que un tropiezo del
