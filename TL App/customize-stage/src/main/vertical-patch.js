@@ -55,7 +55,7 @@ const SITES = {
   /* El jugador propio en el cuadro (para saber de qué equipo sos). */
   me: /,f=(?:this\.__tvmMe=)?a\.[\w$]+\(b\),g=null!=f\?f\.[\w$]+:null/,
   /* Lo que se ve de cancha, para la cámara: con la pantalla girada, ancho y alto se cambian. */
-  view: /l=\(this\.[\w$]+\.height-b-k\)\/h;this\.[\w$]+\(c,g,n,l,d\);/,
+  view: /l=\(this\.[\w$]+\.height-b-k\)\/h;this\.([\w$]+)\(c,g,n,l,d\);/,
   /* Equipo del jugador y su número (1 rojo, 2 azul). */
   team: /\?b\.[\w$]+\[a\.([\w$]+)\.([\w$]+)\]:a\.\1\.[\w$]+/,
   /* La camiseta de cada ficha: se endereza alrededor de su centro. */
@@ -106,8 +106,8 @@ const CORNERS = (() => {
  * Inclinación de la vista vertical (`__tvmTiltOn`).
  *
  * En tu mitad la cancha queda plana. Apenas la pelota pasa la mitad de la
- * cancha, la cámara se inclina (34°; y 52°, como la cámara Vertical de la 3D,
- * pasando el 35 % del campo rival) y mira hacia adelante: lo de cerca se ve
+ * cancha, la cámara se inclina (34°; y 40° pasando el 35 % del campo rival) y
+ * mira hacia adelante: lo de cerca se ve
  * del tamaño de siempre y lo de lejos se achica, así entra más cancha por
  * delante en una pantalla apaisada.
  *
@@ -128,9 +128,9 @@ const TILT =
   'var now=window.performance.now(),dt=T.at?Math.min(.1,(now-T.at)/1e3):0;T.at=now;' +
   'var lv=T.lv,cut=[-.02,.35],hy=.04;' +
   'if(null==u)lv=0;else{while(lv<2&&u>cut[lv]+hy)lv++;while(lv>0&&u<cut[lv-1]-hy)lv--;}' +
-  'T.lv=lv;var g=lv?(1==lv?.65:1):0;' +
+  'T.lv=lv;var g=lv?(1==lv?.85:1):0;' +
   'T.t+=(g-T.t)*(1-Math.exp(-dt/.22));if(Math.abs(g-T.t)<.004)T.t=g;' +
-  'var MAX=(window.__tvmTiltMax||52)*Math.PI/180,th=T.t*MAX;' +
+  'var MAX=(window.__tvmTiltMax||40)*Math.PI/180,th=T.t*MAX;' +
   'var H=cv.offsetHeight||cv.height||1,P=2*H;' +
   'var S=th?(P+H*Math.sin(th))/(P*Math.cos(th)):1;' +
   // La sala limita cuánto se ve: no se aleja más de lo que deja, y se inclina menos.
@@ -218,6 +218,12 @@ function patchVertical(source) {
       `?e.${discs[1]}[0].${pos[1]}.x*(2==f.${teamF}.${teamId}?-1:1)/(c.${stadiumF}.${width[1]}||1):null`;
     edits.push([zoomAt.index + 1,
       `if(window.__tvmTiltOn||1!==window.__tvmTiltK){window.__tvmTiltTick(this.oa,${u},0<c.${stadiumF}.${zoomAt[2]}?this.oa.width/(c.${stadiumF}.${zoomAt[2]}*${zoomVar}):0);${zoomVar}*=window.__tvmTiltK}`]);
+    /*
+     * La cámara (seguir la pelota y no salirse del estadio) se calcula con lo
+     * que se vería SIN inclinar. Con la cancha alejada, HaxBall creía que ya
+     * entraba todo y dejaba la cámara quieta en el medio: atacando arriba, te
+     * quedabas chiquito en la parte lejana.
+     */
     // Con el canvas inclinado, su rectángulo en pantalla cambia: se mide su tamaño sin la inclinación.
     edits.push([size.index + 'let b='.length, `window.__tvmTiltCss?{width:this.${size[1]}.offsetWidth,height:this.${size[1]}.offsetHeight}:`]);
     tilt = true;
@@ -226,6 +232,14 @@ function patchVertical(source) {
   edits.sort((a, b) => b[0] - a[0]);
   let out = source;
   for (const [at, ins] of edits) out = out.slice(0, at) + ins + out.slice(at);
+
+  // La cámara con lo que se vería sin inclinar (ver arriba): la llamada, ya después del giro de la vertical.
+  if (tilt) {
+    const call = `this.${view[1]}(c,g,n,l,d);`;
+    if (out.split(call).length === 2) {
+      out = out.replace(call, `this.${view[1]}(c,g,1>window.__tvmTiltK?n*window.__tvmTiltK:n,1>window.__tvmTiltK?l*window.__tvmTiltK:l,d);`);
+    }
+  }
 
   if (hasCache) {
     // Sin espejo mientras está girada: los dos juntos no tienen sentido.
