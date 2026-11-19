@@ -209,22 +209,11 @@ const DEFAULTS = {
     startFullscreen: true,
     /** Opcional: reusa la simulación del cuadro anterior si pasó <4 ms (ver patchLightSim). */
     lightSim: true,
-    /** Vista 3D de la cancha (ver view-3d.js). Apagada de fábrica. Se prende y apaga en vivo. */
-    view3d: false,
     /**
-     * Vista vertical en 2D (ver vertical-patch.js): la cancha girada de arco a
-     * arco, tu equipo atacando hacia arriba. En vivo. Con la vista 3D prendida
-     * no se usa (la 3D tiene su propia cámara Vertical).
+     * Vista vertical (ver vertical-patch.js): la cancha girada de arco a arco,
+     * tu equipo atacando hacia arriba. En vivo.
      */
     vertical: false,
-    /**
-     * Inclinación de la vista vertical: plana cerca de tu arco y, a medida que
-     * la pelota avanza al arco rival, la cámara se inclina para ver más cancha
-     * por delante (ver TILT en vertical-patch.js). En vivo.
-     */
-    verticalTilt: true,
-    /** Perspectiva de la vista 3D: dron | tribuna | tv | vertical. Se cambia en vivo. */
-    view3dCam: 'tribuna',
     /** «Modo PC lenta»: apaga de una vez lo visual que cuesta. `lowEndBackup` guarda lo que había para volver. */
     lowEnd: false,
     lowEndBackup: null,
@@ -930,6 +919,10 @@ function migrate(stored) {
   if (!(next.version >= 31) && next.vip && next.vip.cosmetics && next.vip.cosmetics.style === 'glass') {
     next.vip = { ...next.vip, cosmetics: { ...next.vip.cosmetics, style: 'galaxia' } };
   }
+
+  // Se sacaron la vista 3D y la inclinación de la vertical: sus claves no quedan.
+  if (next.perf) { delete next.perf.view3d; delete next.perf.view3dCam; delete next.perf.verticalTilt; }
+  if (next.perf && next.perf.lowEndBackup && next.perf.lowEndBackup.perf) delete next.perf.lowEndBackup.perf.view3d;
 
   next.version = 31;
   return next;
