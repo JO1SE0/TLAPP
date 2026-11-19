@@ -638,7 +638,7 @@ function plainKit(team) {
   return k;
 }
 function teamKit(team, kit) {
-  if (kit && (team === 1 || team === 2) && state.config.pitch && state.config.pitch.plainKits) return plainKit(team);
+  if (kit && (team === 1 || team === 2) && state.config && state.config.pitch && state.config.pitch.plainKits) return plainKit(team);
   // Los colores que eligió el jugador mandan sobre la camiseta del club.
   if (!teamPick.on && kit && clubKit.teams[team]) return clubKitFor(team) || kit;
   if (!teamPick.on || !kit) return kit;
@@ -1845,6 +1845,8 @@ function watchViews(doc) {
       kind === 'room' || kind === 'game' ? watchRoomPanel(doc) : stopRoomPanel();
       // El menú del escudo es de la sala y la partida: en la lista de salas no va.
       if (qm && qm.root) { qm.root.hidden = !(kind === 'game' || kind === 'room' || kind === 'replay'); if (qm.root.hidden) toggleQuickMenu(false); }
+      if (kind === 'roomlist') recBtn = null;
+      else if (kind === 'room' || kind === 'game') safe(noteRecButton, doc);
       // El festejo de gol queda listo antes del primer gol (estilo y escudo ya cargados).
       if (kind === 'room' || kind === 'game') { safe(() => clubGoal.warm(doc, assetUrl('crest'))); safe(warmGoalFx, doc); }
       // El selector de estadios sale del panel de la sala, así que sigue la
@@ -2067,6 +2069,7 @@ function installQuickMenu(doc) {
   if (!doc || !doc.body) return;
   noteRecButton(doc);
   if (qm && qm.doc === doc && qm.root.isConnected) { qm.root.hidden = false; return; }
+  if (qm && qm.doc !== doc) recBtn = null; // el botón de grabar era de la otra sala
   quickCss(doc);
   const el = (tag, cls, text) => { const n = doc.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; };
   const root = el('div');
@@ -2085,10 +2088,15 @@ function installQuickMenu(doc) {
   // Nada de foco: el teclado sigue siendo del juego.
   root.addEventListener('mousedown', (e) => { e.preventDefault(); e.stopPropagation(); });
   btn.addEventListener('click', (e) => { e.stopPropagation(); toggleQuickMenu(); });
-  doc.addEventListener('mousedown', (e) => { if (qm && qm.open && !root.contains(e.target)) toggleQuickMenu(false); }, true);
-  doc.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && qm && qm.open) { e.preventDefault(); e.stopPropagation(); toggleQuickMenu(false); }
-  }, true);
+  // Una sola vez por documento, y siempre contra el menú de ahora (si HaxBall
+  // rearma la pantalla, el menú se vuelve a poner y no quedan oyentes del viejo).
+  if (!doc.__tvmQmBound) {
+    doc.__tvmQmBound = true;
+    doc.addEventListener('mousedown', (e) => { if (qm && qm.open && qm.doc === doc && !qm.root.contains(e.target)) toggleQuickMenu(false); }, true);
+    doc.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && qm && qm.open && qm.doc === doc) { e.preventDefault(); e.stopPropagation(); toggleQuickMenu(false); }
+    }, true);
+  }
   doc.body.append(root);
   qm = { doc, root, panel, open: false, rows: [] };
   buildQuickMenu();
@@ -2283,7 +2291,7 @@ function applyMiniLook() {
 }
 function syncMinimap() {
   const doc = gameDocument();
-  const want = !!(state.config.pitch && state.config.pitch.minimap) && !!doc;
+  const want = !!(state.config && state.config.pitch && state.config.pitch.minimap) && !!doc;
   minimap.on = want;
   if (doc && doc.defaultView && !want) { doc.defaultView.__tvmWantView = 0; doc.defaultView.__tvmView = null; }
   if (!want) { if (minimap.el) { minimap.el.remove(); minimap.el = null; minimap.bg = null; } return; }
@@ -4450,6 +4458,7 @@ function watchRoomPanel(doc) {
 
   const refresh = () => {
     roomRefreshTimer = null;
+    safe(noteRecButton, doc);
     safe(injectRoomTools, doc);
     safe(injectPlayerActions, doc);
     // La lista se rehace sola cuando entra o sale gente: las marcas se vuelven
@@ -5586,7 +5595,7 @@ function peerSig(nick) {
  * vez: no cuesta nada por cuadro.
  */
 function clubGlowFor(nick) {
-  if (!(state.config.pitch && state.config.pitch.clubGlow) || !nick) return false;
+  if (!(state.config && state.config.pitch && state.config.pitch.clubGlow) || !nick) return false;
   const p = peers.get(nick);
   return !!(p && !p.self && (p.name || p.soc));
 }

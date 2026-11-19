@@ -7989,18 +7989,7 @@ function paintThemePreview() {
   box.style.setProperty('--pv-accent-text', readableOn(accent));
 }
 
-function mixHex(a, b, amount) {
-  const pa = parseHex(a);
-  const pb = parseHex(b);
-  if (!pa || !pb) return a;
-  const to = (v) => v.toString(16).padStart(2, '0');
-  return `#${pa.map((v, i) => to(Math.round(v + (pb[i] - v) * amount))).join('')}`;
-}
-
-function parseHex(hex) {
-  const m = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(String(hex || '').trim());
-  return m ? m.slice(1).map((h) => parseInt(h, 16)) : null;
-}
+// mixHex y parseHex están más arriba (había una segunda copia acá que pisaba a la primera).
 
 function readableOn(hex) {
   const c = parseHex(hex);
@@ -10823,6 +10812,13 @@ const GAME_STAGES = {
  * Un aviso de «cambió la pantalla» de una pestaña de juego, venga por evento o
  * de la consulta de respaldo (`reconcileTabs`).
  */
+/*
+ * El análisis automático de grabaciones vive dentro de `boot` (usa su estado);
+ * `handleViewEvent` está afuera y lo llama por acá. Antes lo llamaba por el
+ * nombre directo, que desde afuera no existe: abrir una grabación cortaba el
+ * manejo del cambio de pantalla con un error.
+ */
+let scheduleAutoAnalyzeHook = null;
 function handleViewEvent(kind, meta) {
   const { s, active, tab } = tabBucket(meta);
   if (tab && meta && Number.isFinite(meta.seq)) tab.viewSeq = Math.max(tab.viewSeq || 0, meta.seq);
@@ -10842,7 +10838,7 @@ function handleViewEvent(kind, meta) {
   onGameView(kind);
   // Abrir una grabación dispara el análisis solo. Salir de ella tira lo que
   // se había leído: el resumen es de la grabación, no de la pantalla.
-  if (kind === 'replay' && era !== 'replay') scheduleAutoAnalyze();
+  if (kind === 'replay' && era !== 'replay') { if (scheduleAutoAnalyzeHook) scheduleAutoAnalyzeHook(); }
   else if (kind !== 'replay' && era === 'replay') {
     state.summary = null;
     state.summaryError = null;
@@ -12011,6 +12007,7 @@ async function boot() {
     clearTimeout(analyzeTimer);
     analyzeTimer = setTimeout(() => autoAnalyze(), ANALYZE_DELAY_MS);
   }
+  scheduleAutoAnalyzeHook = scheduleAutoAnalyze;
 
   /**
    * La tabla de jugadores y el MVP, a partir de los goles.

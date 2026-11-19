@@ -41,7 +41,7 @@ async function open(browser) {
 
 (async () => {
   // 0 · Los preloads del juego cargan sin errores (si no, el juego queda sin la app)
-  for (const f of ['game-preload.js']) {
+  for (const f of ['game-preload.js', 'preload.js', 'host-preload.js']) {
     const out = require('child_process').spawnSync(process.execPath, [path.join(here, 'preload-load.cjs'), path.resolve(here, '../../src/main', f)], { encoding: 'utf8', timeout: 30000 });
     const text = String(out.stdout || '') + String(out.stderr || '');
     check(`${f} carga sin errores`, /CARGÓ SIN ERRORES/.test(text), /CARGÓ SIN ERRORES/.test(text) ? '' : text.split('\n').slice(0, 3).join(' '));
