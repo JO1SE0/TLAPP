@@ -2243,7 +2243,8 @@ const MINI_STYLES = {
 };
 /** Lo que se eligió para el mapa, ya acotado (el panel también puede escribir la config). */
 function miniOpts() {
-  const p = state.config.pitch || {};
+  // Ojo: esto también corre antes de que llegue la config (state.config es null al cargar).
+  const p = (state.config && state.config.pitch) || {};
   const clamp = (v, a, b, d) => { v = Number(v); return v >= a && v <= b ? v : d; };
   return {
     size: clamp(p.miniSize, 0.6, 1.6, 1),
@@ -2257,7 +2258,7 @@ function miniOpts() {
   };
 }
 const minimap = { on: false, el: null, cv: null, ctx: null, at: 0, faded: false, vert: false, mirror: false, w: 0, h: 0, box: null,
-  bg: null, bgKey: '', sum: NaN, dpr: 1, fx: 0, o: miniOpts(), optKey: '' };
+  bg: null, bgKey: '', sum: NaN, dpr: 1, fx: 0, o: null, optKey: '' };
 
 /** Esquina, transparencia y estilo van en el estilo del recuadro: se ponen cuando cambian, no por dibujo. */
 function applyMiniLook() {
@@ -2315,8 +2316,9 @@ function syncMinimap() {
  * nuevo son las fichas y la pelota.
  */
 function minimapBackground(doc, W, H, b, vert) {
-  const sty = MINI_STYLES[minimap.o.style];
-  const key = `${W}x${H}|${b.halfW}|${b.halfH}|${vert ? 1 : 0}|${minimap.dpr}|${minimap.o.style}`;
+  const mo = minimap.o || (minimap.o = miniOpts());
+  const sty = MINI_STYLES[mo.style];
+  const key = `${W}x${H}|${b.halfW}|${b.halfH}|${vert ? 1 : 0}|${minimap.dpr}|${mo.style}`;
   if (minimap.bg && minimap.bgKey === key) return minimap.bg;
   const dpr = minimap.dpr;
   const cv = minimap.bg || doc.createElement('canvas');
@@ -2363,7 +2365,7 @@ function minimapTick(f, room, match) {
   const vert = !!(view && view.__tvmVertOn);
   const mirror = !!(view && view.__tvmMirror);
   const ratio = (b.halfH * 2 + 40) / (b.halfW * 2 + 40);
-  const o = minimap.o;
+  const o = minimap.o || (minimap.o = miniOpts());
   const base = Math.round(MINI_W * o.size);
   const W = vert ? Math.round(base * ratio) : base;
   const H = vert ? base : Math.round(base * ratio);
