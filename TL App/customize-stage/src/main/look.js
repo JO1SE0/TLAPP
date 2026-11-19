@@ -1846,6 +1846,11 @@ function weatherVeil(kind, amount) {
   }
 }
 
+/* Lo visible del cuadro, para envolver las partículas. Funciones fijas y no
+   creadas en cada cuadro: el clima se dibuja cientos de veces por segundo. */
+const wxBox = { vx: 0, vw: 1, vy: 0, vh: 1 };
+function wrapX(x) { const b = wxBox; return b.vx + (((x - b.vx) % b.vw) + b.vw) % b.vw; }
+function wrapY(y) { const b = wxBox; return b.vy + (((y - b.vy) % b.vh) + b.vh) % b.vh; }
 function paintWeather(ctx, kind, amount, now, skipVeil) {
   const cv = ctx.canvas;
   if (!cv) return;
@@ -1896,8 +1901,7 @@ function paintWeather(ctx, kind, amount, now, skipVeil) {
 
   const k = Math.min(1, Math.max(0.2, amount || 0.6));
   const t = now / 1000;
-  const wrapX = (x) => vx + (((x - vx) % vw) + vw) % vw;
-  const wrapY = (y) => vy + (((y - vy) % vh) + vh) % vh;
+  wxBox.vx = vx; wxBox.vw = vw; wxBox.vy = vy; wxBox.vh = vh;
 
   ctx.save();
   try {

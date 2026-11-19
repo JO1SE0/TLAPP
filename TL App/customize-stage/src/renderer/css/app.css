@@ -343,6 +343,12 @@ svg[data-icon] .ico-fill { fill: currentColor; stroke: none; }
 /* Vuelve mientras el mouse esté en el borde o encima del propio riel. */
 .app[data-stage="game"] .railedge:hover ~ .rail,
 .app[data-stage="game"] .rail:hover { transform: translateX(0); }
+/* Escondida fuera de pantalla durante el partido, sus animaciones (íconos que
+   laten, ecualizador) seguían obligando a la app a dibujar cuadros que nadie
+   ve, en la misma placa de video que el juego. Quietas hasta que se asome. */
+.app[data-stage="game"] .rail:not(:hover) *,
+.app[data-stage="game"] .rail:not(:hover) *::before,
+.app[data-stage="game"] .rail:not(:hover) *::after { animation-play-state: paused !important; }
 
 /* ── Amigos y perfil en la barra ─────────────────────────── */
 .friendsbtn {

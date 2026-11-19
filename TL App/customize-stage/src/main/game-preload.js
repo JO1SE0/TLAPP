@@ -6124,7 +6124,12 @@ function profileCss(doc) {
     html.tvm-noanim #tvm-profile, html.tvm-noanim #tvm-profile .pf { animation: none; }`;
   (doc.head || doc.documentElement).append(st);
 }
-function closeProfile(doc) { doc.getElementById('tvm-profile')?.remove(); }
+// El aviso de Esc del perfil abierto: se saca al cerrarlo de cualquier forma (X, click afuera o Esc).
+let profileKey = null;
+function closeProfile(doc) {
+  doc.getElementById('tvm-profile')?.remove();
+  if (profileKey) { doc.removeEventListener('keydown', profileKey, true); profileKey = null; }
+}
 function openProfile(doc, nick) {
   profileCss(doc);
   closeProfile(doc);
@@ -6145,7 +6150,8 @@ function openProfile(doc, nick) {
   wrap.append(card);
   wrap.addEventListener('mousedown', (e) => { if (e.target === wrap) closeProfile(doc); });
   x.addEventListener('click', () => closeProfile(doc));
-  const onKey = (e) => { if (e.key === 'Escape') { closeProfile(doc); doc.removeEventListener('keydown', onKey, true); } };
+  const onKey = (e) => { if (e.key === 'Escape') closeProfile(doc); };
+  profileKey = onKey;
   doc.addEventListener('keydown', onKey, true);
   doc.body.append(wrap);
 
@@ -9619,12 +9625,24 @@ function resetHeat() {
 }
 
 /** Una muestra de la pelota. La llama el tick, que ya tiene la posición. */
+/*
+ * La clave de cada celda es un número (columna y fila empaquetadas) y no un
+ * texto: esto corre unas 125 veces por segundo y armar «x|y» en cada muestra
+ * era basura para el recolector en pleno partido. Si la pelota sigue en la
+ * misma celda que la muestra anterior, ni se busca: se suma directo.
+ */
+const HEAT_OFF = 4096, HEAT_SPAN = 8192;
+const heatKey = (cx, cy) => (cx + HEAT_OFF) * HEAT_SPAN + (cy + HEAT_OFF);
+const heatCol = (k) => Math.floor(k / HEAT_SPAN) - HEAT_OFF;
+const heatRow = (k) => (k % HEAT_SPAN) - HEAT_OFF;
+let heatLastKey = -1, heatLastN = 0;
 function recordHeat(x, y) {
-  const cx = Math.round(x / HEAT_CELL);
-  const cy = Math.round(y / HEAT_CELL);
-  const clave = `${cx}|${cy}`;
-  const n = (heat.celdas.get(clave) || 0) + 1;
-  heat.celdas.set(clave, n);
+  const k = heatKey(Math.round(x / HEAT_CELL), Math.round(y / HEAT_CELL));
+  let n;
+  if (k === heatLastKey && heat.celdas.get(k) === heatLastN) n = heatLastN + 1;
+  else n = (heat.celdas.get(k) || 0) + 1;
+  heat.celdas.set(k, n);
+  heatLastKey = k; heatLastN = n;
   if (n > heat.max) heat.max = n;
   heat.sucio = true;
 }
@@ -9638,9 +9656,8 @@ function renderHeat(doc) {
 
   let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
   for (const clave of heat.celdas.keys()) {
-    const corte = clave.indexOf('|');
-    const cx = +clave.slice(0, corte);
-    const cy = +clave.slice(corte + 1);
+    const cx = heatCol(clave);
+    const cy = heatRow(clave);
     if (cx < minX) minX = cx;
     if (cx > maxX) maxX = cx;
     if (cy < minY) minY = cy;
@@ -9669,9 +9686,8 @@ function renderHeat(doc) {
   heat.ctx.clearRect(0, 0, cols, filas);
 
   for (const [clave, n] of heat.celdas) {
-    const corte = clave.indexOf('|');
-    const cx = +clave.slice(0, corte) - minX;
-    const cy = +clave.slice(corte + 1) - minY;
+    const cx = heatCol(clave) - minX;
+    const cy = heatRow(clave) - minY;
     /* Raíz y no lineal: con lineal, las dos o tres celdas donde la pelota se
        queda quieta se llevan todo el color y el resto del mapa queda en negro. */
     const t = Math.sqrt(n / heat.max);
