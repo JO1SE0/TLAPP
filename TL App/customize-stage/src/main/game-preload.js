@@ -2002,6 +2002,8 @@ const QM_WEATHER = [['none', 'Sin clima'], ...Object.entries({"rain": "Lluvia", 
 const QM_BALLS = [['default', 'Como viene'], ...Object.entries({"soccer": "Futbolera", "neon": "Neón", "gold": "Dorada", "beach": "Playera", "eight": "Bola 8", "star": "Estrella", "triangles": "Fútbol triángulos", "vintage": "Fútbol de cuero", "tennis": "Tenis", "basket": "Básquet", "volley": "Vóley", "baseball": "Béisbol", "golf": "Golf", "bowling": "Bowling", "earth": "Planeta Tierra", "moon": "Luna", "disco": "Bola de espejos", "orb": "Orbe místico", "pumpkin": "Calabaza", "melon": "Sandía", "eye": "Ojo", "argentina": "Celeste y blanca", "fire": "Bola de fuego", "ice": "Hielo", "yinyang": "Yin yang", "smile": "Carita", "sun": "Sol", "donut": "Dona", "checker": "Cuadros", "candy": "Caramelo", "heart": "Corazón", "saturn": "Planeta", "lava": "Lava", "peso": "Moneda de un peso"})];
 const qmDiscs = () => [['default', 'Como viene'], ...Object.entries(DISC_NAMES)];
 const QM_KICKS = [['default', 'El del juego'], ['real1', 'Pelotazo real'], ['real2', 'Golpe seco'], ['real3', 'Patada real'], ['real4', 'Toque rápido'], ['real5', 'Bombazo'], ['real6', 'Zapatazo']];
+const QM_LIGHTS = [['none', 'Sin luz'], ['vignette', 'Viñeta'], ['spot', 'Foco central'], ['corners', 'Luces de esquina'], ['stadium', 'Estadio de noche'], ['sunset', 'Atardecer'], ['night', 'Noche fría'], ['stripes', 'Franjas de césped'], ['cinema', 'Cine']];
+const QM_BALL_COLORS = [['', 'Como viene'], ['#ecd593', 'Dorado'], ['#e56b6b', 'Rojo'], ['#5689e5', 'Azul'], ['#5ccf7a', 'Verde'], ['#ff9f43', 'Naranja'], ['#b07cff', 'Violeta']];
 const QM_OUTLINES = [['', 'Como viene'], ['#ffffff', 'Blanco'], ['#000000', 'Negro'], ['#ecd593', 'Dorado'], ['#e56b6b', 'Rojo'], ['#5689e5', 'Azul']];
 let qm = null; // { doc, root, panel, open, rows: Map }
 let recBtn = null;
@@ -2212,6 +2214,8 @@ function buildQuickMenu() {
   when = null;
   pick('Cancha', QM_TEXTURES, () => cfg().visual.texture || 'none', (v) => quickSet({ visual: { texture: v } }));
   pick('Clima', QM_WEATHER, () => cfg().visual.pitchWeather || 'none', (v) => quickSet({ visual: { pitchWeather: v } }));
+  pick('Luz', QM_LIGHTS, () => cfg().visual.pitchLight || 'none', (v) => quickSet({ visual: { pitchLight: v } }));
+  toggle('Escudo en la cancha', () => cfg().visual.crest, (v) => quickSet({ visual: { crest: v } }));
 
   head('FICHAS');
   slider('Tamaño', 0.6, 1.6, () => cfg().visual.discSize, (v) => quickSet({ visual: { discSize: v } }));
@@ -2225,6 +2229,8 @@ function buildQuickMenu() {
   head('PELOTA');
   pick('Estilo', QM_BALLS, () => cfg().visual.ballStyle || 'default', (v) => quickSet({ visual: { ballStyle: v } }));
   slider('Tamaño', 0.6, 1.8, () => cfg().visual.ballSize, (v) => quickSet({ visual: { ballSize: v } }));
+  swatches('Color', QM_BALL_COLORS, () => cfg().visual.ballColor, (v) => quickSet({ visual: { ballColor: v } }));
+  swatches('Contorno', QM_OUTLINES, () => cfg().visual.ballOutline, (v) => quickSet({ visual: { ballOutline: v } }));
   toggle('Pelota 3D', () => cfg().pitch.ball3d, (v) => quickSet({ pitch: { ball3d: v } }));
 
   head('SONIDO');
@@ -2242,6 +2248,7 @@ function buildQuickMenu() {
     if (!recBtn) noteRecButton(doc);
     if (recBtn) { recBtn.click(); setTimeout(() => safe(refreshQuickMenu), 80); }
   });
+  toggle('Resumen al terminar', () => cfg().pitch.matchSummary !== false, (v) => quickSet({ pitch: { matchSummary: v } }));
   row('Grabar partido', rec, () => {
     const on = !!(recBtn && recBtn.classList.contains('active'));
     rec.classList.toggle('on', on);
