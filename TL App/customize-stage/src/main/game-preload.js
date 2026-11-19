@@ -2076,7 +2076,9 @@ function quickCss(doc) {
       align-items: center !important; gap: 2px !important; padding: 3px !important; margin: 0 !important;
       background: rgba(11,18,36,.55) !important; border: 0 !important; border-radius: 999px !important; box-shadow: none !important; }
     html body .game-view > .buttons > * { margin: 0 !important; }
-    html body .game-view > .buttons > button[data-hook="settings"] { display: none !important; }
+    /* El engranaje de HaxBall lo reemplaza el botón de TL. Con el mismo refuerzo (#tvm-x) que
+       las reglas de los botones: si no, la de abajo le ganaba y volvía a aparecer (cuadrado blanco). */
+    html body .game-view > .buttons > button[data-hook="settings"]:not(#tvm-x) { display: none !important; }
     html body .game-view > .buttons button:not(#tvm-x) { width: 32px !important; min-width: 32px !important; max-width: none !important; height: 28px !important;
       padding: 0 !important; display: inline-flex !important; align-items: center !important; justify-content: center !important; gap: 0 !important; border: 0 !important; border-radius: 999px !important;
       background: transparent !important; color: #cfd5e3 !important; box-shadow: none !important; font-size: 0 !important; overflow: visible !important;
@@ -2101,6 +2103,12 @@ function quickCss(doc) {
       box-shadow: 0 18px 36px -12px rgba(0,0,0,.85), inset 0 0 0 1px rgba(255,255,255,.08);
       transform-origin: top right; animation: tvmQmIn .16s cubic-bezier(.2,.9,.3,1.15) both; scrollbar-width: thin; scrollbar-color: rgba(255,255,255,.2) transparent; }
     #tvm-qm .qm-panel[hidden] { display: none; }
+    /* Barra de scroll de la lista, del estilo del menú (Chromium 91 no entiende scrollbar-color). */
+    #tvm-qm .qm-panel::-webkit-scrollbar { width: 6px; }
+    #tvm-qm .qm-panel::-webkit-scrollbar-track { background: transparent; margin: 14px 0; }
+    #tvm-qm .qm-panel::-webkit-scrollbar-thumb { background: rgba(236,213,147,.28); border-radius: 999px; }
+    #tvm-qm .qm-panel::-webkit-scrollbar-thumb:hover { background: rgba(236,213,147,.5); }
+    #tvm-qm .qm-panel::-webkit-scrollbar-button { display: none; height: 0; }
     @keyframes tvmQmIn { from { opacity: 0; transform: translateY(-6px) scale(.97); } }
     #tvm-qm .qm-h { font-size: 10px; letter-spacing: .24em; color: #ecd593; font-weight: 800; padding: 10px 8px 4px; }
     #tvm-qm .qm-row { display: flex; align-items: center; gap: 10px; min-height: 34px; padding: 3px 8px; border-radius: 12px; font-size: 13.5px; }
