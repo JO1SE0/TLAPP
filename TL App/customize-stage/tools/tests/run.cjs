@@ -49,6 +49,9 @@ async function open(browser) {
 
   const browser = await chromium.launch();
 
+  // 5 · Lo de adentro del juego: pastilla, menú de TL, mapa chico, patada, pelotas 3D… (ver game.cjs)
+  try { await require('./game.cjs')(check, browser); } catch (e) { check('pruebas del juego sin romperse', false, e.stack.split('\n').slice(0, 3).join(' ')); }
+
   // 1 · Todas las pantallas abren sin errores
   {
     const { p, errs } = await open(browser);
