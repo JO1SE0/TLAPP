@@ -2020,14 +2020,26 @@ function quickCss(doc) {
   const st = doc.createElement('style');
   st.id = 'tvm-qm-css';
   st.textContent = `
-    .game-view > .buttons { display: none !important; }
-    #tvm-qm { position: fixed; right: 14px; top: 10px; z-index: 2147482400; font-family: Outfit, Bahnschrift, 'Segoe UI', sans-serif; user-select: none; }
-    #tvm-qm .qm-btn { width: 44px; height: 44px; border-radius: 50%; border: 0; padding: 0; cursor: pointer; display: grid; place-items: center;
-      background: linear-gradient(135deg, #f3dc98, #c39a45); box-shadow: 0 8px 18px -8px rgba(0,0,0,.8), inset 0 0 0 1px rgba(255,255,255,.35);
-      transition: transform .15s ease; }
-    #tvm-qm .qm-btn:hover { transform: scale(1.06); }
-    #tvm-qm .qm-btn img { width: 26px; height: 26px; object-fit: contain; pointer-events: none; }
-    #tvm-qm .qm-panel { position: absolute; right: 0; top: 54px; width: 300px; max-height: calc(100vh - 80px); overflow-y: auto; overscroll-behavior: contain;
+    /* La botonera de HaxBall (sonido con su volumen y Menu) como pastilla de
+       vidrio redonda; el engranaje lo reemplaza el botón de TL. Gana a la del
+       tema por especificidad (html body …). */
+    html body .game-view > .buttons { top: 10px !important; right: 12px !important; height: auto !important; display: flex !important;
+      align-items: center !important; gap: 2px !important; padding: 3px !important; margin: 0 !important;
+      background: rgba(11,18,36,.55) !important; border: 0 !important; border-radius: 999px !important; box-shadow: none !important; }
+    html body .game-view > .buttons > * { margin: 0 !important; }
+    html body .game-view > .buttons > button[data-hook="settings"] { display: none !important; }
+    html body .game-view > .buttons button { width: 32px !important; min-width: 32px !important; max-width: none !important; height: 28px !important;
+      padding: 0 !important; display: inline-grid !important; place-items: center !important; border: 0 !important; border-radius: 999px !important;
+      background: transparent !important; color: #cfd5e3 !important; box-shadow: none !important; font-size: 0 !important; overflow: visible !important;
+      cursor: pointer !important; transition: background .12s ease, color .12s ease !important; filter: none !important; }
+    html body .game-view > .buttons button > i { font-size: 15px !important; line-height: 1 !important; margin: 0 !important; opacity: 1 !important; }
+    html body .game-view > .buttons button:hover:not(:disabled) { background: rgba(255,255,255,.1) !important; color: #fff !important; }
+    html body .game-view > .buttons button .tooltip { font-size: 11.5px !important; }
+    html body .game-view > .buttons button.tvm-qm-btn { color: #ecd593 !important; background: rgba(236,213,147,.16) !important; }
+    html body .game-view > .buttons button.tvm-qm-btn:hover, html body .game-view > .buttons button.tvm-qm-btn.is-open { background: rgba(236,213,147,.3) !important; color: #f6e6b4 !important; }
+    html body .game-view > .buttons button.tvm-qm-btn svg { width: 17px; height: 17px; pointer-events: none; }
+    #tvm-qm { position: fixed; right: 12px; top: 10px; width: 0; height: 0; z-index: 2147482400; font-family: Outfit, Bahnschrift, 'Segoe UI', sans-serif; user-select: none; }
+    #tvm-qm .qm-panel { position: absolute; right: 0; top: 44px; width: 300px; max-height: calc(100vh - 80px); overflow-y: auto; overscroll-behavior: contain;
       padding: 6px 8px 8px; border-radius: 18px; background: rgba(11,18,36,.97); color: #e9edf6;
       box-shadow: 0 18px 36px -12px rgba(0,0,0,.85), inset 0 0 0 1px rgba(255,255,255,.08);
       transform-origin: top right; animation: tvmQmIn .16s cubic-bezier(.2,.9,.3,1.15) both; scrollbar-width: thin; scrollbar-color: rgba(255,255,255,.2) transparent; }
@@ -2065,40 +2077,46 @@ function quickCss(doc) {
   (doc.head || doc.documentElement).append(st);
 }
 
+/** El botón de TL, al final de la botonera de HaxBall (que se arma de nuevo en cada sala). */
+function mountQuickButton(doc) {
+  if (!qm || qm.doc !== doc) return;
+  const bar = doc.querySelector('.game-view > .buttons');
+  if (bar && qm.btn.parentNode !== bar) bar.append(qm.btn);
+}
+
 function installQuickMenu(doc) {
   if (!doc || !doc.body) return;
   noteRecButton(doc);
-  if (qm && qm.doc === doc && qm.root.isConnected) { qm.root.hidden = false; return; }
+  if (qm && qm.doc === doc && qm.root.isConnected) { qm.root.hidden = false; mountQuickButton(doc); return; }
   if (qm && qm.doc !== doc) recBtn = null; // el botón de grabar era de la otra sala
   quickCss(doc);
   const el = (tag, cls, text) => { const n = doc.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; };
   const root = el('div');
   root.id = 'tvm-qm';
-  const btn = el('button', 'qm-btn');
+  const btn = el('button', 'tvm-qm-btn');
   btn.type = 'button';
   btn.tabIndex = -1;
-  btn.title = 'Opciones rápidas';
-  const img = el('img');
-  img.src = assetUrl('crest');
-  img.alt = '';
-  btn.append(img);
+  btn.title = 'Ajustes de TL';
+  btn.setAttribute('aria-label', 'Ajustes de TL');
+  btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h8M16 6h4M4 12h2M10 12h10M4 18h11M19 18h1"/><circle cx="14" cy="6" r="2"/><circle cx="8" cy="12" r="2"/><circle cx="17" cy="18" r="2"/></svg>';
   const panel = el('div', 'qm-panel');
   panel.hidden = true;
-  root.append(btn, panel);
+  root.append(panel);
   // Nada de foco: el teclado sigue siendo del juego.
-  root.addEventListener('mousedown', (e) => { e.preventDefault(); e.stopPropagation(); });
+  for (const n of [root, btn]) n.addEventListener('mousedown', (e) => { e.preventDefault(); e.stopPropagation(); });
   btn.addEventListener('click', (e) => { e.stopPropagation(); toggleQuickMenu(); });
   // Una sola vez por documento, y siempre contra el menú de ahora (si HaxBall
   // rearma la pantalla, el menú se vuelve a poner y no quedan oyentes del viejo).
   if (!doc.__tvmQmBound) {
     doc.__tvmQmBound = true;
-    doc.addEventListener('mousedown', (e) => { if (qm && qm.open && qm.doc === doc && !qm.root.contains(e.target)) toggleQuickMenu(false); }, true);
+    doc.addEventListener('mousedown', (e) => { if (qm && qm.open && qm.doc === doc && !qm.root.contains(e.target) && !qm.btn.contains(e.target)) toggleQuickMenu(false); }, true);
     doc.addEventListener('keydown', (e) => {
       if (e.key === 'Escape' && qm && qm.open && qm.doc === doc) { e.preventDefault(); e.stopPropagation(); toggleQuickMenu(false); }
     }, true);
   }
   doc.body.append(root);
-  qm = { doc, root, panel, open: false, rows: [] };
+  qm = { doc, root, btn, panel, open: false, rows: [] };
+  mountQuickButton(doc);
   buildQuickMenu();
   safe(syncMinimap);
 }
@@ -2107,6 +2125,7 @@ function toggleQuickMenu(force) {
   if (!qm) return;
   qm.open = force === undefined ? !qm.open : !!force;
   qm.panel.hidden = !qm.open;
+  qm.btn.classList.toggle('is-open', qm.open);
   if (qm.open) { noteRecButton(qm.doc); refreshQuickMenu(); }
 }
 
