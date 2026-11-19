@@ -1824,16 +1824,40 @@ function patchDiscSprites(source) {
 const KICK_STEP_SITE = /(\w)&&\(null!=this\.(\w+)\.(\w+)&&this\.\2\.\3\((\w)\),\4\.(\w+)=!1,/;
 const PLAYER_FIND_SITE = /(\w+)\(a\)\{let b=0,c=this\.\w+;for\(;b<c\.length;\)\{let d=c\[b\];\+\+b;if\(d\.(\w+)==a\)return d\}return null\}/;
 
+/*
+ * Dos datos más para que la patada temprana no mienta (ver `__tvmKickAt` en el
+ * preload):
+ *
+ *   · El reloj del partido (`this.Nc+=.016666…`): avanza un paso fijo por cuadro
+ *     de física y se copia a la predicción. Una misma patada tiene siempre el
+ *     mismo valor, en la copia y en la confirmada; dos patadas distintas, no,
+ *     aunque salgan del mismo lugar. Es el documento de identidad de cada
+ *     patada (antes se reconocían por el lugar y dos seguidas se confundían).
+ *   · La tecla de patear, cada vez que el juego arma las teclas
+ *     (`has("Kick")&&(a|=16)`): para saber cuánto hace que la apretaste.
+ */
+const MATCH_CLOCK_SITE = /this\.(\w+)\s*\+=\s*\.016666666666666666\s*;/;
+// Con espacios y saltos de línea permitidos: el bundle corta líneas justo ahí.
+const KICK_KEY_SITE = /this\.[\w$]+\.has\("Kick"\)\s*&&\s*\(\s*a\s*\|=\s*16\s*\)\s*;/;
+
 function patchEarlyKick(source) {
   const n = (source.match(new RegExp(KICK_STEP_SITE.source, 'g')) || []).length;
   const finds = [...source.matchAll(new RegExp(PLAYER_FIND_SITE.source, 'g'))];
   if (n !== 1 || finds.length !== 1) return { source, applied: false, reason: `patada al verse: encajó ${n}/${finds.length} veces, se esperaba 1/1` };
   let matchRoom = '';
-  const out = source.replace(KICK_STEP_SITE, (all, f, sala, aviso, d) => {
+  let out = source.replace(KICK_STEP_SITE, (all, f, sala, aviso, d) => {
     matchRoom = sala;
     return `${f}&&(window.__tvmKickAt&&window.__tvmKickAt(${d},this),` + all.slice(f.length + 3);
   });
-  return { source: out, applied: true, fields: { playerId: finds[0][2], matchRoom }, reason: `patada al verse (id=${finds[0][2]} sala=${matchRoom})` };
+  const fields = { playerId: finds[0][2], matchRoom };
+  const clocks = out.match(new RegExp(MATCH_CLOCK_SITE.source, 'g')) || [];
+  if (clocks.length === 1) fields.clock = out.match(MATCH_CLOCK_SITE)[1];
+  const keys = out.match(new RegExp(KICK_KEY_SITE.source, 'g')) || [];
+  if (keys.length === 1) {
+    out = out.replace(KICK_KEY_SITE, (all) => `${all}window.__tvmKickKey&&window.__tvmKickKey(a&16);`);
+    fields.kickKey = 1;
+  }
+  return { source: out, applied: true, fields, reason: `patada al verse (id=${finds[0][2]} sala=${matchRoom}${fields.clock ? ` reloj=${fields.clock}` : ' sin reloj'}${fields.kickKey ? ' tecla' : ' sin tecla'})` };
 }
 
 function patch(source, opts) {
@@ -1951,7 +1975,7 @@ const KEEP = 4;
  * 30: las fichas de los jugadores se pegan como figuritas ya dibujadas.
  * 31: la patada propia avisa desde la simulación que se dibuja (sin ping).
  */
-const PATCH_VERSION = 32;
+const PATCH_VERSION = 33;
 
 /** El idioma es parte de la clave: el mismo bundle parchea distinto en cada uno. */
 function keyOf(url, lang) {

@@ -7997,30 +7997,86 @@ function installTracking(view) {
     const disc = player && player[f.disc || 'I'];
     return disc && disc[f.pos || 'a'];
   };
+  /*
+   * Cada patada se reconoce por el RELOJ del partido en el que pasó (ver
+   * MATCH_CLOCK_SITE en game-patch.js): la copia que se dibuja la vuelve a
+   * simular en cada cuadro con el mismo reloj, y la confirmada trae el mismo
+   * (o uno o dos pasos corrido, si tu tecla le llegó tarde al servidor). Antes
+   * se reconocían por el LUGAR y dos patadas seguidas desde el mismo punto se
+   * tomaban por una sola: la segunda no sonaba al verse.
+   */
+  const FRAME = 1 / 60;
   const earlyKicks = [];
-  const nearKick = (p, maxDist, test) => {
-    for (const e of earlyKicks) {
-      const dx = e.x - p.x;
-      const dy = e.y - p.y;
-      if (dx * dx + dy * dy <= maxDist * maxDist && test(e)) return e;
-    }
-    return null;
+  const kickClock = (match) => {
+    const f = F();
+    const c = f.clock && match ? Number(match[f.clock]) : NaN;
+    return Number.isFinite(c) ? c : NaN;
   };
-  const rememberKick = (p, now, used, played) => {
-    const e = { x: p.x, y: p.y, first: now, last: now, used, played: !!played, timer: 0 };
+  const dist2 = (e, p) => { const dx = e.x - p.x; const dy = e.y - p.y; return dx * dx + dy * dy; };
+  /** ¿Es la misma patada que ya se vio? (la copia la repite en cada cuadro). */
+  const sameKick = (e, p, clock, now) => {
+    if (clock === clock && e.clock === e.clock) {
+      const dc = Math.abs(e.clock - clock);
+      if (dc < FRAME * 0.5) return now - e.last < 1000 && dist2(e, p) <= 14 * 14;
+      // Si lo confirmado se corrió un poco, la copia puede ver la misma patada uno o
+      // dos pasos antes o después: misma, sólo si es en el mismo lugar y recién vista.
+      return dc <= FRAME * 3.5 && dist2(e, p) <= 8 * 8 && now - e.last < 150;
+    }
+    return dist2(e, p) <= 8 * 8 && now - e.last < 400; // sin reloj: como antes
+  };
+  const rememberKick = (p, now, clock, used, played) => {
+    const e = { x: p.x, y: p.y, clock, first: now, last: now, used: !!used, played: !!played, timer: 0 };
     earlyKicks.push(e);
-    if (earlyKicks.length > 10) { const old = earlyKicks.shift(); if (old.timer) clearTimeout(old.timer); }
+    if (earlyKicks.length > 16) { const old = earlyKicks.shift(); if (old.timer) clearTimeout(old.timer); }
     return e;
   };
+
+  /*
+   * El falseo: tocar patear con la pelota en el BORDE del alcance (4 unidades)
+   * sin llegar a pegarle. La copia que se dibuja es una predicción y tu tecla le
+   * llega al servidor un instante después; en el borde, ese instante decide, y
+   * la copia a veces ve un contacto que en el partido de verdad no existe. Si
+   * sonaba ahí, sonaba una patada que no fue.
+   *
+   * Por eso sólo suena al verse la patada SEGURA: la pelota bien adentro del
+   * alcance, o la tecla apretada desde antes (entonces un corrimiento de un par
+   * de pasos no cambia nada: la pelota entra al alcance con la tecla puesta
+   * igual). La dudosa —borde y tecla recién tocada, o sea el falseo— espera al
+   * partido de verdad: si pateaste, suena al confirmarse; si no, no suena.
+   */
+  const SOLID_GAP = 2;      // pelota a 2 unidades o más adentro del alcance
+  const SOLID_HOLD_MS = 60; // o la tecla apretada desde hace 60 ms o más
+  const kickKey = { down: false, at: -1e9 };
+  view.__tvmKickKey = (bit) => {
+    const down = !!bit;
+    if (down !== kickKey.down) { kickKey.down = down; kickKey.at = performance.now(); }
+  };
+  const ballGap = (player, match) => {
+    const f = F();
+    try {
+      const ball = match[f.world][f.discs][0];
+      const me = player[f.disc];
+      const a = ball[f.pos];
+      const b = me[f.pos];
+      const dx = a.x - b.x;
+      const dy = a.y - b.y;
+      return Math.sqrt(dx * dx + dy * dy) - (Number(ball[f.radius]) || 0) - (Number(me[f.radius]) || 0);
+    } catch (e) { return NaN; }
+  };
+  const solidKick = (player, match, now) => {
+    if (!F().kickKey) return true; // sin el dato de la tecla: como antes
+    const gap = ballGap(player, match);
+    if (gap === gap && gap <= 4 - SOLID_GAP) return true;
+    return kickKey.down && now - kickKey.at >= SOLID_HOLD_MS;
+  };
+
   /*
    * La extrapolación de HaxBall (`!extrapolation`, o el ajuste). Con un valor
    * positivo la copia que se dibuja va ADELANTADA respecto del presente: simula
    * esos milisegundos de más suponiendo que seguís apretando lo que apretás
-   * ahora. Si tocás patear un instante cerca de la pelota (falsear), esa copia
-   * «ve» una patada que nunca pasa, porque soltaste antes del contacto. Por eso
-   * con extrapolación la patada temprana espera exactamente esos milisegundos
-   * —el momento en que el contacto llega al presente— y suena sólo si la copia
-   * la sigue mostrando. Se lee cada 2 s, no en cada patada.
+   * ahora. Por eso con extrapolación la patada temprana espera exactamente esos
+   * milisegundos —el momento en que el contacto llega al presente— y suena sólo
+   * si la copia la sigue mostrando. Se lee cada 2 s, no en cada patada.
    */
   let extrapMs = 0;
   let extrapReadAt = -1e9;
@@ -8052,18 +8108,22 @@ function installTracking(view) {
       const p = kickSpot(player);
       if (!p) return;
       const now = performance.now();
-      const same = nearKick(p, 8, (e) => now - e.last < 400);
-      if (same) { same.last = now; return; }
+      const clock = kickClock(match);
+      for (const e of earlyKicks) {
+        if (sameKick(e, p, clock, now)) { e.last = now; return; }
+      }
+      const e = rememberKick(p, now, clock, false, false);
+      // Dudosa (falseo posible): no suena acá; la decide el partido de verdad.
+      if (!solidKick(player, match, now)) return;
       const ahead = extrapolation(now);
       if (ahead < 8) {
-        rememberKick(p, now, false, true);
+        e.played = true;
         ownKickSound();
         return;
       }
       // Copia adelantada: espera a que el contacto sea presente. Mientras tanto,
       // cada cuadro la vuelve a simular y actualiza `last`; si soltaste antes del
-      // contacto (falseo), la patada desaparece de la copia y no suena nada.
-      const e = rememberKick(p, now, false, false);
+      // contacto, la patada desaparece de la copia y no suena nada.
       e.timer = setTimeout(() => {
         e.timer = 0;
         if (e.used || e.played) return;
@@ -8086,7 +8146,7 @@ function installTracking(view) {
     if (player && room && room === real.room && realActive()) {
       try { realKick(view, player); } catch { /* un toque perdido no apaga el sonido */ }
     }
-    // Tu patada ya sonó al verse: la confirmada se calla (true = «ya me ocupé»).
+    // Tu patada: si ya sonó al verse, la confirmada se calla (true = «ya me ocupé»).
     try {
       const f = F();
       const id = ownId();
@@ -8094,20 +8154,34 @@ function installTracking(view) {
         const p = kickSpot(player);
         if (p) {
           const now = performance.now();
-          const hit = nearKick(p, 14, (e) => !e.used && now - e.first < 2500);
+          const clock = kickClock(room && f.game ? room[f.game] : null);
+          // La vista más cercana en el reloj (o en el lugar, sin reloj) que no se haya usado.
+          let hit = null;
+          let best = Infinity;
+          for (const e of earlyKicks) {
+            if (e.used || now - e.first > 2500) continue;
+            let d;
+            if (clock === clock && e.clock === e.clock) {
+              d = Math.abs(e.clock - clock);
+              if (d > FRAME * 6.5) continue;
+            } else {
+              d = dist2(e, p);
+              if (d > 14 * 14) continue;
+            }
+            if (d < best) { best = d; hit = e; }
+          }
           if (hit) {
             hit.used = true;
             hit.last = now;
             if (hit.timer) { clearTimeout(hit.timer); hit.timer = 0; }
-            // Ya sonó al verse: la confirmada se calla. Si todavía estaba
-            // esperando (o la copia la había perdido), suena ahora, una vez.
             if (hit.played) return true;
+            // Estaba en duda (o esperando la extrapolación): era de verdad, suena ahora.
             hit.played = true;
             return playHitSound();
           }
           // No se vio antes (sos el host, o la copia no llegó a simularla): suena
           // ahora y queda anotada para que la copia no la repita.
-          rememberKick(p, now, true, true);
+          rememberKick(p, now, clock, true, true);
         }
       }
     } catch (e) { /* sigue el camino de siempre */ }
