@@ -863,7 +863,56 @@ function preloadBallPhotos(doc) {
 
 const BALL_TEX = 128;
 const ballTextures = new Map();
+/*
+ * Los modelos 3D de verdad (ball-models.js): cada estilo pintado sobre la esfera
+ * entera. Sólo en el juego —en el menú esto se carga como script común y no hay
+ * `require`—. Se arman de a pedacitos (ver `bakeAsync`): mientras tanto se usa
+ * el dibujo plano de antes, un instante.
+ */
+let ballModels = null;
+try { if (typeof require === 'function') ballModels = require('./ball-models'); } catch (e) { ballModels = null; }
+const ballModelPending = new Set();
+function ballModelTexture(doc, style, tint) {
+  if (!ballModels || !doc || !ballModels.has(style)) return null;
+  // La foto sólo cuenta en los que la usan de calcomanía: cuando carga, se rearma.
+  const decalPhoto = ballModels.usesDecal(style) && hasBallPhoto(style) && !!ballPhotoOf(doc, style, false);
+  const key = `${style}|${tint || ''}|model${decalPhoto ? 1 : 0}`;
+  const have = ballTextures.get(key);
+  if (have) return have;
+  if (ballModelPending.has(key)) return null;
+  ballModelPending.add(key);
+  let deco = null;
+  if (ballModels.usesDecal(style)) {
+    // La miniatura entera, como calcomanía (con la foto de verdad si ya cargó).
+    const S = 256, h = S / 2;
+    const c = doc.createElement('canvas');
+    c.width = c.height = S;
+    const g = c.getContext('2d');
+    g.fillStyle = '#ffffff';
+    g.beginPath(); g.arc(h, h, h, 0, TAU); g.fill();
+    g.beginPath(); g.arc(h, h, h, 0, TAU);
+    try { ballOverlay(g, style, h, h, h, null, '', null); } catch (e) { /* sin calcomanía */ }
+    deco = { size: S, data: g.getImageData(0, 0, S, S).data };
+    c.width = 0;
+  }
+  const win = doc.defaultView;
+  const later = win && win.setTimeout ? win.setTimeout.bind(win) : setTimeout;
+  ballModels.bakeAsync(style, deco, tint, (tex) => {
+    ballModelPending.delete(key);
+    if (!tex) return;
+    // Se descarta la más vieja (no todas): borrar todo obligaba a rearmar la que se está usando.
+    while (ballTextures.size >= 40) ballTextures.delete(ballTextures.keys().next().value);
+    ballTextures.set(key, tex);
+  }, later);
+  return null;
+}
+/** Deja armado de antemano el modelo 3D de la pelota elegida (al cambiar el estilo). */
+function warmBallModel(doc, style, tint) {
+  try { ballModelTexture(doc, style, tint); } catch (e) { /* se arma al usarla */ }
+}
 function ballTexture(ctx, style, tint) {
+  const model = ballModelTexture(ctx.canvas.ownerDocument, style, tint);
+  if (model) return model;
   const key = `${style}|${tint || ''}`;
   let tex = ballTextures.get(key);
   if (tex) return tex;
@@ -886,7 +935,7 @@ function ballTexture(ctx, style, tint) {
   // (y para siempre si la foto fallara). Cuando la foto carga, su `onload` borra
   // esta textura y la próxima sale con la foto.
   void photoReady;
-  if (ballTextures.size > 24) ballTextures.clear();
+  while (ballTextures.size >= 40) ballTextures.delete(ballTextures.keys().next().value);
   ballTextures.set(key, tex);
   return tex;
 }
@@ -2388,6 +2437,7 @@ function paintMatchMark(ctx, o) {
 }
 
 module.exports = {
+  warmBallModel,
   TEXTURES,
   textureSpec,
   paintTexture,

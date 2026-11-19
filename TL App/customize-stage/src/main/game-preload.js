@@ -14728,6 +14728,10 @@ function boot() {
     if (doc) safe(paintPeers, doc);
     // Menú del escudo, aro del club y mapa chico: al día con lo que cambió.
     safe(refreshQuickMenu);
+    // La pelota 3D con estilo: su modelo se arma ya (de a pedacitos), no cuando rueda.
+    if (doc && state.config.pitch && state.config.pitch.ball3d && visual.ballStyle && visual.ballStyle !== 'default') {
+      safe(lookfx.warmBallModel, doc, visual.ballStyle, visual.ballColor || '');
+    }
     safe(syncPeerDiscs);
     safe(syncMinimap);
   });

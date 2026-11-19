@@ -108,6 +108,7 @@ function sphere(ctx, x, y, r, s, tex) {
   lastM = m.slice();
   lastTex = tex;
   const out = workImage.data;
+  if (tex.cube) { sphereCube(out, D, m, tex); work.getContext('2d').putImageData(workImage, 0, 0); ctx.drawImage(work, x - r, y - r, r * 2, r * 2); return; }
   const T = tex.size, src = tex.data;
   const m0 = m[0], m1 = m[1], m2 = m[2], m3 = m[3], m4 = m[4], m5 = m[5], m6 = m[6], m7 = m[7], m8 = m[8];
   let o = 0;
@@ -144,6 +145,42 @@ function sphere(ctx, x, y, r, s, tex) {
   }
   work.getContext('2d').putImageData(workImage, 0, 0);
   ctx.drawImage(work, x - r, y - r, r * 2, r * 2);
+}
+
+/*
+ * Con un modelo de verdad (ball-models.js): para cada píxel, el punto de la
+ * esfera que mira hacia nosotros, girado con la pelota, y su color en el cubo.
+ * Ni costuras ni estiramientos: el dibujo existe en toda la esfera.
+ * Ejes del cubo: ver `texelDir` en ball-models.js (la inversa exacta).
+ */
+function sphereCube(out, D, m, tex) {
+  const n = tex.n, src = tex.data, nn = n * n, h = n / 2;
+  const m0 = m[0], m1 = m[1], m2 = m[2], m3 = m[3], m4 = m[4], m5 = m[5], m6 = m[6], m7 = m[7], m8 = m[8];
+  let o = 0;
+  for (let py = 0; py < D; py++) {
+    const v = ((py + 0.5) / D) * 2 - 1;
+    for (let px = 0; px < D; px++, o += 4) {
+      const u = ((px + 0.5) / D) * 2 - 1;
+      const d = u * u + v * v;
+      if (d > 1) { out[o + 3] = 0; continue; }
+      const w = Math.sqrt(1 - d);
+      const qx = m0 * u + m3 * v + m6 * w;
+      const qy = m1 * u + m4 * v + m7 * w;
+      const qz = m2 * u + m5 * v + m8 * w;
+      const ax = qx < 0 ? -qx : qx, ay = qy < 0 ? -qy : qy, az = qz < 0 ? -qz : qz;
+      let face, s, t;
+      if (ax >= ay && ax >= az) {
+        if (qx > 0) { face = 0; s = -qz / ax; } else { face = 1; s = qz / ax; }
+        t = -qy / ax;
+      } else if (ay >= az) {
+        if (qy > 0) { face = 2; s = qx / ay; t = qz / ay; } else { face = 3; s = qx / ay; t = -qz / ay; }
+      } else if (qz > 0) { face = 4; s = qx / az; t = -qy / az; } else { face = 5; s = -qx / az; t = -qy / az; }
+      let i = ((s + 1) * h) | 0, j = ((t + 1) * h) | 0;
+      if (i >= n) i = n - 1; if (j >= n) j = n - 1;
+      const k = (face * nn + j * n + i) * 3;
+      out[o] = src[k]; out[o + 1] = src[k + 1]; out[o + 2] = src[k + 2]; out[o + 3] = 255;
+    }
+  }
 }
 
 function surface(ctx, x, y, r, s) {
