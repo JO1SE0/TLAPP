@@ -2015,7 +2015,20 @@ let recBtn = null;
  * entran: esto es para lo que se tocó acá.
  */
 const QM_UNDO_MAX = 30;
-const qmUndo = [];
+/*
+ * La pila queda guardada (almacenamiento del juego, que persiste): sigue ahí al
+ * cambiar de sala, al terminar la partida y al cerrar la app, hasta que se use.
+ */
+const QM_UNDO_KEY = 'tvm_qm_undo';
+const qmUndo = (() => {
+  try {
+    const raw = JSON.parse(window.localStorage.getItem(QM_UNDO_KEY) || '[]');
+    return Array.isArray(raw) ? raw.filter((e) => e && e.patch && typeof e.patch === 'object').slice(-QM_UNDO_MAX) : [];
+  } catch (e) { return []; }
+})();
+function saveUndo() {
+  try { window.localStorage.setItem(QM_UNDO_KEY, JSON.stringify(qmUndo)); } catch (e) { /* sin lugar: queda en memoria */ }
+}
 // Por si una clave todavía no está en la config (no debería: llega con los valores de fábrica).
 const QM_FALLBACK = { pitchLight: 'none', texture: 'none', pitchWeather: 'none', discStyle: 'default', ballStyle: 'default',
   ballColor: '', ballOutline: '', discOutline: '', mirror: 'off', kickSfx: 'default', discSize: 1, ballSize: 1 };
@@ -2033,11 +2046,13 @@ function quickSet(patch, label) {
   if (Object.keys(before).length) {
     qmUndo.push({ patch: before, label: label || qmCurLabel });
     if (qmUndo.length > QM_UNDO_MAX) qmUndo.shift();
+    saveUndo();
   }
   ipcRenderer.send('game:quick-set', patch);
 }
 function quickUndo() {
   const last = qmUndo.pop();
+  saveUndo();
   if (last) ipcRenderer.send('game:quick-set', last.patch);
   safe(refreshQuickMenu);
 }
