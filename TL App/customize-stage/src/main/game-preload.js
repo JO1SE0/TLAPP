@@ -2008,7 +2008,39 @@ const QM_OUTLINES = [['', 'Como viene'], ['#ffffff', 'Blanco'], ['#000000', 'Neg
 let qm = null; // { doc, root, panel, open, rows: Map }
 let recBtn = null;
 
-function quickSet(patch) { ipcRenderer.send('game:quick-set', patch); }
+/*
+ * Deshacer: cada cambio del menú guarda cómo estaba eso antes (sólo las claves
+ * que tocó). «Deshacer» manda lo guardado y lo saca de la pila; apretado de
+ * nuevo, deshace el anterior. Los cambios que se hacen desde el panel no
+ * entran: esto es para lo que se tocó acá.
+ */
+const QM_UNDO_MAX = 30;
+const qmUndo = [];
+// Por si una clave todavía no está en la config (no debería: llega con los valores de fábrica).
+const QM_FALLBACK = { pitchLight: 'none', texture: 'none', pitchWeather: 'none', discStyle: 'default', ballStyle: 'default',
+  ballColor: '', ballOutline: '', discOutline: '', mirror: 'off', kickSfx: 'default', discSize: 1, ballSize: 1 };
+let qmCurLabel = '';
+function quickSet(patch, label) {
+  const before = {};
+  const cfg = state.config || {};
+  for (const [g, vals] of Object.entries(patch || {})) {
+    for (const k of Object.keys(vals || {})) {
+      let cur = cfg[g] ? cfg[g][k] : undefined;
+      if (cur === undefined) cur = QM_FALLBACK[k];
+      if (cur !== undefined && cur !== vals[k]) (before[g] = before[g] || {})[k] = cur;
+    }
+  }
+  if (Object.keys(before).length) {
+    qmUndo.push({ patch: before, label: label || qmCurLabel });
+    if (qmUndo.length > QM_UNDO_MAX) qmUndo.shift();
+  }
+  ipcRenderer.send('game:quick-set', patch);
+}
+function quickUndo() {
+  const last = qmUndo.pop();
+  if (last) ipcRenderer.send('game:quick-set', last.patch);
+  safe(refreshQuickMenu);
+}
 
 /** El botón «Rec» de HaxBall vive en la vista de la sala; se lo guarda apenas aparece (sigue andando aunque no esté a la vista). */
 function noteRecButton(doc) {
@@ -2081,6 +2113,10 @@ function quickCss(doc) {
     #tvm-qm .qm-sw i { width: 18px; height: 18px; border-radius: 50%; cursor: pointer; box-shadow: inset 0 0 0 1.5px rgba(255,255,255,.25); }
     #tvm-qm .qm-sw i.on { box-shadow: 0 0 0 2px #ecd593, inset 0 0 0 1.5px rgba(0,0,0,.3); }
     #tvm-qm .qm-sw i.none { background: repeating-linear-gradient(135deg, #3a4560 0 3px, #2a3350 3px 6px); }
+    #tvm-qm .qm-undo { display: block; width: calc(100% - 8px); margin: 6px 4px 2px; padding: 8px 12px; border: 0; border-radius: 12px; cursor: pointer; text-align: left;
+      font: 600 12.5px Outfit, Bahnschrift, 'Segoe UI', sans-serif; color: #ecd593; background: rgba(236,213,147,.12); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    #tvm-qm .qm-undo:hover:not(:disabled) { background: rgba(236,213,147,.22); }
+    #tvm-qm .qm-undo:disabled { color: rgba(233,237,246,.4); background: rgba(255,255,255,.04); cursor: default; }
     #tvm-qm .qm-act { flex: none; border: 0; border-radius: 999px; padding: 4px 12px; font: 700 12px inherit; cursor: pointer; background: rgba(255,255,255,.1); color: #fff; }
     #tvm-qm .qm-act.on { background: #e05252; }
     html.tvm-noanim #tvm-qm .qm-panel { animation: none; }`;
@@ -2145,10 +2181,14 @@ function buildQuickMenu() {
   panel.replaceChildren();
   qm.rows = [];
   const el = (tag, cls, text) => { const n = doc.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; };
-  const head = (t) => panel.append(el('div', 'qm-h', t));
+  let section = '';
+  const head = (t) => { section = t ? t.charAt(0) + t.slice(1).toLowerCase() : ''; panel.append(el('div', 'qm-h', t)); };
   // `when`: la fila sólo se muestra si da verdadero (las del mapa, con el mapa prendido).
   let when = null;
   const row = (label, ctl, sync) => {
+    // Lo que se toque en esta fila se anota con su nombre (para «Deshacer …»).
+    const named = `${label.replace(/^↳ /, '')}${section ? ` · ${section}` : ''}`;
+    ctl.addEventListener('pointerdown', () => { qmCurLabel = named; }, true);
     const r = el('div', 'qm-row');
     r.append(el('span', null, label), ctl);
     panel.append(r);
@@ -2200,6 +2240,18 @@ function buildQuickMenu() {
     const is = list.map(([v, t]) => { const i = el('i', v ? null : 'none'); if (v) i.style.background = v; i.title = t; i.addEventListener('click', () => set(v)); box.append(i); return [v, i]; });
     row(label, box, () => { const cur = get() || ''; for (const [v, i] of is) i.classList.toggle('on', v.toLowerCase() === cur.toLowerCase()); });
   };
+
+  // Deshacer, arriba de todo: vuelve lo último que tocaste a como estaba.
+  const undo = el('button', 'qm-undo');
+  undo.type = 'button';
+  undo.tabIndex = -1;
+  undo.addEventListener('click', () => quickUndo());
+  panel.append(undo);
+  qm.rows.push(() => {
+    const last = qmUndo[qmUndo.length - 1];
+    undo.disabled = !last;
+    undo.textContent = last ? `↶  Deshacer «${last.label || 'último cambio'}»` : '↶  Nada para deshacer';
+  });
 
   head('VISTA');
   seg('Vista', [['2d', 'Normal'], ['vertical', 'Vertical']],
