@@ -1018,6 +1018,16 @@ function loadGamePatchCache() {
   const lang = gameLang();
   const dir = gamePatchDir();
 
+  // Si se actualizó el cliente y cambió la versión del parche, lo guardado se
+  // rearma desde el original (ver `repatchStale`): la primera partida después
+  // de actualizar ya va con todo.
+  try {
+    const made = gamePatch.repatchStale(dir, lang);
+    if (made) logToApp('info', `parche del juego rearmado para la versión nueva (${made})`);
+  } catch (err) {
+    logToApp('warn', `no se pudo rearmar el parche viejo: ${err.message}`);
+  }
+
   // Si cambió el idioma desde la última vez, se rearma acá — del original que
   // quedó guardado, sin red — para que el cambio se vea en este arranque y no
   // en el siguiente.

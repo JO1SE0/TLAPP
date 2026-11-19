@@ -2034,6 +2034,40 @@ function readAll(dir) {
 }
 
 /**
+ * Rearma las copias que quedaron de una versión VIEJA del parche.
+ *
+ * Al actualizar el cliente cambia `PATCH_VERSION` y `readAll` deja de aceptar
+ * lo guardado: la primera carga del juego iba entonces sin parche (sin el
+ * sonido de patada nuevo, el mapa chico, etc.) y recién la siguiente lo tenía.
+ * Como cada entrada guarda el `original`, acá se vuelve a parchear desde el
+ * disco, sin red y antes de que el juego pida nada. Cuesta ~125 ms por copia,
+ * una sola vez por actualización. Se rearman como mucho tres (las más nuevas).
+ */
+function repatchStale(dir, lang) {
+  const want = normLang(lang);
+  let names = [];
+  try { names = fs.readdirSync(dir).filter((n) => n.endsWith('.json')); } catch { return 0; }
+  const stale = [];
+  for (const name of names) {
+    try {
+      const raw = JSON.parse(fs.readFileSync(path.join(dir, name), 'utf8'));
+      if (raw && raw.v !== PATCH_VERSION && typeof raw.url === 'string' && typeof raw.original === 'string' &&
+          normLang(raw.lang) === want) stale.push(raw);
+    } catch { /* corrupto: se ignora */ }
+  }
+  stale.sort((a, b) => (Number(b.at) || 0) - (Number(a.at) || 0));
+  const fresh = new Set(readAll(dir).filter((e) => normLang(e.raw.lang) === want).map((e) => e.raw.url));
+  let made = 0;
+  for (const raw of stale.slice(0, 3)) {
+    if (fresh.has(raw.url)) continue;
+    const out = patch(raw.original, { lang: want });
+    if (!out.applied) continue;
+    if (saveCache(dir, raw.url, out.source, want, raw.original)) { fresh.add(raw.url); made++; }
+  }
+  return made;
+}
+
+/**
  * Rearma las copias que hagan falta cuando el jugador cambió de idioma.
  *
  * Sin esto, cambiar el idioma costaba DOS arranques: en el primero no hay copia
@@ -2102,6 +2136,7 @@ module.exports = {
   loadCache,
   saveCache,
   relangCache,
+  repatchStale,
   CALL_SITE,
   SETTINGS_SITE,
   MINIMAP_SITE,
