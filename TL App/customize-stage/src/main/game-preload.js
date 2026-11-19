@@ -2062,24 +2062,24 @@ function quickCss(doc) {
       background: rgba(11,18,36,.55) !important; border: 0 !important; border-radius: 999px !important; box-shadow: none !important; }
     html body .game-view > .buttons > * { margin: 0 !important; }
     html body .game-view > .buttons > button[data-hook="settings"] { display: none !important; }
-    html body .game-view > .buttons button { width: 32px !important; min-width: 32px !important; max-width: none !important; height: 28px !important;
+    html body .game-view > .buttons button:not(#tvm-x) { width: 32px !important; min-width: 32px !important; max-width: none !important; height: 28px !important;
       padding: 0 !important; display: inline-flex !important; align-items: center !important; justify-content: center !important; gap: 0 !important; border: 0 !important; border-radius: 999px !important;
       background: transparent !important; color: #cfd5e3 !important; box-shadow: none !important; font-size: 0 !important; overflow: visible !important;
       cursor: pointer !important; transition: background .12s ease, color .12s ease !important; filter: none !important; }
-    html body .game-view > .buttons button > i { line-height: 1 !important; margin: 0 !important; opacity: 1 !important; }
+    html body .game-view > .buttons button:not(#tvm-x) > i { line-height: 1 !important; margin: 0 !important; opacity: 1 !important; }
     /* Íconos propios (los de HaxBall vienen con sus márgenes y quedaban corridos): mismos trazos y tamaño que el de TL. */
-    html body .game-view > .buttons button > i { display: block !important; width: 17px !important; height: 17px !important; font-size: 0 !important; background: currentColor !important;
+    html body .game-view > .buttons button:not(#tvm-x) > i { display: block !important; width: 17px !important; height: 17px !important; font-size: 0 !important; background: currentColor !important;
       -webkit-mask: none center / 17px 17px no-repeat; mask: none center / 17px 17px no-repeat; }
-    html body .game-view > .buttons button > i::before { content: none !important; display: none !important; }
-    html body .game-view > .buttons button > i.icon-volume-up { -webkit-mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%23000%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M4%209.5h3.5L12%205.5v13l-4.5-4H4z%22%2F%3E%3Cpath%20d%3D%22M15.5%209a4%204%200%200%201%200%206M18.5%206.5a7.5%207.5%200%200%201%200%2011%22%2F%3E%3C%2Fsvg%3E"); mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%23000%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M4%209.5h3.5L12%205.5v13l-4.5-4H4z%22%2F%3E%3Cpath%20d%3D%22M15.5%209a4%204%200%200%201%200%206M18.5%206.5a7.5%207.5%200%200%201%200%2011%22%2F%3E%3C%2Fsvg%3E"); }
-    html body .game-view > .buttons button > i.icon-volume-down { -webkit-mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%23000%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M4%209.5h3.5L12%205.5v13l-4.5-4H4z%22%2F%3E%3Cpath%20d%3D%22M15.5%209a4%204%200%200%201%200%206%22%2F%3E%3C%2Fsvg%3E"); mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%23000%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M4%209.5h3.5L12%205.5v13l-4.5-4H4z%22%2F%3E%3Cpath%20d%3D%22M15.5%209a4%204%200%200%201%200%206%22%2F%3E%3C%2Fsvg%3E"); }
-    html body .game-view > .buttons button > i.icon-volume-off { -webkit-mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%23000%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M4%209.5h3.5L12%205.5v13l-4.5-4H4z%22%2F%3E%3Cpath%20d%3D%22M16%209.5l5%205M21%209.5l-5%205%22%2F%3E%3C%2Fsvg%3E"); mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%23000%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M4%209.5h3.5L12%205.5v13l-4.5-4H4z%22%2F%3E%3Cpath%20d%3D%22M16%209.5l5%205M21%209.5l-5%205%22%2F%3E%3C%2Fsvg%3E"); }
-    html body .game-view > .buttons button > i.icon-menu { -webkit-mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%23000%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M5%207h14M5%2012h14M5%2017h14%22%2F%3E%3C%2Fsvg%3E"); mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%23000%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M5%207h14M5%2012h14M5%2017h14%22%2F%3E%3C%2Fsvg%3E"); }
-    html body .game-view > .buttons button:hover:not(:disabled) { background: rgba(255,255,255,.1) !important; color: #fff !important; }
-    html body .game-view > .buttons button .tooltip { font-size: 11.5px !important; }
-    html body .game-view > .buttons button.tvm-qm-btn { color: #ecd593 !important; background: rgba(236,213,147,.16) !important; }
-    html body .game-view > .buttons button.tvm-qm-btn:hover, html body .game-view > .buttons button.tvm-qm-btn.is-open { background: rgba(236,213,147,.3) !important; color: #f6e6b4 !important; }
-    html body .game-view > .buttons button.tvm-qm-btn svg { width: 17px; height: 17px; pointer-events: none; }
+    html body .game-view > .buttons button:not(#tvm-x) > i::before { content: none !important; display: none !important; }
+    html body .game-view > .buttons button:not(#tvm-x) > i.icon-volume-up { -webkit-mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%23000%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M4%209.5h3.5L12%205.5v13l-4.5-4H4z%22%2F%3E%3Cpath%20d%3D%22M15.5%209a4%204%200%200%201%200%206M18.5%206.5a7.5%207.5%200%200%201%200%2011%22%2F%3E%3C%2Fsvg%3E"); mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%23000%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M4%209.5h3.5L12%205.5v13l-4.5-4H4z%22%2F%3E%3Cpath%20d%3D%22M15.5%209a4%204%200%200%201%200%206M18.5%206.5a7.5%207.5%200%200%201%200%2011%22%2F%3E%3C%2Fsvg%3E"); }
+    html body .game-view > .buttons button:not(#tvm-x) > i.icon-volume-down { -webkit-mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%23000%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M4%209.5h3.5L12%205.5v13l-4.5-4H4z%22%2F%3E%3Cpath%20d%3D%22M15.5%209a4%204%200%200%201%200%206%22%2F%3E%3C%2Fsvg%3E"); mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%23000%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M4%209.5h3.5L12%205.5v13l-4.5-4H4z%22%2F%3E%3Cpath%20d%3D%22M15.5%209a4%204%200%200%201%200%206%22%2F%3E%3C%2Fsvg%3E"); }
+    html body .game-view > .buttons button:not(#tvm-x) > i.icon-volume-off { -webkit-mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%23000%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M4%209.5h3.5L12%205.5v13l-4.5-4H4z%22%2F%3E%3Cpath%20d%3D%22M16%209.5l5%205M21%209.5l-5%205%22%2F%3E%3C%2Fsvg%3E"); mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%23000%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M4%209.5h3.5L12%205.5v13l-4.5-4H4z%22%2F%3E%3Cpath%20d%3D%22M16%209.5l5%205M21%209.5l-5%205%22%2F%3E%3C%2Fsvg%3E"); }
+    html body .game-view > .buttons button:not(#tvm-x) > i.icon-menu { -webkit-mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%23000%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M5%207h14M5%2012h14M5%2017h14%22%2F%3E%3C%2Fsvg%3E"); mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%23000%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M5%207h14M5%2012h14M5%2017h14%22%2F%3E%3C%2Fsvg%3E"); }
+    html body .game-view > .buttons button:not(#tvm-x):hover:not(:disabled) { background: rgba(255,255,255,.1) !important; color: #fff !important; }
+    html body .game-view > .buttons button:not(#tvm-x) .tooltip { font-size: 11.5px !important; }
+    html body .game-view > .buttons button:not(#tvm-x).tvm-qm-btn { color: #ecd593 !important; background: rgba(236,213,147,.16) !important; }
+    html body .game-view > .buttons button:not(#tvm-x).tvm-qm-btn:hover, html body .game-view > .buttons button:not(#tvm-x).tvm-qm-btn.is-open { background: rgba(236,213,147,.3) !important; color: #f6e6b4 !important; }
+    html body .game-view > .buttons button:not(#tvm-x).tvm-qm-btn svg { width: 17px; height: 17px; pointer-events: none; }
     #tvm-qm { position: fixed; right: 12px; top: 10px; width: 0; height: 0; z-index: 2147482400; font-family: Outfit, Bahnschrift, 'Segoe UI', sans-serif; user-select: none; }
     #tvm-qm .qm-panel { position: absolute; right: 0; top: 44px; width: 300px; max-height: calc(100vh - 80px); overflow-y: auto; overscroll-behavior: contain;
       padding: 6px 8px 8px; border-radius: 18px; background: rgba(11,18,36,.97); color: #e9edf6;
@@ -2488,6 +2488,10 @@ function minimapTick(f, room, match) {
   const T = o.fade && view ? view.__tvmView : null;
   // La posición de la cancha en pantalla se pide para el próximo cuadro (una vez, no todos).
   if (view && o.fade) view.__tvmWantView = 1;
+  // El mismo giro que la cancha en la vertical: rojo −90°, azul +90° (cada uno ataca para arriba).
+  // Si cambia (te pasaste de equipo), se redibuja aunque nadie se haya movido.
+  const rs = view && view.__tvmRot > 0 ? 1 : -1;
+  if (rs !== minimap.rs) { minimap.rs = rs; minimap.sum = NaN; }
   const moved = sum !== minimap.sum;
   minimap.sum = sum;
 
@@ -2530,7 +2534,7 @@ function minimapTick(f, room, match) {
       if (k !== pass) continue;
       if (moved) {
         const px = sgn * at.x, py = at.y;
-        const mx = cx + (vert ? py : px) * fx, my = cy + (vert ? -px : py) * fx;
+        const mx = cx + (vert ? -rs * py : px) * fx, my = cy + (vert ? rs * px : py) * fx;
         const nick = p[f.name];
         const mine = !!me && nick === me;
         const r = mine && o.bigMe ? 6 : 4;
@@ -2563,7 +2567,7 @@ function minimapTick(f, room, match) {
     }
     if (ball) {
       const px = sgn * ball.x, py = ball.y;
-      const mx = cx + (vert ? py : px) * fx, my = cy + (vert ? -px : py) * fx;
+      const mx = cx + (vert ? -rs * py : px) * fx, my = cy + (vert ? rs * px : py) * fx;
       const br = o.bigBall ? 3.8 : 2.6;
       if (o.bigBall) { c.beginPath(); c.arc(mx, my, br + 2.6, 0, Math.PI * 2); c.strokeStyle = '#ffd84a'; c.lineWidth = 2; c.stroke(); }
       c.beginPath(); c.arc(mx, my, br, 0, Math.PI * 2); c.fillStyle = '#fff'; c.fill(); c.lineWidth = 1; c.strokeStyle = '#000'; c.stroke();
