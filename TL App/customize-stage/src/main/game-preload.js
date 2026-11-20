@@ -680,7 +680,7 @@ function applyGameTheme(doc) {
   const mount = doc.head || doc.documentElement;
   if (!mount) return;
 
-  const css = themes.gameCss(currentPalette(), { hudScale: state.config.appearance.hudScale, scoreboard: state.config.appearance.scoreboard, scoreboardScale: state.config.appearance.scoreboardScale });
+  const css = themes.gameCss(currentPalette(), { hudScale: state.config.appearance.hudScale, scoreboard: state.config.appearance.scoreboard, scoreboardScale: state.config.appearance.scoreboardScale, scoreboardPos: state.config.appearance.scoreboardPos });
   let style = doc.getElementById('tvm-theme');
   if (!css) {
     if (style) style.remove();
@@ -692,6 +692,38 @@ function applyGameTheme(doc) {
     mount.append(style);
   }
   style.textContent = css;
+  safe(checkScoreboardBottom, doc);
+}
+
+/*
+ * Marcador abajo. El CSS del tema cubre los dos armados posibles del juego
+ * (flex: `order`; posicionado: `top/bottom`). Por si HaxBall lo tiene en el
+ * flujo común, se mide: si después de un cuadro sigue en la mitad de arriba,
+ * se lo fija abajo de la pantalla del juego.
+ */
+function checkScoreboardBottom(doc) {
+  const want = (state.config.appearance || {}).scoreboardPos === 'bottom';
+  const root = doc.documentElement;
+  if (!want) { root.classList.remove('tvm-sb-fixed'); return; }
+  const view = doc.defaultView;
+  (view.requestAnimationFrame || setTimeout)(() => {
+    const box = doc.querySelector('.game-state-view .bar-container');
+    const host = box && box.parentElement;
+    if (!box || !host || root.classList.contains('tvm-sb-fixed')) return;
+    const b = box.getBoundingClientRect(), hRect = host.getBoundingClientRect();
+    if (!(hRect.height > 0) || b.top + b.height / 2 >= hRect.top + hRect.height / 2) return;
+    // Fijo, pero apoyado en el borde de abajo de la cancha (no de la ventana:
+    // abajo de todo está el chat). Se recalcula si cambia el tamaño.
+    const place = () => {
+      const r = host.getBoundingClientRect();
+      root.style.setProperty('--tvm-sb-bottom', `${Math.max(0, Math.round(view.innerHeight - r.bottom + 10))}px`);
+    };
+    // Primero se lo saca del flujo y recién ahí se mide: con el marcador
+    // adentro, la cancha medía de más.
+    root.classList.add('tvm-sb-fixed');
+    place();
+    if (!view.__tvmSbResize) { view.__tvmSbResize = true; view.addEventListener('resize', () => safe(place)); }
+  });
 }
 
 /**
@@ -808,6 +840,8 @@ function applyClientStyles(doc) {
      * La clase la prende onMirrorFlip().
      */
     html.tvm-mirror .game-state-view .bar > .scoreboard { flex-direction: row-reverse; }
+    html.tvm-sb-fixed .game-state-view .bar-container { position: fixed !important; left: 0 !important; right: 0 !important; top: auto !important; bottom: var(--tvm-sb-bottom, 10px) !important; z-index: 5; pointer-events: none; }
+    html.tvm-sb-fixed .game-state-view .bar-container > * { pointer-events: auto; }
 
     /* ── Reproductor de replays: barra flotante ──────────────────────────
        Una tarjeta abajo en el centro con DOS filas:
@@ -2031,7 +2065,8 @@ function saveUndo() {
 }
 // Por si una clave todavía no está en la config (no debería: llega con los valores de fábrica).
 const QM_FALLBACK = { pitchLight: 'none', texture: 'none', pitchWeather: 'none', discStyle: 'default', ballStyle: 'default',
-  ballColor: '', ballOutline: '', discOutline: '', mirror: 'off', kickSfx: 'default', discSize: 1, ballSize: 1 };
+  ballColor: '', ballOutline: '', discOutline: '', mirror: 'off', kickSfx: 'default', discSize: 1, ballSize: 1,
+  scoreboardPos: 'top', scoreboardScale: 1, pitchBright: 1, pitchContrast: 1 };
 let qmCurLabel = '';
 function quickSet(patch, label) {
   const before = {};
@@ -2363,15 +2398,6 @@ function buildQuickMenu() {
     const bs = opts.map(([v, t]) => { const b = el('b', null, t); b.addEventListener('click', () => set(v)); box.append(b); return [v, b]; });
     row(label, box, () => { const cur = get(); for (const [v, b] of bs) b.classList.toggle('on', v === cur); });
   };
-  const pick = (label, list, get, set) => {
-    const box = el('div', 'qm-pick');
-    const prev = el('i', null, '‹'), next = el('i', null, '›'), name = el('em');
-    const step = (d) => { const i = Math.max(0, list.findIndex(([v]) => v === get())); set(list[(i + d + list.length) % list.length][0]); };
-    prev.addEventListener('click', () => step(-1));
-    next.addEventListener('click', () => step(1));
-    box.append(prev, name, next);
-    row(label, box, () => { const cur = list.find(([v]) => v === get()); name.textContent = cur ? cur[1] : list[0][1]; });
-  };
   const slider = (label, min, max, get, set) => {
     const wrap = el('div');
     wrap.style.display = 'flex'; wrap.style.alignItems = 'center'; wrap.style.gap = '6px';
@@ -2428,6 +2454,16 @@ function buildQuickMenu() {
   strip('Clima', QM_WEATHER, () => cfg().visual.pitchWeather || 'none', (v) => quickSet({ visual: { pitchWeather: v } }));
   strip('Luz', QM_LIGHTS, () => cfg().visual.pitchLight || 'none', (v) => quickSet({ visual: { pitchLight: v } }));
   toggle('Escudo en la cancha', () => cfg().visual.crest, (v) => quickSet({ visual: { crest: v } }));
+  const ap = () => cfg().appearance || {};
+  seg('Marcador', [['top', 'Arriba'], ['bottom', 'Abajo']], () => (ap().scoreboardPos === 'bottom' ? 'bottom' : 'top'),
+    (v) => quickSet({ appearance: { scoreboardPos: v } }));
+  // Tres tamaños fijos; si en el panel quedó uno intermedio se marca el más cercano.
+  const SB_SIZES = { s: 0.85, m: 1, l: 1.3 };
+  seg('↳ Tamaño', [['s', 'Chico'], ['m', 'Normal'], ['l', 'Grande']],
+    () => { const k = Number(ap().scoreboardScale) || 1; return k < 0.93 ? 's' : k > 1.15 ? 'l' : 'm'; },
+    (v) => quickSet({ appearance: { scoreboardScale: SB_SIZES[v] } }));
+  slider('Brillo', 0.5, 1.5, () => cfg().visual.pitchBright ?? 1, (v) => quickSet({ visual: { pitchBright: v } }));
+  slider('Contraste', 0.6, 1.6, () => cfg().visual.pitchContrast ?? 1, (v) => quickSet({ visual: { pitchContrast: v } }));
 
   head('FICHAS');
   slider('Tamaño', 0.6, 1.6, () => cfg().visual.discSize, (v) => quickSet({ visual: { discSize: v } }));
@@ -8633,7 +8669,8 @@ function skinPitch(ctx, w, h, stadium) {
   const pimg = pitchImage(ctx);
   const relief = ['sunken', 'raised'].includes(skin.relief) ? skin.relief : '';
   const veil = visual.weather ? lookfx.weatherVeil(visual.weather, visual.weatherAmount) : null;
-  if (!modeOn && !tex && !visual.crest && !visual.light && !pimg && !relief && !veil) { return; }
+  const tone = Math.abs(visual.contrast - 1) > 0.005;
+  if (!modeOn && !tex && !visual.crest && !visual.light && !pimg && !relief && !veil && !visual.bright && !tone) { return; }
 
   let field = modeOn ? pitchSkinColor() : null;
   let outside = modeOn ? pitchOutsideColor(field) : null;
@@ -8649,7 +8686,9 @@ function skinPitch(ctx, w, h, stadium) {
     // (arena, cemento, mármol) la levantan para no quedar barrosos.
     brightness = tex.lum || 0;
   }
-  if (!field && !outside && !brightness && !stripes && !tex && !visual.crest && !visual.light && !pimg && !relief && !veil) return;
+  // El brillo del menú de TL se suma al de la cancha (que sólo vale con color propio).
+  brightness = Math.max(-0.6, Math.min(0.6, brightness + (visual.bright || 0)));
+  if (!field && !outside && !brightness && !stripes && !tex && !visual.crest && !visual.light && !pimg && !relief && !veil && !tone) return;
 
   /*
    * El contexto llega con la transformación de mundo puesta: es la que usó el
@@ -8751,6 +8790,21 @@ function skinPitch(ctx, w, h, stadium) {
     ctx.globalAlpha = 1;
     ctx.fillStyle = `rgb(${gray},${gray},${gray})`;
     ctx.fillRect(0, 0, w, h);
+  }
+
+  // Contraste: la superficie se redibuja sobre sí misma con el filtro. Una vez
+  // por cache del estadio, no por cuadro.
+  if (tone && 'filter' in ctx && ctx.canvas) {
+    ctx.save();
+    try {
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.globalAlpha = 1;
+      ctx.globalCompositeOperation = 'copy';
+      ctx.filter = `contrast(${visual.contrast.toFixed(2)})`;
+      ctx.drawImage(ctx.canvas, 0, 0);
+    } finally {
+      ctx.restore();
+    }
   }
 }
 
@@ -9169,7 +9223,7 @@ function pitchSkinPrint() {
   const skin = (state.config.pitch && state.config.pitch.skin) || {};
   const field = pitchSkinColor();
   const vip = state.config.vip || {};
-  return `${skin.mode}|${field}|${pitchOutsideColor(field)}|${skin.strength}|${skin.brightness}|${skin.stripes}|${skin.cut}|${skin.imageAlpha}|${skin.relief}|${skin.reliefAmount}|${visual.weather}|${visual.weatherAmount}|${vip.pitchImage}|${JSON.stringify(vip.pitchCrop || null)}|${visual.pitchLine}|${flatGraphicsEnabled}|${visual.texture}|${visual.light}|${visual.crest}|${visual.crestOpacity}|${visual.crestSize}|${visual.lineColor}|${visual.lineGlow}`;
+  return `${skin.mode}|${field}|${pitchOutsideColor(field)}|${skin.strength}|${skin.brightness}|${skin.stripes}|${skin.cut}|${skin.imageAlpha}|${skin.relief}|${skin.reliefAmount}|${visual.weather}|${visual.weatherAmount}|${vip.pitchImage}|${JSON.stringify(vip.pitchCrop || null)}|${visual.pitchLine}|${flatGraphicsEnabled}|${visual.texture}|${visual.light}|${visual.crest}|${visual.crestOpacity}|${visual.crestSize}|${visual.lineColor}|${visual.lineGlow}|${visual.bright}|${visual.contrast}`;
 }
 
 /** Le tira el cache al estadio para que se vuelva a dibujar con el color nuevo. */
@@ -12126,6 +12180,8 @@ function syncCanvasHotFlags() {
     myTextureCanvas = null;
     safe(refreshAvatarTexture);
   }
+  visual.bright = clampNum(cfg.pitchBright, 0.5, 1.5, 1) - 1;
+  visual.contrast = clampNum(cfg.pitchContrast, 0.6, 1.6, 1);
   visual.light = ['vignette', 'spot', 'corners', 'stadium', 'sunset', 'night', 'stripes', 'cinema'].includes(cfg.pitchLight) ? cfg.pitchLight : '';
   visual.ownRingColor = lookfx.safeColor(cfg.ownRingColor);
   visual.ownRingAlpha = clampNum(cfg.ownRingAlpha, 0.02, 1, 0.3);

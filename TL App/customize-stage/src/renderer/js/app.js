@@ -6928,6 +6928,8 @@ function paintGameExtras() {
   $('#scoreboardScale').value = sbk;
   $('#scoreboardScaleValue').textContent = `${Math.round(sbk * 100)}%`;
   syncRangeFill($('#scoreboardScale'));
+  $('#sbPosLabel').textContent = en ? 'Scoreboard position' : 'Posición del marcador';
+  paintChipsInto($('#sbPosChips'), [['top', 'Arriba', 'Top'], ['bottom', 'Abajo', 'Bottom']], ap.scoreboardPos === 'bottom' ? 'bottom' : 'top', 'sbpos');
   const v = typeof ap.goalSfxVolume === 'number' ? ap.goalSfxVolume : 0.7;
   const r = $('#goalSfxVolume');
   if (document.activeElement !== r) r.value = String(v);
@@ -6997,6 +6999,7 @@ $('#scoreboardScale').addEventListener('input', (e) => {
   $('#scoreboardScaleValue').textContent = `${Math.round(Number(e.target.value) * 100)}%`;
 });
 $('#scoreboardScale').addEventListener('change', (e) => patchConfig({ appearance: { scoreboardScale: Number(e.target.value) } }));
+$('#sbPosChips').addEventListener('click', (e) => { const b = e.target.closest('[data-sbpos]'); if (b) patchConfig({ appearance: { scoreboardPos: b.dataset.sbpos } }).then(paintGameExtras); });
 
 /* ── Avatar ─────────────────────────────────────────────── */
 function avatarFrames(text) {
@@ -11204,6 +11207,8 @@ const LOOK_SECTIONS = {
   lookPitch: [
     { key: 'texture', type: 'select', label: 'look.texture', options: [['none', 'look.opt.none'], ['wood', 'look.tex.wood'], ['ice', 'look.tex.ice'], ['sand', 'look.tex.sand'], ['concrete', 'look.tex.concrete'], ['night', 'look.tex.night'], ['clay', 'look.tex.clay'], ['checker', 'look.tex.checker'], ['carbon', 'look.tex.carbon'], ['marble', 'look.tex.marble'], ['hex', 'look.tex.hex'], ['stars', 'look.tex.stars'], ['brick', 'look.tex.brick'], ['snow', 'look.tex.snow'], ['neon', 'look.tex.neon'], ['lava', 'look.tex.lava'], ['waves', 'look.tex.waves']] },
     { key: 'pitchLight', type: 'select', label: 'look.pitchLight', desc: 'look.pitchLightHelp', options: [['none', 'look.opt.none'], ['vignette', 'look.light.vignette'], ['spot', 'look.light.spot'], ['corners', 'look.light.corners'], ['stadium', 'look.light.stadium'], ['sunset', 'look.light.sunset'], ['night', 'look.light.night'], ['stripes', 'look.light.stripes'], ['cinema', 'look.light.cinema']] },
+    { key: 'pitchBright', type: 'range', label: 'look.pitchBright', min: 0.5, max: 1.5, step: 0.05 },
+    { key: 'pitchContrast', type: 'range', label: 'look.pitchContrast', min: 0.6, max: 1.6, step: 0.05 },
     { key: 'lineColor', type: 'color', label: 'look.lineColor', desc: 'look.lineColorHelp' },
     { key: 'lineGlow', type: 'switch', label: 'look.lineGlow', desc: 'look.lineGlowHelp' },
     { key: 'postColor', type: 'color', label: 'look.postColor' },
@@ -11297,7 +11302,7 @@ const LOOK_SECTIONS = {
 };
 
 const LOOK_DEFAULTS = {
-  texture: 'none', pitchLight: 'none', ownRingColor: '', ownRingAlpha: 0.3, ownRingRadius: 25, ownRingSoft: 0, pitchWeather: 'none', pitchWeatherAmount: 0.6, pitchScore: 'team', pitchScoreOpacity: 0.16, pitchScoreStyle: 'ring', pitchScoreFont: 'default', pitchScoreSize: 1, pitchScorePos: 0.5, pitchScoreMode: 'kickoff', pitchScoreAnim: 'rise', pitchScoreBurst: true, pitchScoreColorR: '', pitchScoreColorB: '', softShadows: false, crest: false, crestOpacity: 0.18, crestSize: 0.45, lineColor: '', postColor: '', postStyle: 'default',
+  texture: 'none', pitchLight: 'none', pitchBright: 1, pitchContrast: 1, ownRingColor: '', ownRingAlpha: 0.3, ownRingRadius: 25, ownRingSoft: 0, pitchWeather: 'none', pitchWeatherAmount: 0.6, pitchScore: 'team', pitchScoreOpacity: 0.16, pitchScoreStyle: 'ring', pitchScoreFont: 'default', pitchScoreSize: 1, pitchScorePos: 0.5, pitchScoreMode: 'kickoff', pitchScoreAnim: 'rise', pitchScoreBurst: true, pitchScoreColorR: '', pitchScoreColorB: '', softShadows: false, crest: false, crestOpacity: 0.18, crestSize: 0.45, lineColor: '', postColor: '', postStyle: 'default',
   discStyle: 'default', ballStyle: 'default', ballColor: '', lineGlow: false, discOutline: '', ballOutline: '', ringStyle: 'default', ringColor: '',
   selfTrail: false, selfTrailColor: '', teamColors: 'room', teamRed: '#e0b04a', teamBlue: '#9aa3b5', teamKeepKits: false, nameScale: 1, nameColor: '', nameOutline: false, nameFont: 'default',
   chatScale: 1, chatBg: -1, chatFont: 'default', chatOpacity: 1, statsOpacity: 1, statsStyle: 'default', menuBg: 'none'

@@ -160,6 +160,8 @@ const DEFAULTS = {
     scoreboard: 'default',
     /** Tamaño del cartel de marcador (0.7 a 1.8). */
     scoreboardScale: 1,
+    /** Dónde va el marcador: arriba (como HaxBall) o abajo. */
+    scoreboardPos: 'top',
     /** Sonido de gol incluido: default | bocina | campanas | aplausos | silbato | tribuna | retro. */
     goalSfx: 'default',
     goalSfxVolume: 0.7,
@@ -489,6 +491,9 @@ const DEFAULTS = {
     lineGlow: false,
     /** Luz de la cancha: `none` · `vignette` · `spot` · `corners`. */
     pitchLight: 'none',
+    /** Brillo y contraste de la cancha (1 = como viene). Van al cache del estadio: no cuestan nada por cuadro. */
+    pitchBright: 1,
+    pitchContrast: 1,
     /** Colores de los equipos sólo en tu pantalla: `room` = los de la sala, `mine` = los tuyos. */
     teamColors: 'room',
     teamRed: '#e0b04a',

@@ -519,11 +519,18 @@ html ${bar} > .game-timer-view, html ${bar} > .game-timer-view:not(.time-warn) >
   }
 }
 
-/** El tamaño del marcador (0.7 a 1.8). Va con transform: no cambia el lugar de nada. */
-function scoreboardScaleCss(k) {
+/**
+ * El tamaño del marcador (0.7 a 1.8) y dónde va. El tamaño va con transform: no
+ * cambia el lugar de nada. Abajo: `order` lo manda al final si el contenedor es
+ * flex, y `top/bottom` si está posicionado; con las dos sirve en cualquier caso.
+ */
+function scoreboardScaleCss(k, pos) {
   const s = Math.min(1.8, Math.max(0.7, Number(k) || 1));
-  if (Math.abs(s - 1) < 0.01) return '';
-  return `.game-state-view .bar-container { transform: scale(${s.toFixed(2)}) !important; transform-origin: top center !important; }`;
+  const bottom = pos === 'bottom';
+  let css = '';
+  if (bottom) css += '.game-state-view .bar-container { order: 9 !important; top: auto !important; bottom: 0 !important; }\n';
+  if (Math.abs(s - 1) >= 0.01) css += `.game-state-view .bar-container { transform: scale(${s.toFixed(2)}) !important; transform-origin: ${bottom ? 'bottom' : 'top'} center !important; }`;
+  return css;
 }
 
 /**
@@ -1368,7 +1375,7 @@ ${each(FIELDS, ':focus')} {
 .game-state-view .bar > .scoreboard .teamicon.red { background: ${p.red} !important; color: ${p.red} !important; }
 .game-state-view .bar > .scoreboard .teamicon.blue { background: ${p.blue} !important; color: ${p.blue} !important; }
 ${scoreboardCss(p, options.scoreboard)}
-${scoreboardScaleCss(options.scoreboardScale)}
+${scoreboardScaleCss(options.scoreboardScale, options.scoreboardPos)}
 
 /* El reloj se separa solo del marcador: aire a los dos lados de una línea. */
 .game-state-view .bar > .game-timer-view {

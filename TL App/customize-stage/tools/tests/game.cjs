@@ -301,6 +301,16 @@ syncMinimap();
     const K = new Function(QUICK_CODE + ';return QUICK_KEYS;')();
     for (const g of Object.keys(K)) for (const k of Object.keys(K[g])) if (!(store.DEFAULTS[g] && k in store.DEFAULTS[g])) missing.push(`${g}.${k}`);
     check('main: cada opción del menú tiene valor de fábrica', missing.length === 0, missing.join(', '));
+    {
+      const pal = themes.palette('toda');
+      const up = themes.gameCss(pal, { scoreboard: 'default', scoreboardScale: 1.3 });
+      const down = themes.gameCss(pal, { scoreboard: 'default', scoreboardScale: 1.3, scoreboardPos: 'bottom' });
+      const ok = !/order: 9/.test(up) && /transform-origin: top center/.test(up)
+        && /order: 9/.test(down) && /bottom: 0 !important/.test(down) && /transform-origin: bottom center/.test(down)
+        && D.appearance.scoreboardPos === 'top' && D.visual.pitchBright === 1 && D.visual.pitchContrast === 1
+        && /tvm-sb-fixed/.test(GP) && /contrast\(\$\{visual\.contrast/.test(GP);
+      check('marcador abajo y brillo/contraste: CSS, valores de fábrica y respaldo', ok);
+    }
   }
 
   /* ── Resumen del partido ───────────────────────────────────── */
