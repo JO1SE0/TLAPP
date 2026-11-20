@@ -311,6 +311,81 @@ syncMinimap();
         && /tvm-sb-fixed/.test(GP) && /contrast\(\$\{visual\.contrast/.test(GP);
       check('marcador abajo y brillo/contraste: CSS, valores de fábrica y respaldo', ok);
     }
+
+  /* ── La hinchada y la posesión ─────────────────────────────────── */
+  {
+    const CARD = between(GP, 'function newCard()', '/** La distancia recorrida y la posesión');
+    const TICK = between(GP, 'function cardTick(card, f, room, advanced)', '/** El identificador de equipo');
+    const CROWD = between(GP, 'const OLE_FROM = 6;', 'function onRealStep(view, room) {');
+    const html = `<!doctype html><html><body><div class="game-state-view"><div class="bar">2-1</div></div><script>
+      const state = { config: { pitch: {}, appearance: {} } };
+      window.SND = [];
+      const goalSfx = { has: () => true, play: (k) => { window.SND.push(k); return true; } };
+      const gameSoundLevel = () => 1;
+      const safe = (fn, ...a) => { try { return fn(...a); } catch (e) { console.error(e.message); } };
+      const gameDocument = () => document;
+      const DEFAULT_BALL_RADIUS = 10;
+      const cardNames = new WeakMap();
+      const canonicalTeam = (t) => t;
+      const tracker = { card: null };
+      const real = { clock: 0, quietUntil: 0 };
+      ${CARD}
+      ${TICK}
+      ${CROWD}
+      tracker.card = newCard();
+    </script></body></html>`;
+    const p = await browser.newPage();
+    const errs = []; p.on('pageerror', (e) => errs.push(e.message)); p.on('console', (m) => { if (m.type() === 'error') errs.push(m.text()); });
+    await p.goto(write('crowd.html', html));
+    const r = await p.evaluate(async () => {
+      const c = tracker.card;
+      const pass = (n, team) => cardTouch(c, n, team);
+      // 5 pases rojos: nada. El sexto: «ole».
+      ['a', 'b', 'a', 'b', 'a', 'b'].forEach((n) => pass(n, 'Red'));
+      const five = window.SND.length;
+      pass('a', 'Red');
+      const six = window.SND.slice();
+      const badge = document.getElementById('tvm-ole');
+      const text = badge && badge.textContent;
+      // Pierde la pelota: se corta.
+      pass('z', 'Blue');
+      const cut = c.streak;
+      // El palo: disco quieto (palo) y el de un jugador encima, que no cuenta.
+      const post = { p: { x: 370, y: 64 }, r: 8 }, ball = { p: { x: 352, y: 64 }, r: 10 }, me = { p: { x: 200, y: 0 }, r: 15 };
+      const match = { w: { d: [ball, me, post] } };
+      const room = { pl: [{ disc: me }] };
+      const f = { world: 'w', discs: 'd', pos: 'p', radius: 'r', players: 'pl', disc: 'disc' };
+      window.SND.length = 0;
+      real.clock = 100;
+      checkPostHit(f, room, match, ball.p, 0.5, 0);            // lento: nada
+      const slow = postShake.i;
+      checkPostHit(f, room, match, ball.p, 6, 0);              // remate: vibra y «uuuh»
+      const shook = postShake.i;
+      await new Promise((ok) => setTimeout(ok, 320));
+      const uuuh = window.SND.slice();
+      // Pega en el palo y entra: el gol lo calla.
+      window.SND.length = 0; real.clock = 5000;
+      checkPostHit(f, room, match, ball.p, 6, 0); crowdGoalReset();
+      await new Promise((ok) => setTimeout(ok, 320));
+      const goalQuiet = window.SND.length === 0;
+      // El disco del jugador nunca es palo.
+      const posts = postsOf(f, room, match).map((x) => x.i).join(',');
+      // Posesión: 60/40, y en espejo da vuelta.
+      c.total = 10000; c.teamMs.Red = 6000; c.teamMs.Blue = 4000;
+      paintPossession(document, c);
+      const line = document.getElementById('tvm-poss');
+      const grow = line ? [line.firstChild.style.flexGrow, line.lastChild.style.flexGrow].join('/') : '';
+      state.config.pitch.possessionBar = false; paintPossession(document, c);
+      const off = line.hidden;
+      return { five, six, text, cut, slow, shook, uuuh, goalQuiet, posts, grow, inBar: line.parentNode.className, off };
+    });
+    check('hinchada: «ole» desde el sexto pase seguido, y se corta al perderla',
+      r.five === 0 && r.six.join() === 'ole' && r.text === '¡Ole! · 6 pases' && r.cut === 0, JSON.stringify(r));
+    check('hinchada: remate al palo vibra y hace «uuuh»; lento no; si entra, calla',
+      r.slow === -1 && r.shook === 2 && r.uuuh.join() === 'uuuh' && r.goalQuiet && r.posts === '2', JSON.stringify(r));
+    check('posesión: línea 60/40 adentro del marcador y se apaga', r.grow === '60/40' && r.inBar === 'bar' && r.off && errs.length === 0, JSON.stringify(r) + errs.join('|'));
+    await p.close();
+  }
   }
 
   /* ── Resumen del partido ───────────────────────────────────── */

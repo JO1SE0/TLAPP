@@ -647,6 +647,12 @@ const DEFAULTS = {
     clubArrival: true,
     /** Resumen al final del partido: resultado, goles en su minuto y la figura. */
     matchSummary: true,
+    /** Línea de posesión en el borde de abajo del marcador. */
+    possessionBar: true,
+    /** La hinchada canta «ole» desde el sexto pase seguido. */
+    crowdOle: true,
+    /** «Uuuh» y el palo que vibra cuando un remate pega en el palo. */
+    crowdPost: true,
     /**
      * Estela de la pelota: por dónde ESTUVO, nunca por dónde va.
      *
