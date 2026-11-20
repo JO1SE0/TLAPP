@@ -10583,9 +10583,7 @@ function onGameTick(view, room) {
     // poder mirarlo. Se vacía cuando arranca el siguiente.
     if (tracker.match) {
       tracker.match = null;
-      sendHeatmap();
-      ipcRenderer.send('game:match-end', { red: lastScore.red, blue: lastScore.blue });
-      safe(showSummary, f, room);
+      closeMatch(f, room);
     }
     return;
   }
@@ -10593,13 +10591,19 @@ function onGameTick(view, room) {
   if (match !== tracker.match) {
     // Un partido nuevo cierra el anterior. Hace falta además del caso de arriba:
     // entre dos partidos seguidos el hueco puede durar un solo cuadro y caer
-    // entero entre dos dibujados, y entonces el final no se ve pasar.
-    if (tracker.match) { sendHeatmap(); ipcRenderer.send('game:match-end', { red: lastScore.red, blue: lastScore.blue }); }
+    // entero entre dos dibujados, y entonces el final no se ve pasar. Es lo
+    // normal en las salas con bot (paran y arrancan en el mismo instante): antes
+    // este camino cerraba el partido SIN el resumen, y el resumen no salía nunca.
+    if (tracker.match) closeMatch(f, room, true);
     resetTracker();
     tracker.match = match;
     safe(summaryReset);
     ipcRenderer.send('game:match-start');
   }
+
+  // Cuánto va el partido, del reloj del motor (el del HUD ya no está cuando el
+  // partido terminó, y el resumen lo necesita justo ahí).
+  if (f.clock) { const c = Number(match[f.clock]); if (Number.isFinite(c)) msum.sec = c; }
 
   // El reloj de partido. El tope de 100 ms tapa los saltos de un alt-tab o de
   // un salto en la barra de tiempo del replay.
@@ -11093,11 +11097,25 @@ function realGoal(view, teamObj, room) {
  * DOM quieto: entra con transform/opacity, se queda unos segundos y se va.
  * Durante el partido sólo se anota un gol cuando hay gol.
  */
-const msum = { goals: [], keys: new Set() };
+const msum = { goals: [], keys: new Set(), sec: NaN };
+
+/**
+ * Cierra el partido que terminaba: mapa de calor, aviso a la interfaz y el
+ * resumen. Una sola función para los dos finales posibles (la sala queda sin
+ * partido, o arranca otro en el mismo instante), así ninguno se olvida de nada.
+ */
+function closeMatch(f, room, nextStarted) {
+  safe(sendHeatmap);
+  ipcRenderer.send('game:match-end', { red: lastScore.red, blue: lastScore.blue });
+  // Si ya arrancó el siguiente, el resumen dura menos: tapa el marcador y el chat.
+  safe(showSummary, f, room, nextStarted ? SUMMARY_QUICK_MS : SUMMARY_MS);
+}
 const SUMMARY_MS = 9000;
+const SUMMARY_QUICK_MS = 6000;
 function summaryReset() {
   msum.goals.length = 0;
   msum.keys.clear();
+  msum.sec = NaN;
   const doc = gameDocument();
   if (doc) doc.getElementById('tvm-summary')?.remove();
 }
@@ -11167,14 +11185,15 @@ function summaryCss(doc) {
     html.tvm-noanim #tvm-summary * { animation: none !important; }`;
   (doc.head || doc.documentElement).append(st);
 }
-function showSummary(f, room) {
+function showSummary(f, room, ms) {
   if (!(state.config.pitch && state.config.pitch.matchSummary !== false)) return;
   if (state.view === 'replay') return;
   const doc = gameDocument();
   if (!doc || !doc.body) return;
   const red = lastScore.red | 0, blue = lastScore.blue | 0;
   // Un partido sin goles y que casi no se jugó (lo pararon de una) no se resume.
-  const endSec = clockSec(matchClock(doc));
+  // Lo jugado: el reloj del motor (siempre está); el del HUD sólo si no hay otro.
+  const endSec = Number.isFinite(msum.sec) ? Math.floor(msum.sec) : clockSec(matchClock(doc));
   if (!msum.goals.length && !(endSec >= 30)) return;
 
   // Figura.
@@ -11261,7 +11280,7 @@ function showSummary(f, room) {
   doc.addEventListener('keydown', onKey, true);
   top.addEventListener('click', close);
   bot.addEventListener('click', close);
-  setTimeout(close, SUMMARY_MS);
+  setTimeout(close, Number(ms) > 0 ? ms : SUMMARY_MS);
 }
 
 /** «MM:SS» a partir de los segundos de partido, como lo escribe el HUD. */

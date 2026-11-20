@@ -286,6 +286,61 @@ syncMinimap();
     check('main: cada opción del menú tiene valor de fábrica', missing.length === 0, missing.join(', '));
   }
 
+  /* ── Resumen del partido ───────────────────────────────────── */
+  {
+    // Los dos finales (la sala queda sin partido, o arranca otro en el mismo
+    // instante) tienen que pasar por closeMatch, que es la que muestra el resumen.
+    const tick = between(GP, '  const match = room[f.game];', '  // El reloj de partido.');
+    const calls = (tick.match(/closeMatch\(f, room/g) || []).length;
+    check('resumen: los dos finales de partido lo muestran', calls === 2, `${calls} llamadas en el cuadro`);
+    const SUM = between(GP, 'const msum', '/** «MM:SS» a partir');
+    const html = `<!doctype html><html><body style="margin:0;width:1280px;height:720px;background:#3d6e36">
+<script>
+const state={config:{pitch:{matchSummary:true},appearance:{}},view:'game'};
+const gameDocument=()=>document;const lastScore={red:2,blue:1};const assetUrl=()=>'';const peers=new Map();
+const safe=(f,...a)=>{try{return f(...a)}catch(e){console.error(e.message)}};
+const matchClock=()=>null;function sendHeatmap(){}const myNick=()=>"Ana";let sharedAvatar="";
+window.SENT=[];const ipcRenderer={send:(c,p)=>window.SENT.push(c)};
+${SUM}
+</script></body></html>`;
+    const p = await browser.newPage({ viewport: { width: 1280, height: 720 } });
+    const errs = []; p.on('pageerror', (e) => errs.push(e.message)); p.on('console', (m) => { if (m.type() === 'error') errs.push(m.text()); });
+    await p.goto(write('summary.html', html));
+    const r = await p.evaluate(async () => {
+      const out = {};
+      // Sin goles, 95 s jugados (el reloj del HUD ya no está): sale igual.
+      summaryReset(); msum.sec = 95; lastScore.red = 0; lastScore.blue = 0;
+      closeMatch({}, {}, false);
+      out.noGoals = !!document.getElementById('tvm-summary');
+      out.sent = window.SENT.join(',');
+      document.getElementById('tvm-summary').remove();
+      // Con goles y el siguiente ya arrancado: sale y se va antes (6 s).
+      summaryReset(); msum.sec = 180; lastScore.red = 2; lastScore.blue = 1;
+      summaryGoal({ team: 'Red', scorer: 'Ana', clock: 30, key: 'a' });
+      summaryGoal({ team: 'Red', scorer: 'Ana', clock: 90, key: 'b' });
+      summaryGoal({ team: 'Blue', scorer: 'Beto', clock: 150, key: 'c' });
+      closeMatch({}, {}, true);
+      const box = document.getElementById('tvm-summary');
+      out.goals = box ? box.querySelectorAll('.ev').length : -1;
+      out.score = box ? [...box.querySelectorAll('.mid b')].map((b) => b.textContent).join('-') : '';
+      out.mvp = box && box.querySelector('.mv b') ? box.querySelector('.mv b').textContent : '';
+      await new Promise((res) => setTimeout(res, 6500));
+      out.goneQuick = !document.getElementById('tvm-summary');
+      // Apagado en el menú: no sale.
+      state.config.pitch.matchSummary = false; summaryReset(); msum.sec = 120; closeMatch({}, {}, false);
+      out.off = !document.getElementById('tvm-summary');
+      // Partido parado de una (sin goles y < 30 s): no sale.
+      state.config.pitch.matchSummary = true; summaryReset(); msum.sec = 8; closeMatch({}, {}, false);
+      out.short = !document.getElementById('tvm-summary');
+      return out;
+    });
+    check('resumen: sale también sin goles (con el reloj del motor)', r.noGoals && /game:match-end/.test(r.sent), JSON.stringify(r));
+    check('resumen: goles, resultado y figura', r.goals === 3 && r.score === '2-1' && r.mvp === 'Ana', JSON.stringify(r));
+    check('resumen: con el partido siguiente ya arrancado se va a los 6 s', r.goals === 3 && r.goneQuick, JSON.stringify(r));
+    check('resumen: respeta el apagado y no sale en un partido parado de una', r.off && r.short && errs.length === 0, JSON.stringify(r) + errs.join(' | '));
+    await p.close();
+  }
+
   /* ── Panel: el cartel de marcador con vistas previas ─────────── */
   {
     const look = store.DEFAULTS.appearance;
