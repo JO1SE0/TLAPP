@@ -2617,6 +2617,28 @@ handle('cfg:schema', () => ({
 
 handle('theme:vars', (_e, accent, themeId) => themeVars(accent, themeId));
 
+/*
+ * El estilo del juego con cada cartel de marcador, para las vistas previas del
+ * panel. Sale del mismo `themes.gameCss` que usa la partida, con el tema y los
+ * colores de equipo de ahora: lo que se ve en la vista previa es lo que se ve
+ * jugando.
+ */
+handle('theme:scoreboards', (_e, ids) => {
+  const cfg = store.get();
+  const look = cfg.appearance;
+  const pal = themes.palette(look.theme, look.accent, look.customThemes);
+  const v = cfg.visual || {};
+  if (v.teamColors === 'mine') {
+    if (/^#[0-9a-f]{6}$/i.test(v.teamRed || '')) pal.red = v.teamRed;
+    if (/^#[0-9a-f]{6}$/i.test(v.teamBlue || '')) pal.blue = v.teamBlue;
+  }
+  const out = {};
+  for (const id of Array.isArray(ids) ? ids.slice(0, 24) : []) {
+    if (/^[a-z]{1,16}$/.test(String(id))) out[id] = themes.gameCss(pal, { scoreboard: id, hudScale: 1, scoreboardScale: 1 });
+  }
+  return out;
+});
+
 /**
  * Las mismas variables, pero síncronas y para el arranque de la ventana.
  *

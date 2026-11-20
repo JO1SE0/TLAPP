@@ -6841,6 +6841,58 @@ const SCOREBOARDS = [
   ['match', 'Partido', 'Match'], ['cream', 'Crema', 'Cream'], ['split', 'Mitad y mitad', 'Split'],
   ['led', 'Tablero LED', 'LED board'], ['float', 'Flotante', 'Floating'], ['outline', 'Contorno', 'Outline']
 ];
+/*
+ * Vistas previas del cartel de marcador: cada una es el marcador de HaxBall de
+ * verdad (la misma estructura) con el estilo que arma el juego (`theme:scoreboards`
+ * en main.js), dentro de un iframe chiquito para que los estilos no se mezclen.
+ * Se rearman sólo si cambia el tema o los colores; elegir otro sólo mueve el
+ * resaltado.
+ */
+const SB_MARKUP = "<div class='game-state-view'><div class='bar-container'><div class='bar'><div class='scoreboard'><div class='teamicon red'></div><div class='score' data-hook='red-score'>2</div><div>-</div><div class='score' data-hook='blue-score'>1</div><div class='teamicon blue'></div></div><div class='fps-limit-fix'></div><div data-hook='timer'><div class='game-timer-view'><span class='overtime'>OVERTIME!</span><span class='digit'>0</span><span class='digit'>3</span><span>:</span><span class='digit'>2</span><span class='digit'>7</span></div></div></div></div></div>";
+// Lo mínimo de HaxBall para que el cartel tenga su forma (el resto lo pone el tema).
+const SB_BASE = 'html,body{margin:0;height:100%;overflow:hidden;background:#4b5c40 !important;font-family:Outfit,"Segoe UI",sans-serif;color:#fff}'
+  + '.game-state-view{position:relative;height:100%}.game-state-view .bar-container{position:absolute !important;left:0;right:0;top:0;display:flex;justify-content:center;transform:none !important}'
+  + '.bar{display:flex;align-items:center;gap:8px;padding:4px 12px;background:#1a2125;font-weight:bold}'
+  + '.scoreboard{display:flex;align-items:center;gap:6px;font-size:20px}.teamicon{width:14px;height:14px;border-radius:3px}.teamicon.red{background:#e56e56}.teamicon.blue{background:#5689e5}'
+  + '.game-timer-view{display:flex;border-left:1px solid #555;padding-left:8px;font-size:18px}.game-timer-view .overtime{display:none}';
+let sbPreviewKey = '';
+async function paintScoreboardPreviews(cur) {
+  const host = $('#scoreboardChips');
+  if (!host) return;
+  const en = isEn();
+  const ap = (state.config && state.config.appearance) || {};
+  const v = (state.config && state.config.visual) || {};
+  const key = [ap.theme, ap.accent, v.teamColors, v.teamRed, v.teamBlue, en ? 'en' : 'es', JSON.stringify(ap.customThemes || null).length].join('|');
+  if (key !== sbPreviewKey || !host.children.length) {
+    sbPreviewKey = key;
+    let css = {};
+    try { css = (window.tvm && window.tvm.theme && window.tvm.theme.scoreboards) ? await window.tvm.theme.scoreboards(SCOREBOARDS.map((s) => s[0])) : {}; } catch (e) { css = {}; }
+    if (!css || typeof css !== 'object') css = {}; // sin respuesta: se ven con el estilo base, pero se ven
+    if (sbPreviewKey !== key) return; // llegó otra pintada mientras tanto
+    host.replaceChildren();
+    for (const it of SCOREBOARDS) {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'sbprev';
+      b.dataset.sb = it[0];
+      b.title = en ? it[2] : it[1];
+      const frameBox = document.createElement('span');
+      frameBox.className = 'sbprev__view';
+      const f = document.createElement('iframe');
+      f.setAttribute('aria-hidden', 'true');
+      f.tabIndex = -1;
+      f.setAttribute('sandbox', '');
+      f.srcdoc = `<!doctype html><html><head><style>${SB_BASE}</style><style>${css[it[0]] || ''}</style></head><body>${SB_MARKUP}</body></html>`;
+      frameBox.appendChild(f);
+      const name = document.createElement('span');
+      name.className = 'sbprev__name';
+      name.textContent = en ? it[2] : it[1];
+      b.append(frameBox, name);
+      host.appendChild(b);
+    }
+  }
+  for (const b of host.children) b.classList.toggle('is-active', b.dataset.sb === cur);
+}
 function paintGameExtras() {
   const ap = (state.config && state.config.appearance) || {};
   const en = isEn();
@@ -6870,7 +6922,7 @@ function paintGameExtras() {
   if (document.activeElement !== kr) kr.value = String(kv);
   $('#kickSfxVolumeValue').textContent = `${Math.round(kv * 100)}%`;
   syncRangeFill(kr);
-  fill($('#scoreboardChips'), SCOREBOARDS, ap.scoreboard || 'default', 'sb');
+  paintScoreboardPreviews(ap.scoreboard || 'default');
   $('#scoreboardScaleLabel').textContent = en ? 'Scoreboard size' : 'Tamaño del marcador';
   const sbk = Number(ap.scoreboardScale) || 1;
   $('#scoreboardScale').value = sbk;

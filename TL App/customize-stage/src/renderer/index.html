@@ -1301,9 +1301,11 @@
           <section class="sec" data-sec="hudpartida">
             <header class="sec__head"><h2 class="sec__title" data-i18n="group.inGameHud">Marcador y botones</h2></header>
             <div class="sec__body">
-              <div class="row">
+              <!-- En bloque (título arriba, vistas previas abajo): en fila no entraban
+                   y se pisaban con el título. Ver paintScoreboardPreviews en app.js. -->
+              <div class="row row--block">
                 <div class="row__text"><span class="row__label" id="scoreboardLabel">Cartel de marcador</span></div>
-                <div class="row__ctl"><div class="chips" id="scoreboardChips"></div></div>
+                <div class="row__ctl"><div class="sbgrid" id="scoreboardChips"></div></div>
               </div>
               <div class="row">
                 <div class="row__text"><span class="row__label" id="scoreboardScaleLabel">Tamaño del marcador</span></div>

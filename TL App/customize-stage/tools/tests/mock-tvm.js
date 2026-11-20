@@ -20,6 +20,8 @@
     'config.schema': () => H.schema,
     'config.set': (p) => { for (const k in p) H.cfg[k] = Object.assign({}, H.cfg[k], p[k]); return H.cfg; },
     'theme.vars': (a, id) => H.vars[id || theme],
+    // Las pruebas pueden dejar en window.__SBCSS el CSS de verdad de cada marcador (ver game.cjs).
+    'theme.scoreboards': (ids) => { const o = {}; for (const i of ids || []) o[i] = (window.__SBCSS || {})[i] || ''; return o; },
     'app.info': () => ({ version: '1.0.58', electron: '13.6.9', chrome: '91.0', node: '14', platform: 'Windows 10', cpu: 'Ryzen', totalMemory: 16e9, userData: 'C:/', configPath: 'C:/x.json', gamePreload: '/tmp/game-preload.js' }),
     'rooms.list': () => ({ rooms, totalRooms: rooms.length, totalPlayers: 51, fetchedAt: Date.now() }),
     'replays.list': () => ({ folder: 'C:/replays', items: [] }),

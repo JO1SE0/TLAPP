@@ -286,6 +286,54 @@ syncMinimap();
     check('main: cada opción del menú tiene valor de fábrica', missing.length === 0, missing.join(', '));
   }
 
+  /* ── Panel: el cartel de marcador con vistas previas ─────────── */
+  {
+    const look = store.DEFAULTS.appearance;
+    const pal = themes.palette(look.theme, look.accent, look.customThemes);
+    const sbIds = ['default', 'club', 'neon', 'minimal', 'tv', 'match', 'cream', 'split', 'led', 'float', 'outline'];
+    const sbcss = {};
+    for (const id of sbIds) sbcss[id] = themes.gameCss(pal, { scoreboard: id, hudScale: 1, scoreboardScale: 1 });
+    const here = __dirname;
+    const fixture = fs.readFileSync(path.join(here, 'fixture-config.js'), 'utf8').replace(/"welcome":true/g, '"welcome":false');
+    const mock = fs.readFileSync(path.join(here, 'mock-tvm.js'), 'utf8');
+    const tidy = ';setInterval(()=>{for(const s of ["#news","#backcard"]){const e=document.querySelector(s);e&&e.remove()}},50);';
+    for (const width of [1400, 980]) {
+      const p = await browser.newPage({ viewport: { width, height: 900 } });
+      const errs = []; p.on('pageerror', (e) => errs.push(e.message));
+      await p.addInitScript({ content: `window.__SBCSS=${JSON.stringify(sbcss)};` + fixture + mock + tidy });
+      await p.goto('file://' + path.resolve(here, '../../src/renderer/index.html'));
+      await p.waitForTimeout(1500);
+      await p.evaluate(() => { const s = document.querySelector('#splash'); if (s) s.remove(); document.querySelector('#startForm').requestSubmit(); });
+      await p.waitForTimeout(600);
+      await p.evaluate(() => { const pg = document.querySelector('#scoreboardChips').closest('.page').dataset.page; goToSection(pg, 'hudpartida'); });
+      await p.waitForTimeout(1200);
+      const r = await p.evaluate(() => {
+        const card = document.querySelector('[data-sec="hudpartida"]').getBoundingClientRect();
+        const lab = document.querySelector('#scoreboardLabel').getBoundingClientRect();
+        const items = [...document.querySelectorAll('#scoreboardChips .sbprev')];
+        const rects = items.map((e) => e.getBoundingClientRect());
+        const styled = items.filter((e) => /\.bar/.test(e.querySelector('iframe').srcdoc)).length;
+        return {
+          n: items.length, styled,
+          out: rects.filter((i) => i.right > card.right + 0.5 || i.left < card.left - 0.5).length,
+          overlap: rects.filter((i) => !(i.top >= lab.bottom || i.bottom <= lab.top || i.left >= lab.right || i.right <= lab.left)).length
+        };
+      });
+      check(`panel: marcador con ${r.n} vistas previas, sin salirse ni pisar el título (${width} px)`, r.n === 11 && r.styled === 11 && r.out === 0 && r.overlap === 0 && errs.length === 0, JSON.stringify(r) + errs.join(' | '));
+      if (width === 1400) {
+        await p.click('#scoreboardChips .sbprev[data-sb="neon"]');
+        await p.waitForTimeout(400);
+        const sel = await p.evaluate(() => [state.config.appearance.scoreboard, (document.querySelector('#scoreboardChips .is-active') || {}).dataset]);
+        check('panel: tocar una vista previa elige ese marcador', sel[0] === 'neon' && sel[1] && sel[1].sb === 'neon', JSON.stringify(sel));
+        await p.$eval('[data-sec="hudpartida"]', (e) => e.scrollIntoView());
+        await p.waitForTimeout(300);
+        await (await p.$('[data-sec="hudpartida"]')).screenshot({ path: path.join(tmp, 'marcadores.png') });
+        process.env.TL_SB_SHOT = path.join(tmp, 'marcadores.png');
+      }
+      await p.close();
+    }
+  }
+
   /* ── El parche del juego (si hay un bundle a mano) ───────────── */
   const bundle = process.env.HB_BUNDLE;
   if (bundle && fs.existsSync(bundle)) {

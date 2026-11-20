@@ -100,6 +100,8 @@ contextBridge.exposeInMainWorld('tvm', {
 
   theme: {
     vars: (accent, themeId) => call('theme:vars', accent, themeId),
+    /** CSS del juego con cada estilo de marcador (vistas previas del panel). */
+    scoreboards: (ids) => call('theme:scoreboards', ids),
     onVars: (cb) => on('theme:vars', cb),
     save: (theme) => call('themes:save', theme),
     remove: (id) => call('themes:delete', id)

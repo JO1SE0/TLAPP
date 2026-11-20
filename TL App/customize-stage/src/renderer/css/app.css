@@ -8763,3 +8763,19 @@ html[data-scheme="light"] .vhud__p, html[data-scheme="light"] .vhud__me { color:
 .stats-panel__foot { border-top: 0; padding: 4px 24px 14px; }
 .stats-panel .possbar__track { height: 8px; background: #3768c4; }
 .stats-panel .possbar__red { display: block; height: 100%; background: #c24848; border-radius: 999px; }
+
+/* ═══ Cartel de marcador: vistas previas ═══
+   Cada tarjeta es el marcador de HaxBall con su estilo de verdad (un iframe
+   chiquito, ver paintScoreboardPreviews en app.js), achicado. */
+.sbgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; width: 100%; }
+.sbprev { display: flex; flex-direction: column; align-items: stretch; gap: 6px; padding: 6px; border-radius: 12px; cursor: pointer;
+  border: 1px solid var(--line, rgb(255 255 255 / 10%)); background: rgb(255 255 255 / 3%); color: inherit; font: inherit; text-align: center;
+  transition: border-color .15s ease, background .15s ease, transform .15s ease; }
+.sbprev:hover { border-color: rgb(var(--accent-rgb) / 45%); background: rgb(var(--accent-rgb) / 6%); }
+.sbprev:active { transform: scale(.98); }
+.sbprev.is-active { border-color: var(--accent); background: var(--accent-soft); box-shadow: 0 0 0 1px var(--accent) inset; }
+.sbprev__view { position: relative; display: block; height: 36px; border-radius: 8px; overflow: hidden; background: #4b5c40; }
+/* El iframe se arma a 1,6× y se achica: así el cartel entra entero y nítido. */
+.sbprev__view iframe { position: absolute; left: 0; top: 0; width: 160%; height: 160%; border: 0; transform: scale(.625); transform-origin: top left; pointer-events: none; }
+.sbprev__name { font-size: 12.5px; font-weight: 600; opacity: .85; }
+.sbprev.is-active .sbprev__name { color: var(--accent-text, var(--accent)); opacity: 1; }
