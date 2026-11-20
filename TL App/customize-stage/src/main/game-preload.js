@@ -1997,7 +1997,7 @@ function attachHudActions(doc) {
  * teclado (mousedown sin foco, sin <input>): las flechas siguen yendo al
  * juego aunque tengas el menú abierto.
  */
-const QM_TEXTURES = [['none', 'Normal'], ...Object.entries({"wood": "Wood", "ice": "Ice", "sand": "Sand", "concrete": "Concrete", "night": "Night grass", "clay": "Clay", "checker": "Checkerboard", "carbon": "Carbon fibre", "marble": "Marble", "hex": "Honeycomb", "stars": "Galaxy", "brick": "Brick", "snow": "Snow", "neon": "Neon", "lava": "Lava", "waves": "Water"})];
+const QM_TEXTURES = [['none', 'Normal'], ...Object.entries({"wood": "Madera", "ice": "Hielo", "sand": "Arena", "concrete": "Cemento", "night": "Césped nocturno", "clay": "Arcilla", "checker": "Damero", "carbon": "Fibra de carbono", "marble": "Mármol", "hex": "Panal", "stars": "Galaxia", "brick": "Ladrillo", "snow": "Nieve", "neon": "Neón", "lava": "Lava", "waves": "Agua"})];
 const QM_WEATHER = [['none', 'Sin clima'], ...Object.entries({"rain": "Lluvia", "storm": "Tormenta", "snow": "Nieve", "fog": "Niebla", "dust": "Polvo y viento", "leaves": "Hojas de otoño", "embers": "Brasas", "fireflies": "Luciérnagas", "blizzard": "Ventisca"})];
 const QM_BALLS = [['default', 'Como viene'], ...Object.entries({"soccer": "Futbolera", "neon": "Neón", "gold": "Dorada", "beach": "Playera", "eight": "Bola 8", "star": "Estrella", "triangles": "Fútbol triángulos", "vintage": "Fútbol de cuero", "tennis": "Tenis", "basket": "Básquet", "volley": "Vóley", "baseball": "Béisbol", "golf": "Golf", "bowling": "Bowling", "earth": "Planeta Tierra", "moon": "Luna", "disco": "Bola de espejos", "orb": "Orbe místico", "pumpkin": "Calabaza", "melon": "Sandía", "eye": "Ojo", "argentina": "Celeste y blanca", "fire": "Bola de fuego", "ice": "Hielo", "yinyang": "Yin yang", "smile": "Carita", "sun": "Sol", "donut": "Dona", "checker": "Cuadros", "candy": "Caramelo", "heart": "Corazón", "saturn": "Planeta", "lava": "Lava", "peso": "Moneda de un peso"})];
 const qmDiscs = () => [['default', 'Como viene'], ...Object.entries(DISC_NAMES)];
@@ -2136,10 +2136,37 @@ function quickCss(doc) {
     #tvm-qm .qm-sw i { width: 18px; height: 18px; border-radius: 50%; cursor: pointer; box-shadow: inset 0 0 0 1.5px rgba(255,255,255,.25); }
     #tvm-qm .qm-sw i.on { box-shadow: 0 0 0 2px #ecd593, inset 0 0 0 1.5px rgba(0,0,0,.3); }
     #tvm-qm .qm-sw i.none { background: repeating-linear-gradient(135deg, #3a4560 0 3px, #2a3350 3px 6px); }
-    #tvm-qm .qm-undo { display: block; width: calc(100% - 8px); margin: 6px 4px 2px; padding: 8px 12px; border: 0; border-radius: 12px; cursor: pointer; text-align: left;
-      font: 600 12.5px Outfit, Bahnschrift, 'Segoe UI', sans-serif; color: #ecd593; background: rgba(236,213,147,.12); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    #tvm-qm .qm-undo:hover:not(:disabled) { background: rgba(236,213,147,.22); }
-    #tvm-qm .qm-undo:disabled { color: rgba(233,237,246,.4); background: rgba(255,255,255,.04); cursor: default; }
+    #tvm-qm .qm-top { display: flex; align-items: center; justify-content: space-between; padding: 6px 6px 8px 8px; }
+    #tvm-qm .qm-title { font-size: 12px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: #ecd593; }
+    #tvm-qm .qm-undo { flex: none; width: 30px; height: 30px; padding: 0; border: 0; border-radius: 10px; cursor: pointer; display: grid; place-items: center;
+      color: #ecd593; background: rgba(236,213,147,.14); transition: background .15s, color .15s; }
+    #tvm-qm .qm-undo svg { width: 17px; height: 17px; }
+    #tvm-qm .qm-undo:hover:not(:disabled) { background: rgba(236,213,147,.28); }
+    #tvm-qm .qm-undo:disabled { color: rgba(233,237,246,.3); background: rgba(255,255,255,.04); cursor: default; }
+    #tvm-qm .qm-tabs { display: grid; grid-template-columns: repeat(5, 1fr); gap: 3px; padding: 3px; margin: 0 2px 6px; border-radius: 14px; background: rgba(255,255,255,.05); }
+    #tvm-qm .qm-tab { display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 7px 0 6px; border: 0; border-radius: 11px; cursor: pointer;
+      background: transparent; color: #9aa3b8; font: 700 10.5px Outfit, Bahnschrift, 'Segoe UI', sans-serif; transition: background .15s, color .15s; }
+    #tvm-qm .qm-tab svg { width: 18px; height: 18px; }
+    #tvm-qm .qm-tab:hover { color: #e9edf6; background: rgba(255,255,255,.05); }
+    #tvm-qm .qm-tab.on { color: #ecd593; background: rgba(236,213,147,.16); }
+    #tvm-qm .qm-pane[hidden] { display: none; }
+    #tvm-qm .qm-pane { animation: tvmQmPane .14s ease both; }
+    @keyframes tvmQmPane { from { opacity: 0; transform: translateY(3px); } }
+    #tvm-qm .qm-block { display: block; padding-top: 6px; padding-bottom: 6px; }
+    #tvm-qm .qm-bt { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 6px; }
+    #tvm-qm .qm-cur { font-style: normal; font-size: 12.5px; font-weight: 700; color: #ecd593; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 150px; }
+    #tvm-qm .qm-strip { display: flex; gap: 6px; overflow-x: auto; overflow-y: hidden; padding: 2px 2px 6px; scroll-behavior: smooth; overscroll-behavior: contain; }
+    #tvm-qm .qm-strip::-webkit-scrollbar { height: 4px; }
+    #tvm-qm .qm-strip::-webkit-scrollbar-thumb { background: rgba(236,213,147,.25); border-radius: 999px; }
+    #tvm-qm .qm-strip::-webkit-scrollbar-button { display: none; width: 0; }
+    #tvm-qm .qm-it { flex: none; cursor: pointer; padding: 5px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; white-space: nowrap;
+      color: #cfd5e3; background: rgba(255,255,255,.07); box-shadow: inset 0 0 0 1px transparent; transition: background .12s, color .12s, box-shadow .12s; }
+    #tvm-qm .qm-it:hover { background: rgba(236,213,147,.14); color: #fff; }
+    #tvm-qm .qm-it.on { color: #13254a; background: #ecd593; }
+    #tvm-qm .qm-strip.th .qm-it { padding: 3px; border-radius: 50%; background: transparent; }
+    #tvm-qm .qm-strip.th .qm-it canvas { display: block; width: 38px; height: 38px; }
+    #tvm-qm .qm-strip.th .qm-it:hover { background: rgba(255,255,255,.08); }
+    #tvm-qm .qm-strip.th .qm-it.on { background: transparent; box-shadow: inset 0 0 0 2px #ecd593; }
     #tvm-qm .qm-act { flex: none; border: 0; border-radius: 999px; padding: 4px 12px; font: 700 12px inherit; cursor: pointer; background: rgba(255,255,255,.1); color: #fff; }
     #tvm-qm .qm-act.on { background: #e05252; }
     html.tvm-noanim #tvm-qm .qm-panel { animation: none; }`;
@@ -2195,7 +2222,7 @@ function toggleQuickMenu(force) {
   qm.open = force === undefined ? !qm.open : !!force;
   qm.panel.hidden = !qm.open;
   qm.btn.classList.toggle('is-open', qm.open);
-  if (qm.open) { noteRecButton(qm.doc); refreshQuickMenu(); }
+  if (qm.open) { noteRecButton(qm.doc); refreshQuickMenu(); showQuickTab(qm.tab || 'VISTA'); }
 }
 
 function buildQuickMenu() {
@@ -2203,9 +2230,42 @@ function buildQuickMenu() {
   const panel = qm.panel;
   panel.replaceChildren();
   qm.rows = [];
+  qm.strips = [];
   const el = (tag, cls, text) => { const n = doc.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; };
+  /*
+   * Cabecera (título + Deshacer), pestañas con ícono y un panel por grupo: se ve
+   * un grupo por vez. La pestaña elegida se recuerda mientras dure el juego.
+   */
+  const header = el('div', 'qm-top');
+  header.append(el('span', 'qm-title', 'Ajustes de TL'));
+  const tabsBar = el('div', 'qm-tabs');
+  const panes = el('div', 'qm-panes');
+  panel.append(header, tabsBar, panes);
+  const ICONS = {
+    VISTA: '<path d="M2 12s3.6-6 10-6 10 6 10 6-3.6 6-10 6S2 12 2 12z"/><circle cx="12" cy="12" r="2.6"/>',
+    FICHAS: '<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3"/>',
+    PELOTA: '<circle cx="12" cy="12" r="8.5"/><path d="M12 7.6l3.4 2.5-1.3 4h-4.2l-1.3-4z"/><path d="M12 3.5v4.1M15.4 10.1l3.8-1.2M14.1 14.1l2.4 3.3M9.9 14.1l-2.4 3.3M8.6 10.1L4.8 8.9"/>',
+    SONIDO: '<path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="M15.5 9a4 4 0 0 1 0 6M18.5 6.5a7.5 7.5 0 0 1 0 11"/>',
+    PARTIDO: '<circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="3.5" fill="currentColor" stroke="none"/>'
+  };
   let section = '';
-  const head = (t) => { section = t ? t.charAt(0) + t.slice(1).toLowerCase() : ''; panel.append(el('div', 'qm-h', t)); };
+  let pane = null;
+  const tabs = [];
+  const head = (t) => {
+    section = t ? t.charAt(0) + t.slice(1).toLowerCase() : '';
+    pane = el('div', 'qm-pane');
+    pane.dataset.tab = t;
+    panes.append(pane);
+    const b = el('button', 'qm-tab');
+    b.type = 'button';
+    b.tabIndex = -1;
+    b.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${ICONS[t] || ''}</svg>`;
+    b.append(el('span', null, section));
+    b.addEventListener('click', () => showQuickTab(t));
+    tabsBar.append(b);
+    tabs.push({ t, b, pane });
+  };
+  qm.tabs = tabs;
   // `when`: la fila sólo se muestra si da verdadero (las del mapa, con el mapa prendido).
   let when = null;
   const row = (label, ctl, sync) => {
@@ -2214,9 +2274,83 @@ function buildQuickMenu() {
     ctl.addEventListener('pointerdown', () => { qmCurLabel = named; }, true);
     const r = el('div', 'qm-row');
     r.append(el('span', null, label), ctl);
-    panel.append(r);
+    (pane || panel).append(r);
     const w = when;
     qm.rows.push(w ? () => { r.hidden = !w(); if (!r.hidden) sync(); } : sync);
+  };
+  /*
+   * Tira deslizable (para elegir entre muchos): título y elegido arriba, la tira
+   * abajo. Se mueve con la rueda del mouse; un toque elige. Con `thumb`, cada uno
+   * lleva su dibujo de verdad (pelotas y fichas).
+   */
+  const strip = (label, list, get, set, thumb) => {
+    const named = `${label}${section ? ` · ${section}` : ''}`;
+    const r = el('div', 'qm-row qm-block');
+    const top = el('div', 'qm-bt');
+    const cur = el('em', 'qm-cur');
+    top.append(el('span', null, label), cur);
+    const st = el('div', thumb ? 'qm-strip th' : 'qm-strip');
+    const items = list.map(([v, t]) => {
+      const b = el('div', 'qm-it');
+      b.title = t;
+      if (thumb) { const c = el('canvas'); c.width = c.height = 64; b.append(c); b.__draw = () => safe(thumb, c, v); } else b.textContent = t;
+      b.addEventListener('pointerdown', () => { qmCurLabel = named; }, true);
+      b.addEventListener('click', () => set(v));
+      st.append(b);
+      return [v, b];
+    });
+    st.addEventListener('wheel', (e) => {
+      if (st.scrollWidth <= st.clientWidth) return;
+      e.preventDefault();
+      st.scrollLeft += Math.abs(e.deltaY) > Math.abs(e.deltaX) ? e.deltaY : e.deltaX;
+    }, { passive: false });
+    r.append(top, st);
+    (pane || panel).append(r);
+    const entry = { st, items, get, drawn: false };
+    qm.strips.push({ pane, entry });
+    qm.rows.push(() => {
+      const v = get();
+      const hit = list.find(([k]) => k === v) || list[0];
+      cur.textContent = hit[1];
+      for (const [k, b] of items) b.classList.toggle('on', k === hit[0]);
+    });
+  };
+  // Dibujos de la tira: la pelota con su estilo y la ficha con el suyo, como en la cancha.
+  const ballThumb = (c, style) => {
+    const g = c.getContext('2d');
+    ownDraw++;
+    try {
+      g.clearRect(0, 0, 64, 64);
+      g.save();
+      g.fillStyle = '#ffffff';
+      g.beginPath(); g.arc(32, 32, 27, 0, Math.PI * 2); g.fill();
+      g.beginPath(); g.arc(32, 32, 27, 0, Math.PI * 2);
+      if (style !== 'default') lookfx.ballOverlay(g, style, 32, 32, 27, null, '', null);
+      g.restore();
+      g.lineWidth = 2; g.strokeStyle = 'rgba(0,0,0,.55)';
+      g.beginPath(); g.arc(32, 32, 27, 0, Math.PI * 2); g.stroke();
+    } finally { ownDraw--; }
+  };
+  const discThumb = (c, style) => {
+    const g = c.getContext('2d');
+    ownDraw++;
+    try {
+      g.clearRect(0, 0, 64, 64);
+      g.save();
+      g.beginPath(); g.arc(32, 32, 28, 0, Math.PI * 2); g.clip();
+      g.fillStyle = '#e56b6b';
+      g.fillRect(0, 0, 64, 64);
+      // Dos familias, como en la cancha: los dibujos nuevos (disc-art) y los de
+      // siempre (look.js: esfera, vidrio, neón…), que pintan sobre el círculo.
+      if (discArt.has(style)) discArt.paint(g, style, 32, 32, 28, () => { if (c.isConnected) safe(discThumb, c, style); });
+      else if (style !== 'default') {
+        g.beginPath(); g.arc(32, 32, 28, 0, Math.PI * 2);
+        lookfx.discOverlay(g, style, 32, 32, 28, () => {});
+      }
+      g.restore();
+      g.lineWidth = 2; g.strokeStyle = 'rgba(0,0,0,.6)';
+      g.beginPath(); g.arc(32, 32, 28, 0, Math.PI * 2); g.stroke();
+    } finally { ownDraw--; }
   };
   const cfg = () => state.config;
   const toggle = (label, get, set) => {
@@ -2264,16 +2398,19 @@ function buildQuickMenu() {
     row(label, box, () => { const cur = get() || ''; for (const [v, i] of is) i.classList.toggle('on', v.toLowerCase() === cur.toLowerCase()); });
   };
 
-  // Deshacer, arriba de todo: vuelve lo último que tocaste a como estaba.
+  // Deshacer, en la cabecera: vuelve lo último que tocaste a como estaba (el
+  // cartelito dice qué).
   const undo = el('button', 'qm-undo');
   undo.type = 'button';
   undo.tabIndex = -1;
+  undo.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14L4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg>';
   undo.addEventListener('click', () => quickUndo());
-  panel.append(undo);
+  header.append(undo);
   qm.rows.push(() => {
     const last = qmUndo[qmUndo.length - 1];
     undo.disabled = !last;
-    undo.textContent = last ? `↶  Deshacer «${last.label || 'último cambio'}»` : '↶  Nada para deshacer';
+    undo.title = last ? `Deshacer «${last.label || 'último cambio'}»` : 'Nada para deshacer';
+    undo.setAttribute('aria-label', undo.title);
   });
 
   head('VISTA');
@@ -2287,14 +2424,14 @@ function buildQuickMenu() {
   slider('↳ Tamaño', 0.6, 1.6, () => cfg().pitch.miniSize, (v) => quickSet({ pitch: { miniSize: v } }));
   seg('↳ Esquina', [['tl', '↖'], ['bl', '↙'], ['br', '↘']], () => cfg().pitch.miniCorner || 'br', (v) => quickSet({ pitch: { miniCorner: v } }));
   when = null;
-  pick('Cancha', QM_TEXTURES, () => cfg().visual.texture || 'none', (v) => quickSet({ visual: { texture: v } }));
-  pick('Clima', QM_WEATHER, () => cfg().visual.pitchWeather || 'none', (v) => quickSet({ visual: { pitchWeather: v } }));
-  pick('Luz', QM_LIGHTS, () => cfg().visual.pitchLight || 'none', (v) => quickSet({ visual: { pitchLight: v } }));
+  strip('Cancha', QM_TEXTURES, () => cfg().visual.texture || 'none', (v) => quickSet({ visual: { texture: v } }));
+  strip('Clima', QM_WEATHER, () => cfg().visual.pitchWeather || 'none', (v) => quickSet({ visual: { pitchWeather: v } }));
+  strip('Luz', QM_LIGHTS, () => cfg().visual.pitchLight || 'none', (v) => quickSet({ visual: { pitchLight: v } }));
   toggle('Escudo en la cancha', () => cfg().visual.crest, (v) => quickSet({ visual: { crest: v } }));
 
   head('FICHAS');
   slider('Tamaño', 0.6, 1.6, () => cfg().visual.discSize, (v) => quickSet({ visual: { discSize: v } }));
-  pick('Estilo de tu ficha', qmDiscs(), () => cfg().visual.discStyle || 'default', (v) => quickSet({ visual: { discStyle: v } }));
+  strip('Estilo de tu ficha', qmDiscs(), () => cfg().visual.discStyle || 'default', (v) => quickSet({ visual: { discStyle: v } }), discThumb);
   swatches('Contorno', QM_OUTLINES, () => cfg().visual.discOutline, (v) => quickSet({ visual: { discOutline: v } }));
   toggle('Sombras suaves', () => cfg().visual.softShadows, (v) => quickSet({ visual: { softShadows: v } }));
   toggle('Club resaltado', () => cfg().pitch.clubGlow, (v) => quickSet({ pitch: { clubGlow: v } }));
@@ -2302,7 +2439,7 @@ function buildQuickMenu() {
   toggle('Camisetas lisas', () => cfg().pitch.plainKits, (v) => quickSet({ pitch: { plainKits: v } }));
 
   head('PELOTA');
-  pick('Estilo', QM_BALLS, () => cfg().visual.ballStyle || 'default', (v) => quickSet({ visual: { ballStyle: v } }));
+  strip('Estilo', QM_BALLS, () => cfg().visual.ballStyle || 'default', (v) => quickSet({ visual: { ballStyle: v } }), ballThumb);
   slider('Tamaño', 0.6, 1.8, () => cfg().visual.ballSize, (v) => quickSet({ visual: { ballSize: v } }));
   swatches('Color', QM_BALL_COLORS, () => cfg().visual.ballColor, (v) => quickSet({ visual: { ballColor: v } }));
   swatches('Contorno', QM_OUTLINES, () => cfg().visual.ballOutline, (v) => quickSet({ visual: { ballOutline: v } }));
@@ -2313,7 +2450,7 @@ function buildQuickMenu() {
     const b = hbSoundButton(doc);
     if (b) { b.click(); setTimeout(() => safe(refreshQuickMenu), 60); }
   });
-  pick('Sonido de patada', QM_KICKS, () => cfg().appearance.kickSfx || 'default', (v) => quickSet({ appearance: { kickSfx: v } }));
+  strip('Sonido de patada', QM_KICKS, () => cfg().appearance.kickSfx || 'default', (v) => quickSet({ appearance: { kickSfx: v } }));
 
   head('PARTIDO');
   const rec = el('button', 'qm-act', 'Grabar');
@@ -2331,7 +2468,30 @@ function buildQuickMenu() {
     rec.disabled = !recBtn;
     rec.style.opacity = recBtn ? '' : '.45';
   });
+  showQuickTab(qm.tab || 'VISTA');
   refreshQuickMenu();
+}
+
+/** Muestra un grupo: su pestaña marcada, sus tiras con los dibujos y lo elegido a la vista. */
+function showQuickTab(t) {
+  if (!qm || !qm.tabs) return;
+  qm.tab = t;
+  for (const x of qm.tabs) {
+    const on = x.t === t;
+    x.b.classList.toggle('on', on);
+    x.pane.hidden = !on;
+  }
+  qm.panel.scrollTop = 0;
+  if (!qm.open) return;
+  for (const { pane, entry } of qm.strips || []) {
+    if (!pane || pane.dataset.tab !== t) continue;
+    // Los dibujos se hacen al mostrar la pestaña (las fotos de las pelotas pueden
+    // haber llegado después) y la tira se centra en lo elegido.
+    for (const [, b] of entry.items) if (b.__draw) b.__draw();
+    const v = entry.get();
+    const hit = entry.items.find(([k]) => k === v);
+    if (hit) entry.st.scrollLeft = Math.max(0, hit[1].offsetLeft - entry.st.clientWidth / 2 + hit[1].offsetWidth / 2);
+  }
 }
 
 function refreshQuickMenu() {

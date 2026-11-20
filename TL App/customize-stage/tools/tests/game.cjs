@@ -60,6 +60,9 @@ window.SENT=[];
 const ipcRenderer={send:(c,p)=>{window.SENT.push([c,JSON.stringify(p)]);if(c==='game:quick-set'){for(const g in p)Object.assign(state.config[g],p[g]);refreshQuickMenu();}}};
 const assetUrl=()=>'';const safe=(f,...a)=>{try{return f(...a)}catch(e){console.error(e.message)}};
 function syncMinimap(){}
+let ownDraw=0;
+const lookfx={ballOverlay(g){g.fillStyle='#888';g.fill();}};
+const discArt={has:(s)=>s!=='default',paint(g){g.fillStyle='#246';g.fillRect(20,20,24,24);}};
 ${DISC_NAMES}
 ${QM_CODE}
 installQuickMenu(document);
@@ -123,25 +126,39 @@ module.exports = async function runGameChecks(check, browser) {
     const closedBtn = await p.evaluate(() => document.querySelector('#tvm-qm .qm-panel').hidden);
     check('menú: abre y cierra (botón, click afuera, Esc)', open1 && closedOut && closedEsc && closedBtn, JSON.stringify({ open1, closedOut, closedEsc, closedBtn }));
 
-    // Cada control, una vez; nada se queda con el foco del teclado.
+    // Cada pestaña y, en cada una, cada control (en las tiras, el segundo y el
+    // primero de la lista); nada se queda con el foco del teclado.
     await p.click('.tvm-qm-btn');
-    const sel = '#tvm-qm .qm-tg, #tvm-qm .qm-seg b, #tvm-qm .qm-pick i, #tvm-qm .qm-sw i';
-    const n = await p.evaluate((s) => document.querySelectorAll(s).length, sel);
+    const tabNames = await p.$$eval('#tvm-qm .qm-tab', (b) => b.map((x) => x.textContent));
+    const tabsOk = tabNames.join(',') === 'Vista,Fichas,Pelota,Sonido,Partido';
     let clicked = 0;
-    for (let k = 0; k < n; k++) {
-      const els = await p.$$(sel);
-      if (k >= els.length || !(await els[k].isVisible())) continue;
-      await els[k].scrollIntoViewIfNeeded();
-      await els[k].click();
-      clicked++;
+    let oneVisible = true;
+    for (let ti = 0; ti < tabNames.length; ti++) {
+      await (await p.$$('#tvm-qm .qm-tab'))[ti].click();
+      const vis = await p.$$eval('#tvm-qm .qm-pane', (ps) => ps.filter((x) => !x.hidden).length);
+      if (vis !== 1) oneVisible = false;
+      const sel = '#tvm-qm .qm-pane:not([hidden]) :is(.qm-tg, .qm-seg b, .qm-sw i)';
+      const n = await p.evaluate((s) => document.querySelectorAll(s).length, sel);
+      for (let k = 0; k < n; k++) {
+        const els = await p.$$(sel);
+        if (k >= els.length || !(await els[k].isVisible())) continue;
+        await els[k].scrollIntoViewIfNeeded();
+        await els[k].click();
+        clicked++;
+      }
+      for (const st of await p.$$('#tvm-qm .qm-pane:not([hidden]) .qm-strip')) {
+        const its = await st.$$('.qm-it');
+        for (const it of [its[1], its[0]]) { if (!it) continue; await it.scrollIntoViewIfNeeded(); await it.click(); clicked++; }
+      }
+      for (const sl of await p.$$('#tvm-qm .qm-pane:not([hidden]) .qm-sl')) {
+        if (!(await sl.isVisible())) continue;
+        await sl.scrollIntoViewIfNeeded();
+        const bb = await sl.boundingBox();
+        await p.mouse.move(bb.x + 4, bb.y + 9); await p.mouse.down(); await p.mouse.move(bb.x + bb.width * 0.9, bb.y + 9, { steps: 4 }); await p.mouse.up();
+        clicked++;
+      }
     }
-    for (const sl of await p.$$('#tvm-qm .qm-sl')) {
-      if (!(await sl.isVisible())) continue;
-      await sl.scrollIntoViewIfNeeded();
-      const bb = await sl.boundingBox();
-      await p.mouse.move(bb.x + 4, bb.y + 9); await p.mouse.down(); await p.mouse.move(bb.x + bb.width * 0.9, bb.y + 9, { steps: 4 }); await p.mouse.up();
-      clicked++;
-    }
+    check('menú: cinco pestañas y un grupo a la vista por vez', tabsOk && oneVisible, `${tabNames.join(',')} · uno por vez: ${oneVisible}`);
     const sent = await p.evaluate(() => window.SENT.filter((x) => x[0] === 'game:quick-set').map((x) => x[1]));
     const rejected = sent.map(JSON.parse).filter((pt) => JSON.stringify(cleanQuickWrap(pt)) !== JSON.stringify(pt));
     function cleanQuickWrap(pt) { return cleanQuick(pt); }
@@ -154,7 +171,7 @@ module.exports = async function runGameChecks(check, browser) {
     const stack = await p.evaluate(() => JSON.parse(localStorage.getItem('tvm_qm_undo') || '[]').length);
     await p.reload();
     await p.click('.tvm-qm-btn');
-    const after = await p.evaluate(() => ({ label: document.querySelector('#tvm-qm .qm-undo').textContent, dis: document.querySelector('#tvm-qm .qm-undo').disabled }));
+    const after = await p.evaluate(() => ({ label: document.querySelector('#tvm-qm .qm-undo').title, dis: document.querySelector('#tvm-qm .qm-undo').disabled }));
     check('menú: Deshacer queda guardado al recargar', stack === 30 && !after.dis && /Deshacer «/.test(after.label), `${stack} guardados, botón «${after.label}»`);
     let undone = 0;
     while (!(await p.evaluate(() => document.querySelector('#tvm-qm .qm-undo').disabled)) && undone < 40) { await p.click('#tvm-qm .qm-undo'); undone++; }
