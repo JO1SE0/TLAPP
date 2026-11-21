@@ -496,6 +496,8 @@ const DEFAULTS = {
     envAlive: true,
     envFresa: true,
     envJoaquin: true,
+    envWelcome: true,
+    envTifo: true,
     envCheer: true,
     envScoreLed: true,
     envNames: true,

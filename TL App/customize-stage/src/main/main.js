@@ -2692,7 +2692,7 @@ const QUICK_KEYS = {
     ballColor: 'color', ballOutline: 'color', crest: 'bool',
     pitchLight: ['none', 'vignette', 'spot', 'corners', 'stadium', 'sunset', 'night', 'stripes', 'cinema'],
     pitchBright: [0.5, 1.5], pitchContrast: [0.6, 1.6], pitchEnv: ['none', 'noche', 'barrio', 'led', 'f5', 'playa', 'campo', 'azotea', 'cortada', 'colegio', 'estadio'],
-    envAlive: 'bool', envFresa: 'bool', envJoaquin: 'bool', envCheer: 'bool', envScoreLed: 'bool', envNames: 'bool', envFireworks: 'bool'
+    envAlive: 'bool', envFresa: 'bool', envJoaquin: 'bool', envWelcome: 'bool', envTifo: 'bool', envCheer: 'bool', envScoreLed: 'bool', envNames: 'bool', envFireworks: 'bool'
   },
   appearance: { kickSfx: 'id', scoreboardScale: [0.7, 1.8], scoreboardPos: ['top', 'bottom'] }
 };

@@ -564,7 +564,7 @@ function paint(ctx, text, x, y, font, color, mirror, maxW) {
  * (los LED lo muestran), quién hizo el gol (en el festejo) y los nombres de
  * los que usan TL App en la sala (los trapos les dan aliento).
  */
-const LIVE = { score: '', scorer: '', names: [], wet: false, snow: false, night: false, gap: 0, pk: '', fill: 1, kx: 1, ky: 1 };
+const LIVE = { score: '', scorer: '', names: [], wet: false, snow: false, night: false, gap: 0, pk: '', fill: 1, kx: 1, ky: 1, nearAt: 0 };
 /**
  * Cuántas veces más grande es la cancha que una común (de largo y de ancho).
  * Lo que va en cantidad fija (gente suelta, mesas, autos, vacas, luces) se
@@ -1898,6 +1898,35 @@ function paintAlive(ctx, id, bounds, t, reg, o = {}, vis = null) {
         ctx.restore(); n++;
       }
     }
+    // Ganó alguno: su tribuna arma el tifo, con un brillo que la recorre.
+    if ((o.fireworks === 'Red' || o.fireworks === 'Blue') && o.tifo !== false) {
+      const team = o.fireworks;
+      for (const B of reg.crowds) {
+        if (!tifoOk(B) || (team === 'Red' ? B.x0 >= 0 : B.x1 <= 0)) continue;
+        if (!see((B.x0 + B.x1) / 2, (B.y0 + B.y1) / 2, Math.max(B.x1 - B.x0, B.y1 - B.y0) / 2 + 20)) continue;
+        const bl = tifoBlock(B, team, tag);
+        drawBlock(ctx, bl, Math.round(Math.sin(t / 300 + B.seed) * 2) / 2);
+        const bx = B.x0 + ((t / 2400 + hash01(B.seed % 97)) % 1) * (B.x1 - B.x0);
+        ctx.save(); ctx.beginPath(); ctx.rect(bl.x, bl.y, bl.w, bl.h); ctx.clip();
+        ctx.fillStyle = 'rgba(255,255,255,0.16)'; ctx.fillRect(bx - 14, bl.y, 28, bl.h);
+        ctx.restore(); n += 2;
+      }
+    }
+    // Recibimiento: al arrancar el partido, papelitos de los dos lados y banderas grandes.
+    if (o.welcome > 0 && o.welcome < 1 && !o.hot) {
+      const a = o.welcome < 0.75 ? 1 : (1 - o.welcome) / 0.25;
+      const ph = Math.floor(t / 170) % 3;
+      ctx.globalAlpha = a;
+      for (const B of reg.crowds) {
+        if (!see((B.x0 + B.x1) / 2, (B.y0 + B.y1) / 2, Math.max(B.x1 - B.x0, B.y1 - B.y0) / 2 + 60)) continue;
+        for (const team of ['Red', 'Blue']) {
+          if (team === 'Red' ? B.x0 >= 0 : B.x1 <= 0) continue;
+          drawBlock(ctx, fiestaBlock(B, team, ph, LIVE.pk)); n++;
+          if (tifoOk(B)) n += bigFlag(ctx, B, team, t, a);
+        }
+      }
+      ctx.globalAlpha = 1;
+    }
     // Gol: papelitos, bengalas y humo del color del equipo sobre su tribuna.
     if (o.hot && (o.cheer === 'Red' || o.cheer === 'Blue')) {
       const ph = Math.floor(t / 170) % 3;
@@ -1935,6 +1964,8 @@ function paintAlive(ctx, id, bounds, t, reg, o = {}, vis = null) {
         const fy = B.y0 + (B.y1 - B.y0) * (0.3 + hash01(B.seed % 991 + i * 3) * 0.4);
         if (!see(fx + 20, fy, 40)) continue;
         const team = fx < 0 ? 'Red' : 'Blue';
+        // Con el tifo levantado no hay banderazo encima.
+        if (o.tifo !== false && o.fireworks === team && tifoOk(B)) continue;
         ctx.save(); ctx.translate(fx, fy); ctx.scale(1.5, 1.5);
         flagWave(ctx, 0, 0, team === 'Red' ? RED : BLUE, i % 2 ? '#f4f1ea' : null, t + i * 400);
         ctx.restore(); n++;
@@ -2152,9 +2183,14 @@ function paintAlive(ctx, id, bounds, t, reg, o = {}, vis = null) {
       n++;
     }
     // Joaquín, el rival de Fresa (de gris plata, con la de Argentina).
-    if (reg.joaquin && see(reg.joaquin.x, reg.joaquin.y, 60)) n += joaquinAlive(ctx, reg.joaquin, reg.fresa, t, o, night);
+    // La pelota sale cerca de los bancos: Joaquín le ladra y Fresa le contesta.
+    const B0 = o.ball, Jq = reg.joaquin;
+    const near = !!(B0 && Jq && Math.abs(B0.y) > H - 45 && Math.sign(B0.y) === Math.sign(Jq.y) && Math.abs(B0.x - (reg.fresa ? (Jq.x + reg.fresa.x) / 2 : Jq.x)) < 230);
+    if (near) { if (!LIVE.nearAt || t - LIVE.nearAt > 2600) LIVE.nearAt = t; }
+    const provoke = LIVE.nearAt && t - LIVE.nearAt < 2400 ? (t - LIVE.nearAt) : -1;
+    if (reg.joaquin && see(reg.joaquin.x, reg.joaquin.y, 60)) n += joaquinAlive(ctx, reg.joaquin, reg.fresa, t, o, night, provoke);
     // Fresa: tiene su rutina de DT y reacciona al partido.
-    if (reg.fresa && see(reg.fresa.x, reg.fresa.y, 60 + (reg.fresa.walk || 0))) n += fresaAlive(ctx, reg.fresa, t, o, night);
+    if (reg.fresa && see(reg.fresa.x, reg.fresa.y, 60 + (reg.fresa.walk || 0))) n += fresaAlive(ctx, reg.fresa, t, o, night, reg.joaquin ? provoke : -1);
   } finally {
     ctx.restore();
   }
@@ -2561,7 +2597,7 @@ function fiestaBlock(B, team, phase, tag) {
  * final, vuelta olímpica si ganaron o se rasca la cabeza si empataron.
  * Todo son figuras guardadas: un par de pegadas por cuadro.
  */
-function fresaAlive(ctx, F, t, o, night) {
+function fresaAlive(ctx, F, t, o, night, provoke = -1) {
   const team = F.team, mir = !!o.mirror, m = mir ? 1 : 0;
   const won = o.fireworks === team, draw = o.fireworks === 'draw';
   // Gol en contra o partido perdido: triste con su nubecita.
@@ -2592,6 +2628,14 @@ function fresaAlive(ctx, F, t, o, night) {
     const wag = Math.round(Math.sin(t / 90) * 3) / 3;
     at(`fresa1${team}${m}${wag}`, 34, (g) => fresaDT(g, 0, 0, true, team, mir, wag), x, y - hop, spin);
     at(`fbG${team}${m}`, 34, (g) => bubble(g, '¡GOOOL!', mir, ink), x + 26, y - 36 - hop * 0.5);
+    return 2;
+  }
+  // Joaquín le ladra por la pelota: le contesta un toque después.
+  if (provoke >= 500) {
+    const hop2 = Math.abs(Math.sin(t / 120)) * 2.5;
+    at(`fresa0${team}${m}0shout`, 34, (g) => fresaDT(g, 0, 0, false, team, mir, 0, 'shout'), x, y - hop2);
+    const word = provoke < 1500 ? '¡NI AHÍ!' : '¡GUAU!';
+    at(`fb${word}${team}${m}`, 34, (g) => bubble(g, word, mir, ink), x + 26, y - 34);
     return 2;
   }
   // La rutina: una actividad por tramo, elegida con azar fijo según el tramo.
@@ -2734,7 +2778,7 @@ function joaquinDT(ctx, x, y, mood, mirror, wag = 0) {
  * Fresa: gruñe («¡GRRR!»). Al final: si ganaron, se burla; si perdieron, se
  * enoja. En el partido: mira de reojo, y cuando Fresa grita, le contesta.
  */
-function joaquinAlive(ctx, J, F, t, o, night) {
+function joaquinAlive(ctx, J, F, t, o, night, provoke = -1) {
   const mir = !!o.mirror, m = mir ? 1 : 0, team = J.team;
   const ink = '#3a7fc1';
   ctx.globalAlpha = night ? 0.85 : 1;
@@ -2744,6 +2788,7 @@ function joaquinAlive(ctx, J, F, t, o, night) {
   if (o.fireworks === team || (o.hot && o.cheer === team)) { mood = 'jaja'; say = '¡JAJAJA!'; hop = Math.abs(Math.sin(t / 150)) * 5; }
   else if ((o.fireworks && o.fireworks !== 'draw') || (o.hot && o.cheer)) { mood = 'angry'; say = Math.floor(t / 1100) % 2 ? '¡GRRR!' : ''; hop = Math.abs(Math.sin(t / 90)) * 1.2; }
   else if (o.fireworks === 'draw') { mood = (t % 2600) < 160 ? 'blink' : ''; }
+  else if (provoke >= 0) { mood = 'angry'; say = provoke < 1200 ? '¡ES NUESTRA!' : '¡GRRR!'; hop = Math.abs(Math.sin(t / 110)) * 2.5; }
   else {
     // Cuando Fresa está gritando, Joaquín le contesta un ratito después.
     const seg = Math.floor(t / 5200), p = (t % 5200) / 5200;
@@ -2754,6 +2799,89 @@ function joaquinAlive(ctx, J, F, t, o, night) {
   }
   at(`jq${mood}${m}${mood === 'jaja' ? wag : 0}`, 34, (g) => joaquinDT(g, 0, 0, mood, mir, mood === 'jaja' ? wag : 0), J.x, J.y - hop);
   if (say) { at(`jb${say}${m}`, 34, (g) => bubble(g, say, mir, mood === 'angry' ? '#b83a3a' : ink), J.x + 26, J.y - 36 - hop * 0.5); return 2; }
+  return 1;
+}
+
+/*
+ * El tifo: cuando un equipo gana, su tribuna levanta cartulinas y arma un
+ * mosaico con su color y «TL» en blanco. Se arma una vez por bloque; con vida
+ * le pasa un brillo por encima, como cuando la gente las sacude.
+ */
+function tifoDraw(g, B, team) {
+  const kit = team === 'Red' ? KIT.Red : KIT.Blue;
+  const side = (x) => (x < 0) === (team === 'Red');
+  const w = B.x1 - B.x0 + 16, h = B.y1 - B.y0 + 14, x0 = B.x0 - 8, y0 = B.y0 - 7;
+  const C = 6;
+  const cols = Math.max(1, Math.floor(w / C)), rows = Math.max(1, Math.floor(h / C));
+  // La palabra, a un píxel por cartulina.
+  const word = w / h > 7 ? 'TODA LA LECCE' : 'TL';
+  // Sólo la parte de la tribuna de ese equipo: ahí se centra la palabra.
+  let c0 = cols, c1 = -1;
+  for (let c = 0; c < cols; c++) if (side(x0 + c * C + C / 2)) { if (c < c0) c0 = c; c1 = c; }
+  if (c1 < c0) return;
+  const span = c1 - c0 + 1;
+  const mk = mkCanvas(cols, rows), mg = mk.getContext('2d');
+  mg.fillStyle = '#fff'; mg.textAlign = 'center'; mg.textBaseline = 'middle';
+  let fs = Math.floor(rows * 0.82);
+  mg.font = `900 ${fs}px sans-serif`;
+  const tw = mg.measureText(word).width;
+  if (tw > span * 0.86) { fs = Math.max(4, Math.floor(fs * (span * 0.86) / tw)); mg.font = `900 ${fs}px sans-serif`; }
+  if (span >= 8) mg.fillText(word, c0 + span / 2, rows / 2 + 0.5);
+  const px = mg.getImageData(0, 0, cols, rows).data;
+  const accent = kit[1] || tint(kit[0], 0.35);
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const x = x0 + c * C, y = y0 + r * C;
+      if (!side(x + C / 2)) continue;
+      const lit = px[(r * cols + c) * 4 + 3] > 100;
+      // Borde de otro tono, para que se lea el marco del mosaico.
+      const edge = r === 0 || r === rows - 1 || c === c0 || c === c1;
+      g.fillStyle = lit ? '#ffffff' : edge ? accent : kit[0];
+      g.fillRect(x + 0.4, y + 0.4, C - 0.8, C - 0.8);
+      if ((r * 7 + c * 3) % 11 === 0) { g.fillStyle = 'rgba(0,0,0,0.12)'; g.fillRect(x + 0.4, y + 0.4, C - 0.8, C - 0.8); }
+    }
+  }
+}
+
+function tifoBlock(B, team, tag) {
+  const key = `${B.seed}|tifo${team}|${tag}`;
+  let bl = BLOCKS.get(key);
+  if (bl) return bl;
+  const pad = 12;
+  const w = B.x1 - B.x0 + pad * 2, h = B.y1 - B.y0 + pad * 2;
+  const cv = mkCanvas(Math.ceil(w * B_PX), Math.ceil(h * B_PX));
+  const g = cv.getContext('2d');
+  g.setTransform(B_PX, 0, 0, B_PX, (pad - B.x0) * B_PX, (pad - B.y0) * B_PX);
+  tifoDraw(g, B, team);
+  if (tag.includes('n')) { g.setTransform(1, 0, 0, 1, 0, 0); g.globalCompositeOperation = 'source-atop'; g.fillStyle = 'rgba(6,10,24,0.35)'; g.fillRect(0, 0, cv.width, cv.height); }
+  bl = { cv, x: B.x0 - pad, y: B.y0 - pad, w, h };
+  BLOCKS.set(key, bl);
+  return bl;
+}
+
+/** Bloques que dan para un tifo: tribunas con gente, no un par sueltos. */
+function tifoOk(B) { return B.x1 - B.x0 >= 60 && B.y1 - B.y0 >= 18 && B.density >= 0.45; }
+
+/** Bandera gigante que la hinchada pasa por arriba (en el recibimiento). */
+function bigFlag(ctx, B, team, t, a) {
+  const kit = team === 'Red' ? KIT.Red : KIT.Blue;
+  const side = team === 'Red' ? -1 : 1;
+  const x0 = side < 0 ? B.x0 : Math.max(B.x0, 0), x1 = side < 0 ? Math.min(B.x1, 0) : B.x1;
+  if (x1 - x0 < 40) return 0;
+  const w = Math.min(160, (x1 - x0) * 0.5), cx = (x0 + x1) / 2 + Math.sin(t / 1300 + B.seed) * (x1 - x0 - w) * 0.3;
+  const h = Math.min(B.y1 - B.y0 + 6, 70), y = (B.y0 + B.y1) / 2 - h / 2;
+  const stripes = kit.length > 1 ? kit : [kit[0], '#f4f1ea'];
+  const n = 8;
+  ctx.globalAlpha = a;
+  for (let i = 0; i < n; i++) {
+    const sx = cx - w / 2 + (i * w) / n;
+    const wave = Math.sin(t / 220 + i * 0.9) * 3;
+    ctx.fillStyle = stripes[i % stripes.length];
+    ctx.fillRect(sx, y + wave, w / n + 0.6, h);
+    ctx.fillStyle = Math.sin(t / 220 + i * 0.9) > 0 ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.14)';
+    ctx.fillRect(sx, y + wave, w / n + 0.6, h);
+  }
+  ctx.globalAlpha = 1;
   return 1;
 }
 
@@ -2818,6 +2946,8 @@ function paintEnv(ctx, id, bounds, o = {}) {
         if (!LIVE.alive) joaquinDT(ctx, jx, jy, o.cheer === other ? 'jaja' : o.cheer === team ? 'angry' : '', !!o.mirror);
       }
     }
+    // Partido terminado sin vida: el tifo del que ganó.
+    if ((o.fireworks === 'Red' || o.fireworks === 'Blue') && o.tifo !== false && !LIVE.alive && REG) for (const B of REG.crowds) if (tifoOk(B)) tifoDraw(ctx, B, o.fireworks);
     // Gol sin vida: papelitos, bengalas y humo en la tribuna del que metió.
     if (o.hot && (o.cheer === 'Red' || o.cheer === 'Blue') && !LIVE.alive && REG) for (const B of REG.crowds) fiestaDraw(ctx, B, o.cheer, 0);
     // Viñeta: los bordes un poco más oscuros llevan la vista a la cancha.

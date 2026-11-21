@@ -2094,7 +2094,7 @@ function saveUndo() {
 const QM_FALLBACK = { pitchLight: 'none', texture: 'none', pitchWeather: 'none', discStyle: 'default', ballStyle: 'default',
   ballColor: '', ballOutline: '', discOutline: '', mirror: 'off', kickSfx: 'default', discSize: 1, ballSize: 1,
   scoreboardPos: 'top', scoreboardScale: 1, pitchBright: 1, pitchContrast: 1, pitchEnv: 'none',
-  envAlive: true, envFresa: true, envJoaquin: true, envCheer: true, envScoreLed: true, envNames: true, envFireworks: true };
+  envAlive: true, envFresa: true, envJoaquin: true, envWelcome: true, envTifo: true, envCheer: true, envScoreLed: true, envNames: true, envFireworks: true };
 let qmCurLabel = '';
 function quickSet(patch, label) {
   const before = {};
@@ -2533,6 +2533,8 @@ function buildQuickMenu() {
   toggle('Alrededores con vida', vb('envAlive'), (v) => quickSet({ visual: { envAlive: v } }));
   toggle('Fresa, la DT', vb('envFresa'), (v) => quickSet({ visual: { envFresa: v } }));
   toggle('Joaquín, el rival', vb('envJoaquin'), (v) => quickSet({ visual: { envJoaquin: v } }));
+  toggle('Recibimiento al salir', vb('envWelcome'), (v) => quickSet({ visual: { envWelcome: v } }));
+  toggle('Tifo del que gana', vb('envTifo'), (v) => quickSet({ visual: { envTifo: v } }));
   toggle('Festejo de la tribuna', vb('envCheer'), (v) => quickSet({ visual: { envCheer: v } }));
   toggle('Resultado en los LED', vb('envScoreLed'), (v) => quickSet({ visual: { envScoreLed: v } }));
   toggle('Nombres en los trapos', vb('envNames'), (v) => quickSet({ visual: { envNames: v } }));
@@ -9360,7 +9362,7 @@ function pitchSkinPrint() {
   const skin = (state.config.pitch && state.config.pitch.skin) || {};
   const field = pitchSkinColor();
   const vip = state.config.vip || {};
-  return `${skin.mode}|${field}|${pitchOutsideColor(field)}|${skin.strength}|${skin.brightness}|${skin.stripes}|${skin.cut}|${skin.imageAlpha}|${skin.relief}|${skin.reliefAmount}|${visual.weather}|${visual.weatherAmount}|${vip.pitchImage}|${JSON.stringify(vip.pitchCrop || null)}|${visual.pitchLine}|${flatGraphicsEnabled}|${visual.texture}|${visual.light}|${visual.crest}|${visual.crestOpacity}|${visual.crestSize}|${visual.lineColor}|${visual.lineGlow}|${visual.bright}|${visual.contrast}|${visual.env}|${visual.env ? `${visual.weather}/${visual.light}/${['envAlive', 'envFresa', 'envJoaquin', 'envCheer', 'envScoreLed', 'envNames', 'envFireworks'].map((k) => (state.config.visual || {})[k] !== false ? 1 : 0).join('')}` : ''}`;
+  return `${skin.mode}|${field}|${pitchOutsideColor(field)}|${skin.strength}|${skin.brightness}|${skin.stripes}|${skin.cut}|${skin.imageAlpha}|${skin.relief}|${skin.reliefAmount}|${visual.weather}|${visual.weatherAmount}|${vip.pitchImage}|${JSON.stringify(vip.pitchCrop || null)}|${visual.pitchLine}|${flatGraphicsEnabled}|${visual.texture}|${visual.light}|${visual.crest}|${visual.crestOpacity}|${visual.crestSize}|${visual.lineColor}|${visual.lineGlow}|${visual.bright}|${visual.contrast}|${visual.env}|${visual.env ? `${visual.weather}/${visual.light}/${['envAlive', 'envFresa', 'envJoaquin', 'envTifo', 'envCheer', 'envScoreLed', 'envNames', 'envFireworks'].map((k) => (state.config.visual || {})[k] !== false ? 1 : 0).join('')}` : ''}`;
 }
 
 /** Le tira el cache al estadio para que se vuelva a dibujar con el color nuevo. */
@@ -9369,7 +9371,7 @@ function pitchSkinPrint() {
  * y la gente del que metió levanta los brazos) y el espejo. Cada cambio rehace
  * el cache del estadio una vez; entre cambios no se dibuja nada.
  */
-const env = { cheer: null, hot: false, mirror: false, timer: 0, pre: 0, bmp: null, key: '', last: null, red: NaN, blue: NaN, scorer: '', names: [], match: null, fireworks: null, team: 'Red', regNormal: null, regHot: null, bounds: null, kits: null, kitsSig: '', fill: 1 };
+const env = { startAt: -1e9, cheer: null, hot: false, mirror: false, timer: 0, pre: 0, bmp: null, key: '', last: null, red: NaN, blue: NaN, scorer: '', names: [], match: null, fireworks: null, team: 'Red', regNormal: null, regHot: null, bounds: null, kits: null, kitsSig: '', fill: 1 };
 
 /** Los alrededores se mueven: interruptor prendido y sin «Gráficos planos». */
 function envAliveOn() {
@@ -9397,7 +9399,7 @@ function envLook() {
   return {
     weather: visual.weather || '', night: visual.light === 'night',
     fireworks: c.envFireworks === false ? null : env.fireworks,
-    fresa: c.envFresa !== false, joaquin: c.envJoaquin !== false, fresaTeam: env.team, alive: envAliveOn(), kits: env.kits, fill: env.fill
+    fresa: c.envFresa !== false, joaquin: c.envJoaquin !== false, tifo: c.envTifo !== false, fresaTeam: env.team, alive: envAliveOn(), kits: env.kits, fill: env.fill
   };
 }
 
@@ -9541,6 +9543,8 @@ function envTrackScore(view, f, match, room) {
       if (`${env.fill}|${env.kitsSig}` !== before) env.red = NaN;
     }
     env.room = room; env.f = f;
+    // Partido que arranca de cero: la hinchada recibe a los equipos.
+    if (r + b === 0) env.startAt = performance.now();
     // Otro partido: se apagan los fuegos del anterior.
     if (env.fireworks) { env.fireworks = null; env.red = NaN; }
   }
@@ -9589,9 +9593,14 @@ function paintEnvAlive(ctx) {
   envVis.x0 = x0; envVis.y0 = y0; envVis.x1 = x1; envVis.y1 = y1;
   const L = envLook();
   const t0 = performance.now();
-  pitchEnv.paintAlive(ctx, visual.env, env.bounds, t0, reg, { cheer: env.cheer, hot: env.hot, mirror: env.mirror, weather: L.weather, night: L.night, kits: L.kits, fireworks: L.fireworks }, envVis);
+  const c = state.config.visual || {};
+  // La pelota (para que Joaquín ladre cuando sale cerca de los bancos) y el recibimiento.
+  const ball = t0 - liveBall.t < 500 ? liveBall : null;
+  const since = t0 - env.startAt;
+  const welcome = c.envWelcome !== false && since >= 0 && since < 4500 ? since / 4500 : 0;
+  pitchEnv.paintAlive(ctx, visual.env, env.bounds, t0, reg, { cheer: env.cheer, hot: env.hot, mirror: env.mirror, weather: L.weather, night: L.night, kits: L.kits, fireworks: L.fireworks, tifo: L.tifo, ball, welcome }, envVis);
   // El festejo del gol (papelitos, bengalas) dura 3 s: no cuenta como compu lenta.
-  if (!env.hot) envSlowNote(performance.now() - t0);
+  if (!env.hot && !welcome) envSlowNote(performance.now() - t0);
 }
 
 function flushStadiumCache(view) {
