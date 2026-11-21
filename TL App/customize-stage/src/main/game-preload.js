@@ -2527,6 +2527,13 @@ function buildQuickMenu() {
 
   head('ESTADIO');
   strip('Alrededores', QM_ENVS, () => cfg().visual.pitchEnv || 'none', (v) => quickSet({ visual: { pitchEnv: v } }), envThumb, 'sq');
+  {
+    const look = el('button', 'qm-act', 'Ver en grande');
+    look.type = 'button';
+    look.tabIndex = -1;
+    look.addEventListener('click', () => safe(openEnvPreview, doc, cfg().visual.pitchEnv));
+    row('Vista previa', look, () => {});
+  }
   // Lo de adentro de los alrededores: sólo se ve con un escenario puesto.
   when = () => !!(cfg().visual.pitchEnv && cfg().visual.pitchEnv !== 'none');
   const vb = (k) => () => cfg().visual[k] !== false;
@@ -9598,9 +9605,122 @@ function paintEnvAlive(ctx) {
   const ball = t0 - liveBall.t < 500 ? liveBall : null;
   const since = t0 - env.startAt;
   const welcome = c.envWelcome !== false && since >= 0 && since < 4500 ? since / 4500 : 0;
-  pitchEnv.paintAlive(ctx, visual.env, env.bounds, t0, reg, { cheer: env.cheer, hot: env.hot, mirror: env.mirror, weather: L.weather, night: L.night, kits: L.kits, fireworks: L.fireworks, tifo: L.tifo, ball, welcome }, envVis);
+  pitchEnv.paintAlive(ctx, visual.env, env.bounds, t0, reg, { cheer: env.cheer, hot: env.hot, mirror: env.mirror, weather: L.weather, night: L.night, kits: L.kits, fireworks: L.fireworks, tifo: L.tifo, myTeam: L.fresaTeam, ball, welcome }, envVis);
   // El festejo del gol (papelitos, bengalas) dura 3 s: no cuenta como compu lenta.
   if (!env.hot && !welcome) envSlowNote(performance.now() - t0);
+}
+
+/*
+ * Vista previa de los estadios: un recuadro grande arriba del juego con el
+ * escenario andando (gente, LED, Fresa y Joaquín), una pelota de mentira que
+ * pasea y un gol de prueba cada tanto, para ver cómo reaccionan. Flechas para
+ * recorrer los diez y «Elegir este» para ponerlo. Al cerrar, la cancha de
+ * verdad se rehace (la vista previa usa los mismos dibujos guardados).
+ */
+let envView = null;
+let envPreview = null;
+function openEnvPreview(doc, start) {
+  if (envPreview) return;
+  const list = QM_ENVS.filter(([k]) => k !== 'none');
+  let idx = Math.max(0, list.findIndex(([k]) => k === start));
+  const wrap = doc.createElement('div');
+  wrap.id = 'tvm-envprev';
+  wrap.innerHTML = `<style>
+    #tvm-envprev { position: fixed; inset: 0; z-index: 2147483000; background: rgba(6,8,12,.82); display: flex; align-items: center; justify-content: center; font: 600 14px system-ui, sans-serif; color: #fff; }
+    #tvm-envprev .card { background: #141821; border-radius: 18px; padding: 14px; box-shadow: 0 18px 60px rgba(0,0,0,.6); display: flex; flex-direction: column; gap: 10px; width: min(92vw, 1000px); }
+    #tvm-envprev .top { display: flex; align-items: center; gap: 10px; }
+    #tvm-envprev .name { flex: 1; font-size: 17px; font-weight: 800; }
+    #tvm-envprev .n { opacity: .55; font-weight: 600; }
+    #tvm-envprev canvas { width: 100%; height: auto; border-radius: 12px; background: #000; display: block; }
+    #tvm-envprev button { border: 0; border-radius: 999px; padding: 7px 16px; font: 700 13px system-ui, sans-serif; cursor: pointer; background: rgba(255,255,255,.1); color: #fff; }
+    #tvm-envprev button:hover { background: rgba(255,255,255,.18); }
+    #tvm-envprev button.go { background: #e05252; }
+    #tvm-envprev button.go:hover { background: #ea6a6a; }
+    #tvm-envprev .hint { opacity: .5; font-size: 12px; font-weight: 500; }
+  </style><div class="card"><div class="top"><button class="prev" aria-label="Anterior">‹</button><span class="name"></span><span class="n"></span><button class="next" aria-label="Siguiente">›</button></div>
+  <canvas width="1000" height="560"></canvas>
+  <div class="top"><span class="hint">Flechas ← → para recorrer · Esc para cerrar · cada tanto hay un gol de prueba</span><span style="flex:1"></span><button class="close">Cerrar</button><button class="go">Elegir este</button></div></div>`;
+  (doc.body || doc.documentElement).append(wrap);
+  const cv = wrap.querySelector('canvas');
+  const g = cv.getContext('2d');
+  const B = { halfW: 370, halfH: 170, goalY: 64, goalDepth: 30 };
+  const s = cv.width / ((B.halfW + B.goalDepth + 300) * 2);
+  let built = null;
+  const c = () => state.config.visual || {};
+  const build = (id) => {
+    const bg = doc.createElement('canvas');
+    bg.width = cv.width; bg.height = cv.height;
+    const bx = bg.getContext('2d');
+    ownDraw++;
+    try {
+      bx.fillStyle = pitchEnv.groundColor(id); bx.fillRect(0, 0, bg.width, bg.height);
+      bx.setTransform(s, 0, 0, s, bg.width / 2, bg.height / 2);
+      const reg = pitchEnv.paintEnv(bx, id, B, {
+        alive: true, fill: 1, score: 'ROJO 2 - 1 AZUL', names: ['TL', 'APP'],
+        fresa: c().envFresa !== false, joaquin: c().envJoaquin !== false, fresaTeam: 'Red'
+      });
+      // La cancha: franjas, líneas y arcos.
+      for (let i = 0; i < 10; i++) { bx.fillStyle = i % 2 ? '#5f8a4c' : '#5a8447'; bx.fillRect(-B.halfW + i * (B.halfW / 5), -B.halfH, B.halfW / 5, B.halfH * 2); }
+      bx.strokeStyle = 'rgba(255,255,255,.8)'; bx.lineWidth = 3;
+      bx.strokeRect(-B.halfW, -B.halfH, B.halfW * 2, B.halfH * 2);
+      bx.beginPath(); bx.moveTo(0, -B.halfH); bx.lineTo(0, B.halfH); bx.stroke();
+      bx.beginPath(); bx.arc(0, 0, 70, 0, 7); bx.stroke();
+      for (const sx of [-1, 1]) { bx.strokeRect(sx < 0 ? -B.halfW - B.goalDepth : B.halfW, -B.goalY, B.goalDepth, B.goalY * 2); }
+      built = { id, bg, reg };
+    } finally { ownDraw--; }
+  };
+  const show = () => {
+    const [id, name] = list[idx];
+    wrap.querySelector('.name').textContent = name;
+    wrap.querySelector('.n').textContent = `${idx + 1} / ${list.length}`;
+    built = null;
+    try { build(id); } catch (e) { built = null; }
+  };
+  let raf = 0;
+  const t0 = performance.now();
+  const frame = (now) => {
+    raf = doc.defaultView.requestAnimationFrame(frame);
+    if (!built) return;
+    const t = now - t0;
+    ownDraw++;
+    try {
+      g.setTransform(1, 0, 0, 1, 0, 0);
+      g.drawImage(built.bg, 0, 0);
+      g.setTransform(s, 0, 0, s, cv.width / 2, cv.height / 2);
+      // Una pelota que pasea por la cancha y, cada 14 s, un gol de prueba de cada lado.
+      const cyc = t % 14000, team = Math.floor(t / 14000) % 2 ? 'Blue' : 'Red';
+      const ball = { x: Math.sin(t / 1900) * B.halfW * 0.8, y: Math.sin(t / 1300) * B.halfH * 0.7 };
+      const hot = cyc > 11000;
+      g.fillStyle = '#fff'; g.beginPath(); g.arc(ball.x, ball.y, 8, 0, 7); g.fill();
+      const vis = { x0: -cv.width / 2 / s, x1: cv.width / 2 / s, y0: -cv.height / 2 / s, y1: cv.height / 2 / s };
+      pitchEnv.paintAlive(g, built.id, B, t, built.reg, { hot, cheer: hot ? team : null, ball, myTeam: 'Red', tifo: c().envTifo !== false }, vis);
+    } catch (e) { /* adorno */ } finally { ownDraw--; }
+  };
+  const close = () => {
+    if (!envPreview) return;
+    doc.defaultView.cancelAnimationFrame(raf);
+    doc.removeEventListener('keydown', key, true);
+    wrap.remove();
+    envPreview = null;
+    // La cancha de verdad vuelve a armar lo suyo (la vista previa tocó el estado compartido).
+    env.bmp = null; env.bmpKey = ''; env.hotBmp = null; env.hotBmpKey = ''; env.last = null;
+    safe(flushStadiumCache, envView);
+  };
+  const step = (d) => { idx = (idx + d + list.length) % list.length; show(); };
+  const key = (e) => {
+    if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); close(); }
+    else if (e.key === 'ArrowLeft') { e.preventDefault(); e.stopPropagation(); step(-1); }
+    else if (e.key === 'ArrowRight') { e.preventDefault(); e.stopPropagation(); step(1); }
+  };
+  doc.addEventListener('keydown', key, true);
+  wrap.querySelector('.prev').addEventListener('click', () => step(-1));
+  wrap.querySelector('.next').addEventListener('click', () => step(1));
+  wrap.querySelector('.close').addEventListener('click', close);
+  wrap.querySelector('.go').addEventListener('click', () => { const id = list[idx][0]; close(); quickSet({ visual: { pitchEnv: id } }, 'Alrededores'); });
+  wrap.addEventListener('click', (e) => { if (e.target === wrap) close(); });
+  envPreview = { close };
+  show();
+  raf = doc.defaultView.requestAnimationFrame(frame);
 }
 
 function flushStadiumCache(view) {
@@ -11236,6 +11356,7 @@ function onGameTick(view, room) {
   cardTick(tracker.card, f, room, advanced);
   // Con «Lado fijo» el juego espeja la cancha (cache incluido): los textos de
   // los alrededores se rehacen al revés cuando cambia. Es una comparación.
+  envView = view;
   if (visual.env && !!view.__tvmMirror !== env.mirror) { env.mirror = !!view.__tvmMirror; flushStadiumCache(view); }
   if (tracker.clock - possAt >= 1000 || tracker.clock < possAt) { possAt = tracker.clock; safe(paintPossession, view.document, tracker.card); }
   if (minimap.on) safe(minimapTick, f, room, match);

@@ -564,7 +564,7 @@ function paint(ctx, text, x, y, font, color, mirror, maxW) {
  * (los LED lo muestran), quién hizo el gol (en el festejo) y los nombres de
  * los que usan TL App en la sala (los trapos les dan aliento).
  */
-const LIVE = { score: '', scorer: '', names: [], wet: false, snow: false, night: false, gap: 0, pk: '', fill: 1, kx: 1, ky: 1, nearAt: 0 };
+const LIVE = { score: '', scorer: '', names: [], wet: false, snow: false, night: false, gap: 0, pk: '', fill: 1, kx: 1, ky: 1, nearAt: 0, ballP: null, shotAt: 0 };
 /**
  * Cuántas veces más grande es la cancha que una común (de largo y de ancho).
  * Lo que va en cantidad fija (gente suelta, mesas, autos, vacas, luces) se
@@ -1345,6 +1345,8 @@ function estadio(ctx, W, H, o) {
     for (const a of [...aisles.filter((v) => v > x0 && v < x1), x1]) { crowd(ctx, rnd, prev + 8, y0, a - 8, y1, o, 13, 12, 0.95); prev = a; }
   };
   block(-W - 50, -H - 164, W + 50, -H - 56);
+  // Los vendedores suben y bajan por los pasillos (los mueve la capa viva).
+  if (REG) { REG.vendors.push({ x: aisles[1], y0: -H - 158, y1: -H - 62, k: 0 }); REG.vendors.push({ x: aisles[2], y0: H + 62, y1: H + 158, k: 1 }); }
   block(-W - 50, H + 56, W + 50, H + 164);
   for (const sx of [-1, 1]) {
     const x0 = sx < 0 ? -W - 192 : W + 66, x1 = sx < 0 ? -W - 66 : W + 192;
@@ -1455,6 +1457,11 @@ function fresaDT(ctx, x, y, up, team, mirror, wag = 0, mood = '') {
   if (mood === 'blink' || mood === 'mate') {
     ctx.strokeStyle = '#2a1d16'; ctx.lineWidth = 1;
     ctx.beginPath(); ctx.arc(-3.4, -5.6, 1.6, 0.2, Math.PI - 0.2); ctx.moveTo(5, -5.3); ctx.arc(3.4, -5.6, 1.6, 0.2, Math.PI - 0.2); ctx.stroke();
+  } else if (mood === 'alert') {
+    // Ojos grandes: ¡se viene el gol!
+    ctx.fillStyle = '#ffffff'; ctx.strokeStyle = '#2a1d16'; ctx.lineWidth = 0.6;
+    ctx.beginPath(); ctx.arc(-3.6, -5.2, 2.7, 0, 7); ctx.fill(); ctx.stroke(); ctx.beginPath(); ctx.arc(3.6, -5.2, 2.7, 0, 7); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#2a1d16'; ctx.beginPath(); ctx.arc(-3.6, -4.8, 1.3, 0, 7); ctx.arc(3.6, -4.8, 1.3, 0, 7); ctx.fill();
   } else {
     ctx.fillStyle = '#2a1d16';
     ctx.beginPath(); ctx.ellipse(-3.4, -5, 1.6, 1.8, 0, 0, 7); ctx.ellipse(3.4, -5, 1.6, 1.8, 0, 0, 7); ctx.fill();
@@ -2188,9 +2195,31 @@ function paintAlive(ctx, id, bounds, t, reg, o = {}, vis = null) {
     const near = !!(B0 && Jq && Math.abs(B0.y) > H - 45 && Math.sign(B0.y) === Math.sign(Jq.y) && Math.abs(B0.x - (reg.fresa ? (Jq.x + reg.fresa.x) / 2 : Jq.x)) < 230);
     if (near) { if (!LIVE.nearAt || t - LIVE.nearAt > 2600) LIVE.nearAt = t; }
     const provoke = LIVE.nearAt && t - LIVE.nearAt < 2400 ? (t - LIVE.nearAt) : -1;
+    // Vendedores en los pasillos: suben, se paran a vender, bajan.
+    for (const V of reg.vendors) {
+      const per = 14000, q = ((t + V.k * 6100) % per) / per;
+      const mv = q < 0.4 ? q / 0.4 : q < 0.5 ? 1 : q < 0.9 ? 1 - (q - 0.5) / 0.4 : 0;
+      const vy = V.y0 + (V.y1 - V.y0) * mv, vx = V.x + Math.sin(t / 260) * 0.6;
+      if (!see(vx, vy, 30)) continue;
+      stampSq(ctx, sprite(`vend${V.k}`, 12, (g) => vendorShape(g, V.k)), vx, vy, 0, 1.25, 1.25); n++;
+      const stop = (q >= 0.4 && q < 0.5) || q >= 0.9;
+      if (stop && Math.floor(t / 1200) % 2) { const w = V.k ? '¡COCA, AGUA!' : '¡GARRAPIÑADA!'; stamp(ctx, sprite(`vb${V.k}${o.mirror ? 1 : 0}`, 40, (g) => bubble(g, w, !!o.mirror, '#b2561a')), vx + 30, vy - 18); n++; }
+    }
+    // Ganó tu equipo: rollos de papel higiénico volando sobre su tribuna.
+    if ((o.fireworks === 'Red' || o.fireworks === 'Blue') && o.fireworks === (o.myTeam || o.fireworks)) {
+      for (const B of reg.crowds) {
+        if (!tifoOk(B) || (o.fireworks === 'Red' ? B.x0 >= 0 : B.x1 <= 0)) continue;
+        n += paperRolls(ctx, B, t, see);
+      }
+    }
     // Pelota quieta un rato (saque demorado, pausa): los dos se echan una siesta.
     if (o.ball) { const L0 = LIVE.ballL; if (!L0 || Math.hypot(o.ball.x - L0.x, o.ball.y - L0.y) > 1.5) LIVE.ballL = { x: o.ball.x, y: o.ball.y, t }; }
-    const dyn = { ball: o.ball || null, nap: !!(o.ball && LIVE.ballL && t - LIVE.ballL.t > 9000 && !o.hot && !o.fireworks && !(o.welcome > 0 && o.welcome < 1)) };
+    const alert = !o.hot && !o.fireworks && shotComing(o.ball, W0, bounds.goalY, t);
+    // La persecución: cada tanto Joaquín le roba la pizarrita (sólo en escenas abiertas).
+    const segC = Math.floor(t / 5200);
+    const chase = !!(reg.fresa && reg.joaquin && reg.fresa.walk > 0 && reg.joaquin.walk > 0 && Math.abs(reg.fresa.x - reg.joaquin.x) < 700 &&
+      !o.hot && !o.fireworks && !alert && provoke < 0 && hash01(segC * 5.17 + 2.2) < 0.14) ? (t % 5200) / 5200 : -1;
+    const dyn = { alert, chase, J: reg.joaquin, F: reg.fresa, ball: o.ball || null, nap: !!(o.ball && LIVE.ballL && t - LIVE.ballL.t > 9000 && !o.hot && !o.fireworks && !(o.welcome > 0 && o.welcome < 1)) };
     if (reg.joaquin && see(reg.joaquin.x, reg.joaquin.y, 60)) n += joaquinAlive(ctx, reg.joaquin, reg.fresa, t, o, night, provoke, dyn);
     // Fresa: tiene su rutina de DT y reacciona al partido.
     if (reg.fresa && see(reg.fresa.x, reg.fresa.y, 70 + (reg.fresa.walk || 0))) n += fresaAlive(ctx, reg.fresa, t, o, night, reg.joaquin ? provoke : -1, dyn);
@@ -2745,6 +2774,43 @@ function fresaAlive(ctx, F, t, o, night, provoke = -1, dyn = {}) {
     at(`fb${word}${team}${m}`, 34, (g) => bubble(g, word, mir, ink), x + 26, y - 34);
     return 2;
   }
+  if (dyn.alert) {
+    // ¡Uy, uy, uy! Se para de golpe con los ojos grandes.
+    homeBack();
+    const j = Math.sin(t / 50) * 0.5;
+    stampSq(ctx, sp(`fresa0${team}${m}0alert`, 34, (g) => fresaDT(g, 0, 0, false, team, mir, 0, 'alert')), x + j, y - 3, gaze(dyn.ball, x) * 1.6, 0.95, 1.1);
+    at('alertM', 10, alertMark, x + 13, y - 31);
+    return 2;
+  }
+  if (dyn.chase >= 0 && dyn.J) {
+    // Joaquín le roba la pizarrita: ella le grita, lo corre, la recupera y vuelve.
+    const p = dyn.chase, J = dyn.J, d = Math.sign(F.x - J.x) || 1;
+    const ez = (u) => { u = Math.max(0, Math.min(1, u)); return u * u * (3 - 2 * u); };
+    const catchX = J.x + d * 26;
+    if (p < 0.22) { S.x = F.x; stampSq(ctx, sp(`fresa0${team}${m}0`, 34, (g) => fresaDT(g, 0, 0, false, team, mir, 0)), F.x, y, -d * 0.12, 1 - breath / 2, 1 + breath); return 1; }
+    if (p < 0.3) {
+      S.x = F.x;
+      stampSq(ctx, sp(`fresa0${team}${m}0shout`, 34, (g) => fresaDT(g, 0, 0, false, team, mir, 0, 'shout')), F.x + Math.sin(t / 40), y - 2, 0, 1, 1.05);
+      at(`fb¡EH!${team}${m}`, 34, (g) => bubble(g, '¡EH!', mir, ink), F.x + 26, y - 34);
+      return 2;
+    }
+    if (p < 0.62) {
+      // Sale un toque después que él: lo corre de atrás.
+      x = F.x + (catchX - F.x) * ez((p - 0.33) / 0.29); S.x = x;
+      const f = Math.floor(t / 100) % 2;
+      dust(ctx, S, t, x, y, true);
+      stampSq(ctx, sp(`fwalk${team}${m}${f}${-d}`, 34, (g) => fresaWalk(g, team, mir, f, -d)), x, y - (f ? 1 : 0), 0, 1, 1);
+      return 2;
+    }
+    if (p < 0.72) {
+      S.x = catchX;
+      stampSq(ctx, sp(`fresa1${team}${m}0`, 34, (g) => fresaDT(g, 0, 0, true, team, mir, 0)), catchX, y - Math.abs(Math.sin(t / 120)) * 3, 0, 1, 1);
+      at(`fb¡ES MÍA!${team}${m}`, 34, (g) => bubble(g, '¡ES MÍA!', mir, ink), catchX + 26, y - 38);
+      return 2;
+    }
+    x = catchX + (F.x - catchX) * ez((p - 0.72) / 0.26); S.x = x;
+    if (p < 0.98) { const f = Math.floor(t / 150) % 2; dust(ctx, S, t, x, y, false); stampSq(ctx, sp(`fwalk${team}${m}${f}${d}`, 34, (g) => fresaWalk(g, team, mir, f, d)), x, y, 0, 1, 1); return 1; }
+  }
   if (dyn.nap) {
     homeBack();
     const b = Math.round(Math.sin(t / 900) * 2) / 2;
@@ -2898,7 +2964,11 @@ function joaquinDT(ctx, x, y, mood, mirror, wag = 0, f = 0) {
     ctx.strokeStyle = '#111'; ctx.lineWidth = 1.2;
     ctx.beginPath(); ctx.moveTo(-6, -7.5); ctx.lineTo(-1.5, -6); ctx.moveTo(6, -7.5); ctx.lineTo(1.5, -6); ctx.stroke();
   }
-  if (mood === 'blink') {
+  if (mood === 'alert') {
+    ctx.fillStyle = '#ffffff'; ctx.strokeStyle = '#2a1d16'; ctx.lineWidth = 0.6;
+    ctx.beginPath(); ctx.arc(-3.6, -4.8, 2.7, 0, 7); ctx.fill(); ctx.stroke(); ctx.beginPath(); ctx.arc(3.6, -4.8, 2.7, 0, 7); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#2a1d16'; ctx.beginPath(); ctx.arc(-3.6, -4.4, 1.3, 0, 7); ctx.arc(3.6, -4.4, 1.3, 0, 7); ctx.fill();
+  } else if (mood === 'blink') {
     ctx.strokeStyle = JQ[3]; ctx.lineWidth = 1;
     ctx.beginPath(); ctx.moveTo(-5, -4.6); ctx.lineTo(-1.8, -4.6); ctx.moveTo(1.8, -4.6); ctx.lineTo(5, -4.6); ctx.stroke();
   } else {
@@ -2953,6 +3023,31 @@ function joaquinAlive(ctx, J, F, t, o, night, provoke = -1, dyn = {}) {
   } else if (provoke >= 0) {
     mood = 'angry'; say = provoke < 1200 ? '¡ES NUESTRA!' : '¡GRRR!';
     hop = Math.abs(Math.sin(t / 110)) * 2.5; shake = Math.sin(t / 45) * 0.8; tilt = toFresa * 0.12;
+  } else if (dyn.alert) {
+    mood = 'alert'; hop = 3; shake = Math.sin(t / 50 + 1) * 0.5; tilt = gaze(dyn.ball, J.x) * 1.6;
+    at('alertM', 10, alertMark, J.x + 13, J.y - 31);
+  } else if (dyn.chase >= 0 && F) {
+    const p = dyn.chase, d = Math.sign(F.x - J.x) || 1;
+    const ez = (u) => { u = Math.max(0, Math.min(1, u)); return u * u * (3 - 2 * u); };
+    const grabX = F.x - d * 24;
+    if (p < 0.22 || (p >= 0.3 && p < 0.62)) {
+      // Va hasta Fresa (sin nada) y vuelve corriendo con la pizarrita.
+      const going = p < 0.22;
+      const jx = going ? J.x + (grabX - J.x) * ez(p / 0.22) : grabX + (J.x - grabX) * ez((p - 0.3) / 0.3);
+      const f = Math.floor(t / (going ? 140 : 95)) % 2, dir = going ? d : -d;
+      stampSq(ctx, sp(`jwalk${m}${f}${dir}${going ? 0 : 1}`, 34, (g) => joaquinWalk(g, mir, f, dir, !going)), jx, J.y - (f ? 0.8 : 0), 0, 1, 1);
+      if (!going && p < 0.45) at(`jb¡JE!${m}`, 34, (g) => bubble(g, '¡JE!', mir, ink), jx + 22, J.y - 30);
+      return 2;
+    }
+    if (p < 0.3) {
+      // Agarra la pizarrita: se ríe.
+      at(`jqjaja${m}0`, 34, (g) => joaquinDT(g, 0, 0, 'jaja', mir, 0), grabX, J.y - 2);
+      return 1;
+    }
+    if (p < 0.72) {
+      // Se la sacaron: se queda con bronca y echa vapor.
+      mood = 'angry'; say = '¡UFA!'; shake = Math.sin(t / 40) * 0.8;
+    } else { mood = 'crossed'; }
   } else if (dyn.nap) {
     const b = Math.round(Math.sin(t / 960 + 2) * 2) / 2;
     at(`jsleep${m}${b}`, 34, (g) => dogSleep(g, 'joaquin', team, mir, b * 0.6), J.x, J.y + 2);
@@ -2973,7 +3068,7 @@ function joaquinAlive(ctx, J, F, t, o, night, provoke = -1, dyn = {}) {
   const key = `jq${mood}${m}${mood === 'jaja' ? wag : 0}${f}`;
   stampSq(ctx, sp(key, 34, (g) => joaquinDT(g, 0, 0, mood, mir, mood === 'jaja' ? wag : 0, f)), x, y, tilt, 1 - breath / 2, 1 + breath + hop * 0.015);
   let n = 1;
-  if (hot) { steam(ctx, t, x, y - 22); n++; }
+  if (hot || say === '¡UFA!') { steam(ctx, t, x, y - 22); n++; }
   if (say) { at(`jb${say}${m}`, 34, (g) => bubble(g, say, mir, mood === 'angry' ? '#b83a3a' : ink), J.x + 26, J.y - 36 - hop * 0.5); n++; }
   return n;
 }
@@ -3061,6 +3156,109 @@ function bigFlag(ctx, B, team, t, a) {
   return 1;
 }
 
+/* ── Tercera tanda: persecución, «uy, uy, uy», papel higiénico y vendedores ── */
+
+/** Joaquín caminando (de arriba), con la pizarrita de Fresa en la boca si se la robó. */
+function joaquinWalk(ctx, mirror, f, dir, board) {
+  ctx.save();
+  ctx.scale(1.15 * dir, 1.15);
+  ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.beginPath(); ctx.ellipse(2, 7, 18, 7, 0, 0, 7); ctx.fill();
+  ctx.fillStyle = JQ[0];
+  const a = f ? 3 : -3;
+  for (const [px, py, s2] of [[8, -6, 1], [8, 7, -1], [-9, -6, -1], [-9, 7, 1]]) { ctx.beginPath(); ctx.arc(px + a * s2, py, 2.8, 0, 7); ctx.fill(); }
+  ctx.strokeStyle = JQ[1]; ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.moveTo(-12, 0); ctx.quadraticCurveTo(-18, -2 + a * 0.6, -20, -5 + a); ctx.stroke();
+  jqCurl(ctx, -20.5, -6 + a, 3.2);
+  // La camiseta de arriba: rayas a lo largo del lomo.
+  ctx.save(); ctx.beginPath(); ctx.ellipse(-1, 0, 14, 8.5, 0, 0, 7); ctx.clip();
+  ctx.fillStyle = '#ffffff'; ctx.fillRect(-16, -10, 32, 20);
+  ctx.fillStyle = '#75b9e8'; for (const sy of [-8, -3, 2, 7]) ctx.fillRect(-16, sy, 32, 2.6);
+  ctx.restore();
+  ctx.fillStyle = JQ[1];
+  ctx.beginPath(); ctx.ellipse(10, -7 - a * 0.3, 5, 3.6, 0.3, 0, 7); ctx.ellipse(10, 7 + a * 0.3, 5, 3.6, -0.3, 0, 7); ctx.fill();
+  ctx.fillStyle = JQ[0]; ctx.beginPath(); ctx.arc(14, 0, 7.5, 0, 7); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(20, 0, 4.2, 3.2, 0, 0, 7); ctx.fill();
+  jqCurl(ctx, 11, -3, 3); jqCurl(ctx, 11, 3, 3);
+  ctx.fillStyle = '#2a1d16'; ctx.beginPath(); ctx.arc(23.5, 0, 1.7, 0, 7); ctx.fill();
+  ctx.fillStyle = '#75b9e8'; ctx.fillRect(12, -6.5, 2, 13);
+  if (board) {
+    ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.fillRect(23, -4, 11, 13);
+    ctx.fillStyle = '#f4f1ea'; ctx.fillRect(22, -6, 11, 13);
+    ctx.strokeStyle = RED; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(24, -3); ctx.lineTo(30, 2); ctx.moveTo(24, 2); ctx.lineTo(29, -3); ctx.stroke();
+  }
+  ctx.restore();
+}
+
+/** El signo de «¡!» sobre la cabeza cuando se viene el gol. */
+function alertMark(g) {
+  g.fillStyle = '#ffd34d'; g.strokeStyle = '#3a2a10'; g.lineWidth = 1;
+  g.beginPath(); g.moveTo(-2.2, -8); g.lineTo(2.2, -8); g.lineTo(1.2, 3); g.lineTo(-1.2, 3); g.closePath(); g.fill(); g.stroke();
+  g.beginPath(); g.arc(0, 6.5, 1.8, 0, 7); g.fill(); g.stroke();
+}
+
+/**
+ * ¿Se viene el gol? La pelota va rápido hacia un arco y ya está cerca: los dos
+ * perros se paran de golpe con los ojos grandes (lo mira la capa viva).
+ */
+function shotComing(ball, W0, goalY, t) {
+  const P = LIVE.ballP;
+  LIVE.ballP = ball ? { x: ball.x, y: ball.y, t } : null;
+  if (!ball || !P || t <= P.t) return LIVE.shotAt && t - LIVE.shotAt < 900;
+  const dt = t - P.t;
+  if (dt > 200) return LIVE.shotAt && t - LIVE.shotAt < 900;
+  const vx = (ball.x - P.x) / dt, vy = (ball.y - P.y) / dt;
+  const toward = Math.sign(vx) === Math.sign(ball.x) && Math.abs(vx) > 0.32;
+  if (toward && Math.abs(ball.x) > W0 * 0.45) {
+    // Dónde cruza la línea del arco: si cae entre los palos (con margen), es peligro.
+    const tt = (Math.sign(ball.x) * W0 - ball.x) / vx;
+    const yAt = ball.y + vy * tt;
+    if (tt > 0 && tt < 900 && Math.abs(yAt) < (goalY || 70) * 1.6) LIVE.shotAt = t;
+  }
+  return !!(LIVE.shotAt && t - LIVE.shotAt < 900);
+}
+
+/** Rollos de papel higiénico volando arriba de la tribuna del que ganó. */
+function paperRolls(ctx, B, t, see) {
+  const span = B.x1 - B.x0;
+  const n = Math.max(1, Math.min(5, Math.round(span / 120)));
+  let k = 0;
+  for (let i = 0; i < n; i++) {
+    const per = 1700 + hash01(B.seed % 331 + i * 3) * 900;
+    const q = ((t + hash01(B.seed % 211 + i) * per) % per) / per;
+    const x0 = B.x0 + ((i + 0.5) / n) * span;
+    const dx = (hash01(B.seed % 97 + i * 7) - 0.5) * 160;
+    const x = x0 + dx * q;
+    const y = (B.y0 + B.y1) / 2 - Math.sin(q * Math.PI) * 80 + (B.y1 - B.y0) * 0.3 * (q - 0.5);
+    if (!see(x, y, 50)) continue;
+    // La tira de papel que va dejando, ondulando.
+    ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.beginPath(); ctx.ellipse(x + 6, y + 14, 5, 2.5, 0, 0, 7); ctx.fill();
+    ctx.strokeStyle = 'rgba(0,0,0,0.25)'; ctx.lineWidth = 3.6;
+    const path = () => { ctx.beginPath(); ctx.moveTo(x, y); for (let s = 1; s <= 9; s++) { const qs = Math.max(0, q - s * 0.04); const xs = x0 + dx * qs, ys = (B.y0 + B.y1) / 2 - Math.sin(qs * Math.PI) * 80 + (B.y1 - B.y0) * 0.3 * (qs - 0.5); ctx.lineTo(xs + Math.sin(t / 90 + s) * 3.5, ys + Math.cos(t / 110 + s) * 2.5); } };
+    path(); ctx.stroke();
+    ctx.strokeStyle = '#fbfbf6'; ctx.lineWidth = 2.6;
+    path(); ctx.stroke();
+    if (false) for (let s = 1; s <= 6; s++) {
+      const qs = Math.max(0, q - s * 0.035);
+      const xs = x0 + dx * qs, ys = (B.y0 + B.y1) / 2 - Math.sin(qs * Math.PI) * 60 + (B.y1 - B.y0) * 0.3 * (qs - 0.5);
+      ctx.lineTo(xs + Math.sin(t / 90 + s) * 2.5, ys + Math.cos(t / 110 + s) * 2);
+    }
+    ctx.fillStyle = '#fbfbf6'; ctx.strokeStyle = 'rgba(0,0,0,0.3)'; ctx.lineWidth = 0.8;
+    ctx.beginPath(); ctx.arc(x, y, 5, 0, 7); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#b9b2a2'; ctx.beginPath(); ctx.arc(x, y, 1.9, 0, 7); ctx.fill();
+    k++;
+  }
+  return k;
+}
+
+/** El vendedor: guardapolvo blanco y la conservadora colgada. */
+function vendorShape(g, kind) {
+  person(g, seeded(300 + kind), 0, 0, '#f4f1ea', false, 1);
+  g.fillStyle = 'rgba(0,0,0,0.25)'; g.fillRect(6, -3, 9, 9);
+  g.fillStyle = kind ? '#2f6fb0' : '#e86f2a'; g.fillRect(5, -5, 9, 9);
+  g.fillStyle = '#f4f1ea'; g.fillRect(5, -5, 9, 2);
+  g.strokeStyle = 'rgba(40,40,40,0.5)'; g.lineWidth = 0.8; g.beginPath(); g.moveTo(-3, -3); g.lineTo(6, -4); g.stroke();
+}
+
 const DRAW = { noche: potreroNoche, barrio: clubBarrio, led: potreroLed, f5: canchitaF5, playa, campo, azotea, cortada, colegio, estadio };
 
 /**
@@ -3097,7 +3295,7 @@ function paintEnv(ctx, id, bounds, o = {}) {
     LIVE.fill = Number.isFinite(o.fill) ? Math.max(0.25, Math.min(1, o.fill)) : 1;
     useKits(o.kits);
     LIGHTS.length = 0;
-    REG = { leds: [], crowds: [], flags: [], dogs: [], kids: [], pitches: [], smoke: [], cows: [], flashes: [], screens: [], windows: [], walkers: [], runners: [], bulbs: [], trapos: [], fresa: null, mill: null, volley: null, gulls: null, lane: null, joaquin: null, fires: [], surfers: [], kite: null, beacons: [], swings: [], dj: null };
+    REG = { leds: [], crowds: [], flags: [], dogs: [], kids: [], pitches: [], smoke: [], cows: [], flashes: [], screens: [], windows: [], walkers: [], runners: [], bulbs: [], trapos: [], fresa: null, mill: null, volley: null, gulls: null, lane: null, joaquin: null, vendors: [], fires: [], surfers: [], kite: null, beacons: [], swings: [], dj: null };
     const so = { cheer: o.cheer || null, hot: !!o.hot, mirror: !!o.mirror };
     fn(ctx, W, H, so);
     if (EXTRA[id]) EXTRA[id](ctx, W, H, so, seeded(4049));
