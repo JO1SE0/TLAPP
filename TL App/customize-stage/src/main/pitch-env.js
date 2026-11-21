@@ -241,6 +241,8 @@ function crowd(ctx, rnd, x0, y0, x1, y1, o, gapX = 16, gapY = 15, density = 0.9)
 
 /** Unos pocos sueltos, parados donde caigan dentro de una zona. */
 function scatter(ctx, rnd, x0, y0, x1, y1, n, o) {
+  // Una zona a lo largo crece con el largo de la cancha; una de costado, con el ancho.
+  n = more(n, Math.min(6, Math.abs(x1 - x0) >= Math.abs(y1 - y0) ? LIVE.kx : LIVE.ky));
   for (let i = 0; i < n; i++) {
     const x = x0 + rnd() * (x1 - x0), y = y0 + rnd() * (y1 - y0);
     const team = x < 0 ? 'Red' : 'Blue';
@@ -552,7 +554,13 @@ function paint(ctx, text, x, y, font, color, mirror, maxW) {
  * (los LED lo muestran), quién hizo el gol (en el festejo) y los nombres de
  * los que usan TL App en la sala (los trapos les dan aliento).
  */
-const LIVE = { score: '', scorer: '', names: [], wet: false, snow: false, night: false, gap: 0, pk: '', fill: 1 };
+const LIVE = { score: '', scorer: '', names: [], wet: false, snow: false, night: false, gap: 0, pk: '', fill: 1, kx: 1, ky: 1 };
+/**
+ * Cuántas veces más grande es la cancha que una común (de largo y de ancho).
+ * Lo que va en cantidad fija (gente suelta, mesas, autos, vacas, luces) se
+ * multiplica por esto: en un x7 no quedan diez personas perdidas.
+ */
+function more(n, k) { return Math.max(1, Math.round(n * k)); }
 /** Las luces de la escena (las anota lampPost): de noche son las que alumbran. */
 const LIGHTS = [];
 /**
@@ -654,7 +662,8 @@ function clubBarrio(ctx, W, H, o) {
   crowd(ctx, rnd, 12, -H - 98, W * 0.5 - 12, -H - 34, o, 14, 16, 0.94);
   crowd(ctx, rnd, W * 0.5 + 12, -H - 98, W - 30, -H - 34, o, 14, 16, 0.94);
   // Banderas en los mástiles arriba de la tribuna.
-  for (let i = 0; i < 6; i++) flagPole(ctx, -W + 40 + i * ((2 * W - 80) / 5), -H - 112, i % 2 ? BLUE : RED, i % 3 === 0 ? '#f4f1ea' : null);
+  const nFlags = more(6, LIVE.kx);
+  for (let i = 0; i < nFlags; i++) flagPole(ctx, -W + 40 + i * ((2 * W - 80) / (nFlags - 1)), -H - 112, i % 2 ? BLUE : RED, i % 3 === 0 ? '#f4f1ea' : null);
   // Abajo: bancos de suplentes, paredón pintado y el LED.
   dugout(ctx, rnd, -150, H + 26, 110, 'Red', o);
   dugout(ctx, rnd, 40, H + 26, 110, 'Blue', o);
@@ -753,14 +762,16 @@ function canchitaF5(ctx, W, H, o) {
   }
   paint(ctx, 'VESTUARIOS', -W * 0.5, -H - 140, '800 12px sans-serif', '#c9ced6', o.mirror);
   paint(ctx, 'BUFFET · TL', W * 0.5, -H - 140, '800 12px sans-serif', '#f0c25a', o.mirror);
-  for (let i = 0; i < 6; i++) table(ctx, rnd, -W + 30 + i * ((2 * W - 60) / 5), -H - 80);
+  const nTab = more(6, LIVE.kx);
+  for (let i = 0; i < nTab; i++) table(ctx, rnd, -W + 30 + i * ((2 * W - 60) / (nTab - 1)), -H - 80);
   crowd(ctx, rnd, -W + 10, -H - 60, W - 10, -H - 52, o, 17, 10, 0.75);
   // Abajo: bancos, gente esperando y el estacionamiento.
   dugout(ctx, rnd, -150, H + 58, 120, 'Red', o);
   dugout(ctx, rnd, 30, H + 58, 120, 'Blue', o);
   crowd(ctx, rnd, -W + 10, H + 64, -170, H + 100, o, 15, 14, 0.72);
   crowd(ctx, rnd, 170, H + 64, W - 10, H + 100, o, 15, 14, 0.72);
-  for (let i = 0; i < 9; i++) car(ctx, -W - 40 + i * ((2 * W + 80) / 8), H + 140, 0, pick(rnd, CARS));
+  const nCar = more(9, LIVE.kx);
+  for (let i = 0; i < nCar; i++) car(ctx, -W - 40 + i * ((2 * W + 80) / (nCar - 1)), H + 140, 0, pick(rnd, CARS));
   // Costados: la canchita de al lado (se ve un pedazo) y la gente esperando turno.
   for (const sx of [-1, 1]) {
     const x0 = sx < 0 ? -W - 330 : W + 120;
@@ -1008,8 +1019,9 @@ function campo(ctx, W, H, o) {
   ctx.strokeStyle = '#8a6a40'; ctx.lineWidth = 3;
   ctx.beginPath(); ctx.moveTo(-40, H + 22); ctx.lineTo(-40, H + 58); ctx.stroke();
   // Vacas pastando arriba, del otro lado del alambre.
-  for (let i = 0; i < 6; i++) {
-    const cx = -W + 40 + i * ((2 * W - 80) / 5) + (rnd() - 0.5) * 40, cy = -H - 60 - rnd() * 40, ca = (rnd() - 0.5) * 2.4;
+  const nCow = more(6, LIVE.kx);
+  for (let i = 0; i < nCow; i++) {
+    const cx = -W + 40 + i * ((2 * W - 80) / (nCow - 1)) + (rnd() - 0.5) * 40, cy = -H - 60 - rnd() * 40, ca = (rnd() - 0.5) * 2.4;
     if (REG) REG.cows.push({ x: cx, y: cy, a: ca, seed: i + 1 });
     if (!LIVE.alive) cow(ctx, rnd, cx, cy, ca);
   }
@@ -1255,8 +1267,8 @@ function colegio(ctx, W, H, o) {
   ctx.fillStyle = '#f0c25a'; ctx.beginPath(); ctx.arc(-W - 24, H - 34, 1.8, 0, 7); ctx.fill();
   const pack = (x, y) => { ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.fillRect(x + 2, y + 2, 12, 14); ctx.fillStyle = pick(rnd, [RED, BLUE, '#3aa37a', '#f0c25a', '#b25ab5']); ctx.fillRect(x, y, 12, 14); ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.fillRect(x + 2, y + 8, 8, 4); };
   for (const sx of [-1, 1]) {
-    for (let i = 0; i < 6; i++) pack(sx * (W + 30 + rnd() * 50), -H + rnd() * (H - gap - 20));
-    for (let i = 0; i < 6; i++) pack(sx * (W + 30 + rnd() * 50), gap + 10 + rnd() * (H - gap - 20));
+    for (let i = 0; i < more(6, LIVE.ky); i++) pack(sx * (W + 30 + rnd() * 50), -H + rnd() * (H - gap - 20));
+    for (let i = 0; i < more(6, LIVE.ky); i++) pack(sx * (W + 30 + rnd() * 50), gap + 10 + rnd() * (H - gap - 20));
   }
   // Rayuela, aro de básquet, mástil y el kiosco.
   ctx.strokeStyle = 'rgba(255,255,255,0.85)'; ctx.lineWidth = 2;
@@ -2311,7 +2323,7 @@ function bus(ctx, x, y, a, color, mirror) {
 const EXTRA = {
   noche(ctx, W, H, o, rnd) {
     const gap = goalGap(H);
-    for (let i = 0; i < 9; i++) clothesline(ctx, rnd, -W - 200 + rnd() * (2 * W + 320), (rnd() < 0.5 ? -H - 150 : H + 145) + rnd() * 18, 34 + rnd() * 20);
+    for (let i = 0; i < more(9, LIVE.kx); i++) clothesline(ctx, rnd, -W - 200 + rnd() * (2 * W + 320), (rnd() < 0.5 ? -H - 150 : H + 145) + rnd() * 18, 34 + rnd() * 20);
     choriCart(ctx, rnd, -W - 190, -10, o, o.mirror);
     // Fogón en un tacho con los que se calientan alrededor.
     const fx = W + 200, fy = -gap - 40;
@@ -2351,7 +2363,8 @@ const EXTRA = {
     sandCastle(ctx, -W * 0.4, H + 168); sandCastle(ctx, W * 0.55, H + 175);
     if (REG) {
       const sea = REG.sea;
-      for (let k = 0; k < 4; k++) REG.surfers.push({ x: -W - 300 + k * ((2 * W + 600) / 3) + (rnd() - 0.5) * 80, y: sea - 46 - rnd() * 40, k });
+      const nS = more(4, LIVE.kx);
+      for (let k = 0; k < nS; k++) REG.surfers.push({ x: -W - 300 + k * ((2 * W + 600) / (nS - 1)) + (rnd() - 0.5) * 80, y: sea - 46 - rnd() * 40, k: k % 4 });
       REG.kite = { x: W + 110, y: H + 170, color: RED };
     }
     if (!LIVE.alive && REG) for (const S of REG.surfers) { ctx.save(); ctx.translate(S.x, S.y); surferShape(ctx, S.k); ctx.restore(); }
@@ -2549,6 +2562,45 @@ function fresaAlive(ctx, F, t, o, night) {
   return 1;
 }
 
+/**
+ * Canchas altas (x5, x7, RS…): las cabeceras miden mucho más que en una común
+ * y lo de cada escena queda en el medio. Se reparte más de lo mismo a lo largo
+ * de cada fondo, salteando el centro (donde ya está lo de siempre).
+ */
+function bigEnds(ctx, id, W, H, o, rnd) {
+  if (LIVE.ky < 1.25) return;
+  const gap = goalGap(H);
+  const ys = (step, skip) => { const out = []; for (let y = -H + 110; y <= H - 110; y += step) if (Math.abs(y) > skip) out.push(y + (rnd() - 0.5) * step * 0.3); return out; };
+  for (const sx of [-1, 1]) {
+    if (id === 'noche' || id === 'campo' || id === 'colegio' || id === 'barrio') {
+      for (const y of ys(260, gap + 120)) {
+        const x = sx * (W + 170 + rnd() * 60);
+        if (id === 'barrio' && sx > 0) continue;
+        tree(ctx, rnd, x, y, 34 + rnd() * 12);
+        scatter(ctx, rnd, sx * (W + 60), y - 30, sx * (W + 110), y + 30, 2, o);
+        if (id === 'campo' && rnd() < 0.5) hay(ctx, x - sx * 70, y + 40);
+        if (id === 'noche' && rnd() < 0.4) moto(ctx, x - sx * 80, y + 30, 1.4, pick(rnd, ['#b23a3a', '#2a2a2a', '#3d6ad6']));
+      }
+    }
+    if (id === 'barrio' && sx > 0) for (let y = -H + 40; y <= H - 40; y += 70) if (y < -160 || y > 130) car(ctx, W + 110, y, Math.PI / 2, pick(rnd, CARS));
+    if (id === 'barrio' && sx < 0) for (const y of ys(200, gap + 140)) table(ctx, rnd, -W - 70 - rnd() * 40, y);
+    if (id === 'playa') {
+      for (const y of ys(190, gap + 130)) {
+        const x = sx * (W + 80 + rnd() * 30);
+        umbrella(ctx, x, y, 21, rnd() < 0.5 ? [RED, '#f4f1ea'] : [BLUE, '#f0c25a']);
+        lounger(ctx, rnd, x - 22, y + 30, 0.1); lounger(ctx, rnd, x + 22, y + 32, -0.1);
+        if (rnd() < 0.5) towel(ctx, rnd, x + sx * 70, y + 10, (rnd() - 0.5) * 0.6);
+      }
+    }
+    if (id === 'cortada') {
+      for (let y = -H + 60; y <= H - 60; y += 82) if (Math.abs(y) > gap + 50) car(ctx, sx * (W + 120), y, Math.PI / 2, pick(rnd, CARS));
+      for (const y of ys(230, gap + 100)) {
+        for (let k = 0; k < 3; k++) { const px = sx * (W + 60), py = y + k * 18; ctx.fillStyle = pick(rnd, ['#e8e2d0', '#3d6ad6', '#c9a24a', '#e86f4a']); ctx.fillRect(px - 6, py - 6, 12, 12); person(ctx, rnd, px, py, shirtFor(rnd, sx < 0 ? 'Red' : 'Blue'), o.cheer === (sx < 0 ? 'Red' : 'Blue'), 0.95); }
+      }
+    }
+  }
+}
+
 const DRAW = { noche: potreroNoche, barrio: clubBarrio, led: potreroLed, f5: canchitaF5, playa, campo, azotea, cortada, colegio, estadio };
 
 /**
@@ -2569,6 +2621,8 @@ function paintEnv(ctx, id, bounds, o = {}) {
     // Sólo afuera de la cancha: nada pisa el campo.
     const { W0, W, H, gap } = envDims(bounds);
     LIVE.gap = gap;
+    LIVE.kx = Math.max(1, Math.min(6, W0 / 420));
+    LIVE.ky = Math.max(1, Math.min(6, H / 200));
     ctx.beginPath();
     ctx.rect(-W * 50, -H * 50, W * 100, H * 100);
     ctx.rect(-W0, -H, 2 * W0, 2 * H);
@@ -2587,6 +2641,7 @@ function paintEnv(ctx, id, bounds, o = {}) {
     const so = { cheer: o.cheer || null, hot: !!o.hot, mirror: !!o.mirror };
     fn(ctx, W, H, so);
     if (EXTRA[id]) EXTRA[id](ctx, W, H, so, seeded(4049));
+    bigEnds(ctx, id, W, H, so, seeded(5051));
     // Fresa, la DT, en el banco del equipo de uno (rojo si mirás de afuera).
     if (o.fresa !== false && FRESA_SPOT[id]) {
       const team = o.fresaTeam === 'Blue' ? 'Blue' : 'Red';
