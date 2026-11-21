@@ -2691,7 +2691,7 @@ const QUICK_KEYS = {
     discStyle: 'id', ballStyle: 'id', texture: 'id', pitchWeather: 'id',
     ballColor: 'color', ballOutline: 'color', crest: 'bool',
     pitchLight: ['none', 'vignette', 'spot', 'corners', 'stadium', 'sunset', 'night', 'stripes', 'cinema'],
-    pitchBright: [0.5, 1.5], pitchContrast: [0.6, 1.6]
+    pitchBright: [0.5, 1.5], pitchContrast: [0.6, 1.6], pitchEnv: ['none', 'noche', 'barrio', 'led', 'f5']
   },
   appearance: { kickSfx: 'id', scoreboardScale: [0.7, 1.8], scoreboardPos: ['top', 'bottom'] }
 };

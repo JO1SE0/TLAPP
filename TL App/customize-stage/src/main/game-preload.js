@@ -19,6 +19,7 @@ const { ipcRenderer } = require('electron');
 const ball3d = require('./ball-3d');
 const lookfx = require('./look');
 const discArt = require('./disc-art');
+const pitchEnv = require('./pitch-env');
 lookfx.setBallPhotos(require('./ball-photos'));
 const zoomControl = require('./game-zoom');
 const themes = require('./themes');
@@ -2043,6 +2044,7 @@ const QM_WEATHER = [['none', 'Sin clima'], ...Object.entries({"rain": "Lluvia", 
 const QM_BALLS = [['default', 'Como viene'], ...Object.entries({"soccer": "Futbolera", "neon": "Neón", "gold": "Dorada", "beach": "Playera", "eight": "Bola 8", "star": "Estrella", "triangles": "Fútbol triángulos", "vintage": "Fútbol de cuero", "tennis": "Tenis", "basket": "Básquet", "volley": "Vóley", "baseball": "Béisbol", "golf": "Golf", "bowling": "Bowling", "earth": "Planeta Tierra", "moon": "Luna", "disco": "Bola de espejos", "orb": "Orbe místico", "pumpkin": "Calabaza", "melon": "Sandía", "eye": "Ojo", "argentina": "Celeste y blanca", "fire": "Bola de fuego", "ice": "Hielo", "yinyang": "Yin yang", "smile": "Carita", "sun": "Sol", "donut": "Dona", "checker": "Cuadros", "candy": "Caramelo", "heart": "Corazón", "saturn": "Planeta", "lava": "Lava", "peso": "Moneda de un peso"})];
 const qmDiscs = () => [['default', 'Como viene'], ...Object.entries(DISC_NAMES)];
 const QM_KICKS = [['default', 'El del juego'], ['real1', 'Pelotazo real'], ['real2', 'Golpe seco'], ['real3', 'Patada real'], ['real4', 'Toque rápido'], ['real5', 'Bombazo'], ['real6', 'Zapatazo']];
+const QM_ENVS = [['none', 'Nada'], ['noche', 'Potrero de noche'], ['barrio', 'Club de barrio'], ['led', 'Potrero LED'], ['f5', 'Canchita F5']];
 const QM_LIGHTS = [['none', 'Sin luz'], ['vignette', 'Viñeta'], ['spot', 'Foco central'], ['corners', 'Luces de esquina'], ['stadium', 'Estadio de noche'], ['sunset', 'Atardecer'], ['night', 'Noche fría'], ['stripes', 'Franjas de césped'], ['cinema', 'Cine']];
 const QM_BALL_COLORS = [['', 'Como viene'], ['#ecd593', 'Dorado'], ['#e56b6b', 'Rojo'], ['#5689e5', 'Azul'], ['#5ccf7a', 'Verde'], ['#ff9f43', 'Naranja'], ['#b07cff', 'Violeta']];
 const QM_OUTLINES = [['', 'Como viene'], ['#ffffff', 'Blanco'], ['#000000', 'Negro'], ['#ecd593', 'Dorado'], ['#e56b6b', 'Rojo'], ['#5689e5', 'Azul']];
@@ -2073,7 +2075,7 @@ function saveUndo() {
 // Por si una clave todavía no está en la config (no debería: llega con los valores de fábrica).
 const QM_FALLBACK = { pitchLight: 'none', texture: 'none', pitchWeather: 'none', discStyle: 'default', ballStyle: 'default',
   ballColor: '', ballOutline: '', discOutline: '', mirror: 'off', kickSfx: 'default', discSize: 1, ballSize: 1,
-  scoreboardPos: 'top', scoreboardScale: 1, pitchBright: 1, pitchContrast: 1 };
+  scoreboardPos: 'top', scoreboardScale: 1, pitchBright: 1, pitchContrast: 1, pitchEnv: 'none' };
 let qmCurLabel = '';
 function quickSet(patch, label) {
   const before = {};
@@ -2459,6 +2461,7 @@ function buildQuickMenu() {
   when = null;
   strip('Cancha', QM_TEXTURES, () => cfg().visual.texture || 'none', (v) => quickSet({ visual: { texture: v } }));
   strip('Clima', QM_WEATHER, () => cfg().visual.pitchWeather || 'none', (v) => quickSet({ visual: { pitchWeather: v } }));
+  strip('Alrededores', QM_ENVS, () => cfg().visual.pitchEnv || 'none', (v) => quickSet({ visual: { pitchEnv: v } }));
   strip('Luz', QM_LIGHTS, () => cfg().visual.pitchLight || 'none', (v) => quickSet({ visual: { pitchLight: v } }));
   toggle('Escudo en la cancha', () => cfg().visual.crest, (v) => quickSet({ visual: { crest: v } }));
   const ap = () => cfg().appearance || {};
@@ -8474,6 +8477,7 @@ function installTracking(view) {
     }
     // El destello ya sabe de qué color va, sin esperar al marcador del DOM.
     if (scored) noteGoalTeam(scored);
+    if (scored && visual.env) safe(envGoal, view, scored);
     goalTextArmedUntil = Date.now() + 400;
     // Festejo propio (opcional). Si se dibujó, y el jugador lo pidió, reemplaza al destello del club.
     let customPlayed = false;
@@ -8683,7 +8687,7 @@ function skinPitch(ctx, w, h, stadium) {
   const relief = ['sunken', 'raised'].includes(skin.relief) ? skin.relief : '';
   const veil = visual.weather ? lookfx.weatherVeil(visual.weather, visual.weatherAmount) : null;
   const tone = Math.abs(visual.contrast - 1) > 0.005;
-  if (!modeOn && !tex && !visual.crest && !visual.light && !pimg && !relief && !veil && !visual.bright && !tone) { return; }
+  if (!modeOn && !tex && !visual.crest && !visual.light && !pimg && !relief && !veil && !visual.bright && !tone && !visual.env) { return; }
 
   let field = modeOn ? pitchSkinColor() : null;
   let outside = modeOn ? pitchOutsideColor(field) : null;
@@ -8701,7 +8705,7 @@ function skinPitch(ctx, w, h, stadium) {
   }
   // El brillo del menú de TL se suma al de la cancha (que sólo vale con color propio).
   brightness = Math.max(-0.6, Math.min(0.6, brightness + (visual.bright || 0)));
-  if (!field && !outside && !brightness && !stripes && !tex && !visual.crest && !visual.light && !pimg && !relief && !veil && !tone) return;
+  if (!field && !outside && !brightness && !stripes && !tex && !visual.crest && !visual.light && !pimg && !relief && !veil && !tone && !visual.env) return;
 
   /*
    * El contexto llega con la transformación de mundo puesta: es la que usó el
@@ -8782,6 +8786,19 @@ function skinPitch(ctx, w, h, stadium) {
     ctx.fillStyle = veil;
     ctx.fillRect(0, 0, w, h);
     ctx.restore();
+  }
+
+  // Los alrededores (potrero, barrio, LED, F5): afuera de la cancha, una vez por cache.
+  if (visual.env && bounds) {
+    ctx.save();
+    try {
+      ctx.setTransform(world);
+      pitchEnv.paintEnv(ctx, visual.env, bounds, { cheer: env.cheer, hot: env.hot, mirror: env.mirror });
+    } catch (err) {
+      log('error', `los alrededores no se pudieron dibujar: ${err.message}`, 'juego');
+    } finally {
+      ctx.restore();
+    }
   }
 
   if (visual.crest) {
@@ -9236,10 +9253,24 @@ function pitchSkinPrint() {
   const skin = (state.config.pitch && state.config.pitch.skin) || {};
   const field = pitchSkinColor();
   const vip = state.config.vip || {};
-  return `${skin.mode}|${field}|${pitchOutsideColor(field)}|${skin.strength}|${skin.brightness}|${skin.stripes}|${skin.cut}|${skin.imageAlpha}|${skin.relief}|${skin.reliefAmount}|${visual.weather}|${visual.weatherAmount}|${vip.pitchImage}|${JSON.stringify(vip.pitchCrop || null)}|${visual.pitchLine}|${flatGraphicsEnabled}|${visual.texture}|${visual.light}|${visual.crest}|${visual.crestOpacity}|${visual.crestSize}|${visual.lineColor}|${visual.lineGlow}|${visual.bright}|${visual.contrast}`;
+  return `${skin.mode}|${field}|${pitchOutsideColor(field)}|${skin.strength}|${skin.brightness}|${skin.stripes}|${skin.cut}|${skin.imageAlpha}|${skin.relief}|${skin.reliefAmount}|${visual.weather}|${visual.weatherAmount}|${vip.pitchImage}|${JSON.stringify(vip.pitchCrop || null)}|${visual.pitchLine}|${flatGraphicsEnabled}|${visual.texture}|${visual.light}|${visual.crest}|${visual.crestOpacity}|${visual.crestSize}|${visual.lineColor}|${visual.lineGlow}|${visual.bright}|${visual.contrast}|${visual.env}`;
 }
 
 /** Le tira el cache al estadio para que se vuelva a dibujar con el color nuevo. */
+/*
+ * Estado de los alrededores que cambia el dibujo: el festejo (el LED dice ¡GOL!
+ * y la gente del que metió levanta los brazos) y el espejo. Cada cambio rehace
+ * el cache del estadio una vez; entre cambios no se dibuja nada.
+ */
+const env = { cheer: null, hot: false, mirror: false, timer: 0 };
+function envGoal(view, team) {
+  env.cheer = team;
+  env.hot = true;
+  flushStadiumCache(view);
+  clearTimeout(env.timer);
+  env.timer = setTimeout(() => { env.cheer = null; env.hot = false; flushStadiumCache(view); }, 3000);
+}
+
 function flushStadiumCache(view) {
   if (view && typeof view.__tvmStadiumFlush === 'function') view.__tvmStadiumFlush();
 }
@@ -10866,6 +10897,9 @@ function onGameTick(view, room) {
 
   // La ficha del partido: posesión y distancia se cobran por cuadro.
   cardTick(tracker.card, f, room, advanced);
+  // Con «Lado fijo» el juego espeja la cancha (cache incluido): los textos de
+  // los alrededores se rehacen al revés cuando cambia. Es una comparación.
+  if (visual.env && !!view.__tvmMirror !== env.mirror) { env.mirror = !!view.__tvmMirror; flushStadiumCache(view); }
   if (tracker.clock - possAt >= 1000 || tracker.clock < possAt) { possAt = tracker.clock; safe(paintPossession, view.document, tracker.card); }
   if (minimap.on) safe(minimapTick, f, room, match);
 
@@ -12231,6 +12265,7 @@ function syncCanvasHotFlags() {
   }
   visual.bright = clampNum(cfg.pitchBright, 0.5, 1.5, 1) - 1;
   visual.contrast = clampNum(cfg.pitchContrast, 0.6, 1.6, 1);
+  visual.env = pitchEnv.has(cfg.pitchEnv) ? cfg.pitchEnv : '';
   visual.light = ['vignette', 'spot', 'corners', 'stadium', 'sunset', 'night', 'stripes', 'cinema'].includes(cfg.pitchLight) ? cfg.pitchLight : '';
   visual.ownRingColor = lookfx.safeColor(cfg.ownRingColor);
   visual.ownRingAlpha = clampNum(cfg.ownRingAlpha, 0.02, 1, 0.3);

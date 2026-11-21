@@ -312,6 +312,49 @@ syncMinimap();
       check('marcador abajo y brillo/contraste: CSS, valores de fábrica y respaldo', ok);
     }
 
+  /* ── Alrededores de la cancha ─────────────────────────────────── */
+  {
+    const ENV_SRC = read('main/pitch-env.js');
+    const pe = require(path.join(SRC, 'main', 'pitch-env.js'));
+    const qm = GP.match(/const QM_ENVS = (\[.*?\]);/);
+    const qmIds = qm ? JSON.parse(qm[1].replace(/'/g, '"')).map((x) => x[0]).join(',') : '';
+    const okLists = qmIds === pe.ENVS.map((x) => x[0]).join(',')
+      && (cleanQuick({ visual: { pitchEnv: 'led' } }) || {}).visual && !(cleanQuick({ visual: { pitchEnv: 'nope' } }) || {}).visual
+      && D.visual.pitchEnv === 'none'
+      && /ownDraw\+\+;\s*try \{\s*skinPitch\(/.test(GP);
+    check('alrededores: misma lista en menú, panel y main; vienen apagados; se dibujan con ownDraw', okLists, `${qmIds} · fábrica ${D.visual.pitchEnv}`);
+
+    const p = await browser.newPage();
+    const errs = []; p.on('pageerror', (e) => errs.push(e.message));
+    await p.goto(write('env.html', `<!doctype html><meta charset="utf-8"><canvas id="c" width="1000" height="600"></canvas><script>const module={exports:{}};${ENV_SRC}</script>`));
+    const r = await p.evaluate(() => {
+      const E = module.exports;
+      const c = document.getElementById('c'), g = c.getContext('2d');
+      const out = {};
+      for (const [id] of E.ENVS) {
+        if (id === 'none') continue;
+        for (const flat of [false, true]) {
+          g.setTransform(1, 0, 0, 1, 0, 0);
+          g.fillStyle = '#718c5a'; g.fillRect(0, 0, 1000, 600);
+          g.setTransform(1, 0, 0, 1, 500, 300);
+          g.fillStyle = '#3a743a'; g.fillRect(-370, -170, 740, 340);
+          const before = g.getImageData(130 + 2, 130 + 2, 736, 336).data.slice();
+          const ok = E.paintEnv(g, id, { halfW: 370, halfH: 170 }, { hot: flat, cheer: flat ? 'Red' : null, mirror: flat });
+          const after = g.getImageData(130 + 2, 130 + 2, 736, 336).data;
+          let changed = 0; for (let i = 0; i < after.length; i++) if (after[i] !== before[i]) { changed++; break; }
+          const around = g.getImageData(0, 0, 1000, 120).data; let ink = 0; for (let i = 0; i < around.length; i += 4) if (around[i] !== 0x71) ink++;
+          out[id + (flat ? '+' : '')] = { ok, inside: changed, ink: ink > 500 };
+        }
+      }
+      // Desconocido: no dibuja nada.
+      out.none = E.paintEnv(g, 'nope', { halfW: 370, halfH: 170 }, {});
+      return out;
+    });
+    const bad = Object.entries(r).filter(([k, v]) => k !== 'none' && !(v.ok && v.inside === 0 && v.ink));
+    check('alrededores: las cuatro dibujan afuera y NADA adentro de la cancha (también en gol y espejo)', bad.length === 0 && r.none === false && errs.length === 0, JSON.stringify(bad) + errs.join('|'));
+    await p.close();
+  }
+
   /* ── La posesión en el marcador ───────────────────────────────── */
   {
     const CARD = between(GP, 'function newCard()', '/** La distancia recorrida y la posesión');
