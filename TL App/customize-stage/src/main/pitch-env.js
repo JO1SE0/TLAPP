@@ -2188,9 +2188,12 @@ function paintAlive(ctx, id, bounds, t, reg, o = {}, vis = null) {
     const near = !!(B0 && Jq && Math.abs(B0.y) > H - 45 && Math.sign(B0.y) === Math.sign(Jq.y) && Math.abs(B0.x - (reg.fresa ? (Jq.x + reg.fresa.x) / 2 : Jq.x)) < 230);
     if (near) { if (!LIVE.nearAt || t - LIVE.nearAt > 2600) LIVE.nearAt = t; }
     const provoke = LIVE.nearAt && t - LIVE.nearAt < 2400 ? (t - LIVE.nearAt) : -1;
-    if (reg.joaquin && see(reg.joaquin.x, reg.joaquin.y, 60)) n += joaquinAlive(ctx, reg.joaquin, reg.fresa, t, o, night, provoke);
+    // Pelota quieta un rato (saque demorado, pausa): los dos se echan una siesta.
+    if (o.ball) { const L0 = LIVE.ballL; if (!L0 || Math.hypot(o.ball.x - L0.x, o.ball.y - L0.y) > 1.5) LIVE.ballL = { x: o.ball.x, y: o.ball.y, t }; }
+    const dyn = { ball: o.ball || null, nap: !!(o.ball && LIVE.ballL && t - LIVE.ballL.t > 9000 && !o.hot && !o.fireworks && !(o.welcome > 0 && o.welcome < 1)) };
+    if (reg.joaquin && see(reg.joaquin.x, reg.joaquin.y, 60)) n += joaquinAlive(ctx, reg.joaquin, reg.fresa, t, o, night, provoke, dyn);
     // Fresa: tiene su rutina de DT y reacciona al partido.
-    if (reg.fresa && see(reg.fresa.x, reg.fresa.y, 60 + (reg.fresa.walk || 0))) n += fresaAlive(ctx, reg.fresa, t, o, night, reg.joaquin ? provoke : -1);
+    if (reg.fresa && see(reg.fresa.x, reg.fresa.y, 70 + (reg.fresa.walk || 0))) n += fresaAlive(ctx, reg.fresa, t, o, night, reg.joaquin ? provoke : -1, dyn);
   } finally {
     ctx.restore();
   }
@@ -2589,53 +2592,164 @@ function fiestaBlock(B, team, phase, tag) {
   return bl;
 }
 
+/* ── Movimiento de los perros: estado, polvito, vapor y siesta ─────────── */
+
+/** Estado que sigue de cuadro a cuadro (dónde está y para dónde va). */
+const DOG = { fresa: null, joaquin: null };
+function dogState(name, x0) {
+  let s = DOG[name];
+  if (!s || s.home !== x0) s = DOG[name] = { home: x0, x: x0, v: 0, t: 0, dir: 1, dust: [] };
+  return s;
+}
+
+/** Pega la figura estirándola o aplastándola desde las patas (para respirar y saltar). */
+function stampSq(ctx, sp, x, y, a, sx, sy) {
+  const foot = 14;
+  ctx.save();
+  ctx.translate(x, y + foot);
+  if (a) ctx.rotate(a);
+  ctx.scale(sx, sy);
+  ctx.drawImage(sp.cv, -sp.r, -sp.r - foot, sp.r * 2, sp.r * 2);
+  ctx.restore();
+}
+
+/** Polvito que levantan las patas al correr: se apaga solo en medio segundo. */
+function dust(ctx, S, t, x, y, moving) {
+  if (moving && t - (S.dustAt || 0) > 140) { S.dust.push({ x, y: y + 12, t }); S.dustAt = t; if (S.dust.length > 6) S.dust.shift(); }
+  for (const d of S.dust) {
+    const k = (t - d.t) / 520;
+    if (k < 0 || k > 1) continue;
+    ctx.fillStyle = `rgba(210,200,180,${0.35 * (1 - k)})`;
+    ctx.beginPath(); ctx.arc(d.x, d.y - k * 4, 2 + k * 4, 0, 7); ctx.fill();
+  }
+}
+
+/** Vapor que le sale de la cabeza cuando se calienta. */
+function steam(ctx, t, x, y) {
+  for (let i = 0; i < 3; i++) {
+    const k = ((t / 700 + i / 3) % 1);
+    ctx.fillStyle = `rgba(245,245,245,${0.55 * (1 - k)})`;
+    ctx.beginPath(); ctx.arc(x + (i - 1) * 7 + Math.sin(t / 160 + i) * 1.5, y - k * 14, 2.4 + k * 3, 0, 7); ctx.fill();
+  }
+}
+
+/** Las zetas de la siesta, que suben y se van. */
+function zzz(ctx, t, x, y, mirror) {
+  for (let i = 0; i < 3; i++) {
+    const k = ((t / 1500 + i / 3) % 1);
+    const sp = sprite(`zz${mirror ? 1 : 0}`, 6, (g) => paint(g, 'z', 0, 0, '900 9px sans-serif', '#ffffff', mirror));
+    ctx.globalAlpha *= 1 - k * 0.8;
+    stampSq(ctx, sp, x + k * 10 + Math.sin(t / 300 + i) * 2, y - k * 18 - 14, 0, 0.6 + k * 0.6, 0.6 + k * 0.6);
+    ctx.globalAlpha /= 1 - k * 0.8;
+  }
+}
+
+/**
+ * Siesta: hecho un bollito, la cabeza apoyada en las patas y los ojos cerrados.
+ * `kind` 'fresa' (blanca, gorra) o 'joaquin' (gris, camiseta de Argentina).
+ */
+function dogSleep(ctx, kind, team, mirror, breath) {
+  const fresa = kind === 'fresa';
+  const hair = fresa ? FS : JQ[1], face = fresa ? FW : JQ[0];
+  const c = (x, y, r) => (fresa ? curl(ctx, x, y, r) : jqCurl(ctx, x, y, r));
+  ctx.save(); ctx.scale(1.15, 1.15);
+  ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.beginPath(); ctx.ellipse(2, 9, 18, 7, 0, 0, 7); ctx.fill();
+  ctx.fillStyle = hair; ctx.beginPath(); ctx.ellipse(0, 3, 16, 10 + breath, 0, 0, 7); ctx.fill();
+  if (!fresa) {
+    ctx.save(); ctx.beginPath(); ctx.ellipse(0, 3, 13, 8 + breath, 0, 0, 7); ctx.clip();
+    ctx.fillStyle = '#fff'; ctx.fillRect(-14, -6, 28, 20); ctx.fillStyle = '#75b9e8'; for (const sx of [-11, -5, 1, 7]) ctx.fillRect(sx, -6, 3.4, 20);
+    ctx.restore();
+  } else for (const [x, y] of [[-10, 3], [-4, -3], [4, -3], [10, 3], [0, 9]]) c(x, y, 3.6);
+  c(15, 6, 3.4); // la cola enroscada adelante
+  ctx.fillStyle = face; ctx.beginPath(); ctx.arc(-12, 9, 3, 0, 7); ctx.arc(-5, 11, 3, 0, 7); ctx.fill();
+  ctx.fillStyle = hair; ctx.beginPath(); ctx.ellipse(-14, 0, 4, 6.5, 0.6, 0, 7); ctx.fill();
+  ctx.fillStyle = face; ctx.beginPath(); ctx.arc(-9, 2, 8, 0, 7); ctx.fill();
+  if (fresa) {
+    ctx.fillStyle = team === 'Blue' ? BLUE : RED; ctx.beginPath(); ctx.arc(-10, -2, 7.5, Math.PI * 0.9, Math.PI * 1.95); ctx.fill();
+  } else {
+    ctx.fillStyle = '#75b9e8'; ctx.fillRect(-16, -4, 14, 1.6); ctx.fillStyle = '#fff'; ctx.fillRect(-16, -2.4, 14, 1.2);
+    c(-12, -6, 3); c(-7, -7, 3.2);
+  }
+  ctx.strokeStyle = '#2a1d16'; ctx.lineWidth = 0.9;
+  ctx.beginPath(); ctx.arc(-12, 2.5, 1.5, 0.2, Math.PI - 0.2); ctx.moveTo(-5, 2.8); ctx.arc(-6.5, 2.5, 1.5, 0.2, Math.PI - 0.2); ctx.stroke();
+  ctx.fillStyle = '#7a4a3a'; ctx.beginPath(); ctx.ellipse(-9, 6.5, 1.8, 1.3, 0, 0, 7); ctx.fill();
+  ctx.restore();
+}
+
+/** Inclinación de la cabeza siguiendo la pelota (poquito: sólo de reojo). */
+function gaze(ball, x) { return ball ? Math.max(-1, Math.min(1, (ball.x - x) / 380)) * 0.13 : 0; }
+
 /**
  * Lo que hace Fresa en cada momento. Partido normal: cada ~5 s cambia de
- * actividad (sentada mirando con parpadeos, camina la línea, marca la jugada
- * con la pizarra, toma mate o grita «¡VAMOS!»). Gol de los suyos: salta, gira
- * y ladra «¡GOOOL!»; en contra: se tapa los ojos con una nubecita encima; al
- * final, vuelta olímpica si ganaron o se rasca la cabeza si empataron.
- * Todo son figuras guardadas: un par de pegadas por cuadro.
+ * actividad (mira la pelota respirando, corre la línea siguiéndola, marca la
+ * jugada, toma mate o grita). Si la pelota queda quieta un rato, se echa una
+ * siesta. Gol de los suyos: salta con estirón, gira y ladra; en contra: se
+ * tapa los ojos con la nubecita; al final, vuelta olímpica levantando polvo.
  */
-function fresaAlive(ctx, F, t, o, night, provoke = -1) {
+function fresaAlive(ctx, F, t, o, night, provoke = -1, dyn = {}) {
   const team = F.team, mir = !!o.mirror, m = mir ? 1 : 0;
+  const S = dogState('fresa', F.x);
+  const dt = Math.min(80, Math.max(0, t - S.t)); S.t = t;
   const won = o.fireworks === team, draw = o.fireworks === 'draw';
-  // Gol en contra o partido perdido: triste con su nubecita.
   const sad = (o.hot && o.cheer && o.cheer !== team) || (o.fireworks && o.fireworks !== 'draw' && o.fireworks !== team);
   const up = o.hot && o.cheer === team;
   const ink = team === 'Blue' ? '#2d55b0' : '#b83a3a';
   ctx.globalAlpha = night ? 0.85 : 1;
+  const sp = (key, r, fn) => sprite(key, r, fn);
   const at = (key, r, fn, x, y, a) => stamp(ctx, sprite(key, r, fn), x, y, a);
+  const breath = Math.sin(t / 620) * 0.025;
   let x = F.x, y = F.y;
+  // Vuelve a su lugar de a poco si había salido corriendo.
+  const homeBack = () => { S.x += (F.x - S.x) * Math.min(1, dt / 300); x = S.x; };
   if (won || draw) {
     const mood = won ? '' : 'scratch';
     const wag = won ? Math.round(Math.sin(t / 90) * 3) / 3 : Math.round(Math.sin(t / 300) * 2) / 2;
-    if (won) { const a = t / 650; x += Math.cos(a) * 20; y += Math.sin(a) * 9 - Math.abs(Math.sin(t / 150)) * 3; }
-    at(`fresa${won ? 1 : 0}${team}${m}${wag}${mood}`, 34, (g) => fresaDT(g, 0, 0, won, team, mir, wag, mood), x, y);
-    if (won && Math.floor(t / 1400) % 2) { at(`fbC${m}`, 34, (g) => bubble(g, '¡CAMPEONES!', mir, '#a87a00'), x + 36, y - 44); return 2; }
+    if (won) {
+      // Vuelta olímpica: corre en óvalo, saltando, y levanta polvo.
+      const a = t / 650; x += Math.cos(a) * 22; y += Math.sin(a) * 10;
+      const hop = Math.abs(Math.sin(t / 150)) * 4;
+      dust(ctx, S, t, x, y, true);
+      stampSq(ctx, sp(`fresa1${team}${m}${wag}`, 34, (g) => fresaDT(g, 0, 0, true, team, mir, wag)), x, y - hop, Math.sin(t / 150) * 0.08, 1 - hop * 0.01, 1 + hop * 0.02);
+      if (Math.floor(t / 1400) % 2) { at(`fbC${m}`, 34, (g) => bubble(g, '¡CAMPEONES!', mir, '#a87a00'), x + 36, y - 44); return 3; }
+      return 2;
+    }
+    homeBack();
+    stampSq(ctx, sp(`fresa0${team}${m}${wag}${mood}`, 34, (g) => fresaDT(g, 0, 0, false, team, mir, wag, mood)), x, y, Math.sin(t / 400) * 0.1, 1 - breath / 2, 1 + breath);
     return 1;
   }
   if (sad) {
-    at(`fresa0${team}${m}0sad`, 34, (g) => fresaDT(g, 0, 0, false, team, mir, 0, 'sad'), x, y);
+    homeBack();
+    // Llora con los hombros: un temblequeo chiquito.
+    const sob = Math.sin(t / 70) * 0.6;
+    stampSq(ctx, sp(`fresa0${team}${m}0sad`, 34, (g) => fresaDT(g, 0, 0, false, team, mir, 0, 'sad')), x + sob, y, 0, 1.03, 0.95);
     const f = Math.floor(t / 140) % 4;
     at(`fcloud${f}`, 12, (g) => sadCloud(g, f), x + 2, y - 36 + Math.sin(t / 500));
     return 2;
   }
   if (up) {
-    // Salta, y cada tanto pega un giro en el aire.
-    const hop = Math.abs(Math.sin(t / 160)) * 6;
+    homeBack();
+    // Salta con estirón arriba y aplaste al caer; cada tanto, giro en el aire.
+    const ph = Math.abs(Math.sin(t / 160)), hop = ph * 7;
+    const land = ph < 0.25 ? (0.25 - ph) * 0.6 : 0;
     const c = t % 1500, spin = c < 380 ? (c / 380) * Math.PI * 2 : 0;
     const wag = Math.round(Math.sin(t / 90) * 3) / 3;
-    at(`fresa1${team}${m}${wag}`, 34, (g) => fresaDT(g, 0, 0, true, team, mir, wag), x, y - hop, spin);
+    stampSq(ctx, sp(`fresa1${team}${m}${wag}`, 34, (g) => fresaDT(g, 0, 0, true, team, mir, wag)), x, y - hop, spin, 1 + land, 1 - land + ph * 0.06);
     at(`fbG${team}${m}`, 34, (g) => bubble(g, '¡GOOOL!', mir, ink), x + 26, y - 36 - hop * 0.5);
     return 2;
   }
-  // Joaquín le ladra por la pelota: le contesta un toque después.
   if (provoke >= 500) {
+    homeBack();
     const hop2 = Math.abs(Math.sin(t / 120)) * 2.5;
-    at(`fresa0${team}${m}0shout`, 34, (g) => fresaDT(g, 0, 0, false, team, mir, 0, 'shout'), x, y - hop2);
+    stampSq(ctx, sp(`fresa0${team}${m}0shout`, 34, (g) => fresaDT(g, 0, 0, false, team, mir, 0, 'shout')), x + Math.sin(t / 40) * 0.8, y - hop2, 0, 1, 1 + hop2 * 0.02);
     const word = provoke < 1500 ? '¡NI AHÍ!' : '¡GUAU!';
     at(`fb${word}${team}${m}`, 34, (g) => bubble(g, word, mir, ink), x + 26, y - 34);
+    return 2;
+  }
+  if (dyn.nap) {
+    homeBack();
+    const b = Math.round(Math.sin(t / 900) * 2) / 2;
+    at(`fsleep${team}${m}${b}`, 34, (g) => dogSleep(g, 'fresa', team, mir, b * 0.6), x, y + 2);
+    zzz(ctx, t, x + 6, y - 6, mir);
     return 2;
   }
   // La rutina: una actividad por tramo, elegida con azar fijo según el tramo.
@@ -2643,19 +2757,32 @@ function fresaAlive(ctx, F, t, o, night, provoke = -1) {
   const r = hash01(seg * 7.31 + team.length);
   const act = r < 0.3 ? 'sit' : r < 0.56 ? 'walk' : r < 0.7 ? 'point' : r < 0.84 ? 'mate' : 'shout';
   if (act === 'walk' && F.walk > 0) {
-    const ph = p * Math.PI * 2;
-    x += Math.sin(ph) * F.walk;
-    const dir = Math.cos(ph) >= 0 ? 1 : -1;
-    const f = Math.floor(t / 170) % 2;
-    at(`fwalk${team}${m}${f}${dir}`, 34, (g) => fresaWalk(g, team, mir, f, dir), x, y);
+    // Corre la línea siguiendo la pelota (o va y viene si no hay pelota).
+    const goal = dyn.ball ? F.x + Math.max(-F.walk, Math.min(F.walk, (dyn.ball.x - F.x) * 0.5)) : F.x + Math.sin(p * Math.PI * 2) * F.walk;
+    const want = Math.max(-0.09, Math.min(0.09, (goal - S.x) / 250));
+    S.v += (want - S.v) * Math.min(1, dt / 160);
+    S.x += S.v * dt;
+    x = S.x;
+    const moving = Math.abs(S.v) > 0.012;
+    if (moving) S.dir = S.v > 0 ? 1 : -1;
+    dust(ctx, S, t, x, y, moving && Math.abs(S.v) > 0.04);
+    if (moving) {
+      const speed = Math.abs(S.v) > 0.05 ? 110 : 170;
+      const f = Math.floor(t / speed) % 2;
+      stampSq(ctx, sp(`fwalk${team}${m}${f}${S.dir}`, 34, (g) => fresaWalk(g, team, mir, f, S.dir)), x, y - (f ? 0.8 : 0), 0, 1, 1);
+      return 2;
+    }
+    stampSq(ctx, sp(`fresa0${team}${m}0`, 34, (g) => fresaDT(g, 0, 0, false, team, mir, 0)), x, y, gaze(dyn.ball, x), 1 - breath / 2, 1 + breath);
     return 1;
   }
+  homeBack();
   let mood = act === 'sit' || act === 'walk' ? '' : act;
   if (mood === '' && (t % 3100) < 150) mood = 'blink';
   const talk = p > 0.12 && p < 0.8;
   const wv = mood === 'point' ? Math.round(Math.sin(t / 220) * 2) : Math.round(Math.sin(t / 160) * 3) / 3;
   const hop = mood === 'shout' && talk ? Math.abs(Math.sin(t / 130)) * 2.5 : 0;
-  at(`fresa0${team}${m}${wv}${mood}`, 34, (g) => fresaDT(g, 0, 0, false, team, mir, wv, mood), x, y - hop);
+  const tilt = mood === 'mate' ? Math.sin(t / 900) * 0.05 : gaze(dyn.ball, x) + (mood === 'shout' && talk ? Math.sin(t / 45) * 0.04 : 0);
+  stampSq(ctx, sp(`fresa0${team}${m}${wv}${mood}`, 34, (g) => fresaDT(g, 0, 0, false, team, mir, wv, mood)), x, y - hop, tilt, 1 - breath / 2, 1 + breath + hop * 0.015);
   if (mood === 'shout' && talk) { const word = Math.floor(t / 900) % 2 ? '¡VAMOS!' : '¡GUAU!'; at(`fb${word}${team}${m}`, 34, (g) => bubble(g, word, mir, ink), x + 26, y - 34); return 2; }
   if (mood === 'point' && talk) { const k = seg % 4; at(`ftac${k}${m}`, 24, (g) => tacticBubble(g, mir, k), x + 28, y - 34); return 2; }
   return 1;
@@ -2716,7 +2843,7 @@ function jqCurl(ctx, x, y, r) {
  * la vincha. `mood`: '' mirando, 'blink', 'angry' (gruñe, cejas para abajo),
  * 'jaja' (se burla con la lengua afuera y las patas arriba).
  */
-function joaquinDT(ctx, x, y, mood, mirror, wag = 0) {
+function joaquinDT(ctx, x, y, mood, mirror, wag = 0, f = 0) {
   ctx.save();
   ctx.translate(x, y);
   ctx.scale(1.15, 1.15);
@@ -2739,6 +2866,26 @@ function joaquinDT(ctx, x, y, mood, mirror, wag = 0) {
   ctx.fillStyle = JQ[0];
   if (mood === 'jaja') { ctx.beginPath(); ctx.arc(-11, -9, 3.4, 0, 7); ctx.arc(11, -9, 3.4, 0, 7); ctx.fill(); ctx.strokeStyle = '#75b9e8'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(-8, 2); ctx.lineTo(-11, -7); ctx.moveTo(8, 2); ctx.lineTo(11, -7); ctx.stroke(); }
   else { ctx.beginPath(); ctx.arc(-5, 15, 3.2, 0, 7); ctx.arc(5, 15, 3.2, 0, 7); ctx.fill(); }
+  if (mood === 'crossed') {
+    // Brazos cruzados, de sobrador.
+    ctx.strokeStyle = '#75b9e8'; ctx.lineWidth = 3.4; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(-10, 4); ctx.lineTo(6, 8.5); ctx.moveTo(10, 4); ctx.lineTo(-6, 8.5); ctx.stroke(); ctx.lineCap = 'butt';
+    ctx.fillStyle = JQ[0]; ctx.beginPath(); ctx.arc(7, 8.5, 2.6, 0, 7); ctx.arc(-7, 8.5, 2.6, 0, 7); ctx.fill();
+  }
+  if (mood === 'flag') {
+    // La banderita argentina en la pata, flameando (dos cuadros).
+    ctx.strokeStyle = '#75b9e8'; ctx.lineWidth = 3; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(8, 3); ctx.lineTo(13, -7); ctx.stroke(); ctx.lineCap = 'butt';
+    ctx.strokeStyle = '#8a6a40'; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(13, -6); ctx.lineTo(15, -31); ctx.stroke();
+    for (let i = 0; i < 6; i++) {
+      const fx = 15 + i * 2.4, w = Math.sin(i * 0.9 + f * 2) * 1.2;
+      ctx.fillStyle = '#75b9e8'; ctx.fillRect(fx, -31 + w, 2.5, 3);
+      ctx.fillStyle = '#ffffff'; ctx.fillRect(fx, -28 + w, 2.5, 3);
+      ctx.fillStyle = '#75b9e8'; ctx.fillRect(fx, -25 + w, 2.5, 3);
+    }
+    ctx.fillStyle = '#e0b020'; ctx.beginPath(); ctx.arc(22, -26.5 + Math.sin(3 * 0.9 + f * 2) * 1.2, 1.1, 0, 7); ctx.fill();
+    ctx.fillStyle = JQ[0]; ctx.beginPath(); ctx.arc(13, -7.5, 2.8, 0, 7); ctx.fill();
+  }
   // Orejas, cabeza, jopo de rulos y la vincha.
   ctx.fillStyle = JQ[1];
   ctx.beginPath(); ctx.ellipse(-10, -3, 4.5, 8, 0.2, 0, 7); ctx.ellipse(10, -3, 4.5, 8, -0.2, 0, 7); ctx.fill();
@@ -2774,32 +2921,61 @@ function joaquinDT(ctx, x, y, mood, mirror, wag = 0) {
 }
 
 /**
- * Lo que hace Joaquín. Gol de los suyos: se burla («¡JAJAJA!»). Gol de los de
- * Fresa: gruñe («¡GRRR!»). Al final: si ganaron, se burla; si perdieron, se
- * enoja. En el partido: mira de reojo, y cuando Fresa grita, le contesta.
+ * Lo que hace Joaquín. Gol de los suyos: baila de lado a lado burlándose
+ * («¡JAJAJA!»). Gol de los de Fresa: patea el piso echando vapor («¡GRRR!»).
+ * Al final: si ganaron, baila; si perdieron, vapor y gruñido. En el partido:
+ * mira la pelota de reojo, se cruza de brazos, flamea su banderita, se ríe de
+ * Fresa señalándola y, cuando ella grita, le contesta. Con la pelota quieta,
+ * siesta.
  */
-function joaquinAlive(ctx, J, F, t, o, night, provoke = -1) {
+function joaquinAlive(ctx, J, F, t, o, night, provoke = -1, dyn = {}) {
   const mir = !!o.mirror, m = mir ? 1 : 0, team = J.team;
   const ink = '#3a7fc1';
   ctx.globalAlpha = night ? 0.85 : 1;
+  const sp = (key, r, fn) => sprite(key, r, fn);
   const at = (key, r, fn, x, y, a) => stamp(ctx, sprite(key, r, fn), x, y, a);
   const wag = Math.round(Math.sin(t / 170) * 3) / 3;
-  let mood = '', say = '', hop = 0;
-  if (o.fireworks === team || (o.hot && o.cheer === team)) { mood = 'jaja'; say = '¡JAJAJA!'; hop = Math.abs(Math.sin(t / 150)) * 5; }
-  else if ((o.fireworks && o.fireworks !== 'draw') || (o.hot && o.cheer)) { mood = 'angry'; say = Math.floor(t / 1100) % 2 ? '¡GRRR!' : ''; hop = Math.abs(Math.sin(t / 90)) * 1.2; }
-  else if (o.fireworks === 'draw') { mood = (t % 2600) < 160 ? 'blink' : ''; }
-  else if (provoke >= 0) { mood = 'angry'; say = provoke < 1200 ? '¡ES NUESTRA!' : '¡GRRR!'; hop = Math.abs(Math.sin(t / 110)) * 2.5; }
-  else {
+  const breath = Math.sin(t / 680 + 1.3) * 0.025;
+  const toFresa = F ? Math.sign(F.x - J.x) : 0;
+  let mood = '', say = '', hop = 0, tilt = gaze(dyn.ball, J.x), shake = 0, hot = false, f = 0;
+  const win = o.fireworks === team || (o.hot && o.cheer === team);
+  const mad = !win && ((o.fireworks && o.fireworks !== 'draw') || (o.hot && o.cheer));
+  if (win) {
+    // Baile burlón: se hamaca de lado a lado saltando.
+    mood = 'jaja'; say = '¡JAJAJA!';
+    hop = Math.abs(Math.sin(t / 150)) * 5;
+    tilt = Math.sin(t / 150) * 0.28;
+  } else if (mad) {
+    mood = 'angry'; say = Math.floor(t / 1100) % 2 ? '¡GRRR!' : '';
+    shake = Math.sin(t / 35) * 1.2; hop = Math.abs(Math.sin(t / 90)) * 1.2; hot = true; tilt = 0;
+  } else if (o.fireworks === 'draw') {
+    mood = 'crossed';
+  } else if (provoke >= 0) {
+    mood = 'angry'; say = provoke < 1200 ? '¡ES NUESTRA!' : '¡GRRR!';
+    hop = Math.abs(Math.sin(t / 110)) * 2.5; shake = Math.sin(t / 45) * 0.8; tilt = toFresa * 0.12;
+  } else if (dyn.nap) {
+    const b = Math.round(Math.sin(t / 960 + 2) * 2) / 2;
+    at(`jsleep${m}${b}`, 34, (g) => dogSleep(g, 'joaquin', team, mir, b * 0.6), J.x, J.y + 2);
+    zzz(ctx, t + 700, J.x + 6, J.y - 6, mir);
+    return 2;
+  } else {
     // Cuando Fresa está gritando, Joaquín le contesta un ratito después.
     const seg = Math.floor(t / 5200), p = (t % 5200) / 5200;
     const fresaShouts = F && hash01(seg * 7.31 + F.team.length) >= 0.84;
-    if (fresaShouts && p > 0.3 && p < 0.85) { mood = 'angry'; say = Math.floor(t / 900) % 2 ? '¡GRRR!' : '¡GUAU!'; hop = Math.abs(Math.sin(t / 120)) * 2; }
-    else if (hash01(seg * 3.7 + 9.1) < 0.18 && p > 0.2 && p < 0.6) { mood = 'jaja'; }
+    const r = hash01(seg * 3.7 + 9.1);
+    if (fresaShouts && p > 0.3 && p < 0.85) { mood = 'angry'; say = Math.floor(t / 900) % 2 ? '¡GRRR!' : '¡GUAU!'; hop = Math.abs(Math.sin(t / 120)) * 2; tilt = toFresa * 0.12; }
+    else if (r < 0.2) { mood = 'jaja'; tilt = toFresa * 0.16 + Math.sin(t / 60) * 0.05; if (p > 0.2 && p < 0.7) say = 'JE JE'; }
+    else if (r < 0.45) mood = 'crossed';
+    else if (r < 0.65) { mood = 'flag'; f = Math.floor(t / 180) % 2; }
     else if ((t % 2900) < 150) mood = 'blink';
   }
-  at(`jq${mood}${m}${mood === 'jaja' ? wag : 0}`, 34, (g) => joaquinDT(g, 0, 0, mood, mir, mood === 'jaja' ? wag : 0), J.x, J.y - hop);
-  if (say) { at(`jb${say}${m}`, 34, (g) => bubble(g, say, mir, mood === 'angry' ? '#b83a3a' : ink), J.x + 26, J.y - 36 - hop * 0.5); return 2; }
-  return 1;
+  const x = J.x + shake, y = J.y - hop;
+  const key = `jq${mood}${m}${mood === 'jaja' ? wag : 0}${f}`;
+  stampSq(ctx, sp(key, 34, (g) => joaquinDT(g, 0, 0, mood, mir, mood === 'jaja' ? wag : 0, f)), x, y, tilt, 1 - breath / 2, 1 + breath + hop * 0.015);
+  let n = 1;
+  if (hot) { steam(ctx, t, x, y - 22); n++; }
+  if (say) { at(`jb${say}${m}`, 34, (g) => bubble(g, say, mir, mood === 'angry' ? '#b83a3a' : ink), J.x + 26, J.y - 36 - hop * 0.5); n++; }
+  return n;
 }
 
 /*
