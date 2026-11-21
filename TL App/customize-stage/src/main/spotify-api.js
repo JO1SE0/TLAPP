@@ -48,11 +48,29 @@ function authFile() {
   file = path.join(app.getPath('userData'), 'spotify-auth.json');
   return file;
 }
+/*
+ * La sesión queda guardada en esta PC y sobrevive a cerrar la app y a las
+ * actualizaciones. Se escribe primero a un archivo aparte y después se
+ * reemplaza (si la PC se apaga a mitad de camino no se pierde), y se deja una
+ * copia: si el archivo principal está roto, se lee la copia.
+ */
+let note = () => {};
 function load() {
-  try { auth = { ...auth, ...JSON.parse(fs.readFileSync(authFile(), 'utf8')) }; } catch { /* sin archivo */ }
+  for (const f of [authFile(), `${authFile()}.bak`]) {
+    try {
+      const got = JSON.parse(fs.readFileSync(f, 'utf8'));
+      if (got && typeof got === 'object') { auth = { ...auth, ...got }; return; }
+    } catch { /* probar la copia */ }
+  }
 }
 function save() {
-  try { fs.writeFileSync(authFile(), JSON.stringify(auth), 'utf8'); } catch { /* sin disco */ }
+  try {
+    const data = JSON.stringify(auth);
+    const tmp = `${authFile()}.tmp`;
+    fs.writeFileSync(tmp, data, 'utf8');
+    try { if (fs.existsSync(authFile())) fs.copyFileSync(authFile(), `${authFile()}.bak`); } catch { /* sin copia */ }
+    fs.renameSync(tmp, authFile());
+  } catch { /* sin disco */ }
 }
 
 const b64url = (buf) => buf.toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
@@ -90,6 +108,7 @@ async function token(params) {
   }
   auth.access = r.body.access_token;
   if (r.body.refresh_token) auth.refresh = r.body.refresh_token;
+  auth.lost = false;
   auth.expires = Date.now() + (Number(r.body.expires_in) || 3600) * 1000 - 60000;
   save();
 }
@@ -102,7 +121,14 @@ async function fresh() {
     refreshing = token({ grant_type: 'refresh_token', refresh_token: auth.refresh })
       .catch((e) => {
         // Llave revocada (sacaron el permiso o cambió el Client ID): hay que volver a entrar.
-        if (/invalid_grant|revoked|invalid_client/i.test(e.message)) { auth.access = ''; auth.refresh = ''; save(); }
+        // Antes de darla por perdida, se relee del disco (por si quedó una más nueva).
+        if (/invalid_grant|revoked|invalid_client/i.test(e.message)) {
+          const old = auth.refresh;
+          load();
+          if (auth.refresh && auth.refresh !== old) { note(`Spotify: se usó la llave guardada más nueva (${e.message})`); throw e; }
+          note(`Spotify pidió volver a entrar: ${e.message}`);
+          auth.access = ''; auth.refresh = ''; auth.lost = true; save();
+        }
         throw e;
       })
       .finally(() => { refreshing = null; });
@@ -188,7 +214,29 @@ function login(clientId, openExternal) {
 }
 
 function status() {
-  return { connected: !!auth.refresh, clientId: auth.clientId, user: auth.user, redirect: REDIRECT };
+  return { connected: !!auth.refresh, clientId: auth.clientId, user: auth.user, lost: !!auth.lost, redirect: REDIRECT };
+}
+
+/*
+ * Despertar Spotify: si no suena en ningún lado, se abre Spotify de la PC
+ * (si está instalado) y, apenas aparece como dispositivo, se le pasa la
+ * música. Así se usa todo desde la app, sin tener que ir a abrirlo a mano.
+ */
+let openUrl = () => {};
+async function wake() {
+  let list = await devices();
+  if (!list.length) {
+    try { openUrl('spotify:'); } catch { /* sin Spotify instalado */ }
+    for (let i = 0; i < 14 && !list.length; i++) {
+      await new Promise((ok) => setTimeout(ok, 1000));
+      try { list = await devices(); } catch { /* sigue probando */ }
+    }
+  }
+  if (!list.length) { const e = new Error('no device'); e.status = 404; throw e; }
+  if (list.some((d) => d.active)) return list.find((d) => d.active);
+  const pick = list.find((d) => d.type === 'Computer') || list[0];
+  await api('PUT', '/me/player', { json: { device_ids: [pick.id], play: false } });
+  return pick;
 }
 
 /* ── Reproductor ──────────────────────────────────────────────────────── */
@@ -289,19 +337,31 @@ function wrap(fn) {
   };
 }
 
-function register(handle, shell) {
+function register(handle, shell, log) {
+  if (typeof log === 'function') note = log;
   load();
   const open = (url) => shell.openExternal(url);
+  openUrl = open;
   handle('spapi:status', () => status());
   handle('spapi:login', (_e, clientId) => login(clientId, open));
   handle('spapi:logout', () => { auth = { clientId: auth.clientId, access: '', refresh: '', expires: 0, user: '' }; save(); return status(); });
   handle('spapi:player', wrap(() => player()));
-  handle('spapi:cmd', wrap((_e, name, arg) => cmd(String(name || ''), arg)));
+  // Poner música sin Spotify abierto en ningún lado: se lo despierta y se repite la orden.
+  handle('spapi:cmd', wrap(async (_e, name, arg) => {
+    const n = String(name || '');
+    try { return await cmd(n, arg); } catch (e) {
+      if (e.status !== 404 || !['play', 'playUri', 'queue', 'next', 'prev'].includes(n)) throw e;
+      const dev = await wake();
+      if (n === 'playUri') return cmd(n, { ...(arg || {}), device: dev.id });
+      return cmd(n, arg);
+    }
+  }));
   handle('spapi:search', wrap((_e, q) => search(q)));
   handle('spapi:playlists', wrap(() => playlists()));
   handle('spapi:devices', wrap(() => devices()));
   handle('spapi:queue', wrap(() => queueList()));
   handle('spapi:liked', wrap((_e, uri) => liked(uri)));
+  handle('spapi:wake', wrap(() => wake()));
 }
 
 module.exports = { register, REDIRECT };

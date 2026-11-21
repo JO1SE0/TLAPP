@@ -2429,7 +2429,7 @@ handle('tracks:list', async () => {
 /* Spotify como música del menú (lo lee de Windows; ver spotify.js). */
 require('./spotify').register(handle, app);
 /* Spotify con cuenta (API web, Premium): ver spotify-api.js. */
-require('./spotify-api').register(handle, shell);
+require('./spotify-api').register(handle, shell, (msg) => logToApp('info', msg));
 
 /** Tapa embebida de una canción (club o propia), si el archivo la trae. */
 handle('tracks:cover', async (_e, name, user) => {

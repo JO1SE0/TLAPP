@@ -5876,7 +5876,7 @@ function paintMusicPage() {
     closed: en ? ['Spotify is not open', 'Open the Spotify desktop app on this PC.'] : ['Spotify no está abierto', 'Abrí Spotify de escritorio en esta PC.'],
     error: en ? ["Can't read Spotify", 'Windows did not answer. Try closing and opening Spotify.'] : ['No se pudo leer Spotify', 'Windows no respondió. Probá cerrar y abrir Spotify.'],
     nowin: en ? ['Only on Windows', 'Spotify is read through Windows.'] : ['Sólo en Windows', 'Spotify se lee a través de Windows.'],
-    nodevice: en ? ['Spotify is not playing anywhere', 'Open Spotify on your PC or phone, or pick a device below.'] : ['Spotify no suena en ningún lado', 'Abrilo en la PC o en el celu, o elegí un dispositivo abajo.']
+    nodevice: en ? ['Spotify is not playing anywhere', 'Press play and the app opens Spotify on your PC, or pick a device below.'] : ['Spotify no suena en ningún lado', 'Tocá play y la app abre Spotify en tu PC, o elegí un dispositivo abajo.']
   };
   const spIdle = sp && !now ? (SP_IDLE[sp.status] || SP_IDLE.idle) : null;
   $('#musTitle').textContent = now ? now.title : (spIdle ? spIdle[0] : T.idle);
@@ -6102,7 +6102,7 @@ const SP_TXT = {
     emptyQueue: 'No hay nada en la cola', emptyQueueSub: 'Sumá temas desde Buscar con el +.',
     pls: 'Tus playlists', plsN: (n) => `${n}`, noPls: 'Todavía no tenés playlists.', noRes: 'Nada con eso. Probá con otra palabra.',
     queue: 'Sumar a la cola', queued: 'Sumado a la cola', playing: 'Sonando', play: 'Poner', songs: (n) => `${n} temas`, next: 'Sigue',
-    err: { premium: 'Para manejar Spotify desde la app hace falta Premium.', nodevice: 'Spotify no está abierto en ningún lado: abrilo en la PC o en el celu, o elegí un dispositivo arriba.', forbidden: 'Spotify no lo permitió. Revisá que tu mail esté en «User Management» de tu app de Spotify (paso 4).', rate: 'Demasiados pedidos seguidos: esperá unos segundos.', login: 'Se cerró la sesión de Spotify: conectá de nuevo.', error: 'Spotify no respondió. Probá de nuevo.' }
+    err: { premium: 'Para manejar Spotify desde la app hace falta Premium.', nodevice: 'No encontré Spotify instalado ni abierto en ningún lado: abrilo en la PC o en el celu, o elegí un dispositivo arriba.', forbidden: 'Spotify no lo permitió. Revisá que tu mail esté en «User Management» de tu app de Spotify (paso 4).', rate: 'Demasiados pedidos seguidos: esperá unos segundos.', login: 'Se cerró la sesión de Spotify: conectá de nuevo.', error: 'Spotify no respondió. Probá de nuevo.' }
   },
   en: {
     title: 'Connect your Spotify', sub: 'Your account, your playlists and your music, controlled from TL App.',
@@ -6118,7 +6118,7 @@ const SP_TXT = {
     emptyQueue: 'Your queue is empty', emptyQueueSub: 'Add songs from Search with +.',
     pls: 'Your playlists', plsN: (n) => `${n}`, noPls: 'You have no playlists yet.', noRes: 'Nothing found. Try another word.',
     queue: 'Add to queue', queued: 'Added to queue', playing: 'Playing', play: 'Play', songs: (n) => `${n} songs`, next: 'Next',
-    err: { premium: 'Controlling Spotify from the app needs Premium.', nodevice: 'Spotify is not open anywhere: open it on your PC or phone, or pick a device above.', forbidden: 'Spotify refused. Check that your email is under «User Management» in your Spotify app (step 4).', rate: 'Too many requests: wait a few seconds.', login: 'Your Spotify session ended: connect again.', error: 'Spotify did not answer. Try again.' }
+    err: { premium: 'Controlling Spotify from the app needs Premium.', nodevice: 'Could not find Spotify installed or open anywhere: open it on your PC or phone, or pick a device above.', forbidden: 'Spotify refused. Check that your email is under «User Management» in your Spotify app (step 4).', rate: 'Too many requests: wait a few seconds.', login: 'Your Spotify session ended: connect again.', error: 'Spotify did not answer. Try again.' }
   }
 };
 const spT = () => SP_TXT[isEn() ? 'en' : 'es'];
@@ -6130,6 +6130,12 @@ async function spStatus(force) {
     try { SP.status = await tvm.spotifyApi.status(); } catch (e) { SP.status = { connected: false }; }
   }
   if (window.TLMusic) window.TLMusic.setSpotifyApi(!!SP.status.connected);
+  // Spotify cerró la sesión (pasa a veces, por ejemplo si se cambia la contraseña):
+  // se avisa una vez y el Client ID ya queda puesto, así es un solo toque.
+  if (SP.status.lost && !SP.status.connected && !SP.lostSaid) {
+    SP.lostSaid = true;
+    toast(isEn() ? 'Spotify ended your session: press Connect in Music (your Client ID is already there).' : 'Spotify cerró la sesión: tocá Conectar en Música (tu Client ID ya está puesto).', 'err');
+  }
   return SP.status;
 }
 setTimeout(() => { spStatus().catch(() => {}); }, 1200);

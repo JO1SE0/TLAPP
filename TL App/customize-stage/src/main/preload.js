@@ -182,7 +182,8 @@ contextBridge.exposeInMainWorld('tvm', {
     playlists: () => call('spapi:playlists'),
     devices: () => call('spapi:devices'),
     queue: () => call('spapi:queue'),
-    liked: (uri) => call('spapi:liked', uri)
+    liked: (uri) => call('spapi:liked', uri),
+    wake: () => call('spapi:wake')
   },
 
   tracks: {
