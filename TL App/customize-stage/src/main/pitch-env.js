@@ -1862,7 +1862,7 @@ function gull(ctx, x, y, flap) {
  * Dibuja lo que se mueve. `reg`: lo que devolvió paintEnv. `vis`: lo que se ve
  * de la cancha (en unidades), para saltear lo de afuera.
  */
-function paintAlive(ctx, id, bounds, t, reg, o = {}, vis = null) {
+function paintAliveU(ctx, id, bounds, t, reg, o = {}, vis = null) {
   if (!reg || !bounds || !DRAW[id]) return 0;
   const { W0, W, H, gap } = envDims(bounds);
   LIVE.gap = gap;
@@ -3345,7 +3345,7 @@ const DRAW = { noche: potreroNoche, barrio: clubBarrio, led: potreroLed, f5: can
  * @param {{ halfW:number, halfH:number }} bounds
  * @param {{ cheer?: 'Red'|'Blue'|null, hot?: boolean, mirror?: boolean, score?: string, scorer?: string, names?: string[], weather?: string, night?: boolean, fireworks?: 'Red'|'Blue'|'draw'|null, fresa?: boolean, fresaTeam?: 'Red'|'Blue' }} o
  */
-function paintEnv(ctx, id, bounds, o = {}) {
+function paintEnvU(ctx, id, bounds, o = {}) {
   const fn = DRAW[id];
   if (!fn || !bounds) return false;
   ctx.save();
@@ -3430,7 +3430,7 @@ const GROUND = { noche: '#3d3326', barrio: '#5d6158', led: '#35392f', f5: '#2a2e
 function groundColor(id) { return GROUND[id] || '#3a3a3a'; }
 
 /** Hasta dónde llega el dibujo de cada escenario, para guardarlo de una sola vez. */
-function extent(bounds) {
+function extentU(bounds) {
   const { W, H } = envDims(bounds);
   return { x: W + 430, y: H + 340 };
 }
@@ -3469,8 +3469,8 @@ const FAR_CFG = {
   colegio: { kind: 'suburb', st: [170, 240], near: 'street', specials: ['plaza', 'church', 'school', 'kiosco'], spread: ['plaza', 'church', 'kiosco', 'park', 'baldio'] }
 };
 
-function farMap(id, bounds, sync = false) {
-  const ext = extent(bounds);
+function farMapU(id, bounds, sync = false) {
+  const ext = extentU(bounds);
   const key = `${id}|${Math.round(ext.x)}|${Math.round(ext.y)}`;
   if (FARMAP.has(key)) return FARMAP.get(key);
   if (FARMAP.size > 3) FARMAP.clear();
@@ -3921,8 +3921,8 @@ function* farPlaya(c) {
  * queda más allá de la imagen del escenario, incluida la franja donde la imagen
  * se funde. La playa sigue con el mar arriba. Misma viñeta y misma noche.
  */
-function paintFar(ctx, id, bounds, view) {
-  const ext = extent(bounds);
+function paintFarU(ctx, id, bounds, view) {
+  const ext = extentU(bounds);
   const { W, H } = envDims(bounds);
   ctx.save();
   ctx.beginPath();
@@ -3932,7 +3932,7 @@ function paintFar(ctx, id, bounds, view) {
   ctx.fillStyle = groundColor(id);
   ctx.fillRect(view.x, view.y, view.w, view.h);
   try {
-    const M = farMap(id, bounds);
+    const M = farMapU(id, bounds);
     if (M.ready) ctx.drawImage(M.cv, M.x, M.y, M.w, M.h);
   } catch (e) { /* queda el color liso */ }
   const R = Math.hypot(W, H);
@@ -3944,8 +3944,8 @@ function paintFar(ctx, id, bounds, view) {
 }
 
 /** Funde los bordes de la imagen del escenario (`g` con la transformación de mundo). */
-function feather(g, bounds) {
-  const ext = extent(bounds), f = FEATHER;
+function featherU(g, bounds) {
+  const ext = extentU(bounds), f = FEATHER;
   g.save();
   g.globalCompositeOperation = 'destination-out';
   const side = (x0, y0, x1, y1, rx, ry, rw, rh) => {
@@ -3958,6 +3958,56 @@ function feather(g, bounds) {
   side(0, -ext.y, 0, -ext.y + f, -ext.x, -ext.y, 2 * ext.x, f);
   side(0, ext.y, 0, ext.y - f, -ext.x, ext.y - f, 2 * ext.x, f);
   g.restore();
+}
+
+/*
+ * Canchas grandes (x5, x7, RS…): todo el escenario —tribunas, gente, carteles,
+ * Fresa y Joaquín, lo de afuera— se dibuja agrandado en la misma proporción
+ * que la cancha, así un x7 se ve igual de lleno que una común (y no tribunitas
+ * finitas con gente chiquita). En una cancha común `k` es 1 y nada cambia.
+ */
+function envK(bounds) {
+  if (!bounds) return 1;
+  return Math.max(1, Math.min(2.6, Math.min((bounds.halfW || 0) / 420, (bounds.halfH || 0) / 200)));
+}
+function shrink(bounds, k) {
+  if (k === 1) return bounds;
+  return { ...bounds, halfW: bounds.halfW / k, halfH: bounds.halfH / k,
+    goalY: Number.isFinite(bounds.goalY) ? bounds.goalY / k : bounds.goalY,
+    goalDepth: Number.isFinite(bounds.goalDepth) ? bounds.goalDepth / k : bounds.goalDepth };
+}
+function scaledCall(ctx, k, fn) {
+  if (k === 1) return fn();
+  ctx.save();
+  ctx.scale(k, k);
+  try { return fn(); } finally { ctx.restore(); }
+}
+function paintEnv(ctx, id, bounds, o = {}) {
+  const k = envK(bounds);
+  return scaledCall(ctx, k, () => paintEnvU(ctx, id, shrink(bounds, k), o));
+}
+function paintAlive(ctx, id, bounds, t, reg, o = {}, vis = null) {
+  const k = envK(bounds);
+  if (k === 1) return paintAliveU(ctx, id, bounds, t, reg, o, vis);
+  const v = vis ? { x0: vis.x0 / k, y0: vis.y0 / k, x1: vis.x1 / k, y1: vis.y1 / k } : vis;
+  const o2 = o.ball ? { ...o, ball: { x: o.ball.x / k, y: o.ball.y / k } } : o;
+  return scaledCall(ctx, k, () => paintAliveU(ctx, id, shrink(bounds, k), t, reg, o2, v));
+}
+function extent(bounds) {
+  const k = envK(bounds);
+  const e = extentU(shrink(bounds, k));
+  return { x: e.x * k, y: e.y * k };
+}
+function feather(g, bounds) {
+  const k = envK(bounds);
+  return scaledCall(g, k, () => featherU(g, shrink(bounds, k)));
+}
+function paintFar(ctx, id, bounds, view) {
+  const k = envK(bounds);
+  return scaledCall(ctx, k, () => paintFarU(ctx, id, shrink(bounds, k), { x: view.x / k, y: view.y / k, w: view.w / k, h: view.h / k }));
+}
+function farMap(id, bounds, sync = false) {
+  return farMapU(id, shrink(bounds, envK(bounds)), sync);
 }
 
 module.exports = { ENVS, has, paintEnv, paintAlive, goalGap, groundColor, extent, envDims, paintFar, feather, farMap, onFarReady };
