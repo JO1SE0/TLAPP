@@ -495,6 +495,7 @@ const DEFAULTS = {
     /** Que lo de los alrededores se mueva (se apaga solo con Gráficos planos). */
     envAlive: true,
     envFresa: true,
+    envJoaquin: true,
     envCheer: true,
     envScoreLed: true,
     envNames: true,

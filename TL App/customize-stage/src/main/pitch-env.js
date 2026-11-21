@@ -1736,18 +1736,25 @@ function ledStrip(text, w, h, hot) {
   g.fillStyle = '#05070b'; g.fillRect(0, 0, cw, ch);
   g.fillStyle = hot ? 'rgba(255,211,77,0.08)' : 'rgba(224,179,74,0.04)'; g.fillRect(0, 0, cw, ch);
   const P = pitch * S_PX;
-  // Los apagados: una grilla tenue.
-  g.fillStyle = 'rgba(255,255,255,0.07)';
-  for (let r = 1; r <= rows; r++) for (let c = 0; c < total; c++) g.fillRect((c + 0.32) * P, (r + 0.32) * P, P * 0.36, P * 0.36);
+  // Los apagados: una grilla tenue (un patrón, de una sola pasada).
+  const cell = mkCanvas(Math.max(1, Math.round(P)), Math.max(1, Math.round(P)));
+  const cg = cell.getContext('2d');
+  cg.fillStyle = 'rgba(255,255,255,0.07)'; cg.fillRect(cell.width * 0.32, cell.height * 0.32, Math.max(1, cell.width * 0.36), Math.max(1, cell.height * 0.36));
+  const pat = g.createPattern(cell, 'repeat');
+  if (pat) { g.fillStyle = pat; g.fillRect(0, Math.round(P), cw, Math.round(P) * rows); }
+  // Los prendidos: un puntito con brillo por color, armado una vez y pegado.
+  const D = Math.ceil(P * 1.8);
+  const dots = cols.map((col) => {
+    const d = mkCanvas(D, D), dg = d.getContext('2d');
+    dg.fillStyle = col; dg.globalAlpha = 0.28; dg.beginPath(); dg.arc(D / 2, D / 2, P * 0.78, 0, 7); dg.fill();
+    dg.globalAlpha = 1; dg.beginPath(); dg.arc(D / 2, D / 2, P * 0.36, 0, 7); dg.fill();
+    return d;
+  });
   for (let c = 0; c < total; c++) {
-    const col = cols[Math.floor(Math.max(0, c - 1) / unitDots) % cols.length];
+    const dot = dots[Math.floor(Math.max(0, c - 1) / unitDots) % cols.length];
     for (let r = 1; r <= rows; r++) {
       if (px[(r * total + c) * 4 + 3] < 110) continue;
-      const cx = (c + 0.5) * P, cy = (r + 0.5) * P;
-      g.globalAlpha = 0.28; g.fillStyle = col;
-      g.beginPath(); g.arc(cx, cy, P * 0.78, 0, 7); g.fill();
-      g.globalAlpha = 1;
-      g.beginPath(); g.arc(cx, cy, P * 0.36, 0, 7); g.fill();
+      g.drawImage(dot, (c + 0.5) * P - D / 2, (r + 0.5) * P - D / 2);
     }
   }
   // Reflejo arriba, como un panel con vidrio.
@@ -2144,6 +2151,8 @@ function paintAlive(ctx, id, bounds, t, reg, o = {}, vis = null) {
       }
       n++;
     }
+    // Joaquín, el rival de Fresa (de gris plata, con la de Argentina).
+    if (reg.joaquin && see(reg.joaquin.x, reg.joaquin.y, 60)) n += joaquinAlive(ctx, reg.joaquin, reg.fresa, t, o, night);
     // Fresa: tiene su rutina de DT y reacciona al partido.
     if (reg.fresa && see(reg.fresa.x, reg.fresa.y, 60 + (reg.fresa.walk || 0))) n += fresaAlive(ctx, reg.fresa, t, o, night);
   } finally {
@@ -2555,7 +2564,8 @@ function fiestaBlock(B, team, phase, tag) {
 function fresaAlive(ctx, F, t, o, night) {
   const team = F.team, mir = !!o.mirror, m = mir ? 1 : 0;
   const won = o.fireworks === team, draw = o.fireworks === 'draw';
-  const sad = o.hot && o.cheer && o.cheer !== team;
+  // Gol en contra o partido perdido: triste con su nubecita.
+  const sad = (o.hot && o.cheer && o.cheer !== team) || (o.fireworks && o.fireworks !== 'draw' && o.fireworks !== team);
   const up = o.hot && o.cheer === team;
   const ink = team === 'Blue' ? '#2d55b0' : '#b83a3a';
   ctx.globalAlpha = night ? 0.85 : 1;
@@ -2646,6 +2656,107 @@ function bigEnds(ctx, id, W, H, o, rnd) {
   }
 }
 
+/* ── Joaquín, el rival ─────────────────────────────────────────────── */
+
+/** Gris plata: pelo, sombra del pelo, línea de los rulos y ojos. */
+const JQ = ['#b9bcc2', '#9da1a8', '#d4d7dc', '#2a1d16'];
+
+function jqCurl(ctx, x, y, r) {
+  ctx.fillStyle = JQ[0]; ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill();
+  ctx.strokeStyle = JQ[2]; ctx.lineWidth = r * 0.18;
+  ctx.beginPath(); ctx.arc(x, y + r * 0.1, r * 0.55, Math.PI * 1.1, Math.PI * 1.9); ctx.stroke();
+}
+
+/**
+ * Joaquín, caniche gris plata, siempre con la camiseta de Argentina (la 10) y
+ * la vincha. `mood`: '' mirando, 'blink', 'angry' (gruñe, cejas para abajo),
+ * 'jaja' (se burla con la lengua afuera y las patas arriba).
+ */
+function joaquinDT(ctx, x, y, mood, mirror, wag = 0) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.scale(1.15, 1.15);
+  if (mood === 'jaja') ctx.translate(0, -3);
+  ctx.fillStyle = 'rgba(0,0,0,0.32)'; ctx.beginPath(); ctx.ellipse(3, 12, 15, 6, 0, 0, 7); ctx.fill();
+  // Cola del otro lado que Fresa.
+  ctx.strokeStyle = JQ[1]; ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.moveTo(-10, 8); ctx.quadraticCurveTo(-18 - wag * 2, 4, -20 - wag * 4, -2); ctx.stroke();
+  jqCurl(ctx, -20 - wag * 4, -3, 3.2);
+  // La camiseta albiceleste.
+  ctx.save(); ctx.beginPath(); ctx.ellipse(0, 7, 12.5, 9.5, 0, 0, 7); ctx.clip();
+  ctx.fillStyle = '#ffffff'; ctx.fillRect(-14, -4, 28, 22);
+  ctx.fillStyle = '#75b9e8'; for (const sx of [-10, -4, 2, 8]) ctx.fillRect(sx, -4, 3.4, 22);
+  ctx.restore();
+  ctx.fillStyle = '#75b9e8'; ctx.beginPath(); ctx.ellipse(-11, 5, 3.4, 4.5, 0.4, 0, 7); ctx.ellipse(11, 5, 3.4, 4.5, -0.4, 0, 7); ctx.fill();
+  paint(ctx, '10', 0, 11, '900 6px sans-serif', '#1d2b4a', mirror);
+  ctx.fillStyle = '#c9a227';
+  for (const [sx, sy, r] of [[-6, 4, 1.3], [-3.5, 3.2, 1.1], [-1.2, 3.2, 1.1]]) { ctx.beginPath(); ctx.arc(sx, sy, r, 0, 7); ctx.fill(); }
+  // Patas.
+  ctx.fillStyle = JQ[0];
+  if (mood === 'jaja') { ctx.beginPath(); ctx.arc(-11, -9, 3.4, 0, 7); ctx.arc(11, -9, 3.4, 0, 7); ctx.fill(); ctx.strokeStyle = '#75b9e8'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(-8, 2); ctx.lineTo(-11, -7); ctx.moveTo(8, 2); ctx.lineTo(11, -7); ctx.stroke(); }
+  else { ctx.beginPath(); ctx.arc(-5, 15, 3.2, 0, 7); ctx.arc(5, 15, 3.2, 0, 7); ctx.fill(); }
+  // Orejas, cabeza, jopo de rulos y la vincha.
+  ctx.fillStyle = JQ[1];
+  ctx.beginPath(); ctx.ellipse(-10, -3, 4.5, 8, 0.2, 0, 7); ctx.ellipse(10, -3, 4.5, 8, -0.2, 0, 7); ctx.fill();
+  jqCurl(ctx, -11, 1, 3); jqCurl(ctx, 11, 1, 3);
+  ctx.fillStyle = JQ[0]; ctx.beginPath(); ctx.arc(0, -6, 9.5, 0, 7); ctx.fill();
+  jqCurl(ctx, -5, -14, 3.4); jqCurl(ctx, 0, -15.5, 3.8); jqCurl(ctx, 5, -14, 3.4);
+  ctx.fillStyle = '#75b9e8'; ctx.fillRect(-9, -12, 18, 2); ctx.fillStyle = '#fff'; ctx.fillRect(-9, -10, 18, 1.4); ctx.fillStyle = '#75b9e8'; ctx.fillRect(-9, -8.6, 18, 1.4);
+  // Cara.
+  if (mood === 'angry') {
+    ctx.strokeStyle = '#111'; ctx.lineWidth = 1.2;
+    ctx.beginPath(); ctx.moveTo(-6, -7.5); ctx.lineTo(-1.5, -6); ctx.moveTo(6, -7.5); ctx.lineTo(1.5, -6); ctx.stroke();
+  }
+  if (mood === 'blink') {
+    ctx.strokeStyle = JQ[3]; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(-5, -4.6); ctx.lineTo(-1.8, -4.6); ctx.moveTo(1.8, -4.6); ctx.lineTo(5, -4.6); ctx.stroke();
+  } else {
+    ctx.fillStyle = JQ[3];
+    const ey = mood === 'jaja' ? 0.6 : 1.6;
+    ctx.beginPath(); ctx.ellipse(-3.4, -4.6, 1.6, ey, 0, 0, 7); ctx.ellipse(3.4, -4.6, 1.6, ey, 0, 0, 7); ctx.fill();
+  }
+  ctx.fillStyle = '#2a1d16'; ctx.beginPath(); ctx.ellipse(0, -1.3, 2.2, 1.7, 0, 0, 7); ctx.fill();
+  if (mood === 'jaja') {
+    ctx.fillStyle = '#5a2a2a'; ctx.beginPath(); ctx.ellipse(0, 2.4, 3, 2.4, 0, 0, 7); ctx.fill();
+    ctx.fillStyle = '#e8737a'; ctx.beginPath(); ctx.ellipse(1, 4.6, 1.8, 2.6, 0.3, 0, 7); ctx.fill();
+  } else if (mood === 'angry') {
+    ctx.fillStyle = '#5a2a2a'; ctx.fillRect(-3, 1, 6, 2.4);
+    ctx.fillStyle = '#fff'; ctx.fillRect(-2.6, 1, 1.2, 1.2); ctx.fillRect(1.4, 1, 1.2, 1.2);
+  } else {
+    // La sonrisita de costado, de sobrador.
+    ctx.strokeStyle = '#2a1d16'; ctx.lineWidth = 0.8; ctx.beginPath(); ctx.moveTo(-2, 1.2); ctx.lineTo(2, 0.4); ctx.stroke();
+  }
+  ctx.restore();
+}
+
+/**
+ * Lo que hace Joaquín. Gol de los suyos: se burla («¡JAJAJA!»). Gol de los de
+ * Fresa: gruñe («¡GRRR!»). Al final: si ganaron, se burla; si perdieron, se
+ * enoja. En el partido: mira de reojo, y cuando Fresa grita, le contesta.
+ */
+function joaquinAlive(ctx, J, F, t, o, night) {
+  const mir = !!o.mirror, m = mir ? 1 : 0, team = J.team;
+  const ink = '#3a7fc1';
+  ctx.globalAlpha = night ? 0.85 : 1;
+  const at = (key, r, fn, x, y, a) => stamp(ctx, sprite(key, r, fn), x, y, a);
+  const wag = Math.round(Math.sin(t / 170) * 3) / 3;
+  let mood = '', say = '', hop = 0;
+  if (o.fireworks === team || (o.hot && o.cheer === team)) { mood = 'jaja'; say = '¡JAJAJA!'; hop = Math.abs(Math.sin(t / 150)) * 5; }
+  else if ((o.fireworks && o.fireworks !== 'draw') || (o.hot && o.cheer)) { mood = 'angry'; say = Math.floor(t / 1100) % 2 ? '¡GRRR!' : ''; hop = Math.abs(Math.sin(t / 90)) * 1.2; }
+  else if (o.fireworks === 'draw') { mood = (t % 2600) < 160 ? 'blink' : ''; }
+  else {
+    // Cuando Fresa está gritando, Joaquín le contesta un ratito después.
+    const seg = Math.floor(t / 5200), p = (t % 5200) / 5200;
+    const fresaShouts = F && hash01(seg * 7.31 + F.team.length) >= 0.84;
+    if (fresaShouts && p > 0.3 && p < 0.85) { mood = 'angry'; say = Math.floor(t / 900) % 2 ? '¡GRRR!' : '¡GUAU!'; hop = Math.abs(Math.sin(t / 120)) * 2; }
+    else if (hash01(seg * 3.7 + 9.1) < 0.18 && p > 0.2 && p < 0.6) { mood = 'jaja'; }
+    else if ((t % 2900) < 150) mood = 'blink';
+  }
+  at(`jq${mood}${m}${mood === 'jaja' ? wag : 0}`, 34, (g) => joaquinDT(g, 0, 0, mood, mir, mood === 'jaja' ? wag : 0), J.x, J.y - hop);
+  if (say) { at(`jb${say}${m}`, 34, (g) => bubble(g, say, mir, mood === 'angry' ? '#b83a3a' : ink), J.x + 26, J.y - 36 - hop * 0.5); return 2; }
+  return 1;
+}
+
 const DRAW = { noche: potreroNoche, barrio: clubBarrio, led: potreroLed, f5: canchitaF5, playa, campo, azotea, cortada, colegio, estadio };
 
 /**
@@ -2682,18 +2793,30 @@ function paintEnv(ctx, id, bounds, o = {}) {
     LIVE.fill = Number.isFinite(o.fill) ? Math.max(0.25, Math.min(1, o.fill)) : 1;
     useKits(o.kits);
     LIGHTS.length = 0;
-    REG = { leds: [], crowds: [], flags: [], dogs: [], kids: [], pitches: [], smoke: [], cows: [], flashes: [], screens: [], windows: [], walkers: [], runners: [], bulbs: [], trapos: [], fresa: null, mill: null, volley: null, gulls: null, lane: null, fires: [], surfers: [], kite: null, beacons: [], swings: [], dj: null };
+    REG = { leds: [], crowds: [], flags: [], dogs: [], kids: [], pitches: [], smoke: [], cows: [], flashes: [], screens: [], windows: [], walkers: [], runners: [], bulbs: [], trapos: [], fresa: null, mill: null, volley: null, gulls: null, lane: null, joaquin: null, fires: [], surfers: [], kite: null, beacons: [], swings: [], dj: null };
     const so = { cheer: o.cheer || null, hot: !!o.hot, mirror: !!o.mirror };
     fn(ctx, W, H, so);
     if (EXTRA[id]) EXTRA[id](ctx, W, H, so, seeded(4049));
     bigEnds(ctx, id, W, H, so, seeded(5051));
-    // Fresa, la DT, en el banco del equipo de uno (rojo si mirás de afuera).
-    if (o.fresa !== false && FRESA_SPOT[id]) {
+    // Fresa, la DT, en el banco del equipo de uno (rojo si mirás de afuera), y
+    // Joaquín, su rival, en el banco de enfrente. Si los bancos quedan pegados
+    // (escenas con los suplentes en el medio), se sientan cara a cara.
+    if (FRESA_SPOT[id] && (o.fresa !== false || o.joaquin !== false)) {
       const team = o.fresaTeam === 'Blue' ? 'Blue' : 'Red';
-      const [fx, fy, bench, walk] = FRESA_SPOT[id](W, H, team);
-      if (bench) fresaBench(ctx, fx, fy + 4);
-      if (REG) REG.fresa = { x: fx, y: fy, team, walk: walk || 0 };
-      if (!LIVE.alive) fresaDT(ctx, fx, fy, o.cheer === team, team, !!o.mirror);
+      const other = team === 'Blue' ? 'Red' : 'Blue';
+      let [fx, fy, bench, walk] = FRESA_SPOT[id](W, H, team);
+      let [jx, jy, jbench, jwalk] = FRESA_SPOT[id](W, H, other);
+      if (Math.abs(fx - jx) < 40) { fx = Math.sign(fx || -1) * 20; jx = -fx; walk = 0; jwalk = 0; }
+      if (o.fresa !== false) {
+        if (bench) fresaBench(ctx, fx, fy + 4);
+        if (REG) REG.fresa = { x: fx, y: fy, team, walk: walk || 0 };
+        if (!LIVE.alive) fresaDT(ctx, fx, fy, o.cheer === team, team, !!o.mirror);
+      }
+      if (o.joaquin !== false) {
+        if (jbench) fresaBench(ctx, jx, jy + 4);
+        if (REG) REG.joaquin = { x: jx, y: jy, team: other, walk: jwalk || 0 };
+        if (!LIVE.alive) joaquinDT(ctx, jx, jy, o.cheer === other ? 'jaja' : o.cheer === team ? 'angry' : '', !!o.mirror);
+      }
     }
     // Gol sin vida: papelitos, bengalas y humo en la tribuna del que metió.
     if (o.hot && (o.cheer === 'Red' || o.cheer === 'Blue') && !LIVE.alive && REG) for (const B of REG.crowds) fiestaDraw(ctx, B, o.cheer, 0);

@@ -2094,7 +2094,7 @@ function saveUndo() {
 const QM_FALLBACK = { pitchLight: 'none', texture: 'none', pitchWeather: 'none', discStyle: 'default', ballStyle: 'default',
   ballColor: '', ballOutline: '', discOutline: '', mirror: 'off', kickSfx: 'default', discSize: 1, ballSize: 1,
   scoreboardPos: 'top', scoreboardScale: 1, pitchBright: 1, pitchContrast: 1, pitchEnv: 'none',
-  envAlive: true, envFresa: true, envCheer: true, envScoreLed: true, envNames: true, envFireworks: true };
+  envAlive: true, envFresa: true, envJoaquin: true, envCheer: true, envScoreLed: true, envNames: true, envFireworks: true };
 let qmCurLabel = '';
 function quickSet(patch, label) {
   const before = {};
@@ -2532,6 +2532,7 @@ function buildQuickMenu() {
   const vb = (k) => () => cfg().visual[k] !== false;
   toggle('Alrededores con vida', vb('envAlive'), (v) => quickSet({ visual: { envAlive: v } }));
   toggle('Fresa, la DT', vb('envFresa'), (v) => quickSet({ visual: { envFresa: v } }));
+  toggle('Joaquín, el rival', vb('envJoaquin'), (v) => quickSet({ visual: { envJoaquin: v } }));
   toggle('Festejo de la tribuna', vb('envCheer'), (v) => quickSet({ visual: { envCheer: v } }));
   toggle('Resultado en los LED', vb('envScoreLed'), (v) => quickSet({ visual: { envScoreLed: v } }));
   toggle('Nombres en los trapos', vb('envNames'), (v) => quickSet({ visual: { envNames: v } }));
@@ -9359,7 +9360,7 @@ function pitchSkinPrint() {
   const skin = (state.config.pitch && state.config.pitch.skin) || {};
   const field = pitchSkinColor();
   const vip = state.config.vip || {};
-  return `${skin.mode}|${field}|${pitchOutsideColor(field)}|${skin.strength}|${skin.brightness}|${skin.stripes}|${skin.cut}|${skin.imageAlpha}|${skin.relief}|${skin.reliefAmount}|${visual.weather}|${visual.weatherAmount}|${vip.pitchImage}|${JSON.stringify(vip.pitchCrop || null)}|${visual.pitchLine}|${flatGraphicsEnabled}|${visual.texture}|${visual.light}|${visual.crest}|${visual.crestOpacity}|${visual.crestSize}|${visual.lineColor}|${visual.lineGlow}|${visual.bright}|${visual.contrast}|${visual.env}|${visual.env ? `${visual.weather}/${visual.light}/${['envAlive', 'envFresa', 'envCheer', 'envScoreLed', 'envNames', 'envFireworks'].map((k) => (state.config.visual || {})[k] !== false ? 1 : 0).join('')}` : ''}`;
+  return `${skin.mode}|${field}|${pitchOutsideColor(field)}|${skin.strength}|${skin.brightness}|${skin.stripes}|${skin.cut}|${skin.imageAlpha}|${skin.relief}|${skin.reliefAmount}|${visual.weather}|${visual.weatherAmount}|${vip.pitchImage}|${JSON.stringify(vip.pitchCrop || null)}|${visual.pitchLine}|${flatGraphicsEnabled}|${visual.texture}|${visual.light}|${visual.crest}|${visual.crestOpacity}|${visual.crestSize}|${visual.lineColor}|${visual.lineGlow}|${visual.bright}|${visual.contrast}|${visual.env}|${visual.env ? `${visual.weather}/${visual.light}/${['envAlive', 'envFresa', 'envJoaquin', 'envCheer', 'envScoreLed', 'envNames', 'envFireworks'].map((k) => (state.config.visual || {})[k] !== false ? 1 : 0).join('')}` : ''}`;
 }
 
 /** Le tira el cache al estadio para que se vuelva a dibujar con el color nuevo. */
@@ -9396,7 +9397,7 @@ function envLook() {
   return {
     weather: visual.weather || '', night: visual.light === 'night',
     fireworks: c.envFireworks === false ? null : env.fireworks,
-    fresa: c.envFresa !== false, fresaTeam: env.team, alive: envAliveOn(), kits: env.kits, fill: env.fill
+    fresa: c.envFresa !== false, joaquin: c.envJoaquin !== false, fresaTeam: env.team, alive: envAliveOn(), kits: env.kits, fill: env.fill
   };
 }
 
