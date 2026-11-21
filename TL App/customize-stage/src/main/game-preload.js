@@ -638,7 +638,28 @@ function plainKit(team) {
   if (!k) { k = { sd: 0, pd: 0xffffff, ib: [c] }; plainKitCache.set(c, k); }
   return k;
 }
+/*
+ * La camiseta con la que se ve cada equipo (la de la sala, la del club, lisa o
+ * la elegida): se anota acá, al pasar, para vestir a la hinchada de los
+ * alrededores con esos colores. Sólo se rearma el texto cuando cambia el objeto.
+ */
+const envKitSeen = { 1: null, 2: null, sig: '', hex: { Red: null, Blue: null } };
+function noteEnvKit(team, k) {
+  if (!k || envKitSeen[team] === k) return;
+  envKitSeen[team] = k;
+  const ib = Array.isArray(k.ib) ? k.ib : [];
+  const hex = ib.slice(0, 3).filter((c) => Number.isFinite(c)).map((c) => `#${(c >>> 0 & 0xffffff).toString(16).padStart(6, '0')}`);
+  envKitSeen.hex[team === 1 ? 'Red' : 'Blue'] = hex.length ? hex : null;
+  envKitSeen.sig = `${(envKitSeen.hex.Red || []).join('')}|${(envKitSeen.hex.Blue || []).join('')}`;
+}
+
 function teamKit(team, kit) {
+  const out = teamKitPick(team, kit);
+  if (out && (team === 1 || team === 2)) noteEnvKit(team, out);
+  return out;
+}
+
+function teamKitPick(team, kit) {
   if (kit && (team === 1 || team === 2) && state.config && state.config.pitch && state.config.pitch.plainKits) return plainKit(team);
   // Los colores que eligió el jugador mandan sobre la camiseta del club.
   if (!teamPick.on && kit && clubKit.teams[team]) return clubKitFor(team) || kit;
@@ -9326,7 +9347,7 @@ function pitchSkinPrint() {
  * y la gente del que metió levanta los brazos) y el espejo. Cada cambio rehace
  * el cache del estadio una vez; entre cambios no se dibuja nada.
  */
-const env = { cheer: null, hot: false, mirror: false, timer: 0, pre: 0, bmp: null, key: '', last: null, red: NaN, blue: NaN, scorer: '', names: [], match: null, fireworks: null, team: 'Red', regNormal: null, regHot: null, bounds: null };
+const env = { cheer: null, hot: false, mirror: false, timer: 0, pre: 0, bmp: null, key: '', last: null, red: NaN, blue: NaN, scorer: '', names: [], match: null, fireworks: null, team: 'Red', regNormal: null, regHot: null, bounds: null, kits: null, kitsSig: '', fill: 1 };
 
 /** Los alrededores se mueven: interruptor prendido y sin «Gráficos planos». */
 function envAliveOn() {
@@ -9354,7 +9375,7 @@ function envLook() {
   return {
     weather: visual.weather || '', night: visual.light === 'night',
     fireworks: c.envFireworks === false ? null : env.fireworks,
-    fresa: c.envFresa !== false, fresaTeam: env.team, alive: envAliveOn()
+    fresa: c.envFresa !== false, fresaTeam: env.team, alive: envAliveOn(), kits: env.kits, fill: env.fill
   };
 }
 
@@ -9393,7 +9414,7 @@ function envBitmap(doc, world, bounds, hot) {
   const zoom = Math.hypot(world.a, world.b) || 1;
   const sc = Math.min(zoom, ENV_MAX_PX / (2 * ext.x), ENV_MAX_PX / (2 * ext.y));
   const L = envLook();
-  const key = [visual.env, hot ? `hot${env.cheer}${env.scorer}` : 'calm', env.mirror, envScore(), envNamesShown().join(','), L.weather, L.night, L.fireworks, L.fresa, L.fresaTeam, L.alive,
+  const key = [visual.env, hot ? `hot${env.cheer}${env.scorer}` : 'calm', env.mirror, envScore(), envNamesShown().join(','), L.weather, L.night, L.fireworks, L.fresa, L.fresaTeam, L.alive, env.kitsSig, env.fill,
     bounds.halfW, bounds.halfH, bounds.goalY, bounds.goalDepth, sc.toFixed(3)].join('|');
   const slot = hot ? 'hotBmp' : 'bmp';
   if (env[slot] && env[`${slot}Key`] === key) return env[slot];
@@ -9448,6 +9469,7 @@ function envGoal(view, team) {
   clearTimeout(env.pre);
   env.pre = setTimeout(() => {
     env.names = envNames();
+    if (env.room && env.f) safe(envReadRoom, env.f, env.room);
     const L = env.last;
     if (L && visual.env) safe(() => envBitmap(L.doc, L.world, L.bounds, false));
   }, 1500);
@@ -9466,6 +9488,15 @@ function envScorer(name) {
  * El resultado, una comparación por paso. Cambia en un gol (eso lo maneja el
  * festejo) o al empezar otro partido: ahí sí se rehace, con el juego arrancando.
  */
+/** Lo que sale de la sala para los alrededores: cuánta gente hay y las camisetas. */
+function envReadRoom(f, room) {
+  const players = (room && room[f.players]) || [];
+  // Con 2 la tribuna está a un tercio; con 12 o más, llena.
+  env.fill = Math.round(Math.max(0.3, Math.min(1, 0.22 + players.length * 0.065)) * 20) / 20;
+  env.kits = envKitSeen.hex.Red || envKitSeen.hex.Blue ? { Red: envKitSeen.hex.Red, Blue: envKitSeen.hex.Blue } : null;
+  env.kitsSig = envKitSeen.sig;
+}
+
 /** El equipo de uno (Fresa se sienta en ese banco); de afuera mirando, el rojo. */
 function envMyTeam(f, room) {
   const me = myNick();
@@ -9481,11 +9512,25 @@ function envTrackScore(view, f, match, room) {
   const r = Number(match[S.red]), b = Number(match[S.blue]);
   if (match !== env.match) {
     env.match = match;
-    if (room) { const t = safe(envMyTeam, f, room); if (t && t !== env.team) { env.team = t; env.red = NaN; } }
+    if (room) {
+      const t = safe(envMyTeam, f, room); if (t && t !== env.team) { env.team = t; env.red = NaN; }
+      const before = `${env.fill}|${env.kitsSig}`;
+      safe(envReadRoom, f, room);
+      if (`${env.fill}|${env.kitsSig}` !== before) env.red = NaN;
+    }
+    env.room = room; env.f = f;
     // Otro partido: se apagan los fuegos del anterior.
     if (env.fireworks) { env.fireworks = null; env.red = NaN; }
   }
-  if (r === env.red && b === env.blue) return;
+  if (r === env.red && b === env.blue) {
+    // Las camisetas se conocen recién cuando el juego dibuja a los jugadores:
+    // si cambiaron en el arranque (antes del primer toque), se rehace una vez.
+    if (envKitSeen.sig !== env.kitsSig && real.clock < 4000 && !env.hot && room) {
+      safe(envReadRoom, f, room);
+      flushStadiumCache(view);
+    }
+    return;
+  }
   env.red = r;
   env.blue = b;
   if (!env.hot) { env.names = envNames(); flushStadiumCache(view); }
@@ -9506,7 +9551,7 @@ function paintEnvAlive(ctx) {
   envVis.x0 = x0; envVis.y0 = y0; envVis.x1 = x1; envVis.y1 = y1;
   const L = envLook();
   const t0 = performance.now();
-  pitchEnv.paintAlive(ctx, visual.env, env.bounds, t0, reg, { cheer: env.cheer, hot: env.hot, mirror: env.mirror, weather: L.weather, night: L.night }, envVis);
+  pitchEnv.paintAlive(ctx, visual.env, env.bounds, t0, reg, { cheer: env.cheer, hot: env.hot, mirror: env.mirror, weather: L.weather, night: L.night, kits: L.kits, fireworks: L.fireworks }, envVis);
   envSlowNote(performance.now() - t0);
 }
 

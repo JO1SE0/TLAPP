@@ -381,13 +381,42 @@ syncMinimap();
     });
     const badAlive = Object.entries(r3).filter(([, v]) => !(v.items > 0 && v.moved > 20 && v.touched === 0 && v.ms < 3));
     check('alrededores con vida: todos se mueven, nada pisa la cancha y es liviano', badAlive.length === 0, JSON.stringify(badAlive.length ? badAlive : Object.fromEntries(Object.entries(r3).map(([k, v]) => [k, `${v.ms}ms`]))));
+    // Camisetas, gente en la sala y Fresa según el momento.
+    const KITS = between(GP, 'const envKitSeen = {', 'function teamKit(team, kit) {');
+    const r4 = await p.evaluate((code) => {
+      const E = module.exports;
+      const k = new Function(`${code}; return { envKitSeen, noteEnvKit };`)();
+      k.noteEnvKit(1, { ib: [0x00a000, 0xffffff] }); k.noteEnvKit(2, { ib: [0x000000] });
+      const hex = k.envKitSeen.hex;
+      const mk = () => { const c = document.createElement('canvas'); c.width = 1000; c.height = 600; return c; };
+      const count = (opt, rgb) => {
+        const c = mk(), g = c.getContext('2d'); g.setTransform(1, 0, 0, 1, 500, 300);
+        E.paintEnv(g, 'estadio', { halfW: 370, halfH: 170 }, opt);
+        const d = g.getImageData(0, 0, 1000, 600).data; let n = 0;
+        for (let i = 0; i < d.length; i += 4) if (Math.abs(d[i] - rgb[0]) < 6 && Math.abs(d[i + 1] - rgb[1]) < 6 && Math.abs(d[i + 2] - rgb[2]) < 6) n++;
+        return n;
+      };
+      const green = count({ kits: { Red: hex.Red, Blue: hex.Blue } }, [0, 160, 0]);
+      const greenDefault = count({}, [0, 160, 0]);
+      // Sala casi vacía: menos gente (menos remeras rojas de fábrica).
+      const full = count({ fill: 1 }, [0xd2, 0x4a, 0x4a]), empty = count({ fill: 0.3 }, [0xd2, 0x4a, 0x4a]);
+      // Fresa: gol en contra (ojos tapados) se ve distinta que tranquila.
+      const fr = (o) => { const bg = mk(), gb = bg.getContext('2d'); gb.setTransform(1, 0, 0, 1, 500, 300); const reg = E.paintEnv(gb, 'barrio', { halfW: 370, halfH: 170 }, { alive: true });
+        const c = mk(), g = c.getContext('2d'); g.setTransform(1, 0, 0, 1, 500, 300); E.paintAlive(g, 'barrio', { halfW: 370, halfH: 170 }, 1000, reg, o, { x0: -500, y0: -300, x1: 500, y1: 300 }); return g.getImageData(440, 480, 100, 80).data; };
+      const calm = fr({}), sad = fr({ hot: true, cheer: 'Blue' }), lap = fr({ fireworks: 'Red' });
+      let dSad = 0, dLap = 0; for (let i = 0; i < calm.length; i++) { if (calm[i] !== sad[i]) dSad++; if (calm[i] !== lap[i]) dLap++; }
+      return { hex: `${hex.Red}|${hex.Blue}`, green, greenDefault, full, empty, dSad, dLap };
+    }, KITS);
+    check('alrededores: la hinchada se viste con las camisetas del partido (y a franjas)', r4.hex === '#00a000,#ffffff|#000000' && r4.green > 300 && r4.greenDefault === 0, JSON.stringify(r4));
+    check('alrededores: la tribuna se llena según la gente de la sala', r4.empty < r4.full * 0.6, JSON.stringify({ lleno: r4.full, vacio: r4.empty }));
+    check('alrededores: Fresa se tapa los ojos con el gol en contra y da la vuelta si ganan', r4.dSad > 80 && r4.dLap > 200, JSON.stringify({ triste: r4.dSad, vuelta: r4.dLap }));
     const CACHED = between(GP, 'function worldView(m, w, h) {', '/**\n * Rectángulo con esquinas') + between(GP, 'const env = { cheer: null', 'function flushStadiumCache(view) {') + between(GP, '/** Terminó el partido: fuegos artificiales', 'function closeMatch(f, room, nextStarted) {');
     const r2 = await p.evaluate((code) => {
       const pitchEnv = module.exports;
       const visual = { env: 'barrio' };
       // eslint-disable-next-line no-new-func
       window.FLUSH = 0;
-      const stubs = { log: () => {}, flatGraphicsEnabled: false, state: { config: { visual: {} } }, safe: (fn, ...a) => fn(...a), peers: new Map([['Mati', {}]]), myNick: () => 'Yo', flushStadiumCache: () => { window.FLUSH++; }, gameWindow: () => null, gameDocument: () => null, teamNameOf: (f, p) => p.t };
+      const stubs = { envKitSeen: { sig: '', hex: { Red: null, Blue: null } }, real: { clock: 0 }, log: () => {}, flatGraphicsEnabled: false, state: { config: { visual: {} } }, safe: (fn, ...a) => fn(...a), peers: new Map([['Mati', {}]]), myNick: () => 'Yo', flushStadiumCache: () => { window.FLUSH++; }, gameWindow: () => null, gameDocument: () => null, teamNameOf: (f, p) => p.t };
       const mod = new Function('pitchEnv', 'visual', 'document', ...Object.keys(stubs), `${code}; return { env, paintEnvCached, envTrackScore, envNames, envScore, envFinal, envLook, envNamesShown, envAliveOn, envSlowNote, envSlow };`)(pitchEnv, visual, document, ...Object.values(stubs));
       const mk = () => { const c = document.createElement('canvas'); c.width = 900; c.height = 500; return c; };
       const world = new DOMMatrix([1.1, 0, 0, 1.1, 450, 250]);

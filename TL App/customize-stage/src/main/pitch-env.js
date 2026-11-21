@@ -36,8 +36,24 @@ const ENVS = [
 const IDS = new Set(ENVS.map(([id]) => id).filter((id) => id !== 'none'));
 const has = (id) => IDS.has(id);
 
-const RED = '#d24a4a';
-const BLUE = '#3d6ad6';
+// Los colores de cada hinchada: los de las camisetas del partido si se conocen
+// (los pone paintEnv / paintAlive), y si no, rojo y azul.
+const RED0 = '#d24a4a';
+const BLUE0 = '#3d6ad6';
+let RED = RED0;
+let BLUE = BLUE0;
+/** Las franjas de cada camiseta (1 a 3 colores), para vestir a la hinchada. */
+const KIT = { Red: [RED0], Blue: [BLUE0] };
+
+/** Toma las camisetas del partido: { Red: [colores], Blue: [colores] } en #rrggbb. */
+function useKits(kits) {
+  const ok = (a) => Array.isArray(a) && a.length && a.every((c) => /^#[0-9a-f]{6}$/i.test(c));
+  KIT.Red = kits && ok(kits.Red) ? kits.Red.slice(0, 3) : [RED0];
+  KIT.Blue = kits && ok(kits.Blue) ? kits.Blue.slice(0, 3) : [BLUE0];
+  RED = KIT.Red[0];
+  BLUE = KIT.Blue[0];
+  LIVE.pk = `${KIT.Red.join('')}${KIT.Blue.join('')}`;
+}
 const SKIN = ['#e9c4a0', '#d6a77f', '#b98559', '#8d5a3b', '#f2d3b6', '#6b4229'];
 const HAIR = ['#2a1d14', '#1a1a1a', '#5a3b22', '#8a6a3c', '#3b2a1e', '#b9b2a6'];
 const NEUTRAL = ['#e8e2d0', '#2b2b2b', '#6b6f78', '#7a6a55', '#c9a24a', '#3f5a3a', '#5b3a5e'];
@@ -140,7 +156,7 @@ function person(ctx, rnd, x, y, shirt, up, scale = 1) {
   ctx.fillStyle = 'rgba(0,0,0,0.28)';
   ctx.beginPath(); ctx.ellipse(x + 2.5 * s, y + 3.5 * s, 7.5 * s, 5 * s, 0, 0, 7); ctx.fill();
   if (up) {
-    ctx.strokeStyle = shirt;
+    ctx.strokeStyle = Array.isArray(shirt) ? shirt[0] : shirt;
     ctx.lineWidth = 3.2 * s;
     ctx.lineCap = 'round';
     ctx.beginPath();
@@ -149,8 +165,21 @@ function person(ctx, rnd, x, y, shirt, up, scale = 1) {
     ctx.stroke();
     ctx.lineCap = 'butt';
   }
-  ctx.fillStyle = shirt;
+  const stripes = Array.isArray(shirt) ? shirt : null;
+  ctx.fillStyle = stripes ? stripes[0] : shirt;
   ctx.beginPath(); ctx.ellipse(x, y + 1, 7.2 * s, 4.8 * s, 0, 0, 7); ctx.fill();
+  if (stripes && stripes.length > 1) {
+    // Camiseta a franjas: bandas verticales de los otros colores.
+    ctx.save();
+    ctx.beginPath(); ctx.ellipse(x, y + 1, 7.2 * s, 4.8 * s, 0, 0, 7); ctx.clip();
+    for (let k = 1; k < stripes.length; k++) {
+      ctx.fillStyle = stripes[k];
+      const bx = x - 7.2 * s + (k / stripes.length) * 14.4 * s;
+      ctx.fillRect(bx - 1.6 * s, y - 4, 3.2 * s, 10 * s);
+      if (stripes.length === 2) ctx.fillRect(x - 7.2 * s + 0.2 * 14.4 * s - 1.6 * s, y - 4, 3.2 * s, 10 * s);
+    }
+    ctx.restore();
+  }
   ctx.fillStyle = 'rgba(255,255,255,0.16)';
   ctx.beginPath(); ctx.ellipse(x - 2 * s, y, 4 * s, 2.4 * s, 0, 0, 7); ctx.fill();
   const skin = pick(rnd, SKIN);
@@ -184,13 +213,15 @@ function person(ctx, rnd, x, y, shirt, up, scale = 1) {
 /** La remera de un hincha: del equipo o de calle. */
 function shirtFor(rnd, team) {
   const r = rnd();
-  if (r < 0.62) return team === 'Red' ? RED : BLUE;
+  if (r < 0.62) { const k = team === 'Red' ? KIT.Red : KIT.Blue; return k.length > 1 ? k : k[0]; }
   if (r < 0.72) return '#f1f1ec';
   return pick(rnd, NEUTRAL);
 }
 
 /** Un bloque de gente (tribuna o montón): filas con algo de desorden. */
 function crowd(ctx, rnd, x0, y0, x1, y1, o, gapX = 16, gapY = 15, density = 0.9) {
+  // Cuánta gente hay en la sala llena más o menos la tribuna.
+  density *= LIVE.fill;
   const seed = Math.floor(rnd() * 1e9);
   if (REG) REG.crowds.push({ x0, y0, x1, y1, gapX, gapY, density, seed });
   // Con vida, la tribuna entera la dibuja la capa viva (se mueve toda junta).
@@ -520,7 +551,7 @@ function paint(ctx, text, x, y, font, color, mirror, maxW) {
  * (los LED lo muestran), quién hizo el gol (en el festejo) y los nombres de
  * los que usan TL App en la sala (los trapos les dan aliento).
  */
-const LIVE = { score: '', scorer: '', names: [], wet: false, snow: false, night: false, gap: 0 };
+const LIVE = { score: '', scorer: '', names: [], wet: false, snow: false, night: false, gap: 0, pk: '', fill: 1 };
 /** Las luces de la escena (las anota lampPost): de noche son las que alumbran. */
 const LIGHTS = [];
 /**
@@ -1322,7 +1353,7 @@ function curl(ctx, x, y, r) {
  * gorra de TL y la pizarrita. `up`: gol de su equipo, se para con las patitas
  * arriba y mueve la cola.
  */
-function fresaDT(ctx, x, y, up, team, mirror, wag = 0) {
+function fresaDT(ctx, x, y, up, team, mirror, wag = 0, mood = '') {
   const k = 1.15;
   ctx.save();
   ctx.translate(x, y);
@@ -1367,6 +1398,19 @@ function fresaDT(ctx, x, y, up, team, mirror, wag = 0) {
   ctx.beginPath(); ctx.ellipse(0, -9.5, 9.5, 2.4, 0, 0, 7); ctx.fill();
   paint(ctx, 'TL', 0, -13.5, '900 5px sans-serif', '#ffffff', mirror);
   curl(ctx, -7.5, -10, 2.6); curl(ctx, 7.5, -10, 2.6);
+  // Gol en contra: se tapa los ojos con las patitas.
+  if (mood === 'sad') {
+    ctx.fillStyle = '#7a4a3a';
+    ctx.beginPath(); ctx.ellipse(0, -1.5, 2.2, 1.7, 0, 0, 7); ctx.fill();
+    ctx.fillStyle = FW;
+    ctx.beginPath(); ctx.arc(-3.8, -5, 3.4, 0, 7); ctx.arc(3.8, -5, 3.4, 0, 7); ctx.fill();
+    ctx.strokeStyle = FL; ctx.lineWidth = 0.6;
+    for (const sx of [-1, 1]) { ctx.beginPath(); ctx.moveTo(sx * 3.8 - 1.4, -6); ctx.lineTo(sx * 3.8 - 1.4, -3.8); ctx.moveTo(sx * 3.8 + 0.2, -6.4); ctx.lineTo(sx * 3.8 + 0.2, -3.6); ctx.stroke(); }
+    ctx.strokeStyle = '#7a4a3a'; ctx.lineWidth = 0.8;
+    ctx.beginPath(); ctx.moveTo(-2, 1.6); ctx.quadraticCurveTo(0, 0.2, 2, 1.6); ctx.stroke();
+    ctx.restore();
+    return;
+  }
   // Cara: ojos, nariz y boca (abierta si festeja).
   ctx.fillStyle = '#2a1d16';
   ctx.beginPath(); ctx.ellipse(-3.4, -5, 1.6, 1.8, 0, 0, 7); ctx.ellipse(3.4, -5, 1.6, 1.8, 0, 0, 7); ctx.fill();
@@ -1376,6 +1420,13 @@ function fresaDT(ctx, x, y, up, team, mirror, wag = 0) {
   ctx.beginPath(); ctx.ellipse(0, -1.5, 2.2, 1.7, 0, 0, 7); ctx.fill();
   if (up) { ctx.fillStyle = '#e8737a'; ctx.beginPath(); ctx.ellipse(0, 2, 1.8, 2.4, 0, 0, 7); ctx.fill(); }
   else { ctx.strokeStyle = '#7a4a3a'; ctx.lineWidth = 0.8; ctx.beginPath(); ctx.moveTo(-2, 0.6); ctx.quadraticCurveTo(0, 2, 2, 0.6); ctx.stroke(); }
+  // Empate: se rasca la cabeza con una pata y le sale un signo de pregunta.
+  if (mood === 'scratch') {
+    ctx.strokeStyle = FS; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(9, 3); ctx.lineTo(10 + wag, -10); ctx.stroke();
+    curl(ctx, 10 + wag, -11, 3);
+    paint(ctx, '?', 15, -20, '900 9px sans-serif', '#f0c25a', mirror);
+  }
   ctx.restore();
 }
 
@@ -1491,6 +1542,7 @@ function mkCanvas(w, h) {
  * `draw(g)` dibuja con el centro en (0,0), dentro de ±r unidades.
  */
 function sprite(key, r, draw) {
+  key = LIVE.pk + key;
   let sp = SPRITES.get(key);
   if (sp) return sp;
   if (SPRITES.size > 260) SPRITES.clear();
@@ -1564,7 +1616,7 @@ let blocksScene = '';
 const B_PX = 1.6;
 
 function crowdBlock(B, mode, tag) {
-  const key = `${B.seed}|${mode}|${tag}`;
+  const key = `${B.seed}|${B.density}|${mode}|${tag}`;
   let bl = BLOCKS.get(key);
   if (bl) return bl;
   const pad = 14;
@@ -1629,6 +1681,7 @@ function paintAlive(ctx, id, bounds, t, reg, o = {}, vis = null) {
   if (!reg || !bounds || !DRAW[id]) return 0;
   const { W0, W, H, gap } = envDims(bounds);
   LIVE.gap = gap;
+  useKits(o.kits);
   const see = (x, y, r) => !vis || (x + r > vis.x0 && x - r < vis.x1 && y + r > vis.y0 && y - r < vis.y1);
   let n = 0;
   LIVE.wet = o.weather === 'rain' || o.weather === 'storm';
@@ -1643,7 +1696,7 @@ function paintAlive(ctx, id, bounds, t, reg, o = {}, vis = null) {
     ctx.rect(-W0, -H, 2 * W0, 2 * H);
     ctx.clip('evenodd');
     // La tribuna: respira (A/B), pasa la ola cada tanto y en el gol salta la del que metió.
-    const tag = `${LIVE.wet ? 'w' : ''}${LIVE.snow ? 's' : ''}${night ? 'n' : ''}`;
+    const tag = `${LIVE.wet ? 'w' : ''}${LIVE.snow ? 's' : ''}${night ? 'n' : ''}${LIVE.pk}`;
     if (blocksScene !== id + tag) { BLOCKS.clear(); blocksScene = id + tag; }
     const beat = Math.floor(t / 280) % 2;
     const wf = (t % 24000) / 24000;
@@ -1857,14 +1910,28 @@ function paintAlive(ctx, id, bounds, t, reg, o = {}, vis = null) {
       if (see(x, reg.lane.y, 30)) { car(ctx, x, reg.lane.y, 0, '#c9a24a'); n++; }
     }
     // Fresa: mueve la cola; en el gol de los suyos, festeja.
-    if (reg.fresa && see(reg.fresa.x, reg.fresa.y, 30)) {
-      const up = o.cheer === reg.fresa.team;
+    if (reg.fresa && see(reg.fresa.x, reg.fresa.y, 40)) {
+      const team = reg.fresa.team;
+      // Al final: si ganaron, da vueltas festejando; si empataron, se rasca la cabeza.
+      const won = o.fireworks === team, draw = o.fireworks === 'draw';
+      const sad = o.hot && o.cheer && o.cheer !== team;
+      if (won || draw || sad) {
+        const mood = won ? '' : draw ? 'scratch' : 'sad';
+        const wag = won ? Math.round(Math.sin(t / 90) * 3) / 3 : draw ? Math.round(Math.sin(t / 300) * 2) / 2 : 0;
+        const sp = sprite(`fresa${won ? 1 : 0}${team}${o.mirror ? 1 : 0}${wag}${mood}`, 34, (g) => fresaDT(g, 0, 0, won, team, !!o.mirror, wag, mood));
+        let fx = reg.fresa.x, fy = reg.fresa.y;
+        if (won) { const a = t / 650; fx += Math.cos(a) * 20; fy += Math.sin(a) * 9 - Math.abs(Math.sin(t / 150)) * 3; }
+        ctx.globalAlpha = night ? 0.8 : 1;
+        stamp(ctx, sp, fx, fy); n++;
+      } else {
+      const up = o.cheer === team;
       const hop = up ? Math.abs(Math.sin(t / 160)) * 4 : (hash01(Math.floor(t / 3000)) < 0.25 ? Math.abs(Math.sin(t / 140)) * 2 : 0);
       ctx.globalAlpha = night ? 0.8 : 1;
       const wag = Math.round(Math.sin(t / (up ? 90 : 160)) * 3) / 3;
       const sp = sprite(`fresa${up ? 1 : 0}${reg.fresa.team}${o.mirror ? 1 : 0}${wag}`, 34, (g) => fresaDT(g, 0, 0, up, reg.fresa.team, !!o.mirror, wag));
       stamp(ctx, sp, reg.fresa.x, reg.fresa.y - hop);
       n++;
+      }
     }
   } finally {
     ctx.restore();
@@ -1903,6 +1970,8 @@ function paintEnv(ctx, id, bounds, o = {}) {
     LIVE.snow = o.weather === 'snow' || o.weather === 'blizzard';
     LIVE.night = !!o.night;
     LIVE.alive = !!o.alive;
+    LIVE.fill = Number.isFinite(o.fill) ? Math.max(0.25, Math.min(1, o.fill)) : 1;
+    useKits(o.kits);
     LIGHTS.length = 0;
     REG = { leds: [], crowds: [], flags: [], dogs: [], kids: [], pitches: [], smoke: [], cows: [], flashes: [], screens: [], windows: [], walkers: [], runners: [], bulbs: [], trapos: [], fresa: null, mill: null, volley: null, gulls: null, lane: null };
     fn(ctx, W, H, { cheer: o.cheer || null, hot: !!o.hot, mirror: !!o.mirror });
