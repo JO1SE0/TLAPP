@@ -9457,6 +9457,8 @@ function envBitmap(doc, world, bounds, hot) {
   const reg = pitchEnv.paintEnv(g, visual.env, bounds, hot
     ? { cheer: env.cheer, hot: true, mirror: env.mirror, scorer: env.scorer, score: envScore(), names: envNamesShown(), ...L }
     : { mirror: env.mirror, score: envScore(), names: envNamesShown(), ...L });
+  // Los bordes de la imagen se funden con lo de afuera (no se ve el recuadro).
+  safe(pitchEnv.feather, g, bounds);
   if (hot) env.regHot = reg && typeof reg === 'object' ? reg : null;
   else env.regNormal = reg && typeof reg === 'object' ? reg : null;
   bmp.__ext = ext;
@@ -9473,15 +9475,14 @@ function paintEnvCached(ctx, world, bounds, w, h) {
   const bmp = envBitmap(doc, world, bounds, env.hot);
   const ext = bmp.__ext;
   ctx.setTransform(world);
-  // Lo que quede más allá de la imagen (zoom muy alejado): del color del piso.
+  // Lo que quede más allá de la imagen (zoom alejado): el lugar sigue (ciudad,
+  // barrio, campo…). Va una vez con el cache, como antes el color liso.
   const view = worldView(world, w || cv.width, h || cv.height);
-  ctx.beginPath();
-  ctx.rect(view.x, view.y, view.w, view.h);
-  ctx.rect(-ext.x, -ext.y, 2 * ext.x, 2 * ext.y);
   ctx.save();
-  ctx.clip('evenodd');
-  ctx.fillStyle = pitchEnv.groundColor(visual.env);
-  ctx.fillRect(view.x, view.y, view.w, view.h);
+  try { pitchEnv.paintFar(ctx, visual.env, bounds, view); } catch (e) {
+    ctx.beginPath(); ctx.rect(view.x, view.y, view.w, view.h); ctx.rect(-ext.x, -ext.y, 2 * ext.x, 2 * ext.y); ctx.clip('evenodd');
+    ctx.fillStyle = pitchEnv.groundColor(visual.env); ctx.fillRect(view.x, view.y, view.w, view.h);
+  }
   ctx.restore();
   ctx.drawImage(bmp, -ext.x, -ext.y, 2 * ext.x, 2 * ext.y);
 }
