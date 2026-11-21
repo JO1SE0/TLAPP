@@ -495,6 +495,8 @@ const DEFAULTS = {
     /** Alrededores de la cancha: none | noche | barrio | led | f5 | playa | campo | azotea | cortada | colegio | estadio. En el cache del estadio. */
     pitchEnv: 'none',
     /** Lo de adentro de los alrededores: Fresa, festejo, resultado, nombres y fuegos. */
+    /** Que lo de los alrededores se mueva (se apaga solo con Gráficos planos). */
+    envAlive: true,
     envFresa: true,
     envCheer: true,
     envScoreLed: true,

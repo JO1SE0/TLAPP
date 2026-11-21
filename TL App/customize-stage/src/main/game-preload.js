@@ -2078,7 +2078,7 @@ function saveUndo() {
 const QM_FALLBACK = { pitchLight: 'none', texture: 'none', pitchWeather: 'none', discStyle: 'default', ballStyle: 'default',
   ballColor: '', ballOutline: '', discOutline: '', mirror: 'off', kickSfx: 'default', discSize: 1, ballSize: 1,
   scoreboardPos: 'top', scoreboardScale: 1, pitchBright: 1, pitchContrast: 1, pitchEnv: 'none',
-  envFresa: true, envCheer: true, envScoreLed: true, envNames: true, envFireworks: true };
+  envAlive: true, envFresa: true, envCheer: true, envScoreLed: true, envNames: true, envFireworks: true };
 let qmCurLabel = '';
 function quickSet(patch, label) {
   const before = {};
@@ -2514,6 +2514,7 @@ function buildQuickMenu() {
   // Lo de adentro de los alrededores: sólo se ve con un escenario puesto.
   when = () => !!(cfg().visual.pitchEnv && cfg().visual.pitchEnv !== 'none');
   const vb = (k) => () => cfg().visual[k] !== false;
+  toggle('Alrededores con vida', vb('envAlive'), (v) => quickSet({ visual: { envAlive: v } }));
   toggle('Fresa, la DT', vb('envFresa'), (v) => quickSet({ visual: { envFresa: v } }));
   toggle('Festejo de la tribuna', vb('envCheer'), (v) => quickSet({ visual: { envCheer: v } }));
   toggle('Resultado en los LED', vb('envScoreLed'), (v) => quickSet({ visual: { envScoreLed: v } }));
@@ -8841,7 +8842,11 @@ function skinPitch(ctx, w, h, stadium) {
       ctx.setTransform(world);
       // El festejo se dibuja en el momento (el juego está parado por el gol);
       // lo normal queda guardado y se pega: volver del gol es casi gratis.
-      if (env.hot) pitchEnv.paintEnv(ctx, visual.env, bounds, { cheer: env.cheer, hot: true, mirror: env.mirror, scorer: env.scorer, score: envScore(), names: envNamesShown(), ...envLook() });
+      env.bounds = bounds;
+      if (env.hot) {
+        const reg = pitchEnv.paintEnv(ctx, visual.env, bounds, { cheer: env.cheer, hot: true, mirror: env.mirror, scorer: env.scorer, score: envScore(), names: envNamesShown(), ...envLook() });
+        env.regHot = reg && typeof reg === 'object' ? reg : null;
+      }
       else paintEnvCached(ctx, world, bounds);
     } catch (err) {
       log('error', `los alrededores no se pudieron dibujar: ${err.message}`, 'juego');
@@ -9302,7 +9307,7 @@ function pitchSkinPrint() {
   const skin = (state.config.pitch && state.config.pitch.skin) || {};
   const field = pitchSkinColor();
   const vip = state.config.vip || {};
-  return `${skin.mode}|${field}|${pitchOutsideColor(field)}|${skin.strength}|${skin.brightness}|${skin.stripes}|${skin.cut}|${skin.imageAlpha}|${skin.relief}|${skin.reliefAmount}|${visual.weather}|${visual.weatherAmount}|${vip.pitchImage}|${JSON.stringify(vip.pitchCrop || null)}|${visual.pitchLine}|${flatGraphicsEnabled}|${visual.texture}|${visual.light}|${visual.crest}|${visual.crestOpacity}|${visual.crestSize}|${visual.lineColor}|${visual.lineGlow}|${visual.bright}|${visual.contrast}|${visual.env}|${visual.env ? `${visual.weather}/${visual.light}/${['envFresa', 'envCheer', 'envScoreLed', 'envNames', 'envFireworks'].map((k) => (state.config.visual || {})[k] !== false ? 1 : 0).join('')}` : ''}`;
+  return `${skin.mode}|${field}|${pitchOutsideColor(field)}|${skin.strength}|${skin.brightness}|${skin.stripes}|${skin.cut}|${skin.imageAlpha}|${skin.relief}|${skin.reliefAmount}|${visual.weather}|${visual.weatherAmount}|${vip.pitchImage}|${JSON.stringify(vip.pitchCrop || null)}|${visual.pitchLine}|${flatGraphicsEnabled}|${visual.texture}|${visual.light}|${visual.crest}|${visual.crestOpacity}|${visual.crestSize}|${visual.lineColor}|${visual.lineGlow}|${visual.bright}|${visual.contrast}|${visual.env}|${visual.env ? `${visual.weather}/${visual.light}/${['envAlive', 'envFresa', 'envCheer', 'envScoreLed', 'envNames', 'envFireworks'].map((k) => (state.config.visual || {})[k] !== false ? 1 : 0).join('')}` : ''}`;
 }
 
 /** Le tira el cache al estadio para que se vuelva a dibujar con el color nuevo. */
@@ -9311,7 +9316,12 @@ function pitchSkinPrint() {
  * y la gente del que metió levanta los brazos) y el espejo. Cada cambio rehace
  * el cache del estadio una vez; entre cambios no se dibuja nada.
  */
-const env = { cheer: null, hot: false, mirror: false, timer: 0, pre: 0, bmp: null, key: '', last: null, red: NaN, blue: NaN, scorer: '', names: [], match: null, fireworks: null, team: 'Red' };
+const env = { cheer: null, hot: false, mirror: false, timer: 0, pre: 0, bmp: null, key: '', last: null, red: NaN, blue: NaN, scorer: '', names: [], match: null, fireworks: null, team: 'Red', regNormal: null, regHot: null, bounds: null };
+
+/** Los alrededores se mueven: interruptor prendido y sin «Gráficos planos». */
+function envAliveOn() {
+  return !!visual.env && (state.config.visual || {}).envAlive !== false && !flatGraphicsEnabled;
+}
 
 /** Lo que no cambia en el festejo: clima, noche (la «Luz» de noche) y fuegos del final. */
 function envLook() {
@@ -9319,7 +9329,7 @@ function envLook() {
   return {
     weather: visual.weather || '', night: visual.light === 'night',
     fireworks: c.envFireworks === false ? null : env.fireworks,
-    fresa: c.envFresa !== false, fresaTeam: env.team
+    fresa: c.envFresa !== false, fresaTeam: env.team, alive: envAliveOn()
   };
 }
 
@@ -9346,7 +9356,7 @@ function envNames() {
 
 function envKey(world, bounds, cv) {
   const L = envLook();
-  return [visual.env, env.mirror, envScore(), envNamesShown().join(','), L.weather, L.night, L.fireworks, L.fresa, L.fresaTeam, bounds.halfW, bounds.halfH, world.a, world.b, world.c, world.d, world.e, world.f, cv.width, cv.height].join('|');
+  return [visual.env, env.mirror, envScore(), envNamesShown().join(','), L.weather, L.night, L.fireworks, L.fresa, L.fresaTeam, L.alive, bounds.halfW, bounds.halfH, world.a, world.b, world.c, world.d, world.e, world.f, cv.width, cv.height].join('|');
 }
 
 /** Arma lo normal en un canvas aparte (con el resultado y los nombres de ahora). */
@@ -9356,7 +9366,8 @@ function buildEnvBitmap(doc, world, bounds, w, h, key) {
   bmp.height = h;
   const g = bmp.getContext('2d');
   g.setTransform(world);
-  pitchEnv.paintEnv(g, visual.env, bounds, { mirror: env.mirror, score: envScore(), names: envNamesShown(), ...envLook() });
+  const reg = pitchEnv.paintEnv(g, visual.env, bounds, { mirror: env.mirror, score: envScore(), names: envNamesShown(), ...envLook() });
+  env.regNormal = reg && typeof reg === 'object' ? reg : null;
   env.bmp = bmp;
   env.key = key;
 }
@@ -9427,6 +9438,23 @@ function envTrackScore(view, f, match, room) {
   env.red = r;
   env.blue = b;
   if (!env.hot) { env.names = envNames(); flushStadiumCache(view); }
+}
+
+/** Lo que se ve de la cancha, en unidades: para no dibujar lo de afuera de la pantalla. */
+const envVis = { x0: 0, y0: 0, x1: 0, y1: 0 };
+function paintEnvAlive(ctx) {
+  const reg = env.hot ? env.regHot : env.regNormal;
+  if (!reg) return;
+  const cv = ctx.canvas;
+  const inv = ctx.getTransform().inverse();
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  for (const [px, py] of [[0, 0], [cv.width, 0], [0, cv.height], [cv.width, cv.height]]) {
+    const x = inv.a * px + inv.c * py + inv.e, y = inv.b * px + inv.d * py + inv.f;
+    if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y;
+  }
+  envVis.x0 = x0; envVis.y0 = y0; envVis.x1 = x1; envVis.y1 = y1;
+  const L = envLook();
+  pitchEnv.paintAlive(ctx, visual.env, env.bounds, performance.now(), reg, { cheer: env.cheer, hot: env.hot, mirror: env.mirror, weather: L.weather, night: L.night }, envVis);
 }
 
 function flushStadiumCache(view) {
@@ -9589,7 +9617,11 @@ function paintPitch(ctx, renderer, zoom) {
   const wantSelfTrail = visual.selfTrail && !replay;
   const wantWeather = !!visual.weather;
   const wantScore = !!visual.score;
-  if (!wantTrail && !wantTeams && !wantSelf && !wantTouch && !wantHeat && !wantSelfTrail && !wantWeather && !wantScore) return;
+  const wantEnv = envAliveOn() && !!env.bounds;
+  if (!wantTrail && !wantTeams && !wantSelf && !wantTouch && !wantHeat && !wantSelfTrail && !wantWeather && !wantScore && !wantEnv) return;
+
+  // Los alrededores con vida: va primero, abajo de todo lo demás.
+  if (wantEnv) safe(paintEnvAlive, ctx);
 
   // El velo plano va en el cache de la cancha (`skinPitch`): acá sólo lo que se mueve.
   if (wantWeather) lookfx.paintWeather(ctx, visual.weather, visual.weatherAmount, performance.now(), true);

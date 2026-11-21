@@ -180,6 +180,7 @@ function shirtFor(rnd, team) {
 
 /** Un bloque de gente (tribuna o montón): filas con algo de desorden. */
 function crowd(ctx, rnd, x0, y0, x1, y1, o, gapX = 16, gapY = 15, density = 0.9) {
+  if (REG) REG.crowds.push([x0, y0, x1, y1]);
   for (let y = y0; y <= y1; y += gapY) {
     const shift = (Math.round((y - y0) / gapY) % 2) * gapX * 0.5;
     for (let x = x0 + shift; x <= x1; x += gapX) {
@@ -289,6 +290,8 @@ function trapo(ctx, x, y, w, h, kind, text, mirror) {
 
 /** Bandera en un mástil, vista de arriba. */
 function flagPole(ctx, x, y, color, color2) {
+  if (REG) REG.flags.push({ x, y, color, color2 });
+  if (LIVE.alive) return;
   ctx.fillStyle = 'rgba(0,0,0,0.25)';
   ctx.beginPath(); ctx.ellipse(x + 16, y + 6, 16, 5, 0, 0, 7); ctx.fill();
   ctx.fillStyle = color;
@@ -347,6 +350,12 @@ function bike(ctx, x, y, a) {
 }
 
 function dog(ctx, x, y) {
+  if (REG) REG.dogs.push({ x, y });
+  if (LIVE.alive) return;
+  dogShape(ctx, x, y);
+}
+
+function dogShape(ctx, x, y) {
   ctx.fillStyle = 'rgba(0,0,0,0.25)';
   ctx.beginPath(); ctx.ellipse(x + 2, y + 2, 8, 4, 0, 0, 7); ctx.fill();
   ctx.fillStyle = '#8a5a2b';
@@ -410,6 +419,7 @@ function table(ctx, rnd, x, y) {
 
 /** Fotógrafo con su lente apuntando a la cancha. */
 function photographer(ctx, rnd, x, y, dir) {
+  if (REG) REG.flashes.push({ x: dir > 0 ? x + 14 : x - 14, y });
   ctx.fillStyle = '#1f2329';
   ctx.fillRect(dir > 0 ? x + 5 : x - 14, y - 2, 9, 4);
   person(ctx, rnd, x, y, pick(rnd, ['#2b2b2b', '#3f5a3a', '#e8e2d0']), false, 0.85);
@@ -439,6 +449,7 @@ function roof(ctx, rnd, x, y, w, h, tone) {
  * en dorado. `mirror`: el juego lo va a dar vuelta, se escribe al revés.
  */
 function led(ctx, x, y, w, h, text, hot, mirror, vertical) {
+  if (REG) REG.leds.push({ x, y, w, h, text: hot ? (LIVE.scorer ? `¡GOL! · ${LIVE.scorer}   ` : '¡GOL!   ¡GOL!   ¡GOL!   ') : text, hot, vertical: !!vertical });
   ctx.save();
   // Vertical: el cartel ocupa de x a x+h y de y a y+w; se gira y se escribe a lo largo.
   if (vertical) { ctx.translate(x + h, y); ctx.rotate(Math.PI / 2); } else ctx.translate(x, y);
@@ -495,6 +506,12 @@ function paint(ctx, text, x, y, font, color, mirror, maxW) {
 const LIVE = { score: '', scorer: '', names: [], wet: false, snow: false, night: false };
 /** Las luces de la escena (las anota lampPost): de noche son las que alumbran. */
 const LIGHTS = [];
+/**
+ * Lo que la capa viva necesita saber del dibujo quieto: dónde quedaron los LED
+ * (para correr el texto), los bloques de gente (para que algunos se paren) y
+ * Fresa. Lo llena paintEnv y lo devuelve.
+ */
+let REG = null;
 
 /** El texto de un LED con el resultado metido en el medio, si hay partido. */
 function ledText(base) {
@@ -537,7 +554,8 @@ function potreroNoche(ctx, W, H, o) {
     const x = sx * (W + 70);
     stones(ctx, x + sx * 40, -gap - 60, 14);
     scatter(ctx, rnd, x - 25, -H - 10, x + 25, -gap - 20, 4, o);
-    ball(ctx, x + sx * 10, -gap - 40);
+    if (REG) REG.kids.push({ x: x + sx * 10, y: -gap - 40, sx });
+    if (!LIVE.alive) ball(ctx, x + sx * 10, -gap - 40);
     moto(ctx, x + sx * 30, gap + 40, 1.4, pick(rnd, ['#b23a3a', '#2a2a2a', '#3d6ad6']));
     moto(ctx, x + sx * 48, gap + 46, 1.5, pick(rnd, ['#c9a24a', '#2a2a2a']));
     bike(ctx, x, gap + 80, 0.3 * sx);
@@ -607,6 +625,7 @@ function clubBarrio(ctx, W, H, o) {
   ctx.fillStyle = '#e8ddc8';
   ctx.fillRect(-W - 92, -60, 6, 120);
   paint(ctx, 'BUFFET', -W - 125, 0, '900 12px sans-serif', '#f4e7c8', o.mirror);
+  if (REG) { REG.smoke.push({ x: -W - 140, y: -50 }); REG.walkers.push({ x0: -140, x1: -50, y: H + 56 }); REG.walkers.push({ x0: 50, x1: 140, y: H + 56 }); }
   table(ctx, rnd, -W - 60, -gap - 30); table(ctx, rnd, -W - 60, gap + 30); table(ctx, rnd, -W - 110, -gap - 70);
   for (let i = 0; i < 4; i++) car(ctx, W + 110, -120 + i * 70, Math.PI / 2, pick(rnd, CARS));
   scatter(ctx, rnd, W + 40, -H, W + 75, -gap - 10, 4, o);
@@ -653,7 +672,10 @@ function potreroLed(ctx, W, H, o) {
   // Fotógrafos y alcanzapelotas detrás de los LED de abajo, y los bancos.
   for (let k = 0; k < 4; k++) photographer(ctx, rnd, -W + 30 + k * 26, H + 42, 1);
   for (let k = 0; k < 4; k++) photographer(ctx, rnd, W - 30 - k * 26, H + 42, -1);
-  for (const [x, y] of [[-W - 8, -H - 40], [W + 8, -H - 40], [-W - 8, H + 40], [W + 8, H + 40]]) person(ctx, rnd, x, y, '#f0c25a', false, 0.9);
+  for (const [x, y] of [[-W - 8, -H - 40], [W + 8, -H - 40], [-W - 8, H + 40], [W + 8, H + 40]]) {
+    if (REG) REG.walkers.push({ x0: x - 40, x1: x + 40, y, shirt: '#f0c25a' });
+    if (!LIVE.alive) person(ctx, rnd, x, y, '#f0c25a', false, 0.9);
+  }
   dugout(ctx, rnd, -130, H + 34, 110, 'Red', o);
   dugout(ctx, rnd, 20, H + 34, 110, 'Blue', o);
   // Torres de luz en las esquinas.
@@ -699,7 +721,8 @@ function canchitaF5(ctx, W, H, o) {
     ctx.beginPath(); ctx.moveTo(x0 + 10, 0); ctx.lineTo(x0 + 200, 0); ctx.stroke();
     scatter(ctx, rnd, sx < 0 ? -W - 110 : W + 60, -H + 20, sx < 0 ? -W - 60 : W + 110, -gap - 20, 5, o);
     scatter(ctx, rnd, sx < 0 ? -W - 110 : W + 60, gap + 20, sx < 0 ? -W - 60 : W + 110, H - 20, 5, o);
-    ball(ctx, sx * (W + 80), 0);
+    if (REG) REG.pitches.push({ x: x0 + 10, y: -H + 10, w: 190, h: 2 * H - 20 });
+    if (!LIVE.alive) ball(ctx, sx * (W + 80), 0);
   }
   // LED en las bandas.
   led(ctx, -W, -H - 32, 2 * W, 20, ledText('  TL APP  ·  TODA LA LECCE  ·  F5 LOS MARTES  ·'), o.hot, o.mirror);
@@ -820,7 +843,10 @@ function playa(ctx, W, H, o) {
   ctx.beginPath(); ctx.moveTo(-W - 150, H + 70); ctx.lineTo(-W - 150, H + 160); ctx.stroke();
   scatter(ctx, rnd, -W - 190, H + 80, -W - 165, H + 150, 2, o);
   scatter(ctx, rnd, -W - 135, H + 80, -W - 110, H + 150, 2, o);
-  ball(ctx, -W - 172, H + 100, 5);
+  if (REG) REG.volley = { x: -W - 150, y: H + 115 };
+  if (REG) REG.sea = sea;
+  if (!LIVE.alive) ball(ctx, -W - 172, H + 100, 5);
+  if (REG) REG.gulls = { y: -H - 160, x0: -W - 500, x1: W + 500 };
   led(ctx, -170, -H - 80, 340, 20, ledText('  TL BEACH  ·  TODA LA LECCE  ·'), o.hot, o.mirror);
   trapo(ctx, -W + 20, H + 12, 90, 14, 'franjas-r', '', o.mirror);
   trapo(ctx, -45, H + 12, 90, 14, 'blanco', cheerName(0, 'TODA LA LECCE'), o.mirror);
@@ -846,20 +872,24 @@ function cow(ctx, rnd, x, y, a) {
   ctx.restore();
 }
 
-function windmill(ctx, x, y) {
-  ctx.fillStyle = 'rgba(0,0,0,0.3)';
-  ctx.beginPath(); ctx.ellipse(x + 30, y + 14, 34, 10, 0.35, 0, 7); ctx.fill();
-  ctx.strokeStyle = '#7d7f80'; ctx.lineWidth = 2;
-  for (const [dx, dy] of [[-10, -10], [10, -10], [-10, 10], [10, 10]]) { ctx.beginPath(); ctx.moveTo(x + dx, y + dy); ctx.lineTo(x, y); ctx.stroke(); }
+function millBlades(ctx, x, y, turn) {
   ctx.fillStyle = '#b9bcbf';
   for (let i = 0; i < 12; i++) {
-    const a = (i / 12) * 6.283;
-    ctx.save(); ctx.translate(x, y); ctx.rotate(a);
+    ctx.save(); ctx.translate(x, y); ctx.rotate((i / 12) * 6.283 + turn);
     ctx.fillRect(4, -2, 20, 4);
     ctx.restore();
   }
   ctx.fillStyle = '#555';
   ctx.beginPath(); ctx.arc(x, y, 4, 0, 7); ctx.fill();
+}
+
+function windmill(ctx, x, y) {
+  ctx.fillStyle = 'rgba(0,0,0,0.3)';
+  ctx.beginPath(); ctx.ellipse(x + 30, y + 14, 34, 10, 0.35, 0, 7); ctx.fill();
+  ctx.strokeStyle = '#7d7f80'; ctx.lineWidth = 2;
+  for (const [dx, dy] of [[-10, -10], [10, -10], [-10, 10], [10, 10]]) { ctx.beginPath(); ctx.moveTo(x + dx, y + dy); ctx.lineTo(x, y); ctx.stroke(); }
+  if (REG) REG.mill = { x, y };
+  if (!LIVE.alive) millBlades(ctx, x, y, 0);
   // El tanque australiano al lado.
   ctx.fillStyle = 'rgba(0,0,0,0.25)';
   ctx.beginPath(); ctx.arc(x + 48, y + 30, 26, 0, 7); ctx.fill();
@@ -887,8 +917,11 @@ function grill(ctx, rnd, x, y, o) {
   for (let i = 0; i < 9; i++) { ctx.beginPath(); ctx.arc(x - 20 + rnd() * 40, y - 7 + rnd() * 14, 1.6, 0, 7); ctx.fill(); }
   ctx.fillStyle = '#8a3a22';
   for (let i = 0; i < 5; i++) ctx.fillRect(x - 20 + i * 9, y - 6, 7, 12);
-  ctx.fillStyle = 'rgba(220,220,220,0.18)';
-  for (let i = 0; i < 6; i++) { ctx.beginPath(); ctx.arc(x + 10 + i * 9, y - 18 - i * 7, 8 + i * 2.5, 0, 7); ctx.fill(); }
+  if (REG) REG.smoke.push({ x: x + 10, y: y - 18 });
+  if (!LIVE.alive) {
+    ctx.fillStyle = 'rgba(220,220,220,0.18)';
+    for (let i = 0; i < 6; i++) { ctx.beginPath(); ctx.arc(x + 10 + i * 9, y - 18 - i * 7, 8 + i * 2.5, 0, 7); ctx.fill(); }
+  }
   for (let k = 0; k < 5; k++) { const a = 0.8 + k * 0.45; person(ctx, rnd, x + Math.cos(a) * 42, y + Math.sin(a) * 32, shirtFor(rnd, x < 0 ? 'Red' : 'Blue'), false); }
 }
 
@@ -925,7 +958,11 @@ function campo(ctx, W, H, o) {
   ctx.strokeStyle = '#8a6a40'; ctx.lineWidth = 3;
   ctx.beginPath(); ctx.moveTo(-40, H + 22); ctx.lineTo(-40, H + 58); ctx.stroke();
   // Vacas pastando arriba, del otro lado del alambre.
-  for (let i = 0; i < 6; i++) cow(ctx, rnd, -W + 40 + i * ((2 * W - 80) / 5) + (rnd() - 0.5) * 40, -H - 60 - rnd() * 40, (rnd() - 0.5) * 2.4);
+  for (let i = 0; i < 6; i++) {
+    const cx = -W + 40 + i * ((2 * W - 80) / 5) + (rnd() - 0.5) * 40, cy = -H - 60 - rnd() * 40, ca = (rnd() - 0.5) * 2.4;
+    if (REG) REG.cows.push({ x: cx, y: cy, a: ca, seed: i + 1 });
+    if (!LIVE.alive) cow(ctx, rnd, cx, cy, ca);
+  }
   // Molino y tanque, el asado, la camioneta, fardos.
   windmill(ctx, W + 110, -H - 50);
   grill(ctx, rnd, -W - 110, H - 10, o);
@@ -965,7 +1002,10 @@ function building(ctx, rnd, x, y, w, h) {
   ctx.fillRect(x, y, w, h);
   ctx.strokeStyle = 'rgba(0,0,0,0.5)'; ctx.lineWidth = 2; ctx.strokeRect(x, y, w, h);
   for (let i = x + 6; i < x + w - 6; i += 10) {
-    for (const yy of [y + 3, y + h - 6]) { ctx.fillStyle = rnd() < 0.45 ? 'rgba(255,214,140,0.85)' : 'rgba(80,90,110,0.6)'; ctx.fillRect(i, yy, 5, 3); }
+    for (const yy of [y + 3, y + h - 6]) {
+      ctx.fillStyle = rnd() < 0.45 ? 'rgba(255,214,140,0.85)' : 'rgba(80,90,110,0.6)'; ctx.fillRect(i, yy, 5, 3);
+      if (REG && REG.windows.length < 400) REG.windows.push([i, yy]);
+    }
   }
   if (rnd() < 0.6) { ctx.fillStyle = '#444'; ctx.beginPath(); ctx.arc(x + w * 0.7, y + h * 0.4, 7, 0, 7); ctx.fill(); }
   if (rnd() < 0.4) { ctx.strokeStyle = '#777'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(x + w * 0.3, y + h * 0.5); ctx.lineTo(x + w * 0.3 + 14, y + h * 0.5 - 10); ctx.stroke(); }
@@ -1075,6 +1115,7 @@ function cortada(ctx, W, H, o) {
   crowd(ctx, rnd, -W + 10, -H - 40, W - 10, -H - 28, o, 20, 12, 0.6);
   crowd(ctx, rnd, -W + 10, H + 28, W - 10, H + 38, o, 20, 12, 0.6);
   dog(ctx, W * 0.4, H + 60);
+  if (REG) REG.lane = { y: -H - 16, x0: -W - 500, x1: W + 500 };
   // Kiosco en la esquina y cables de luz cruzando.
   ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.fillRect(-W - 160, -H - 60, 60, 36);
   ctx.fillStyle = '#f0c25a'; ctx.fillRect(-W - 164, -H - 64, 60, 36);
@@ -1139,6 +1180,7 @@ function colegio(ctx, W, H, o) {
   ctx.fillStyle = '#e86f4a'; ctx.fillRect(W + 60, H + 30, 70, 36);
   paint(ctx, 'KIOSCO', W + 95, H + 48, '900 11px sans-serif', '#fff', o.mirror);
   scatter(ctx, rnd, W + 40, H + 70, W + 140, H + 80, 4, o);
+  if (REG) { REG.runners.push({ x: -W - 70, y: 0, r: 40 }); REG.runners.push({ x: W + 80, y: -40, r: 36 }); REG.runners.push({ x: W + 70, y: H - 30, r: 30 }); }
   // Árboles del patio.
   tree(ctx, rnd, -W - 120, H + 40, 36); tree(ctx, rnd, W + 130, -H - 40, 36);
 }
@@ -1146,6 +1188,7 @@ function colegio(ctx, W, H, o) {
 /* ── Estadio grande ─────────────────────────────────────────────────── */
 
 function bigScreen(ctx, x, y, w, h, mirror) {
+  if (REG) REG.screens.push({ x, y, w, h });
   ctx.fillStyle = 'rgba(0,0,0,0.4)'; ctx.fillRect(x + 5, y + 6, w, h);
   ctx.fillStyle = '#0b0e14'; ctx.fillRect(x, y, w, h);
   ctx.strokeStyle = '#3a4252'; ctx.lineWidth = 2; ctx.strokeRect(x, y, w, h);
@@ -1231,7 +1274,7 @@ function curl(ctx, x, y, r) {
  * gorra de TL y la pizarrita. `up`: gol de su equipo, se para con las patitas
  * arriba y mueve la cola.
  */
-function fresaDT(ctx, x, y, up, team, mirror) {
+function fresaDT(ctx, x, y, up, team, mirror, wag = 0) {
   const k = 1.15;
   ctx.save();
   ctx.translate(x, y);
@@ -1242,8 +1285,9 @@ function fresaDT(ctx, x, y, up, team, mirror) {
   ctx.beginPath(); ctx.ellipse(3, up ? 17 : 12, 15, 6, 0, 0, 7); ctx.fill();
   // Cola (moviéndose si festeja).
   ctx.strokeStyle = FS; ctx.lineWidth = 3;
-  ctx.beginPath(); ctx.moveTo(10, 8); ctx.quadraticCurveTo(up ? 22 : 18, up ? -2 : 4, up ? 18 : 20, up ? -8 : -2); ctx.stroke();
-  curl(ctx, up ? 18 : 20, up ? -9 : -3, 3.2);
+  const tx = (up ? 18 : 20) + wag * 4, ty = up ? -8 : -2;
+  ctx.beginPath(); ctx.moveTo(10, 8); ctx.quadraticCurveTo((up ? 22 : 18) + wag * 2, up ? -2 : 4, tx, ty); ctx.stroke();
+  curl(ctx, tx, ty - 1, 3.2);
   // Cuerpo con rulos.
   ctx.fillStyle = FS;
   ctx.beginPath(); ctx.ellipse(0, 7, 12, 9, 0, 0, 7); ctx.fill();
@@ -1377,6 +1421,312 @@ function fireworks(ctx, rnd, W, H, team) {
   ctx.restore();
 }
 
+/* ── La capa viva ────────────────────────────────────────────────────── *
+ * Lo que se mueve, dibujado en cada cuadro arriba del fondo guardado. Pocas
+ * cosas y baratas: lo que no se ve se saltea, los LED son una imagen que se
+ * corre (el texto se arma una vez) y nada pisa la cancha.
+ */
+
+const STRIPS = new Map();
+const S_PX = 3;
+const SPRITES = new Map();
+const FOAM = { pat: null };
+
+function mkCanvas(w, h) {
+  if (typeof OffscreenCanvas !== 'undefined') return new OffscreenCanvas(w, h);
+  const c = document.createElement('canvas'); c.width = w; c.height = h; return c;
+}
+
+/**
+ * Una figura dibujada una sola vez como imagen (a 3 px por unidad) y pegada en
+ * cada cuadro: pegar es mucho más barato que volver a dibujar rulos y manchas.
+ * `draw(g)` dibuja con el centro en (0,0), dentro de ±r unidades.
+ */
+function sprite(key, r, draw) {
+  let sp = SPRITES.get(key);
+  if (sp) return sp;
+  if (SPRITES.size > 260) SPRITES.clear();
+  const px = Math.ceil(r * 2 * S_PX);
+  const cv = mkCanvas(px, px);
+  const g = cv.getContext('2d');
+  g.setTransform(S_PX, 0, 0, S_PX, px / 2, px / 2);
+  draw(g);
+  sp = { cv, r };
+  SPRITES.set(key, sp);
+  return sp;
+}
+function stamp(ctx, sp, x, y, a) {
+  if (a) {
+    ctx.save(); ctx.translate(x, y); ctx.rotate(a);
+    ctx.drawImage(sp.cv, -sp.r, -sp.r, sp.r * 2, sp.r * 2);
+    ctx.restore();
+  } else ctx.drawImage(sp.cv, x - sp.r, y - sp.r, sp.r * 2, sp.r * 2);
+}
+
+/** El texto de un LED armado una vez como imagen larga, para correrlo. */
+function ledStrip(text, w, h, hot) {
+  const key = `${text}|${w}|${h}|${hot ? 1 : 0}`;
+  let st = STRIPS.get(key);
+  if (st) return st;
+  if (STRIPS.size > 40) STRIPS.clear();
+  const probe = mkCanvas(1, 1).getContext('2d');
+  probe.font = `700 ${Math.round(h * 0.66 * S_PX)}px monospace`;
+  const unit = Math.max(8, probe.measureText(text).width / S_PX);
+  const cw = Math.ceil((w + unit + 8) * S_PX), ch = Math.ceil(h * S_PX);
+  const cv = mkCanvas(cw, ch);
+  const g = cv.getContext('2d');
+  g.fillStyle = '#07090d'; g.fillRect(0, 0, cw, ch);
+  g.fillStyle = hot ? 'rgba(255,211,77,0.14)' : 'rgba(224,179,74,0.07)'; g.fillRect(0, 0, cw, ch);
+  g.fillStyle = 'rgba(255,255,255,0.05)';
+  for (let i = 2 * S_PX; i < cw; i += 3 * S_PX) g.fillRect(i, S_PX, S_PX, ch - 2 * S_PX);
+  g.font = probe.font; g.textBaseline = 'middle'; g.fillStyle = hot ? '#ffd34d' : '#f0c25a';
+  for (let x = 4 * S_PX; x < cw; x += unit * S_PX) g.fillText(text, x, ch / 2 + S_PX * 0.5);
+  st = { cv, unit };
+  STRIPS.set(key, st);
+  return st;
+}
+
+function aliveLed(ctx, L, t, mirror) {
+  const st = ledStrip(L.text, L.w, L.h, L.hot);
+  const off = ((t / 1000) * 34) % st.unit;
+  ctx.save();
+  if (L.vertical) { ctx.translate(L.x + L.h, L.y); ctx.rotate(Math.PI / 2); } else ctx.translate(L.x, L.y);
+  if (mirror && !L.vertical) { ctx.translate(L.w, 0); ctx.scale(-1, 1); }
+  if (mirror && L.vertical) { ctx.translate(0, L.h); ctx.scale(1, -1); }
+  ctx.beginPath(); ctx.rect(1, 1, L.w - 2, L.h - 2); ctx.clip();
+  ctx.drawImage(st.cv, off * S_PX, 0, L.w * S_PX, L.h * S_PX, 0, 0, L.w, L.h);
+  ctx.restore();
+}
+
+/** Un número de 0 a 1 que salta parejo según la semilla (sin guardar azar). */
+function hash01(n) {
+  const x = Math.sin(n * 127.1 + 311.7) * 43758.5453;
+  return x - Math.floor(x);
+}
+
+/** Los que se paran en la tribuna: unos pocos por bloque, cada uno a su ritmo. */
+function crowdActors(reg) {
+  if (reg.__actors) return reg.__actors;
+  const out = [];
+  let k = 1;
+  for (const [x0, y0, x1, y1] of reg.crowds) {
+    const n = Math.max(2, Math.min(9, Math.round(((x1 - x0) * (y1 - y0)) / 3000)));
+    for (let i = 0; i < n; i++, k++) {
+      out.push({ x: x0 + hash01(k) * (x1 - x0), y: y0 + hash01(k + 0.5) * (y1 - y0), per: 2600 + hash01(k + 0.3) * 4200, ph: hash01(k + 0.7), seed: 1000 + k });
+    }
+  }
+  reg.__actors = out;
+  return out;
+}
+
+function flagWave(ctx, x, y, color, color2, t) {
+  const w = Math.sin(t / 260 + x) * 4, w2 = Math.sin(t / 260 + x + 1.4) * 4;
+  ctx.fillStyle = 'rgba(0,0,0,0.25)';
+  ctx.beginPath(); ctx.ellipse(x + 16, y + 6, 16, 5, 0, 0, 7); ctx.fill();
+  ctx.fillStyle = color;
+  ctx.beginPath(); ctx.moveTo(x, y - 2); ctx.quadraticCurveTo(x + 14, y - 2 + w, x + 28, y - 2 + w2);
+  ctx.lineTo(x + 28, y + 8 + w2); ctx.quadraticCurveTo(x + 14, y + 8 + w, x, y + 8); ctx.fill();
+  if (color2) { ctx.fillStyle = color2; ctx.fillRect(x + 9, y - 3 + w * 0.6, 9, 10); }
+  ctx.fillStyle = '#ddd';
+  ctx.beginPath(); ctx.arc(x, y + 3, 2.2, 0, 7); ctx.fill();
+}
+
+function gull(ctx, x, y, flap) {
+  ctx.strokeStyle = 'rgba(250,250,250,0.9)'; ctx.lineWidth = 1.6;
+  ctx.beginPath(); ctx.moveTo(x - 7, y - flap); ctx.quadraticCurveTo(x - 3, y - 3, x, y); ctx.quadraticCurveTo(x + 3, y - 3, x + 7, y - flap); ctx.stroke();
+}
+
+/**
+ * Dibuja lo que se mueve. `reg`: lo que devolvió paintEnv. `vis`: lo que se ve
+ * de la cancha (en unidades), para saltear lo de afuera.
+ */
+function paintAlive(ctx, id, bounds, t, reg, o = {}, vis = null) {
+  if (!reg || !bounds || !DRAW[id]) return 0;
+  const W = bounds.halfW, H = bounds.halfH;
+  const see = (x, y, r) => !vis || (x + r > vis.x0 && x - r < vis.x1 && y + r > vis.y0 && y - r < vis.y1);
+  let n = 0;
+  LIVE.wet = o.weather === 'rain' || o.weather === 'storm';
+  LIVE.snow = o.weather === 'snow' || o.weather === 'blizzard';
+  const night = !!o.night;
+  ctx.save();
+  try {
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.shadowBlur = 0;
+    ctx.beginPath();
+    ctx.rect(-W * 50, -H * 50, W * 100, H * 100);
+    ctx.rect(-W, -H, 2 * W, 2 * H);
+    ctx.clip('evenodd');
+    // LED con el texto corriendo.
+    for (const L of reg.leds) {
+      const cx = L.vertical ? L.x + L.h / 2 : L.x + L.w / 2, cy = L.vertical ? L.y + L.w / 2 : L.y + L.h / 2;
+      if (!see(cx, cy, Math.max(L.w, L.h) / 2 + 4)) continue;
+      aliveLed(ctx, L, t, o.mirror); n++;
+    }
+    ctx.globalAlpha = night ? 0.62 : 1;
+    // La tribuna: algunos se paran y levantan los brazos (en el festejo ya están todos).
+    if (!o.hot) {
+      for (const a of crowdActors(reg)) {
+        const f = ((t / a.per) + a.ph) % 1;
+        if (f > 0.16 || !see(a.x, a.y, 14)) continue;
+        const jump = Math.sin((f / 0.16) * Math.PI) * 3;
+        const team = a.x < 0 ? 'Red' : 'Blue';
+        const sp = sprite(`p${a.seed}${team}${LIVE.snow ? 's' : ''}`, 14, (g) => { const r = seeded(a.seed); person(g, r, 0, 0, shirtFor(r, team), true); });
+        stamp(ctx, sp, a.x, a.y - jump); n++;
+      }
+    }
+    // Banderas que flamean.
+    for (const F of reg.flags) if (see(F.x + 14, F.y, 30)) { flagWave(ctx, F.x, F.y, F.color, F.color2, t); n++; }
+    // Perros dando vueltas.
+    for (const [i, D] of reg.dogs.entries()) {
+      const a = t / 2600 + i * 2;
+      const x = D.x + Math.cos(a) * 16, y = D.y + Math.sin(a) * 8;
+      if (!see(x, y, 14)) continue;
+      stamp(ctx, sprite('dog', 14, (g) => dogShape(g, 0, 0)), x, y, a + Math.PI / 2); n++;
+    }
+    // Los pibes que patean afuera: la pelota va y viene entre dos.
+    for (const [i, K] of reg.kids.entries()) {
+      if (!see(K.x, K.y, 40)) continue;
+      const kid = (j) => sprite(`kid${i}_${j}`, 13, (g) => { const r = seeded(500 + i * 2 + j); person(g, r, 0, 0, shirtFor(r, K.sx < 0 ? 'Red' : 'Blue'), false); });
+      stamp(ctx, kid(0), K.x - 24, K.y); stamp(ctx, kid(1), K.x + 24, K.y + 6);
+      const f = (Math.sin(t / 700 + i) + 1) / 2;
+      ball(ctx, K.x - 18 + f * 36, K.y + 3 - Math.sin(f * Math.PI) * 6, 4); n += 3;
+    }
+    // Canchitas de al lado: dos contra dos.
+    for (const [i, P] of reg.pitches.entries()) {
+      if (!see(P.x + P.w / 2, P.y + P.h / 2, Math.max(P.w, P.h) / 2)) continue;
+      const cx = P.x + P.w / 2, cy = P.y + P.h / 2;
+      let bx = 0, by = 0;
+      for (let k = 0; k < 4; k++) {
+        const ph = t / (1800 + k * 300) + k * 1.7 + i;
+        const x = cx + Math.sin(ph) * P.w * 0.32, y = cy + Math.cos(ph * 0.8) * P.h * 0.32;
+        bx += x; by += y;
+        ctx.fillStyle = k < 2 ? RED : BLUE;
+        ctx.beginPath(); ctx.arc(x, y, 7, 0, 7); ctx.fill();
+        ctx.strokeStyle = '#111'; ctx.lineWidth = 1.5; ctx.stroke();
+      }
+      ball(ctx, bx / 4 + Math.sin(t / 400) * 6, by / 4, 4); n += 5;
+    }
+    // Humo (asado, buffet).
+    for (const [i, S] of reg.smoke.entries()) {
+      if (!see(S.x + 20, S.y - 30, 60)) continue;
+      const puff = sprite('puff', 10, (g) => { g.fillStyle = 'rgba(220,220,220,0.22)'; g.beginPath(); g.arc(0, 0, 10, 0, 7); g.fill(); });
+      const a0 = ctx.globalAlpha;
+      for (let k = 0; k < 5; k++) {
+        const f = ((t / 2800) + k / 5 + i * 0.13) % 1;
+        const r = 6 + f * 14;
+        ctx.globalAlpha = a0 * (1 - f);
+        ctx.drawImage(puff.cv, S.x + f * 26 + Math.sin(f * 6 + k) * 4 - r, S.y - f * 46 - r, r * 2, r * 2);
+      }
+      ctx.globalAlpha = a0;
+      n++;
+    }
+    // Vacas pastando: se corren despacito.
+    for (const C of reg.cows) {
+      const x = C.x + Math.sin(t / 9000 + C.seed) * 16, y = C.y + Math.cos(t / 11000 + C.seed) * 8;
+      if (!see(x, y, 26)) continue;
+      // Girar una imagen en cada cuadro sale caro: la vaca ya viene girada, sólo se corre.
+      stamp(ctx, sprite(`cow${C.seed}`, 28, (g) => cow(g, seeded(C.seed), 0, 0, C.a)), x, y); n++;
+    }
+    if (reg.mill && see(reg.mill.x, reg.mill.y, 30)) { stamp(ctx, sprite('mill', 26, (g) => millBlades(g, 0, 0, 0)), reg.mill.x, reg.mill.y, t / 700); n++; }
+    // Flashes de los fotógrafos.
+    for (const [i, P] of reg.flashes.entries()) {
+      if (hash01(Math.floor(t / 90) * 3.7 + i) > 0.035 || !see(P.x, P.y, 14)) continue;
+      ctx.fillStyle = 'rgba(255,255,255,0.55)'; ctx.beginPath(); ctx.arc(P.x, P.y, 12, 0, 7); ctx.fill();
+      ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(P.x, P.y, 4, 0, 7); ctx.fill(); n++;
+    }
+    // Pantallas gigantes: cada tanto cambian de cartel.
+    for (const S of reg.screens) {
+      if (Math.floor(t / 4000) % 2 === 0 || !see(S.x + S.w / 2, S.y + S.h / 2, S.w)) continue;
+      ctx.fillStyle = '#0b0e14'; ctx.fillRect(S.x + 3, S.y + 3, S.w - 6, S.h - 6);
+      paint(ctx, '¡VAMOS TL!', S.x + S.w / 2, S.y + S.h / 2, `900 ${Math.round(S.h * 0.3)}px sans-serif`, Math.floor(t / 300) % 2 ? '#f0c25a' : '#ffffff', o.mirror, S.w - 10); n++;
+    }
+    // Alcanzapelotas y suplentes que caminan.
+    for (const [i, Wk] of reg.walkers.entries()) {
+      const x = Wk.x0 + (Wk.x1 - Wk.x0) * (0.5 + 0.5 * Math.sin(t / 3200 + i * 1.3));
+      if (!see(x, Wk.y, 12)) continue;
+      stamp(ctx, sprite(`w${i}${Wk.shirt || ''}`, 12, (g) => { const r = seeded(700 + i); person(g, r, 0, 0, Wk.shirt || shirtFor(r, Wk.x0 < 0 ? 'Red' : 'Blue'), false, 0.9); }), x, Wk.y); n++;
+    }
+    // Chicos corriendo en el recreo.
+    for (const [i, R] of reg.runners.entries()) {
+      for (let k = 0; k < 3; k++) {
+        const a = t / (1300 + k * 200) + k * 2.1 + i;
+        const x = R.x + Math.cos(a) * R.r, y = R.y + Math.sin(a) * R.r * 0.7;
+        if (!see(x, y, 10)) continue;
+        stamp(ctx, sprite(`k${i}_${k}`, 11, (g) => { const r = seeded(800 + i * 3 + k); person(g, r, 0, 0, pick(r, ['#f1f1ec', RED, BLUE, '#3aa37a']), false, 0.8); }), x, y); n++;
+      }
+    }
+    // Pelota de vóley en la playa.
+    if (reg.volley && see(reg.volley.x, reg.volley.y, 50)) {
+      const f = (Math.sin(t / 900) + 1) / 2;
+      const x = reg.volley.x - 28 + f * 56, h = Math.sin(f * Math.PI) * 34;
+      ctx.fillStyle = 'rgba(0,0,0,0.2)'; ctx.beginPath(); ctx.ellipse(x + 2, reg.volley.y + 4, 5, 2.5, 0, 0, 7); ctx.fill();
+      ball(ctx, x, reg.volley.y - h, 5); n++;
+    }
+    // Olas: la espuma va y viene.
+    if (reg.sea !== undefined && vis && reg.sea > vis.y0 - 20) {
+      const y = reg.sea + 3 + Math.sin(t / 1300) * 5;
+      // Una ola de muestra repetida con un patrón: un solo relleno de punta a punta.
+      if (!FOAM.pat) {
+        const cv = mkCanvas(30 * S_PX, 10 * S_PX), g = cv.getContext('2d');
+        g.scale(S_PX, S_PX); g.strokeStyle = 'rgba(255,255,255,0.7)'; g.lineWidth = 3;
+        g.beginPath(); g.moveTo(0, 3); g.quadraticCurveTo(15, 9, 30, 3); g.stroke();
+        FOAM.pat = ctx.createPattern(cv, 'repeat-x');
+      }
+      if (FOAM.pat) {
+        ctx.save(); ctx.translate(0, y - 3); ctx.scale(1 / S_PX, 1 / S_PX);
+        ctx.fillStyle = FOAM.pat; ctx.fillRect(Math.floor(vis.x0 / 30) * 30 * S_PX, 0, (vis.x1 - vis.x0 + 60) * S_PX, 10 * S_PX);
+        ctx.restore();
+      }
+      n++;
+    }
+    if (reg.gulls) {
+      for (let k = 0; k < 3; k++) {
+        const span = reg.gulls.x1 - reg.gulls.x0;
+        const x = reg.gulls.x0 + (((t / 40) + k * 260) % span), y = reg.gulls.y + k * 22 + Math.sin(t / 600 + k) * 8;
+        if (see(x, y, 10)) { gull(ctx, x, y, 3 + Math.sin(t / 120 + k) * 3); n++; }
+      }
+    }
+    // Ventanas que se prenden y se apagan.
+    if (reg.windows.length) {
+      for (let k = 0; k < 36; k++) {
+        const w = reg.windows[Math.floor(hash01(k + 0.1) * reg.windows.length)];
+        if (!see(w[0], w[1], 4)) continue;
+        const on = hash01(Math.floor(t / 2600) + k * 3.1) < 0.5;
+        ctx.fillStyle = on ? 'rgba(255,214,140,0.9)' : 'rgba(60,70,90,0.85)'; ctx.fillRect(w[0], w[1], 5, 3); n++;
+      }
+      // Un avión que cruza cada tanto, con las luces titilando.
+      const f = (t % 18000) / 18000;
+      const ax = -W - 600 + f * (2 * W + 1200), ay = -H - 230 + f * 60;
+      if (see(ax, ay, 20)) {
+        ctx.globalAlpha = 1;
+        ctx.fillStyle = 'rgba(180,190,210,0.7)'; ctx.fillRect(ax - 9, ay - 1.5, 18, 3); ctx.fillRect(ax - 2, ay - 8, 4, 16);
+        ctx.fillStyle = Math.floor(t / 400) % 2 ? '#ff4040' : '#ffffff';
+        ctx.beginPath(); ctx.arc(ax - 2, ay - 8, 1.8, 0, 7); ctx.arc(ax - 2, ay + 8, 1.8, 0, 7); ctx.fill(); n++;
+        ctx.globalAlpha = night ? 0.62 : 1;
+      }
+    }
+    // El auto que pasa por la cortada.
+    if (reg.lane) {
+      const f = (t % 9000) / 9000;
+      const x = reg.lane.x0 + f * (reg.lane.x1 - reg.lane.x0);
+      if (see(x, reg.lane.y, 30)) { car(ctx, x, reg.lane.y, 0, '#c9a24a'); n++; }
+    }
+    // Fresa: mueve la cola; en el gol de los suyos, festeja.
+    if (reg.fresa && see(reg.fresa.x, reg.fresa.y, 30)) {
+      const up = o.cheer === reg.fresa.team;
+      const hop = up ? Math.abs(Math.sin(t / 160)) * 4 : (hash01(Math.floor(t / 3000)) < 0.25 ? Math.abs(Math.sin(t / 140)) * 2 : 0);
+      ctx.globalAlpha = night ? 0.8 : 1;
+      const wag = Math.round(Math.sin(t / (up ? 90 : 160)) * 3) / 3;
+      const sp = sprite(`fresa${up ? 1 : 0}${reg.fresa.team}${o.mirror ? 1 : 0}${wag}`, 34, (g) => fresaDT(g, 0, 0, up, reg.fresa.team, !!o.mirror, wag));
+      stamp(ctx, sp, reg.fresa.x, reg.fresa.y - hop);
+      n++;
+    }
+  } finally {
+    ctx.restore();
+  }
+  return n;
+}
+
 const DRAW = { noche: potreroNoche, barrio: clubBarrio, led: potreroLed, f5: canchitaF5, playa, campo, azotea, cortada, colegio, estadio };
 
 /**
@@ -1406,14 +1756,17 @@ function paintEnv(ctx, id, bounds, o = {}) {
     LIVE.wet = o.weather === 'rain' || o.weather === 'storm';
     LIVE.snow = o.weather === 'snow' || o.weather === 'blizzard';
     LIVE.night = !!o.night;
+    LIVE.alive = !!o.alive;
     LIGHTS.length = 0;
+    REG = { leds: [], crowds: [], flags: [], dogs: [], kids: [], pitches: [], smoke: [], cows: [], flashes: [], screens: [], windows: [], walkers: [], runners: [], fresa: null, mill: null, volley: null, gulls: null, lane: null };
     fn(ctx, W, H, { cheer: o.cheer || null, hot: !!o.hot, mirror: !!o.mirror });
     // Fresa, la DT, en el banco del equipo de uno (rojo si mirás de afuera).
     if (o.fresa !== false && FRESA_SPOT[id]) {
       const team = o.fresaTeam === 'Blue' ? 'Blue' : 'Red';
       const [fx, fy, bench] = FRESA_SPOT[id](W, H, team);
       if (bench) fresaBench(ctx, fx, fy + 4);
-      fresaDT(ctx, fx, fy, o.cheer === team, team, !!o.mirror);
+      if (REG) REG.fresa = { x: fx, y: fy, team };
+      if (!LIVE.alive) fresaDT(ctx, fx, fy, o.cheer === team, team, !!o.mirror);
     }
     const rnd = seeded(7);
     if (LIVE.wet || LIVE.snow) weatherLayer(ctx, rnd, W, H);
@@ -1422,7 +1775,9 @@ function paintEnv(ctx, id, bounds, o = {}) {
   } finally {
     ctx.restore();
   }
-  return true;
+  const reg = REG;
+  REG = null;
+  return reg || true;
 }
 
-module.exports = { ENVS, has, paintEnv, goalGap };
+module.exports = { ENVS, has, paintEnv, paintAlive, goalGap };

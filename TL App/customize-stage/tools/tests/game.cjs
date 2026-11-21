@@ -352,18 +352,47 @@ syncMinimap();
     });
     const bad = Object.entries(r).filter(([k, v]) => k !== 'none' && !(v.ok && v.inside === 0 && v.ink));
     check('alrededores: todos dibujan afuera y NADA adentro de la cancha (gol, espejo, lluvia, nieve, noche y fuegos)', bad.length === 0 && r.none === false && errs.length === 0, JSON.stringify(bad) + errs.join('|'));
+    const r3 = await p.evaluate(() => {
+      const E = module.exports;
+      const mk = () => { const c = document.createElement('canvas'); c.width = 1000; c.height = 600; return c; };
+      const out = {};
+      for (const [id] of E.ENVS) {
+        if (id === 'none') continue;
+        const bg = mk(), gb = bg.getContext('2d');
+        gb.setTransform(1, 0, 0, 1, 500, 300);
+        const reg = E.paintEnv(gb, id, { halfW: 370, halfH: 170 }, { alive: true, score: 'ROJO 1 - 0 AZUL', names: ['Mati'] });
+        const c = mk(), g = c.getContext('2d');
+        g.fillStyle = '#3a743a'; g.fillRect(0, 0, 1000, 600);
+        const before = g.getImageData(132, 132, 736, 336).data.slice();
+        const vis = { x0: -500, y0: -300, x1: 500, y1: 300 };
+        const frames = [];
+        let moved = 0, items = 0;
+        const t0 = performance.now();
+        for (let i = 0; i < 120; i++) { g.setTransform(1, 0, 0, 1, 500, 300); items += E.paintAlive(g, id, { halfW: 370, halfH: 170 }, i * 50, reg, { mirror: i % 2 === 1 }, vis); }
+        const ms = (performance.now() - t0) / 120;
+        const inside = g.getImageData(132, 132, 736, 336).data;
+        let touched = 0; for (let i = 0; i < inside.length; i++) if (inside[i] !== before[i]) { touched++; break; }
+        // Dos momentos distintos tienen que verse distintos (algo se mueve).
+        for (const t of [0, 1700]) { const k = mk(), gk = k.getContext('2d'); gk.setTransform(1, 0, 0, 1, 500, 300); E.paintAlive(gk, id, { halfW: 370, halfH: 170 }, t, reg, {}, vis); frames.push(gk.getImageData(0, 0, 1000, 600).data); }
+        for (let i = 0; i < frames[0].length; i += 16) if (frames[0][i] !== frames[1][i]) moved++;
+        out[id] = { items: Math.round(items / 120), ms: Math.round(ms * 100) / 100, touched, moved };
+      }
+      return out;
+    });
+    const badAlive = Object.entries(r3).filter(([, v]) => !(v.items > 0 && v.moved > 20 && v.touched === 0 && v.ms < 3));
+    check('alrededores con vida: todos se mueven, nada pisa la cancha y es liviano', badAlive.length === 0, JSON.stringify(badAlive.length ? badAlive : Object.fromEntries(Object.entries(r3).map(([k, v]) => [k, `${v.ms}ms`]))));
     const CACHED = between(GP, 'const env = { cheer: null', 'function flushStadiumCache(view) {') + between(GP, '/** Terminó el partido: fuegos artificiales', 'function closeMatch(f, room, nextStarted) {');
     const r2 = await p.evaluate((code) => {
       const pitchEnv = module.exports;
       const visual = { env: 'barrio' };
       // eslint-disable-next-line no-new-func
       window.FLUSH = 0;
-      const stubs = { state: { config: { visual: {} } }, safe: (fn, ...a) => fn(...a), peers: new Map([['Mati', {}]]), myNick: () => 'Yo', flushStadiumCache: () => { window.FLUSH++; }, gameWindow: () => null, gameDocument: () => null, teamNameOf: (f, p) => p.t };
-      const mod = new Function('pitchEnv', 'visual', 'document', ...Object.keys(stubs), `${code}; return { env, paintEnvCached, envTrackScore, envNames, envScore, envFinal, envLook, envNamesShown };`)(pitchEnv, visual, document, ...Object.values(stubs));
+      const stubs = { flatGraphicsEnabled: false, state: { config: { visual: {} } }, safe: (fn, ...a) => fn(...a), peers: new Map([['Mati', {}]]), myNick: () => 'Yo', flushStadiumCache: () => { window.FLUSH++; }, gameWindow: () => null, gameDocument: () => null, teamNameOf: (f, p) => p.t };
+      const mod = new Function('pitchEnv', 'visual', 'document', ...Object.keys(stubs), `${code}; return { env, paintEnvCached, envTrackScore, envNames, envScore, envFinal, envLook, envNamesShown, envAliveOn };`)(pitchEnv, visual, document, ...Object.values(stubs));
       const mk = () => { const c = document.createElement('canvas'); c.width = 900; c.height = 500; return c; };
       const world = new DOMMatrix([1.1, 0, 0, 1.1, 450, 250]);
       const b = { halfW: 370, halfH: 170 };
-      const a = mk(), ga = a.getContext('2d'); ga.setTransform(world); pitchEnv.paintEnv(ga, 'barrio', b, {});
+      const a = mk(), ga = a.getContext('2d'); ga.setTransform(world); pitchEnv.paintEnv(ga, 'barrio', b, { alive: true });
       const c = mk(), gc = c.getContext('2d'); gc.setTransform(world);
       const t0 = performance.now(); mod.paintEnvCached(gc, world, b); const first = performance.now() - t0;
       const c2 = mk(), gc2 = c2.getContext('2d'); gc2.setTransform(world);
@@ -386,6 +415,9 @@ syncMinimap();
       mod.env.fireworks = 'Red';
       const offs = { fresa: mod.envLook().fresa, fw: mod.envLook().fireworks, score: mod.envScore(), names: mod.envNamesShown().length };
       stubs.state.config.visual = {}; mod.env.fireworks = null;
+      // Con vida: prendido de fábrica; se apaga con el interruptor y con Gráficos planos.
+      const aliveOn = mod.envAliveOn();
+      stubs.state.config.visual = { envAlive: false }; const aliveOff = mod.envAliveOn(); stubs.state.config.visual = {};
       // Fuegos: ganó el azul; al arrancar otro partido se apagan.
       // Fresa se sienta en el banco del equipo de uno.
       const fT = { score: { red: 'r', blue: 'b' }, players: 'pl', name: 'n' };
@@ -396,11 +428,12 @@ syncMinimap();
       let fresaPx = 0; for (let i = 0; i < z1.length; i += 4) if (z1[i] !== z2[i]) fresaPx++;
       mod.envFinal(1, 3); const fw = mod.env.fireworks;
       mod.envTrackScore(null, f, { r: 0, b: 0 }); const fwAfter = mod.env.fireworks;
-      return { diff, first: Math.round(first), again: Math.round(again * 10) / 10, startFlush, same, inGoal, score, names, live, fw, fwAfter, fresaTeam, fresaPx, offs };
+      return { diff, first: Math.round(first), again: Math.round(again * 10) / 10, startFlush, same, inGoal, score, names, live, fw, fwAfter, fresaTeam, fresaPx, offs, aliveOn, aliveOff };
     }, CACHED);
     check('alrededores: lo guardado es igual a lo dibujado y pegarlo es instantáneo', r2.diff === 0 && r2.again < 5, JSON.stringify(r2));
     check('alrededores: Fresa, la DT, se dibuja y se sienta en el banco del equipo de uno', r2.fresaTeam === 'Blue' && r2.fresaPx > 200, JSON.stringify({ t: r2.fresaTeam, px: r2.fresaPx }));
     check('alrededores: los interruptores de Estadio apagan Fresa, fuegos, resultado y nombres', r2.offs && r2.offs.fresa === false && r2.offs.fw === null && r2.offs.score === '' && r2.offs.names === 0, JSON.stringify(r2.offs));
+    check('alrededores: «con vida» viene prendido y el interruptor lo apaga', r2.aliveOn === true && r2.aliveOff === false, JSON.stringify({ on: r2.aliveOn, off: r2.aliveOff }));
     check('alrededores: fuegos del ganador al final y se apagan con otro partido', r2.fw === 'Blue' && r2.fwAfter === null, JSON.stringify(r2));
     check('alrededores: marcador y nombres de TL; rehace al empezar, no en el festejo', r2.startFlush === 1 && r2.same === 1 && r2.inGoal === 1 && r2.score === 'ROJO 1 - 0 AZUL' && r2.names === 'Mati,Yo' && r2.live > 50, JSON.stringify(r2));
     await p.close();
