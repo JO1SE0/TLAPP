@@ -54,7 +54,18 @@ const pick = (rnd, list) => list[Math.floor(rnd() * list.length)];
 
 /** La boca del arco: en los fondos no se dibuja nada en esa franja. */
 function goalGap(halfH) {
-  return Math.max(80, halfH * 0.5);
+  return LIVE.gap || Math.max(80, halfH * 0.5);
+}
+
+/**
+ * Las medidas con las que se dibuja: el ancho llega hasta el fondo de la red
+ * (todo lo de las cabeceras queda detrás de los arcos) y el hueco frente a cada
+ * arco es el alto real de su boca. Sin datos de los arcos, lo de siempre.
+ */
+function envDims(bounds) {
+  const gd = Number.isFinite(bounds.goalDepth) ? Math.max(0, Math.min(260, bounds.goalDepth)) : 30;
+  const gap = bounds.goalY > 0 ? bounds.goalY + 26 : Math.max(80, bounds.halfH * 0.5);
+  return { W0: bounds.halfW, W: bounds.halfW + gd, H: bounds.halfH, gap };
 }
 
 /* ── Piso ─────────────────────────────────────────────────────────── */
@@ -62,7 +73,7 @@ function goalGap(halfH) {
 /** Un piso con textura: base, manchas grandes y granitos. */
 function ground(ctx, rnd, W, H, base, spots, grain) {
   // Bien grande: con la ventana abierta o el zoom alejado no se tiene que ver el borde.
-  const X = W + 700, Y = H + 500;
+  const X = W + 1400, Y = H + 1000;
   ctx.fillStyle = base;
   ctx.fillRect(-X, -Y, 2 * X, 2 * Y);
   ctx.globalAlpha = 0.55;
@@ -509,7 +520,7 @@ function paint(ctx, text, x, y, font, color, mirror, maxW) {
  * (los LED lo muestran), quién hizo el gol (en el festejo) y los nombres de
  * los que usan TL App en la sala (los trapos les dan aliento).
  */
-const LIVE = { score: '', scorer: '', names: [], wet: false, snow: false, night: false };
+const LIVE = { score: '', scorer: '', names: [], wet: false, snow: false, night: false, gap: 0 };
 /** Las luces de la escena (las anota lampPost): de noche son las que alumbran. */
 const LIGHTS = [];
 /**
@@ -1616,7 +1627,8 @@ function gull(ctx, x, y, flap) {
  */
 function paintAlive(ctx, id, bounds, t, reg, o = {}, vis = null) {
   if (!reg || !bounds || !DRAW[id]) return 0;
-  const W = bounds.halfW, H = bounds.halfH;
+  const { W0, W, H, gap } = envDims(bounds);
+  LIVE.gap = gap;
   const see = (x, y, r) => !vis || (x + r > vis.x0 && x - r < vis.x1 && y + r > vis.y0 && y - r < vis.y1);
   let n = 0;
   LIVE.wet = o.weather === 'rain' || o.weather === 'storm';
@@ -1628,7 +1640,7 @@ function paintAlive(ctx, id, bounds, t, reg, o = {}, vis = null) {
     ctx.shadowBlur = 0;
     ctx.beginPath();
     ctx.rect(-W * 50, -H * 50, W * 100, H * 100);
-    ctx.rect(-W, -H, 2 * W, 2 * H);
+    ctx.rect(-W0, -H, 2 * W0, 2 * H);
     ctx.clip('evenodd');
     // La tribuna: respira (A/B), pasa la ola cada tanto y en el gol salta la del que metió.
     const tag = `${LIVE.wet ? 'w' : ''}${LIVE.snow ? 's' : ''}${night ? 'n' : ''}`;
@@ -1878,10 +1890,11 @@ function paintEnv(ctx, id, bounds, o = {}) {
     ctx.filter = 'none';
     ctx.lineCap = 'butt';
     // Sólo afuera de la cancha: nada pisa el campo.
-    const W = bounds.halfW, H = bounds.halfH;
+    const { W0, W, H, gap } = envDims(bounds);
+    LIVE.gap = gap;
     ctx.beginPath();
     ctx.rect(-W * 50, -H * 50, W * 100, H * 100);
-    ctx.rect(-W, -H, 2 * W, 2 * H);
+    ctx.rect(-W0, -H, 2 * W0, 2 * H);
     ctx.clip('evenodd');
     LIVE.score = typeof o.score === 'string' ? o.score : '';
     LIVE.scorer = typeof o.scorer === 'string' ? o.scorer.toUpperCase().slice(0, 18) : '';
@@ -1922,4 +1935,14 @@ function paintEnv(ctx, id, bounds, o = {}) {
   return reg || true;
 }
 
-module.exports = { ENVS, has, paintEnv, paintAlive, goalGap };
+/** El color del piso de cada escenario (para cubrir lo que quede más allá del dibujo guardado). */
+const GROUND = { noche: '#3d3326', barrio: '#5d6158', led: '#35392f', f5: '#2a2e35', playa: '#dcc48e', campo: '#6f8a45', azotea: '#14171d', cortada: '#3d4046', colegio: '#a6a29a', estadio: '#1c1f26' };
+function groundColor(id) { return GROUND[id] || '#3a3a3a'; }
+
+/** Hasta dónde llega el dibujo de cada escenario, para guardarlo de una sola vez. */
+function extent(bounds) {
+  const { W, H } = envDims(bounds);
+  return { x: W + 430, y: H + 340 };
+}
+
+module.exports = { ENVS, has, paintEnv, paintAlive, goalGap, groundColor, extent, envDims };

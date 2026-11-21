@@ -8835,19 +8835,15 @@ function skinPitch(ctx, w, h, stadium) {
     ctx.restore();
   }
 
-  // Los alrededores (potrero, barrio, LED, F5): afuera de la cancha, una vez por cache.
+  // Los alrededores: afuera de la cancha, guardados de una vez para toda la
+  // cancha (no dependen de la cámara) y pegados en cada armado del cache.
   if (visual.env && bounds) {
     ctx.save();
     try {
-      ctx.setTransform(world);
-      // El festejo se dibuja en el momento (el juego está parado por el gol);
-      // lo normal queda guardado y se pega: volver del gol es casi gratis.
-      env.bounds = bounds;
-      if (env.hot) {
-        const reg = pitchEnv.paintEnv(ctx, visual.env, bounds, { cheer: env.cheer, hot: true, mirror: env.mirror, scorer: env.scorer, score: envScore(), names: envNamesShown(), ...envLook() });
-        env.regHot = reg && typeof reg === 'object' ? reg : null;
-      }
-      else paintEnvCached(ctx, world, bounds);
+      const geom = matchGeom(stadium);
+      const eb = geom ? { ...bounds, goalY: geom.goalY, goalDepth: geom.goalDepth } : bounds;
+      env.bounds = eb;
+      paintEnvCached(ctx, world, eb, w, h);
     } catch (err) {
       log('error', `los alrededores no se pudieron dibujar: ${err.message}`, 'juego');
     } finally {
@@ -9150,7 +9146,21 @@ function matchGeom(stadium) {
       halfH = ys.length ? ys[Math.floor(ys.length * 0.1)] : 0;
       if (halfW) halfH = Math.min(halfH, halfW * 0.95);
     }
-    if (halfW > 0 && halfH > 0) res = { goals: goals.length, halfW, halfH };
+    if (halfW > 0 && halfH > 0) {
+      // Los arcos: el alto de la boca (de los postes) y hasta dónde llega la red
+      // (los puntos de la cancha cerca del arco y detrás de la línea). Los
+      // alrededores se corren detrás de los arcos con esto.
+      let goalY = 0;
+      for (const g of goals) goalY = Math.max(goalY, Math.abs(g.y0), Math.abs(g.y1));
+      let goalBack = halfW;
+      if (goalY) {
+        for (const p of pts) {
+          const ax = Math.abs(p.x);
+          if (Math.abs(p.y) <= goalY + 20 && ax > halfW - 2 && ax <= halfW + 260) goalBack = Math.max(goalBack, ax);
+        }
+      }
+      res = { goals: goals.length, halfW, halfH, goalY, goalDepth: Math.max(0, goalBack - halfW) };
+    }
   } catch (e) { res = null; }
   matchGeomCache.set(stadium, res);
   return res;
@@ -9369,33 +9379,59 @@ function envNames() {
   return out.slice(0, 3);
 }
 
-function envKey(world, bounds, cv) {
+/*
+ * Los alrededores guardados como UNA imagen de toda la cancha, en coordenadas de
+ * cancha: no dependen de dónde esté la cámara. En las canchas grandes la cámara
+ * sigue la pelota y el cache se rearma al moverse; antes eso rearmaba también
+ * los alrededores (10 a 30 ms cada vez) y ahora sólo se pegan. La resolución es
+ * la del zoom, con un tope para que una cancha gigante no pida una imagen
+ * enorme. El festejo tiene su propia imagen, que se suelta al terminar.
+ */
+const ENV_MAX_PX = 3072;
+function envBitmap(doc, world, bounds, hot) {
+  const ext = pitchEnv.extent(bounds);
+  const zoom = Math.hypot(world.a, world.b) || 1;
+  const sc = Math.min(zoom, ENV_MAX_PX / (2 * ext.x), ENV_MAX_PX / (2 * ext.y));
   const L = envLook();
-  return [visual.env, env.mirror, envScore(), envNamesShown().join(','), L.weather, L.night, L.fireworks, L.fresa, L.fresaTeam, L.alive, bounds.halfW, bounds.halfH, world.a, world.b, world.c, world.d, world.e, world.f, cv.width, cv.height].join('|');
-}
-
-/** Arma lo normal en un canvas aparte (con el resultado y los nombres de ahora). */
-function buildEnvBitmap(doc, world, bounds, w, h, key) {
+  const key = [visual.env, hot ? `hot${env.cheer}${env.scorer}` : 'calm', env.mirror, envScore(), envNamesShown().join(','), L.weather, L.night, L.fireworks, L.fresa, L.fresaTeam, L.alive,
+    bounds.halfW, bounds.halfH, bounds.goalY, bounds.goalDepth, sc.toFixed(3)].join('|');
+  const slot = hot ? 'hotBmp' : 'bmp';
+  if (env[slot] && env[`${slot}Key`] === key) return env[slot];
   const bmp = doc.createElement('canvas');
-  bmp.width = w;
-  bmp.height = h;
+  bmp.width = Math.ceil(2 * ext.x * sc);
+  bmp.height = Math.ceil(2 * ext.y * sc);
   const g = bmp.getContext('2d');
-  g.setTransform(world);
-  const reg = pitchEnv.paintEnv(g, visual.env, bounds, { mirror: env.mirror, score: envScore(), names: envNamesShown(), ...envLook() });
-  env.regNormal = reg && typeof reg === 'object' ? reg : null;
-  env.bmp = bmp;
-  env.key = key;
+  g.setTransform(sc, 0, 0, sc, ext.x * sc, ext.y * sc);
+  const reg = pitchEnv.paintEnv(g, visual.env, bounds, hot
+    ? { cheer: env.cheer, hot: true, mirror: env.mirror, scorer: env.scorer, score: envScore(), names: envNamesShown(), ...L }
+    : { mirror: env.mirror, score: envScore(), names: envNamesShown(), ...L });
+  if (hot) env.regHot = reg && typeof reg === 'object' ? reg : null;
+  else env.regNormal = reg && typeof reg === 'object' ? reg : null;
+  bmp.__ext = ext;
+  env[slot] = bmp;
+  env[`${slot}Key`] = key;
+  return bmp;
 }
 
-/** Lo normal de los alrededores, dibujado una vez en un canvas aparte y pegado. */
-function paintEnvCached(ctx, world, bounds) {
+/** Pega los alrededores en el cache: el piso de fondo y la imagen guardada. */
+function paintEnvCached(ctx, world, bounds, w, h) {
   const cv = ctx.canvas;
   const doc = cv.ownerDocument || document;
   env.last = { doc, world, bounds, cv };
-  const key = envKey(world, bounds, cv);
-  if (!env.bmp || env.key !== key) buildEnvBitmap(doc, world, bounds, cv.width, cv.height, key);
-  ctx.setTransform(1, 0, 0, 1, 0, 0);
-  ctx.drawImage(env.bmp, 0, 0);
+  const bmp = envBitmap(doc, world, bounds, env.hot);
+  const ext = bmp.__ext;
+  ctx.setTransform(world);
+  // Lo que quede más allá de la imagen (zoom muy alejado): del color del piso.
+  const view = worldView(world, w || cv.width, h || cv.height);
+  ctx.beginPath();
+  ctx.rect(view.x, view.y, view.w, view.h);
+  ctx.rect(-ext.x, -ext.y, 2 * ext.x, 2 * ext.y);
+  ctx.save();
+  ctx.clip('evenodd');
+  ctx.fillStyle = pitchEnv.groundColor(visual.env);
+  ctx.fillRect(view.x, view.y, view.w, view.h);
+  ctx.restore();
+  ctx.drawImage(bmp, -ext.x, -ext.y, 2 * ext.x, 2 * ext.y);
 }
 
 /*
@@ -9413,9 +9449,9 @@ function envGoal(view, team) {
   env.pre = setTimeout(() => {
     env.names = envNames();
     const L = env.last;
-    if (L && visual.env) safe(() => buildEnvBitmap(L.doc, L.world, L.bounds, L.cv.width, L.cv.height, envKey(L.world, L.bounds, L.cv)));
+    if (L && visual.env) safe(() => envBitmap(L.doc, L.world, L.bounds, false));
   }, 1500);
-  env.timer = setTimeout(() => { env.cheer = null; env.hot = false; env.scorer = ''; flushStadiumCache(view); }, 3000);
+  env.timer = setTimeout(() => { env.cheer = null; env.hot = false; env.scorer = ''; env.hotBmp = null; env.hotBmpKey = ''; flushStadiumCache(view); }, 3000);
 }
 
 /** El autor del gol llega un poco después: el LED del festejo lo escribe. */
@@ -12487,7 +12523,7 @@ function syncCanvasHotFlags() {
   visual.contrast = clampNum(cfg.pitchContrast, 0.6, 1.6, 1);
   visual.env = pitchEnv.has(cfg.pitchEnv) ? cfg.pitchEnv : '';
   if (visual.env !== envSlow.scene) { envSlow.scene = visual.env; envSlow.off = false; envSlow.avg = 0; envSlow.n = 0; }
-  if (!visual.env && env.bmp) { env.bmp = null; env.key = ''; env.last = null; }
+  if (!visual.env && (env.bmp || env.hotBmp)) { env.bmp = null; env.bmpKey = ''; env.hotBmp = null; env.hotBmpKey = ''; env.last = null; }
   visual.light = ['vignette', 'spot', 'corners', 'stadium', 'sunset', 'night', 'stripes', 'cinema'].includes(cfg.pitchLight) ? cfg.pitchLight : '';
   visual.ownRingColor = lookfx.safeColor(cfg.ownRingColor);
   visual.ownRingAlpha = clampNum(cfg.ownRingAlpha, 0.02, 1, 0.3);

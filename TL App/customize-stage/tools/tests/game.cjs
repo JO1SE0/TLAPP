@@ -381,7 +381,7 @@ syncMinimap();
     });
     const badAlive = Object.entries(r3).filter(([, v]) => !(v.items > 0 && v.moved > 20 && v.touched === 0 && v.ms < 3));
     check('alrededores con vida: todos se mueven, nada pisa la cancha y es liviano', badAlive.length === 0, JSON.stringify(badAlive.length ? badAlive : Object.fromEntries(Object.entries(r3).map(([k, v]) => [k, `${v.ms}ms`]))));
-    const CACHED = between(GP, 'const env = { cheer: null', 'function flushStadiumCache(view) {') + between(GP, '/** Terminó el partido: fuegos artificiales', 'function closeMatch(f, room, nextStarted) {');
+    const CACHED = between(GP, 'function worldView(m, w, h) {', '/**\n * Rectángulo con esquinas') + between(GP, 'const env = { cheer: null', 'function flushStadiumCache(view) {') + between(GP, '/** Terminó el partido: fuegos artificiales', 'function closeMatch(f, room, nextStarted) {');
     const r2 = await p.evaluate((code) => {
       const pitchEnv = module.exports;
       const visual = { env: 'barrio' };
@@ -394,11 +394,19 @@ syncMinimap();
       const b = { halfW: 370, halfH: 170 };
       const a = mk(), ga = a.getContext('2d'); ga.setTransform(world); pitchEnv.paintEnv(ga, 'barrio', b, { alive: true });
       const c = mk(), gc = c.getContext('2d'); gc.setTransform(world);
-      const t0 = performance.now(); mod.paintEnvCached(gc, world, b); const first = performance.now() - t0;
+      const t0 = performance.now(); mod.paintEnvCached(gc, world, b, 900, 500); const first = performance.now() - t0;
+      const bmp1 = mod.env.bmp;
       const c2 = mk(), gc2 = c2.getContext('2d'); gc2.setTransform(world);
-      const t1 = performance.now(); mod.paintEnvCached(gc2, world, b); const again = performance.now() - t1;
+      const t1 = performance.now(); mod.paintEnvCached(gc2, world, b, 900, 500); const again = performance.now() - t1;
+      // La cámara se mueve (cancha grande): se pega la misma imagen, no se rearma.
+      const moved = new DOMMatrix([1.1, 0, 0, 1.1, 300, 180]);
+      const c3 = mk(), gc3 = c3.getContext('2d'); gc3.setTransform(moved);
+      const t2 = performance.now(); mod.paintEnvCached(gc3, moved, b, 900, 500); const pan = performance.now() - t2;
+      const sameBmp = mod.env.bmp === bmp1;
       const da = ga.getImageData(0, 0, 900, 500).data, dc = gc2.getImageData(0, 0, 900, 500).data;
-      let diff = 0; for (let i = 0; i < da.length; i++) if (Math.abs(da[i] - dc[i]) > 2) diff++;
+      // Guardada a la escala del zoom y pegada: igual salvo el suavizado de bordes.
+      let sum = 0; for (let i = 0; i < da.length; i++) sum += Math.abs(da[i] - dc[i]);
+      const diff = sum / da.length > 6 ? Math.round(sum / da.length) : 0;
       // El resultado: al empezar el partido rehace; en el festejo, no (lo arma la pausa).
       const f = { score: { red: 'r', blue: 'b' } };
       mod.envTrackScore(null, f, { r: 0, b: 0 }); const startFlush = window.FLUSH;
@@ -434,9 +442,10 @@ syncMinimap();
       let fresaPx = 0; for (let i = 0; i < z1.length; i += 4) if (z1[i] !== z2[i]) fresaPx++;
       mod.envFinal(1, 3); const fw = mod.env.fireworks;
       mod.envTrackScore(null, f, { r: 0, b: 0 }); const fwAfter = mod.env.fireworks;
-      return { diff, first: Math.round(first), again: Math.round(again * 10) / 10, startFlush, same, inGoal, score, names, live, fw, fwAfter, fresaTeam, fresaPx, offs, aliveOn, aliveOff, fastStill, slowOff };
+      return { diff, first: Math.round(first), again: Math.round(again * 10) / 10, pan: Math.round(pan * 10) / 10, sameBmp, startFlush, same, inGoal, score, names, live, fw, fwAfter, fresaTeam, fresaPx, offs, aliveOn, aliveOff, fastStill, slowOff };
     }, CACHED);
     check('alrededores: lo guardado es igual a lo dibujado y pegarlo es instantáneo', r2.diff === 0 && r2.again < 5, JSON.stringify(r2));
+    check('alrededores: mover la cámara (canchas grandes) no rearma, sólo pega', r2.sameBmp === true && r2.pan < 5, JSON.stringify({ same: r2.sameBmp, pan: r2.pan }));
     check('alrededores: Fresa, la DT, se dibuja y se sienta en el banco del equipo de uno', r2.fresaTeam === 'Blue' && r2.fresaPx > 200, JSON.stringify({ t: r2.fresaTeam, px: r2.fresaPx }));
     check('alrededores: los interruptores de Estadio apagan Fresa, fuegos, resultado y nombres', r2.offs && r2.offs.fresa === false && r2.offs.fw === null && r2.offs.score === '' && r2.offs.names === 0, JSON.stringify(r2.offs));
     check('alrededores con vida: en una compu lenta se apaga sola', r2.fastStill === true && r2.slowOff === true, JSON.stringify({ fast: r2.fastStill, slow: r2.slowOff }));

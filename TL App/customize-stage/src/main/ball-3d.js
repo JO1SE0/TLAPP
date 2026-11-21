@@ -82,7 +82,8 @@ const REDRAW_EPS = 0.004;
 function sphere(ctx, x, y, r, s, tex) {
   const doc = ctx.canvas.ownerDocument;
   const t = ctx.getTransform ? ctx.getTransform() : null;
-  const sc = Math.abs((t && t.a) || 1) || 1;
+  // La escala real, aunque la cancha esté girada (vista vertical: ahí `a` vale 0).
+  const sc = (t && Math.hypot(t.a, t.b)) || 1;
   const D = Math.max(8, Math.min(144, Math.round(2 * r * sc)));
   if (!work || work.width !== D) {
     work = doc.createElement('canvas');
