@@ -24,7 +24,6 @@ const DEFAULTS = {
      * El estirado lo hace el preload del juego (`applyGameViewport`).
      */
     resolution: 'auto',
-    fakePing: 0,
     /**
      * La primera vez que corre esta versión, el cliente se queda con lo que el
      * jugador ya tenía puesto dentro de HaxBall (extrapolación, avatar, sonido)
@@ -154,8 +153,6 @@ const DEFAULTS = {
     musicHidden: [],
     /** Saca el chat de la pantalla durante la partida y en la sala. */
     hideChat: false,
-    /** El cartel de gol estilo TV, con autor y asistencia. */
-    goalBanner: true,
     /** Cartel de marcador: default | club | neon | minimal | tv | match | cream | split | led | float | outline. */
     scoreboard: 'default',
     /** Tamaño del cartel de marcador (0.7 a 1.8). */

@@ -346,11 +346,6 @@ function gameSettingsObject(doc) {
   return cfg && typeof cfg === 'object' ? cfg : null;
 }
 
-/** ¿Se puede aplicar en vivo? Si no, hay que seguir recargando el juego. */
-function liveSettingsAvailable(doc) {
-  return !!gameSettingsObject(doc);
-}
-
 /**
  * Mapa `clave de storage` → { set(valor) } para todas las opciones del juego.
  */
@@ -6618,23 +6613,6 @@ function logoMark(doc) {
    */
   img.addEventListener('error', () => img.remove());
   return img;
-}
-
-/**
- * El diamante del VIP: relleno, con las caras en tres tonos y un filo oscuro.
- *
- * Era de contorno, y a 14 px el trazo quedaba en un píxel escaso al lado de un
- * escudo que es un sólido: los dos símbolos no parecían de la misma familia.
- * Relleno, las caras se leen como caras sin ningún brillo encima. El dibujo y
- * el porqué de cada tono están en `VIP_GEM_SVG` (room-ui.js).
- */
-function vipMark(doc) {
-  const mark = doc.createElement('span');
-  mark.className = 'tvm-mark tvm-mark--vip';
-  mark.title = 'TL App';
-  mark.hidden = true;
-  mark.innerHTML = VIP_GEM_SVG;
-  return mark;
 }
 
 /**

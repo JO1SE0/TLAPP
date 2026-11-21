@@ -7252,30 +7252,6 @@ function vipDaysLeft(profile) {
   return Math.ceil(faltan / 86400000);
 }
 
-/** La frase entera, para la tarjeta de VIP en Aspecto. */
-function vipRemaining(profile) {
-  const dias = vipDaysLeft(profile);
-  if (dias === null) return null;
-  if (dias === Infinity) return t('vip.noExpiry');
-
-  // Sin la hora: `formatDate` la incluye, y en una fecha a dos semanas los
-  // minutos no le dicen nada a nadie.
-  const dia = new Date(Date.parse(profile.vipUntil)).toLocaleDateString(isEn() ? 'en-GB' : 'es-AR',
-    { day: '2-digit', month: 'short', year: 'numeric' });
-  return dias === 1 ? t('vip.lastDay', { when: dia }) : t('vip.daysLeft', { days: dias, when: dia });
-}
-
-/**
- * La versión corta, para la fila del menú de la barra: ahí al lado del chip VIP
- * y del «activo» no entra una oración con fecha.
- */
-function vipRemainingShort(profile) {
-  const dias = vipDaysLeft(profile);
-  if (dias === null) return null;
-  if (dias === Infinity) return t('me.vipForever');
-  return dias === 1 ? t('me.vipLastDay') : t('me.vipDays', { days: dias });
-}
-
 function renderVip() {
   renderVipAssets();
 }
@@ -8652,10 +8628,6 @@ function openFriends(pick) {
   // cambio de estado, así que sin esto abrir la charla de alguien con el dock ya
   // abierto —desde un aviso de mensaje, o desde su perfil— no movía nada.
   renderFriends();
-}
-
-function toggleFriends() {
-  setFriendsOpen(!state.friendsOpen);
 }
 
 function setFriendsOpen(open) {

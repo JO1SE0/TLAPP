@@ -278,12 +278,6 @@ contextBridge.exposeInMainWorld('tvm', {
     clearAsset: (which) => call('vip:clearAsset', which)
   },
 
-  /**
-   * Con quién jugaste. Lo calcula el sitio con los partidos que reportan los
-   * hosts, no esta máquina: ver `rivals.js`. Devuelve `{ linked, at, people }`
-   * — `linked` en false quiere decir que falta vincular la cuenta de Haxball,
-   * que no es lo mismo que no haber jugado nunca.
-   */
   rooms: {
     list: () => call('rooms:list'),
     join: (tokenOrLink) => call('rooms:join', tokenOrLink),

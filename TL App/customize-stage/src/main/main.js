@@ -3131,33 +3131,6 @@ let presenceEveryMs = 30000;
  */
 let roomInfo = { room: null, token: null, name: null, nick: null };
 
-/**
- * Id anónimo y estable de ESTA instalación.
- *
- * Va en un archivo aparte y no en la config a propósito: la config se exporta e
- * importa entre PCs, y dos instalaciones con el mismo id se contarían como una.
- * Es azar puro — no sale de nada de la máquina ni de la persona.
- */
-function getInstallId() {
-  if (installId) return installId;
-  const file = path.join(app.getPath('userData'), INSTALL_FILE);
-  try {
-    const saved = fs.readFileSync(file, 'utf8').trim();
-    if (/^[A-Za-z0-9_-]{8,64}$/.test(saved)) {
-      installId = saved;
-      return installId;
-    }
-  } catch { /* primera vez */ }
-
-  installId = crypto.randomBytes(16).toString('hex');
-  try {
-    fs.writeFileSync(file, installId, 'utf8');
-  } catch {
-    /* Sin disco el id dura lo que la sesión: se cuenta de más una vez y ya. */
-  }
-  return installId;
-}
-
 /** Comparte el aspecto elegido; el servidor puede aplicar sus propias reglas. */
 function myCosmetics() {
   const looks = store.get().vip.cosmetics || {};
