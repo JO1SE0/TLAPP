@@ -3259,6 +3259,85 @@ function vendorShape(g, kind) {
   g.strokeStyle = 'rgba(40,40,40,0.5)'; g.lineWidth = 0.8; g.beginPath(); g.moveTo(-3, -3); g.lineTo(6, -4); g.stroke();
 }
 
+/* ── Terminación: luz, sombras de nubes, profundidad y textura ──────────── */
+
+/*
+ * Cada escena con su luz: de día un sol tibio de un lado y sombra azulada del
+ * otro, con sombras de nubes; de noche, luna fría. Más un grano fino que le da
+ * textura al piso y una sombra suave alrededor de la cancha que la hunde un
+ * poco (profundidad). Todo va una vez en la imagen: no cuesta nada al jugar.
+ */
+const GRADE = {
+  noche: { sun: 'rgba(255,170,90,0.07)', shade: 'rgba(10,15,40,0.22)', clouds: 0, grain: 0.16 },
+  barrio: { sun: 'rgba(255,226,170,0.13)', shade: 'rgba(20,32,70,0.13)', clouds: 5, grain: 0.12 },
+  led: { sun: 'rgba(150,190,255,0.06)', shade: 'rgba(8,12,30,0.22)', clouds: 0, grain: 0.14 },
+  f5: { sun: 'rgba(150,190,255,0.06)', shade: 'rgba(8,12,30,0.18)', clouds: 0, grain: 0.12 },
+  playa: { sun: 'rgba(255,214,150,0.16)', shade: 'rgba(30,60,110,0.12)', clouds: 6, grain: 0.16 },
+  campo: { sun: 'rgba(255,224,150,0.14)', shade: 'rgba(20,40,60,0.14)', clouds: 7, grain: 0.14 },
+  azotea: { sun: 'rgba(255,150,200,0.06)', shade: 'rgba(8,10,30,0.2)', clouds: 0, grain: 0.12 },
+  cortada: { sun: 'rgba(255,220,165,0.12)', shade: 'rgba(20,30,70,0.14)', clouds: 4, grain: 0.14 },
+  colegio: { sun: 'rgba(255,228,175,0.12)', shade: 'rgba(30,40,80,0.12)', clouds: 5, grain: 0.1 },
+  estadio: { sun: 'rgba(170,200,255,0.06)', shade: 'rgba(6,8,24,0.2)', clouds: 0, grain: 0.1 }
+};
+
+let GRAIN = null;
+function grainTile() {
+  if (GRAIN) return GRAIN;
+  const n = 128;
+  const cv = mkCanvas(n, n), g = cv.getContext('2d');
+  const img = g.createImageData(n, n), d = img.data, r = seeded(9091);
+  for (let i = 0; i < n * n; i++) {
+    const v = r() < 0.5 ? 0 : 255;
+    d[i * 4] = d[i * 4 + 1] = d[i * 4 + 2] = v;
+    d[i * 4 + 3] = Math.floor(r() * r() * 255);
+  }
+  g.putImageData(img, 0, 0);
+  GRAIN = cv;
+  return cv;
+}
+
+function grade(ctx, id, W0, W, H) {
+  const G = GRADE[id];
+  if (!G) return;
+  const X = W + 430, Y = H + 340;
+  // Profundidad: la cancha queda apenas hundida respecto de lo de afuera.
+  // Aros concéntricos cada vez más tenues: se desvanece parejo, esquinas incluidas.
+  ctx.lineWidth = 4.5;
+  for (let i = 0; i < 12; i++) {
+    const k = 1 - i / 12, d = 2 + i * 4;
+    ctx.strokeStyle = `rgba(0,0,0,${(0.3 * k * k).toFixed(3)})`;
+    ctx.strokeRect(-W0 - d, -H - d, 2 * (W0 + d), 2 * (H + d));
+  }
+  // Sombras de nubes (de día): manchas grandes y suaves.
+  if (G.clouds) {
+    const r = seeded(id.length * 313 + 7);
+    for (let i = 0; i < G.clouds; i++) {
+      const cx = (r() - 0.5) * 2 * X, cy = (r() - 0.5) * 2 * Y, rad = 160 + r() * 200;
+      ctx.save(); ctx.translate(cx, cy); ctx.scale(1.6, 1);
+      const g = ctx.createRadialGradient(0, 0, rad * 0.2, 0, 0, rad);
+      g.addColorStop(0, 'rgba(10,20,40,0.13)'); g.addColorStop(1, 'rgba(10,20,40,0)');
+      ctx.fillStyle = g; ctx.fillRect(-rad, -rad, 2 * rad, 2 * rad);
+      ctx.restore();
+    }
+  }
+  // La luz: tibia arriba a la izquierda, sombra fría abajo a la derecha.
+  const lg = ctx.createLinearGradient(-X, -Y, X, Y);
+  lg.addColorStop(0, G.sun); lg.addColorStop(0.5, 'rgba(0,0,0,0)'); lg.addColorStop(1, G.shade);
+  ctx.fillStyle = lg; ctx.fillRect(-X, -Y, 2 * X, 2 * Y);
+  // Grano fino (textura de piso, ladrillo, arena).
+  try {
+    const pat = ctx.createPattern(grainTile(), 'repeat');
+    if (pat) {
+      ctx.save();
+      ctx.globalAlpha = G.grain;
+      ctx.globalCompositeOperation = 'overlay';
+      ctx.fillStyle = pat;
+      ctx.fillRect(-X, -Y, 2 * X, 2 * Y);
+      ctx.restore();
+    }
+  } catch (e) { /* sin grano */ }
+}
+
 const DRAW = { noche: potreroNoche, barrio: clubBarrio, led: potreroLed, f5: canchitaF5, playa, campo, azotea, cortada, colegio, estadio };
 
 /**
@@ -3300,6 +3379,7 @@ function paintEnv(ctx, id, bounds, o = {}) {
     fn(ctx, W, H, so);
     if (EXTRA[id]) EXTRA[id](ctx, W, H, so, seeded(4049));
     bigEnds(ctx, id, W, H, so, seeded(5051));
+    grade(ctx, id, W0, W, H);
     // Fresa, la DT, en el banco del equipo de uno (rojo si mirás de afuera), y
     // Joaquín, su rival, en el banco de enfrente. Si los bancos quedan pegados
     // (escenas con los suplentes en el medio), se sientan cara a cara.
