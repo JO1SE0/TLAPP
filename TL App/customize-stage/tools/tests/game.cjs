@@ -352,6 +352,25 @@ syncMinimap();
     });
     const bad = Object.entries(r).filter(([k, v]) => k !== 'none' && !(v.ok && v.inside === 0 && v.ink));
     check('alrededores: las cuatro dibujan afuera y NADA adentro de la cancha (también en gol y espejo)', bad.length === 0 && r.none === false && errs.length === 0, JSON.stringify(bad) + errs.join('|'));
+    const CACHED = between(GP, 'const env = { cheer: null', 'function flushStadiumCache(view) {');
+    const r2 = await p.evaluate((code) => {
+      const pitchEnv = module.exports;
+      const visual = { env: 'barrio' };
+      // eslint-disable-next-line no-new-func
+      const mod = new Function('pitchEnv', 'visual', 'document', `${code}; return { env, paintEnvCached };`)(pitchEnv, visual, document);
+      const mk = () => { const c = document.createElement('canvas'); c.width = 900; c.height = 500; return c; };
+      const world = new DOMMatrix([1.1, 0, 0, 1.1, 450, 250]);
+      const b = { halfW: 370, halfH: 170 };
+      const a = mk(), ga = a.getContext('2d'); ga.setTransform(world); pitchEnv.paintEnv(ga, 'barrio', b, {});
+      const c = mk(), gc = c.getContext('2d'); gc.setTransform(world);
+      const t0 = performance.now(); mod.paintEnvCached(gc, world, b); const first = performance.now() - t0;
+      const c2 = mk(), gc2 = c2.getContext('2d'); gc2.setTransform(world);
+      const t1 = performance.now(); mod.paintEnvCached(gc2, world, b); const again = performance.now() - t1;
+      const da = ga.getImageData(0, 0, 900, 500).data, dc = gc2.getImageData(0, 0, 900, 500).data;
+      let diff = 0; for (let i = 0; i < da.length; i++) if (Math.abs(da[i] - dc[i]) > 2) diff++;
+      return { diff, first: Math.round(first), again: Math.round(again * 10) / 10 };
+    }, CACHED);
+    check('alrededores: lo guardado es igual a lo dibujado y pegarlo es instantáneo', r2.diff === 0 && r2.again < 5, JSON.stringify(r2));
     await p.close();
   }
 

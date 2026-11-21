@@ -8793,7 +8793,10 @@ function skinPitch(ctx, w, h, stadium) {
     ctx.save();
     try {
       ctx.setTransform(world);
-      pitchEnv.paintEnv(ctx, visual.env, bounds, { cheer: env.cheer, hot: env.hot, mirror: env.mirror });
+      // El festejo se dibuja en el momento (el juego está parado por el gol);
+      // lo normal queda guardado y se pega: volver del gol es casi gratis.
+      if (env.hot) pitchEnv.paintEnv(ctx, visual.env, bounds, { cheer: env.cheer, hot: true, mirror: env.mirror });
+      else paintEnvCached(ctx, world, bounds);
     } catch (err) {
       log('error', `los alrededores no se pudieron dibujar: ${err.message}`, 'juego');
     } finally {
@@ -9262,7 +9265,26 @@ function pitchSkinPrint() {
  * y la gente del que metió levanta los brazos) y el espejo. Cada cambio rehace
  * el cache del estadio una vez; entre cambios no se dibuja nada.
  */
-const env = { cheer: null, hot: false, mirror: false, timer: 0 };
+const env = { cheer: null, hot: false, mirror: false, timer: 0, bmp: null, key: '' };
+
+/** Lo normal de los alrededores, dibujado una vez en un canvas aparte y pegado. */
+function paintEnvCached(ctx, world, bounds) {
+  const cv = ctx.canvas;
+  const key = [visual.env, env.mirror, bounds.halfW, bounds.halfH, world.a, world.b, world.c, world.d, world.e, world.f, cv.width, cv.height].join('|');
+  if (!env.bmp || env.key !== key) {
+    const doc = cv.ownerDocument || document;
+    const bmp = doc.createElement('canvas');
+    bmp.width = cv.width;
+    bmp.height = cv.height;
+    const g = bmp.getContext('2d');
+    g.setTransform(world);
+    pitchEnv.paintEnv(g, visual.env, bounds, { cheer: null, hot: false, mirror: env.mirror });
+    env.bmp = bmp;
+    env.key = key;
+  }
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.drawImage(env.bmp, 0, 0);
+}
 function envGoal(view, team) {
   env.cheer = team;
   env.hot = true;
@@ -12266,6 +12288,7 @@ function syncCanvasHotFlags() {
   visual.bright = clampNum(cfg.pitchBright, 0.5, 1.5, 1) - 1;
   visual.contrast = clampNum(cfg.pitchContrast, 0.6, 1.6, 1);
   visual.env = pitchEnv.has(cfg.pitchEnv) ? cfg.pitchEnv : '';
+  if (!visual.env && env.bmp) { env.bmp = null; env.key = ''; }
   visual.light = ['vignette', 'spot', 'corners', 'stadium', 'sunset', 'night', 'stripes', 'cinema'].includes(cfg.pitchLight) ? cfg.pitchLight : '';
   visual.ownRingColor = lookfx.safeColor(cfg.ownRingColor);
   visual.ownRingAlpha = clampNum(cfg.ownRingAlpha, 0.02, 1, 0.3);
