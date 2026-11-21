@@ -9167,18 +9167,24 @@ function matchGeom(stadium) {
        */
       let sideY = 0;
       if (pts.length) {
+        // Por fila (altura): si hay puntos en las cuatro esquinas (arriba y
+        // abajo, en las dos puntas). Las áreas de los dos arcos también tienen
+        // puntos a la misma altura en las dos puntas; la banda es la MÁS de
+        // afuera de esas filas (las paredes de afuera quedan más allá de 1,1×).
         const rows = new Map();
         for (const p of pts) {
-          if (Math.abs(p.x) > halfW * 1.1) continue;
+          const ax = Math.abs(p.x);
+          if (ax > halfW * 1.1) continue;
           const k = Math.round(Math.abs(p.y));
-          const r = rows.get(k) || [Infinity, -Infinity];
-          if (p.x < r[0]) r[0] = p.x;
-          if (p.x > r[1]) r[1] = p.x;
+          const r = rows.get(k) || { l: false, r: false, t: false, b: false };
+          if (p.x <= -halfW * 0.8) r.l = true;
+          if (p.x >= halfW * 0.8) r.r = true;
+          if (p.y < 0) r.t = true; else r.b = true;
           rows.set(k, r);
         }
         for (const [k, r] of rows) {
-          if (r[1] - r[0] < halfW * 1.5 || k <= Math.max(goalY * 1.1, 20)) continue;
-          if (!sideY || k < sideY) sideY = k;
+          if (!(r.l && r.r && r.t && r.b) || k <= Math.max(goalY * 1.2, 20) || k > halfW * 1.1) continue;
+          if (k > sideY) sideY = k;
         }
       }
       // Entrenamiento: por el nombre del mapa (training, entrenamiento, práctica…).
@@ -9187,7 +9193,15 @@ function matchGeom(stadium) {
         const v = stadium[key];
         if (typeof v === 'string' && v.length < 80 && /train|entren|pr[aá]ctic|practice|warm ?up|calentam|1v0/i.test(v)) { training = true; break; }
       }
-      res = { goals: goals.length, halfW, halfH, goalY, goalDepth: Math.max(0, goalBack - halfW), sideY, training };
+      // Canchas raras, donde los alrededores quedarían atravesados: arcos arriba y
+      // abajo (girada), o arcos que no están a la misma distancia del medio
+      // (descentrada). Ahí no se ponen.
+      let odd = false;
+      const xs = goals.map((g) => (Math.abs(g.x0) + Math.abs(g.x1)) / 2);
+      for (const g of goals) if (Math.abs(g.x1 - g.x0) > Math.abs(g.y1 - g.y0)) odd = true;
+      if (xs.length && Math.min(...xs) < Math.max(...xs) * 0.85) odd = true;
+      if (goals.length >= 2 && !(goals.some((g) => g.x0 < 0) && goals.some((g) => g.x0 > 0))) odd = true;
+      res = { goals: goals.length, halfW, halfH, goalY, goalDepth: goalBack - halfW > 4 ? goalBack - halfW : null, sideY, training, odd };
     }
   } catch (e) { res = null; }
   matchGeomCache.set(stadium, res);
@@ -9551,10 +9565,11 @@ function envTrackScore(view, f, match, room) {
  */
 function envBoundsFor(stadium, bg) {
   const geom = matchGeom(stadium);
-  if (!geom || !geom.goals || geom.training) return null;
+  if (!geom || !geom.goals || geom.training || geom.odd) return null;
   const halfW = geom.halfW;
+  // La banda medida; si el mapa no marca las esquinas, el pasto declarado.
   const halfH = geom.sideY || (bg && bg.halfH) || 0;
-  if (!(halfW > 0) || !(halfH > 0) || halfH > halfW * 1.2) return null;
+  if (!(halfW > 0) || !(halfH > 0) || halfH > halfW * 1.2 || halfH < geom.goalY) return null;
   return { halfW, halfH, corner: 0, goalY: geom.goalY, goalDepth: geom.goalDepth };
 }
 

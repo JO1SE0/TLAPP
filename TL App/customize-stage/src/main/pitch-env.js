@@ -79,7 +79,8 @@ function goalGap(halfH) {
  * arco es el alto real de su boca. Sin datos de los arcos, lo de siempre.
  */
 function envDims(bounds) {
-  const gd = Number.isFinite(bounds.goalDepth) ? Math.max(0, Math.min(260, bounds.goalDepth)) : 30;
+  // Sin puntos en la red, una profundidad razonable para el ancho del arco.
+  const gd = Number.isFinite(bounds.goalDepth) && bounds.goalDepth > 4 ? Math.min(260, bounds.goalDepth) : Math.max(30, (bounds.goalY || 64) * 0.5);
   const gap = bounds.goalY > 0 ? bounds.goalY + 26 : Math.max(80, bounds.halfH * 0.5);
   return { W0: bounds.halfW, W: bounds.halfW + gd, H: bounds.halfH, gap };
 }
@@ -1708,7 +1709,7 @@ function paintAlive(ctx, id, bounds, t, reg, o = {}, vis = null) {
     // La tribuna: respira (A/B), pasa la ola cada tanto y en el gol salta la del que metió.
     const tag = `${LIVE.wet ? 'w' : ''}${LIVE.snow ? 's' : ''}${night ? 'n' : ''}${LIVE.pk}`;
     if (blocksScene !== id + tag) { BLOCKS.clear(); blocksScene = id + tag; }
-    const beat = Math.floor(t / 280) % 2;
+    const beat = Math.floor(t / 420) % 2;
     const wf = (t % 24000) / 24000;
     const waveX = wf < 0.4 ? -W - 300 + (wf / 0.4) * (2 * W + 600) : NaN;
     for (const B of reg.crowds) {
@@ -1750,7 +1751,8 @@ function paintAlive(ctx, id, bounds, t, reg, o = {}, vis = null) {
     // Banderazos: banderas grandes flameando adentro de la tribuna, de cada hinchada.
     for (const B of reg.crowds) {
       const span = B.x1 - B.x0;
-      if (span < 150 || B.y1 - B.y0 < 20) continue;
+      // Banderazos sólo con la tribuna bastante llena: en una vacía quedan flotando.
+      if (span < 150 || B.y1 - B.y0 < 20 || B.density < 0.55) continue;
       const k = Math.max(1, Math.floor(span / 260));
       for (let i = 0; i < k; i++) {
         const fx = B.x0 + ((i + 0.5) / k) * span + (hash01(B.seed % 997 + i) - 0.5) * 40;

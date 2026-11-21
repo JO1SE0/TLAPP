@@ -422,6 +422,8 @@ syncMinimap();
         for (const sx of [-1, 1]) for (const sy of [-1, 1]) {
           V.push(v(sx * 550, sy * 300), v(sx * 540, sy * 300), v(sx * 650, sy * 380));
           V.push(v(sx * 550, sy * 90), v(sx * 590, sy * 90));
+          // Las áreas: puntos a la misma altura en las dos puntas (como el x7 de LHL).
+          V.push(v(sx * 550, sy * 180), v(sx * 430, sy * 180));
         }
         V.push(v(0, -300), v(0, 300), v(0, -80), v(0, 80));
         const st = { n: name, V };
@@ -431,11 +433,17 @@ syncMinimap();
       const x5 = mod.envBoundsFor(pitch('Futsal x5 - LHL', true), bg);
       const training = mod.envBoundsFor(pitch('Training Room by Fede', true), bg);
       const noGoals = mod.envBoundsFor(pitch('Fútbol libre', false), bg);
-      return { x5, training, noGoals };
+      // Girada: arcos arriba y abajo. Clásica sin esquinas marcadas: el pasto declarado.
+      const turned = { n: 'Vertical', V: [], G: [{ W: { x: -90, y: -550 }, ba: { x: 90, y: -550 }, q: team }, { W: { x: -90, y: 550 }, ba: { x: 90, y: 550 }, q: team }] };
+      const vertical = mod.envBoundsFor(turned, bg);
+      const plain = { n: 'Classic', V: [], G: [{ W: { x: -370, y: -64 }, ba: { x: -370, y: 64 }, q: team }, { W: { x: 370, y: -64 }, ba: { x: 370, y: 64 }, q: team }] };
+      const classic = mod.envBoundsFor(plain, { halfW: 370, halfH: 170 });
+      return { x5, training, noGoals, vertical, classic };
     }, GEOM);
     check('alrededores: la cancha se mide de los arcos y las bandas (no del pasto declarado)',
       r5.x5 && r5.x5.halfW === 550 && r5.x5.halfH === 300 && r5.x5.goalY === 90 && r5.x5.goalDepth === 40, JSON.stringify(r5.x5));
-    check('alrededores: sin arcos o de entrenamiento, no se ponen', r5.training === null && r5.noGoals === null, JSON.stringify({ t: r5.training, n: r5.noGoals }));
+    check('alrededores: sin arcos, de entrenamiento o girada, no se ponen', r5.training === null && r5.noGoals === null && r5.vertical === null, JSON.stringify({ t: r5.training, n: r5.noGoals, v: r5.vertical }));
+    check('alrededores: cancha clásica sin esquinas marcadas usa el pasto declarado', r5.classic && r5.classic.halfW === 370 && r5.classic.halfH === 170 && r5.classic.goalDepth === null, JSON.stringify(r5.classic));
     const CACHED = between(GP, 'function worldView(m, w, h) {', '/**\n * Rectángulo con esquinas') + between(GP, 'const env = { cheer: null', 'function flushStadiumCache(view) {') + between(GP, '/** Terminó el partido: fuegos artificiales', 'function closeMatch(f, room, nextStarted) {');
     const r2 = await p.evaluate((code) => {
       const pitchEnv = module.exports;
