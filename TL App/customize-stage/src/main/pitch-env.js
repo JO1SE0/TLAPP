@@ -1422,14 +1422,45 @@ function fresaDT(ctx, x, y, up, team, mirror, wag = 0, mood = '') {
     ctx.restore();
     return;
   }
-  // Cara: ojos, nariz y boca (abierta si festeja).
-  ctx.fillStyle = '#2a1d16';
-  ctx.beginPath(); ctx.ellipse(-3.4, -5, 1.6, 1.8, 0, 0, 7); ctx.ellipse(3.4, -5, 1.6, 1.8, 0, 0, 7); ctx.fill();
-  ctx.fillStyle = '#fff';
-  ctx.beginPath(); ctx.arc(-2.9, -5.6, 0.6, 0, 7); ctx.arc(3.9, -5.6, 0.6, 0, 7); ctx.fill();
+  // Cara: ojos, nariz y boca (abierta si festeja). Parpadeo y mate: ojos cerraditos.
+  if (mood === 'blink' || mood === 'mate') {
+    ctx.strokeStyle = '#2a1d16'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.arc(-3.4, -5.6, 1.6, 0.2, Math.PI - 0.2); ctx.moveTo(5, -5.3); ctx.arc(3.4, -5.6, 1.6, 0.2, Math.PI - 0.2); ctx.stroke();
+  } else {
+    ctx.fillStyle = '#2a1d16';
+    ctx.beginPath(); ctx.ellipse(-3.4, -5, 1.6, 1.8, 0, 0, 7); ctx.ellipse(3.4, -5, 1.6, 1.8, 0, 0, 7); ctx.fill();
+    ctx.fillStyle = '#fff';
+    ctx.beginPath(); ctx.arc(-2.9, -5.6, 0.6, 0, 7); ctx.arc(3.9, -5.6, 0.6, 0, 7); ctx.fill();
+  }
   ctx.fillStyle = '#7a4a3a';
   ctx.beginPath(); ctx.ellipse(0, -1.5, 2.2, 1.7, 0, 0, 7); ctx.fill();
-  if (up) { ctx.fillStyle = '#e8737a'; ctx.beginPath(); ctx.ellipse(0, 2, 1.8, 2.4, 0, 0, 7); ctx.fill(); }
+  // Mate: la calabacita en las patas y la bombilla a la boca.
+  if (mood === 'mate') {
+    ctx.strokeStyle = '#c9c4b8'; ctx.lineWidth = 0.9;
+    ctx.beginPath(); ctx.moveTo(1, 1); ctx.lineTo(4.5, 6); ctx.stroke();
+    ctx.fillStyle = '#6b4a2b'; ctx.beginPath(); ctx.ellipse(5.5, 9, 4.2, 3.8, 0, 0, 7); ctx.fill();
+    ctx.fillStyle = '#4c7a2e'; ctx.beginPath(); ctx.ellipse(5.5, 7.4, 2.8, 1.3, 0, 0, 7); ctx.fill();
+    ctx.fillStyle = FW; ctx.beginPath(); ctx.arc(1.5, 10.5, 2.8, 0, 7); ctx.arc(9.5, 10.5, 2.8, 0, 7); ctx.fill();
+    ctx.strokeStyle = '#7a4a3a'; ctx.lineWidth = 0.8; ctx.beginPath(); ctx.moveTo(-2, 0.6); ctx.quadraticCurveTo(0, 2, 2, 0.6); ctx.stroke();
+    ctx.restore();
+    return;
+  }
+  // Indicando: una pata estirada hacia la cancha.
+  if (mood === 'point') {
+    ctx.strokeStyle = FS; ctx.lineWidth = 3.2; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(7, 4); ctx.lineTo(15, -12 + wag); ctx.stroke(); ctx.lineCap = 'butt';
+    curl(ctx, 15.5, -13 + wag, 3);
+  }
+  // Gritando: la boca bien abierta y las patas haciendo de megáfono.
+  if (mood === 'shout') {
+    ctx.fillStyle = '#5a2a2a'; ctx.beginPath(); ctx.ellipse(0, 2.4, 2.6, 2.8, 0, 0, 7); ctx.fill();
+    ctx.fillStyle = '#e8737a'; ctx.beginPath(); ctx.ellipse(0, 3.4, 1.6, 1.4, 0, 0, 7); ctx.fill();
+    curl(ctx, -4.6, 2.2, 2.8); curl(ctx, 4.6, 2.2, 2.8);
+    ctx.restore();
+    return;
+  }
+  if (up) {
+ ctx.fillStyle = '#e8737a'; ctx.beginPath(); ctx.ellipse(0, 2, 1.8, 2.4, 0, 0, 7); ctx.fill(); }
   else { ctx.strokeStyle = '#7a4a3a'; ctx.lineWidth = 0.8; ctx.beginPath(); ctx.moveTo(-2, 0.6); ctx.quadraticCurveTo(0, 2, 2, 0.6); ctx.stroke(); }
   // Empate: se rasca la cabeza con una pata y le sale un signo de pregunta.
   if (mood === 'scratch') {
@@ -1439,6 +1470,78 @@ function fresaDT(ctx, x, y, up, team, mirror, wag = 0, mood = '') {
     paint(ctx, '?', 15, -20, '900 9px sans-serif', '#f0c25a', mirror);
   }
   ctx.restore();
+}
+
+/**
+ * Fresa caminando la línea, vista de arriba: el cuerpo de costado, las cuatro
+ * patas alternando (`f` 0/1) y la gorra. `dir`: 1 hacia la derecha, -1 a la izquierda.
+ */
+function fresaWalk(ctx, team, mirror, f, dir) {
+  ctx.save();
+  ctx.scale(1.15 * dir, 1.15);
+  ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.beginPath(); ctx.ellipse(2, 7, 18, 7, 0, 0, 7); ctx.fill();
+  // Patas: diagonales juntas, como camina un perro.
+  ctx.fillStyle = FW;
+  const a = f ? 3 : -3;
+  for (const [px, py, s2] of [[8, -6, 1], [8, 7, -1], [-9, -6, -1], [-9, 7, 1]]) { ctx.beginPath(); ctx.arc(px + a * s2, py, 2.8, 0, 7); ctx.fill(); }
+  // Cola arriba, con el pompón.
+  ctx.strokeStyle = FS; ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.moveTo(-12, 0); ctx.quadraticCurveTo(-18, -2 + a * 0.6, -20, -5 + a); ctx.stroke();
+  curl(ctx, -20.5, -6 + a, 3.2);
+  ctx.fillStyle = FS; ctx.beginPath(); ctx.ellipse(-1, 0, 14, 8.5, 0, 0, 7); ctx.fill();
+  for (const [cx, cy] of [[-9, -4], [-9, 4], [-3, -6], [-3, 6], [3, -6], [3, 6], [-12, 0]]) curl(ctx, cx, cy, 3.4);
+  // Orejas que se bambolean y la cabeza.
+  ctx.fillStyle = FS;
+  ctx.beginPath(); ctx.ellipse(10, -7 - a * 0.3, 5, 3.6, 0.3, 0, 7); ctx.ellipse(10, 7 + a * 0.3, 5, 3.6, -0.3, 0, 7); ctx.fill();
+  ctx.fillStyle = FW; ctx.beginPath(); ctx.arc(14, 0, 7.5, 0, 7); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(20, 0, 4.2, 3.2, 0, 0, 7); ctx.fill();
+  ctx.fillStyle = '#7a4a3a'; ctx.beginPath(); ctx.arc(23.5, 0, 1.7, 0, 7); ctx.fill();
+  // Gorra vista de arriba, la visera para adelante.
+  ctx.fillStyle = team === 'Blue' ? '#2d55b0' : '#b83a3a';
+  ctx.beginPath(); ctx.ellipse(19, 0, 3.2, 6, 0, -Math.PI / 2, Math.PI / 2); ctx.fill();
+  ctx.fillStyle = team === 'Blue' ? BLUE : RED; ctx.beginPath(); ctx.arc(13, 0, 6.2, 0, 7); ctx.fill();
+  ctx.restore();
+  paint(ctx, 'TL', 13 * 1.15 * dir, 0, '900 5px sans-serif', '#ffffff', mirror);
+}
+
+/** Globito de diálogo con el texto (respeta el espejo). */
+function bubble(g, text, mirror, color = '#1f2329') {
+  g.font = '900 8px sans-serif';
+  const w = Math.max(22, g.measureText(text).width + 10), h = 13;
+  g.fillStyle = 'rgba(0,0,0,0.25)'; g.fillRect(-w / 2 + 1.5, -h / 2 + 2, w, h);
+  g.fillStyle = '#ffffff';
+  g.beginPath();
+  if (g.roundRect) g.roundRect(-w / 2, -h / 2, w, h, 4); else g.rect(-w / 2, -h / 2, w, h);
+  g.fill();
+  g.beginPath(); g.moveTo(-w / 2 + 6, h / 2 - 0.5); g.lineTo(-w / 2 + 3, h / 2 + 5); g.lineTo(-w / 2 + 11, h / 2 - 0.5); g.fill();
+  paint(g, text, 0, 0.5, '900 8px sans-serif', color, mirror, w - 6);
+}
+
+/** La pizarra con la jugada que está marcando (globito de táctica). */
+function tacticBubble(g, mirror, k) {
+  const w = 30, h = 20;
+  g.fillStyle = 'rgba(0,0,0,0.25)'; g.fillRect(-w / 2 + 1.5, -h / 2 + 2, w, h);
+  g.fillStyle = '#f4f1ea'; g.fillRect(-w / 2, -h / 2, w, h);
+  g.strokeStyle = '#3a3f48'; g.lineWidth = 1; g.strokeRect(-w / 2, -h / 2, w, h);
+  g.beginPath(); g.moveTo(-w / 2 + 4, h / 2); g.lineTo(-w / 2 + 2, h / 2 + 5); g.lineTo(-w / 2 + 9, h / 2); g.fillStyle = '#f4f1ea'; g.fill();
+  g.save(); if (mirror) g.scale(-1, 1);
+  const r = seeded(170 + k);
+  g.fillStyle = RED; for (let i = 0; i < 3; i++) { g.beginPath(); g.arc(-10 + r() * 8, -6 + i * 6, 1.6, 0, 7); g.fill(); }
+  g.fillStyle = BLUE; for (let i = 0; i < 2; i++) { g.beginPath(); g.arc(4 + r() * 6, -4 + i * 8, 1.6, 0, 7); g.fill(); }
+  g.strokeStyle = '#d24a4a'; g.lineWidth = 1; g.setLineDash([2, 1.5]);
+  g.beginPath(); g.moveTo(-8, 4); g.quadraticCurveTo(0, -8 + r() * 6, 10, 0); g.stroke(); g.setLineDash([]);
+  g.beginPath(); g.moveTo(10, 0); g.lineTo(7, -1.5); g.moveTo(10, 0); g.lineTo(8, 2.5); g.stroke();
+  g.restore();
+}
+
+/** La nubecita que le llueve encima con el gol en contra. */
+function sadCloud(g, f) {
+  g.fillStyle = '#8e97a3';
+  for (const [x, y, r] of [[-5, 0, 4.5], [0, -2, 5.5], [5, 0, 4.5], [0, 1.5, 4.5]]) { g.beginPath(); g.arc(x, y, r, 0, 7); g.fill(); }
+  g.strokeStyle = 'rgba(120,170,230,0.9)'; g.lineWidth = 1;
+  g.beginPath();
+  for (const x of [-5, -1, 3, 6]) { const y0 = 6 + (((x + f * 3) % 4) + 4) % 4; g.moveTo(x, y0); g.lineTo(x - 0.8, y0 + 3); }
+  g.stroke();
 }
 
 /** Un bancucho para Fresa donde la escena no tiene banco de suplentes. */
@@ -1453,16 +1556,16 @@ function fresaBench(ctx, x, y) {
  * lado de adentro (hacia el medio). Donde no hay bancos, en un bancucho propio.
  */
 const FRESA_SPOT = {
-  barrio: (W, H, t) => [t === 'Blue' ? 26 : -26, H + 38, false],
-  led: (W, H, t) => [t === 'Blue' ? 8 : -8, H + 46, false],
-  f5: (W, H, t) => [t === 'Blue' ? 14 : -14, H + 70, false],
-  estadio: (W, H, t) => [t === 'Blue' ? 30 : -30, H + 44, false],
-  noche: (W, H, t) => [t === 'Blue' ? W * 0.45 : -W * 0.45, H + 84, true],
-  playa: (W, H, t) => [t === 'Blue' ? W * 0.5 : -W * 0.5, H + 66, true],
-  campo: (W, H, t) => [t === 'Blue' ? 20 : -20, H + 76, true],
-  azotea: (W, H, t) => [t === 'Blue' ? W * 0.5 : -W * 0.5, H + 84, true],
-  cortada: (W, H, t) => [t === 'Blue' ? W * 0.3 : -W * 0.3, H + 34, true],
-  colegio: (W, H, t) => [t === 'Blue' ? W * 0.5 : -W * 0.5, H + 76, true]
+  barrio: (W, H, t) => [t === 'Blue' ? 26 : -26, H + 38, false, 0],
+  led: (W, H, t) => [t === 'Blue' ? 8 : -8, H + 46, false, 0],
+  f5: (W, H, t) => [t === 'Blue' ? 14 : -14, H + 70, false, 0],
+  estadio: (W, H, t) => [t === 'Blue' ? 30 : -30, H + 44, false, 0],
+  noche: (W, H, t) => [t === 'Blue' ? W * 0.45 : -W * 0.45, H + 84, true, 50],
+  playa: (W, H, t) => [t === 'Blue' ? W * 0.5 : -W * 0.5, H + 66, true, 44],
+  campo: (W, H, t) => [t === 'Blue' ? 20 : -20, H + 76, true, 34],
+  azotea: (W, H, t) => [t === 'Blue' ? W * 0.5 : -W * 0.5, H + 84, true, 50],
+  cortada: (W, H, t) => [t === 'Blue' ? W * 0.3 : -W * 0.3, H + 34, true, 40],
+  colegio: (W, H, t) => [t === 'Blue' ? W * 0.5 : -W * 0.5, H + 76, true, 46]
 };
 
 /* ── Clima, noche y fuegos (sirven para todos) ──────────────────────── */
@@ -1984,30 +2087,8 @@ function paintAlive(ctx, id, bounds, t, reg, o = {}, vis = null) {
       }
       n++;
     }
-    // Fresa: mueve la cola; en el gol de los suyos, festeja.
-    if (reg.fresa && see(reg.fresa.x, reg.fresa.y, 40)) {
-      const team = reg.fresa.team;
-      // Al final: si ganaron, da vueltas festejando; si empataron, se rasca la cabeza.
-      const won = o.fireworks === team, draw = o.fireworks === 'draw';
-      const sad = o.hot && o.cheer && o.cheer !== team;
-      if (won || draw || sad) {
-        const mood = won ? '' : draw ? 'scratch' : 'sad';
-        const wag = won ? Math.round(Math.sin(t / 90) * 3) / 3 : draw ? Math.round(Math.sin(t / 300) * 2) / 2 : 0;
-        const sp = sprite(`fresa${won ? 1 : 0}${team}${o.mirror ? 1 : 0}${wag}${mood}`, 34, (g) => fresaDT(g, 0, 0, won, team, !!o.mirror, wag, mood));
-        let fx = reg.fresa.x, fy = reg.fresa.y;
-        if (won) { const a = t / 650; fx += Math.cos(a) * 20; fy += Math.sin(a) * 9 - Math.abs(Math.sin(t / 150)) * 3; }
-        ctx.globalAlpha = night ? 0.8 : 1;
-        stamp(ctx, sp, fx, fy); n++;
-      } else {
-      const up = o.cheer === team;
-      const hop = up ? Math.abs(Math.sin(t / 160)) * 4 : (hash01(Math.floor(t / 3000)) < 0.25 ? Math.abs(Math.sin(t / 140)) * 2 : 0);
-      ctx.globalAlpha = night ? 0.8 : 1;
-      const wag = Math.round(Math.sin(t / (up ? 90 : 160)) * 3) / 3;
-      const sp = sprite(`fresa${up ? 1 : 0}${reg.fresa.team}${o.mirror ? 1 : 0}${wag}`, 34, (g) => fresaDT(g, 0, 0, up, reg.fresa.team, !!o.mirror, wag));
-      stamp(ctx, sp, reg.fresa.x, reg.fresa.y - hop);
-      n++;
-      }
-    }
+    // Fresa: tiene su rutina de DT y reacciona al partido.
+    if (reg.fresa && see(reg.fresa.x, reg.fresa.y, 60 + (reg.fresa.walk || 0))) n += fresaAlive(ctx, reg.fresa, t, o, night);
   } finally {
     ctx.restore();
   }
@@ -2405,6 +2486,69 @@ function fiestaBlock(B, team, phase, tag) {
   return bl;
 }
 
+/**
+ * Lo que hace Fresa en cada momento. Partido normal: cada ~5 s cambia de
+ * actividad (sentada mirando con parpadeos, camina la línea, marca la jugada
+ * con la pizarra, toma mate o grita «¡VAMOS!»). Gol de los suyos: salta, gira
+ * y ladra «¡GOOOL!»; en contra: se tapa los ojos con una nubecita encima; al
+ * final, vuelta olímpica si ganaron o se rasca la cabeza si empataron.
+ * Todo son figuras guardadas: un par de pegadas por cuadro.
+ */
+function fresaAlive(ctx, F, t, o, night) {
+  const team = F.team, mir = !!o.mirror, m = mir ? 1 : 0;
+  const won = o.fireworks === team, draw = o.fireworks === 'draw';
+  const sad = o.hot && o.cheer && o.cheer !== team;
+  const up = o.hot && o.cheer === team;
+  const ink = team === 'Blue' ? '#2d55b0' : '#b83a3a';
+  ctx.globalAlpha = night ? 0.85 : 1;
+  const at = (key, r, fn, x, y, a) => stamp(ctx, sprite(key, r, fn), x, y, a);
+  let x = F.x, y = F.y;
+  if (won || draw) {
+    const mood = won ? '' : 'scratch';
+    const wag = won ? Math.round(Math.sin(t / 90) * 3) / 3 : Math.round(Math.sin(t / 300) * 2) / 2;
+    if (won) { const a = t / 650; x += Math.cos(a) * 20; y += Math.sin(a) * 9 - Math.abs(Math.sin(t / 150)) * 3; }
+    at(`fresa${won ? 1 : 0}${team}${m}${wag}${mood}`, 34, (g) => fresaDT(g, 0, 0, won, team, mir, wag, mood), x, y);
+    if (won && Math.floor(t / 1400) % 2) { at(`fbC${m}`, 34, (g) => bubble(g, '¡CAMPEONES!', mir, '#a87a00'), x + 36, y - 44); return 2; }
+    return 1;
+  }
+  if (sad) {
+    at(`fresa0${team}${m}0sad`, 34, (g) => fresaDT(g, 0, 0, false, team, mir, 0, 'sad'), x, y);
+    const f = Math.floor(t / 140) % 4;
+    at(`fcloud${f}`, 12, (g) => sadCloud(g, f), x + 2, y - 36 + Math.sin(t / 500));
+    return 2;
+  }
+  if (up) {
+    // Salta, y cada tanto pega un giro en el aire.
+    const hop = Math.abs(Math.sin(t / 160)) * 6;
+    const c = t % 1500, spin = c < 380 ? (c / 380) * Math.PI * 2 : 0;
+    const wag = Math.round(Math.sin(t / 90) * 3) / 3;
+    at(`fresa1${team}${m}${wag}`, 34, (g) => fresaDT(g, 0, 0, true, team, mir, wag), x, y - hop, spin);
+    at(`fbG${team}${m}`, 34, (g) => bubble(g, '¡GOOOL!', mir, ink), x + 26, y - 36 - hop * 0.5);
+    return 2;
+  }
+  // La rutina: una actividad por tramo, elegida con azar fijo según el tramo.
+  const seg = Math.floor(t / 5200), p = (t % 5200) / 5200;
+  const r = hash01(seg * 7.31 + team.length);
+  const act = r < 0.3 ? 'sit' : r < 0.56 ? 'walk' : r < 0.7 ? 'point' : r < 0.84 ? 'mate' : 'shout';
+  if (act === 'walk' && F.walk > 0) {
+    const ph = p * Math.PI * 2;
+    x += Math.sin(ph) * F.walk;
+    const dir = Math.cos(ph) >= 0 ? 1 : -1;
+    const f = Math.floor(t / 170) % 2;
+    at(`fwalk${team}${m}${f}${dir}`, 34, (g) => fresaWalk(g, team, mir, f, dir), x, y);
+    return 1;
+  }
+  let mood = act === 'sit' || act === 'walk' ? '' : act;
+  if (mood === '' && (t % 3100) < 150) mood = 'blink';
+  const talk = p > 0.12 && p < 0.8;
+  const wv = mood === 'point' ? Math.round(Math.sin(t / 220) * 2) : Math.round(Math.sin(t / 160) * 3) / 3;
+  const hop = mood === 'shout' && talk ? Math.abs(Math.sin(t / 130)) * 2.5 : 0;
+  at(`fresa0${team}${m}${wv}${mood}`, 34, (g) => fresaDT(g, 0, 0, false, team, mir, wv, mood), x, y - hop);
+  if (mood === 'shout' && talk) { const word = Math.floor(t / 900) % 2 ? '¡VAMOS!' : '¡GUAU!'; at(`fb${word}${team}${m}`, 34, (g) => bubble(g, word, mir, ink), x + 26, y - 34); return 2; }
+  if (mood === 'point' && talk) { const k = seg % 4; at(`ftac${k}${m}`, 24, (g) => tacticBubble(g, mir, k), x + 28, y - 34); return 2; }
+  return 1;
+}
+
 const DRAW = { noche: potreroNoche, barrio: clubBarrio, led: potreroLed, f5: canchitaF5, playa, campo, azotea, cortada, colegio, estadio };
 
 /**
@@ -2446,9 +2590,9 @@ function paintEnv(ctx, id, bounds, o = {}) {
     // Fresa, la DT, en el banco del equipo de uno (rojo si mirás de afuera).
     if (o.fresa !== false && FRESA_SPOT[id]) {
       const team = o.fresaTeam === 'Blue' ? 'Blue' : 'Red';
-      const [fx, fy, bench] = FRESA_SPOT[id](W, H, team);
+      const [fx, fy, bench, walk] = FRESA_SPOT[id](W, H, team);
       if (bench) fresaBench(ctx, fx, fy + 4);
-      if (REG) REG.fresa = { x: fx, y: fy, team };
+      if (REG) REG.fresa = { x: fx, y: fy, team, walk: walk || 0 };
       if (!LIVE.alive) fresaDT(ctx, fx, fy, o.cheer === team, team, !!o.mirror);
     }
     // Gol sin vida: papelitos, bengalas y humo en la tribuna del que metió.
