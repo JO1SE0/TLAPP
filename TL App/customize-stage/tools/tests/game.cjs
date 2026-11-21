@@ -130,7 +130,7 @@ module.exports = async function runGameChecks(check, browser) {
     // primero de la lista); nada se queda con el foco del teclado.
     await p.click('.tvm-qm-btn');
     const tabNames = await p.$$eval('#tvm-qm .qm-tab', (b) => b.map((x) => x.textContent));
-    const tabsOk = tabNames.join(',') === 'Vista,Fichas,Pelota,Sonido,Partido';
+    const tabsOk = tabNames.join(',') === 'Vista,Estadio,Fichas,Pelota,Sonido,Partido';
     let clicked = 0;
     let oneVisible = true;
     for (let ti = 0; ti < tabNames.length; ti++) {
@@ -158,7 +158,7 @@ module.exports = async function runGameChecks(check, browser) {
         clicked++;
       }
     }
-    check('menú: cinco pestañas y un grupo a la vista por vez', tabsOk && oneVisible, `${tabNames.join(',')} · uno por vez: ${oneVisible}`);
+    check('menú: seis pestañas (con Estadio) y un grupo a la vista por vez', tabsOk && oneVisible, `${tabNames.join(',')} · uno por vez: ${oneVisible}`);
     const sent = await p.evaluate(() => window.SENT.filter((x) => x[0] === 'game:quick-set').map((x) => x[1]));
     const rejected = sent.map(JSON.parse).filter((pt) => JSON.stringify(cleanQuickWrap(pt)) !== JSON.stringify(pt));
     function cleanQuickWrap(pt) { return cleanQuick(pt); }
@@ -358,8 +358,8 @@ syncMinimap();
       const visual = { env: 'barrio' };
       // eslint-disable-next-line no-new-func
       window.FLUSH = 0;
-      const stubs = { safe: (fn, ...a) => fn(...a), peers: new Map([['Mati', {}]]), myNick: () => 'Yo', flushStadiumCache: () => { window.FLUSH++; }, gameWindow: () => null, gameDocument: () => null, teamNameOf: (f, p) => p.t };
-      const mod = new Function('pitchEnv', 'visual', 'document', ...Object.keys(stubs), `${code}; return { env, paintEnvCached, envTrackScore, envNames, envScore, envFinal };`)(pitchEnv, visual, document, ...Object.values(stubs));
+      const stubs = { state: { config: { visual: {} } }, safe: (fn, ...a) => fn(...a), peers: new Map([['Mati', {}]]), myNick: () => 'Yo', flushStadiumCache: () => { window.FLUSH++; }, gameWindow: () => null, gameDocument: () => null, teamNameOf: (f, p) => p.t };
+      const mod = new Function('pitchEnv', 'visual', 'document', ...Object.keys(stubs), `${code}; return { env, paintEnvCached, envTrackScore, envNames, envScore, envFinal, envLook, envNamesShown };`)(pitchEnv, visual, document, ...Object.values(stubs));
       const mk = () => { const c = document.createElement('canvas'); c.width = 900; c.height = 500; return c; };
       const world = new DOMMatrix([1.1, 0, 0, 1.1, 450, 250]);
       const b = { halfW: 370, halfH: 170 };
@@ -381,6 +381,11 @@ syncMinimap();
       const p2 = mk(), g2 = p2.getContext('2d'); g2.setTransform(world); pitchEnv.paintEnv(g2, 'noche', b, { score: 'ROJO 1 - 0 AZUL', names: ['Mati'] });
       const d1 = g1.getImageData(0, 0, 900, 500).data, d2 = g2.getImageData(0, 0, 900, 500).data;
       let live = 0; for (let i = 0; i < d1.length; i += 4) if (d1[i] !== d2[i]) live++;
+      // Los interruptores de la pestaña Estadio apagan de verdad.
+      stubs.state.config.visual = { envFresa: false, envScoreLed: false, envNames: false, envFireworks: false };
+      mod.env.fireworks = 'Red';
+      const offs = { fresa: mod.envLook().fresa, fw: mod.envLook().fireworks, score: mod.envScore(), names: mod.envNamesShown().length };
+      stubs.state.config.visual = {}; mod.env.fireworks = null;
       // Fuegos: ganó el azul; al arrancar otro partido se apagan.
       // Fresa se sienta en el banco del equipo de uno.
       const fT = { score: { red: 'r', blue: 'b' }, players: 'pl', name: 'n' };
@@ -391,10 +396,11 @@ syncMinimap();
       let fresaPx = 0; for (let i = 0; i < z1.length; i += 4) if (z1[i] !== z2[i]) fresaPx++;
       mod.envFinal(1, 3); const fw = mod.env.fireworks;
       mod.envTrackScore(null, f, { r: 0, b: 0 }); const fwAfter = mod.env.fireworks;
-      return { diff, first: Math.round(first), again: Math.round(again * 10) / 10, startFlush, same, inGoal, score, names, live, fw, fwAfter, fresaTeam, fresaPx };
+      return { diff, first: Math.round(first), again: Math.round(again * 10) / 10, startFlush, same, inGoal, score, names, live, fw, fwAfter, fresaTeam, fresaPx, offs };
     }, CACHED);
     check('alrededores: lo guardado es igual a lo dibujado y pegarlo es instantáneo', r2.diff === 0 && r2.again < 5, JSON.stringify(r2));
     check('alrededores: Fresa, la DT, se dibuja y se sienta en el banco del equipo de uno', r2.fresaTeam === 'Blue' && r2.fresaPx > 200, JSON.stringify({ t: r2.fresaTeam, px: r2.fresaPx }));
+    check('alrededores: los interruptores de Estadio apagan Fresa, fuegos, resultado y nombres', r2.offs && r2.offs.fresa === false && r2.offs.fw === null && r2.offs.score === '' && r2.offs.names === 0, JSON.stringify(r2.offs));
     check('alrededores: fuegos del ganador al final y se apagan con otro partido', r2.fw === 'Blue' && r2.fwAfter === null, JSON.stringify(r2));
     check('alrededores: marcador y nombres de TL; rehace al empezar, no en el festejo', r2.startFlush === 1 && r2.same === 1 && r2.inGoal === 1 && r2.score === 'ROJO 1 - 0 AZUL' && r2.names === 'Mati,Yo' && r2.live > 50, JSON.stringify(r2));
     await p.close();

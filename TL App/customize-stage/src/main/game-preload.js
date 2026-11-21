@@ -2044,6 +2044,8 @@ const QM_WEATHER = [['none', 'Sin clima'], ...Object.entries({"rain": "Lluvia", 
 const QM_BALLS = [['default', 'Como viene'], ...Object.entries({"soccer": "Futbolera", "neon": "Neón", "gold": "Dorada", "beach": "Playera", "eight": "Bola 8", "star": "Estrella", "triangles": "Fútbol triángulos", "vintage": "Fútbol de cuero", "tennis": "Tenis", "basket": "Básquet", "volley": "Vóley", "baseball": "Béisbol", "golf": "Golf", "bowling": "Bowling", "earth": "Planeta Tierra", "moon": "Luna", "disco": "Bola de espejos", "orb": "Orbe místico", "pumpkin": "Calabaza", "melon": "Sandía", "eye": "Ojo", "argentina": "Celeste y blanca", "fire": "Bola de fuego", "ice": "Hielo", "yinyang": "Yin yang", "smile": "Carita", "sun": "Sol", "donut": "Dona", "checker": "Cuadros", "candy": "Caramelo", "heart": "Corazón", "saturn": "Planeta", "lava": "Lava", "peso": "Moneda de un peso"})];
 const qmDiscs = () => [['default', 'Como viene'], ...Object.entries(DISC_NAMES)];
 const QM_KICKS = [['default', 'El del juego'], ['real1', 'Pelotazo real'], ['real2', 'Golpe seco'], ['real3', 'Patada real'], ['real4', 'Toque rápido'], ['real5', 'Bombazo'], ['real6', 'Zapatazo']];
+const QM_ENV_THUMBS = new Map();
+let qmEnvQueue = Promise.resolve();
 const QM_ENVS = [['none', 'Nada'], ['noche', 'Potrero de noche'], ['barrio', 'Club de barrio'], ['led', 'Potrero LED'], ['f5', 'Canchita F5'], ['playa', 'Playa'], ['campo', 'Campito'], ['azotea', 'Azotea'], ['cortada', 'La cortada'], ['colegio', 'Patio del colegio'], ['estadio', 'Estadio grande']];
 const QM_LIGHTS = [['none', 'Sin luz'], ['vignette', 'Viñeta'], ['spot', 'Foco central'], ['corners', 'Luces de esquina'], ['stadium', 'Estadio de noche'], ['sunset', 'Atardecer'], ['night', 'Noche fría'], ['stripes', 'Franjas de césped'], ['cinema', 'Cine']];
 const QM_BALL_COLORS = [['', 'Como viene'], ['#ecd593', 'Dorado'], ['#e56b6b', 'Rojo'], ['#5689e5', 'Azul'], ['#5ccf7a', 'Verde'], ['#ff9f43', 'Naranja'], ['#b07cff', 'Violeta']];
@@ -2075,7 +2077,8 @@ function saveUndo() {
 // Por si una clave todavía no está en la config (no debería: llega con los valores de fábrica).
 const QM_FALLBACK = { pitchLight: 'none', texture: 'none', pitchWeather: 'none', discStyle: 'default', ballStyle: 'default',
   ballColor: '', ballOutline: '', discOutline: '', mirror: 'off', kickSfx: 'default', discSize: 1, ballSize: 1,
-  scoreboardPos: 'top', scoreboardScale: 1, pitchBright: 1, pitchContrast: 1, pitchEnv: 'none' };
+  scoreboardPos: 'top', scoreboardScale: 1, pitchBright: 1, pitchContrast: 1, pitchEnv: 'none',
+  envFresa: true, envCheer: true, envScoreLed: true, envNames: true, envFireworks: true };
 let qmCurLabel = '';
 function quickSet(patch, label) {
   const before = {};
@@ -2187,9 +2190,9 @@ function quickCss(doc) {
     #tvm-qm .qm-undo svg { width: 17px; height: 17px; }
     #tvm-qm .qm-undo:hover:not(:disabled) { background: rgba(236,213,147,.28); }
     #tvm-qm .qm-undo:disabled { color: rgba(233,237,246,.3); background: rgba(255,255,255,.04); cursor: default; }
-    #tvm-qm .qm-tabs { display: grid; grid-template-columns: repeat(5, 1fr); gap: 3px; padding: 3px; margin: 0 2px 6px; border-radius: 14px; background: rgba(255,255,255,.05); }
+    #tvm-qm .qm-tabs { display: grid; grid-template-columns: repeat(6, 1fr); gap: 2px; padding: 3px; margin: 0 2px 6px; border-radius: 14px; background: rgba(255,255,255,.05); }
     #tvm-qm .qm-tab { display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 7px 0 6px; border: 0; border-radius: 11px; cursor: pointer;
-      background: transparent; color: #9aa3b8; font: 700 10.5px Outfit, Bahnschrift, 'Segoe UI', sans-serif; transition: background .15s, color .15s; }
+      background: transparent; color: #9aa3b8; font: 700 9.5px Outfit, Bahnschrift, 'Segoe UI', sans-serif; transition: background .15s, color .15s; }
     #tvm-qm .qm-tab svg { width: 18px; height: 18px; }
     #tvm-qm .qm-tab:hover { color: #e9edf6; background: rgba(255,255,255,.05); }
     #tvm-qm .qm-tab.on { color: #ecd593; background: rgba(236,213,147,.16); }
@@ -2211,6 +2214,8 @@ function quickCss(doc) {
     #tvm-qm .qm-strip.th .qm-it canvas { display: block; width: 38px; height: 38px; }
     #tvm-qm .qm-strip.th .qm-it:hover { background: rgba(255,255,255,.08); }
     #tvm-qm .qm-strip.th .qm-it.on { background: transparent; box-shadow: inset 0 0 0 2px #ecd593; }
+    #tvm-qm .qm-strip.th.sq .qm-it { border-radius: 10px; }
+    #tvm-qm .qm-strip.th.sq .qm-it canvas { width: 46px; height: 46px; border-radius: 7px; }
     #tvm-qm .qm-act { flex: none; border: 0; border-radius: 999px; padding: 4px 12px; font: 700 12px inherit; cursor: pointer; background: rgba(255,255,255,.1); color: #fff; }
     #tvm-qm .qm-act.on { background: #e05252; }
     html.tvm-noanim #tvm-qm .qm-panel { animation: none; }`;
@@ -2290,7 +2295,8 @@ function buildQuickMenu() {
     FICHAS: '<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3"/>',
     PELOTA: '<circle cx="12" cy="12" r="8.5"/><path d="M12 7.6l3.4 2.5-1.3 4h-4.2l-1.3-4z"/><path d="M12 3.5v4.1M15.4 10.1l3.8-1.2M14.1 14.1l2.4 3.3M9.9 14.1l-2.4 3.3M8.6 10.1L4.8 8.9"/>',
     SONIDO: '<path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="M15.5 9a4 4 0 0 1 0 6M18.5 6.5a7.5 7.5 0 0 1 0 11"/>',
-    PARTIDO: '<circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="3.5" fill="currentColor" stroke="none"/>'
+    PARTIDO: '<circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="3.5" fill="currentColor" stroke="none"/>',
+    ESTADIO: '<path d="M3 9c0-2.2 4-4 9-4s9 1.8 9 4v6c0 2.2-4 4-9 4s-9-1.8-9-4z"/><path d="M3 9c0 2.2 4 4 9 4s9-1.8 9-4"/><path d="M7 12.5v5M12 13v6M17 12.5v5"/>'
   };
   let section = '';
   let pane = null;
@@ -2327,13 +2333,13 @@ function buildQuickMenu() {
    * abajo. Se mueve con la rueda del mouse; un toque elige. Con `thumb`, cada uno
    * lleva su dibujo de verdad (pelotas y fichas).
    */
-  const strip = (label, list, get, set, thumb) => {
+  const strip = (label, list, get, set, thumb, cls) => {
     const named = `${label}${section ? ` · ${section}` : ''}`;
     const r = el('div', 'qm-row qm-block');
     const top = el('div', 'qm-bt');
     const cur = el('em', 'qm-cur');
     top.append(el('span', null, label), cur);
-    const st = el('div', thumb ? 'qm-strip th' : 'qm-strip');
+    const st = el('div', thumb ? `qm-strip th${cls ? ` ${cls}` : ''}` : 'qm-strip');
     const items = list.map(([v, t]) => {
       const b = el('div', 'qm-it');
       b.title = t;
@@ -2358,6 +2364,35 @@ function buildQuickMenu() {
       cur.textContent = hit[1];
       for (const [k, b] of items) b.classList.toggle('on', k === hit[0]);
     });
+  };
+  // Alrededores: una esquina de la cancha con lo de afuera. Cada una tarda unos
+  // ms: se guardan y se hacen de a una por vuelta, así abrir el menú no traba.
+  const envThumb = (c, id) => {
+    const done = QM_ENV_THUMBS.get(id);
+    const put = (src) => { const g = c.getContext('2d'); g.clearRect(0, 0, 64, 64); g.drawImage(src, 0, 0); };
+    if (done) { put(done); return; }
+    qmEnvQueue = qmEnvQueue.then(() => new Promise((ok) => setTimeout(() => {
+      try {
+        if (!QM_ENV_THUMBS.has(id)) {
+          const cv = doc.createElement('canvas');
+          cv.width = cv.height = 64;
+          const g = cv.getContext('2d');
+          ownDraw++;
+          try {
+            // La esquina de arriba a la izquierda: un cuarto de cancha y mucho afuera.
+            const W = 370, H = 170, s = 64 / 300;
+            g.setTransform(s, 0, 0, s, (W + 200) * s, (H + 170) * s);
+            g.fillStyle = '#5a7a4a'; g.fillRect(-W - 400, -H - 400, 800, 800);
+            for (let i = 0; i < 6; i++) { g.fillStyle = i % 2 ? '#6f8b58' : '#6a8653'; g.fillRect(-W + i * 74, -H, 74, 2 * H); }
+            g.strokeStyle = '#d8ecd0'; g.lineWidth = 4; g.strokeRect(-W, -H, 2 * W, 2 * H);
+            if (id !== 'none') pitchEnv.paintEnv(g, id, { halfW: W, halfH: H }, { score: 'TL', names: [] });
+          } finally { ownDraw--; }
+          QM_ENV_THUMBS.set(id, cv);
+        }
+        if (c.isConnected) put(QM_ENV_THUMBS.get(id));
+      } catch (e) { /* adorno */ }
+      ok();
+    }, 0)));
   };
   // Dibujos de la tira: la pelota con su estilo y la ficha con el suyo, como en la cancha.
   const ballThumb = (c, style) => {
@@ -2461,7 +2496,6 @@ function buildQuickMenu() {
   when = null;
   strip('Cancha', QM_TEXTURES, () => cfg().visual.texture || 'none', (v) => quickSet({ visual: { texture: v } }));
   strip('Clima', QM_WEATHER, () => cfg().visual.pitchWeather || 'none', (v) => quickSet({ visual: { pitchWeather: v } }));
-  strip('Alrededores', QM_ENVS, () => cfg().visual.pitchEnv || 'none', (v) => quickSet({ visual: { pitchEnv: v } }));
   strip('Luz', QM_LIGHTS, () => cfg().visual.pitchLight || 'none', (v) => quickSet({ visual: { pitchLight: v } }));
   toggle('Escudo en la cancha', () => cfg().visual.crest, (v) => quickSet({ visual: { crest: v } }));
   const ap = () => cfg().appearance || {};
@@ -2474,6 +2508,18 @@ function buildQuickMenu() {
     (v) => quickSet({ appearance: { scoreboardScale: SB_SIZES[v] } }));
   slider('Brillo', 0.5, 1.5, () => cfg().visual.pitchBright ?? 1, (v) => quickSet({ visual: { pitchBright: v } }));
   slider('Contraste', 0.6, 1.6, () => cfg().visual.pitchContrast ?? 1, (v) => quickSet({ visual: { pitchContrast: v } }));
+
+  head('ESTADIO');
+  strip('Alrededores', QM_ENVS, () => cfg().visual.pitchEnv || 'none', (v) => quickSet({ visual: { pitchEnv: v } }), envThumb, 'sq');
+  // Lo de adentro de los alrededores: sólo se ve con un escenario puesto.
+  when = () => !!(cfg().visual.pitchEnv && cfg().visual.pitchEnv !== 'none');
+  const vb = (k) => () => cfg().visual[k] !== false;
+  toggle('Fresa, la DT', vb('envFresa'), (v) => quickSet({ visual: { envFresa: v } }));
+  toggle('Festejo de la tribuna', vb('envCheer'), (v) => quickSet({ visual: { envCheer: v } }));
+  toggle('Resultado en los LED', vb('envScoreLed'), (v) => quickSet({ visual: { envScoreLed: v } }));
+  toggle('Nombres en los trapos', vb('envNames'), (v) => quickSet({ visual: { envNames: v } }));
+  toggle('Fuegos al terminar', vb('envFireworks'), (v) => quickSet({ visual: { envFireworks: v } }));
+  when = null;
 
   head('FICHAS');
   slider('Tamaño', 0.6, 1.6, () => cfg().visual.discSize, (v) => quickSet({ visual: { discSize: v } }));
@@ -8477,7 +8523,7 @@ function installTracking(view) {
     }
     // El destello ya sabe de qué color va, sin esperar al marcador del DOM.
     if (scored) noteGoalTeam(scored);
-    if (scored && visual.env) safe(envGoal, view, scored);
+    if (scored && visual.env && (state.config.visual || {}).envCheer !== false) safe(envGoal, view, scored);
     goalTextArmedUntil = Date.now() + 400;
     // Festejo propio (opcional). Si se dibujó, y el jugador lo pidió, reemplaza al destello del club.
     let customPlayed = false;
@@ -8795,7 +8841,7 @@ function skinPitch(ctx, w, h, stadium) {
       ctx.setTransform(world);
       // El festejo se dibuja en el momento (el juego está parado por el gol);
       // lo normal queda guardado y se pega: volver del gol es casi gratis.
-      if (env.hot) pitchEnv.paintEnv(ctx, visual.env, bounds, { cheer: env.cheer, hot: true, mirror: env.mirror, scorer: env.scorer, score: envScore(), names: env.names, ...envLook() });
+      if (env.hot) pitchEnv.paintEnv(ctx, visual.env, bounds, { cheer: env.cheer, hot: true, mirror: env.mirror, scorer: env.scorer, score: envScore(), names: envNamesShown(), ...envLook() });
       else paintEnvCached(ctx, world, bounds);
     } catch (err) {
       log('error', `los alrededores no se pudieron dibujar: ${err.message}`, 'juego');
@@ -9256,7 +9302,7 @@ function pitchSkinPrint() {
   const skin = (state.config.pitch && state.config.pitch.skin) || {};
   const field = pitchSkinColor();
   const vip = state.config.vip || {};
-  return `${skin.mode}|${field}|${pitchOutsideColor(field)}|${skin.strength}|${skin.brightness}|${skin.stripes}|${skin.cut}|${skin.imageAlpha}|${skin.relief}|${skin.reliefAmount}|${visual.weather}|${visual.weatherAmount}|${vip.pitchImage}|${JSON.stringify(vip.pitchCrop || null)}|${visual.pitchLine}|${flatGraphicsEnabled}|${visual.texture}|${visual.light}|${visual.crest}|${visual.crestOpacity}|${visual.crestSize}|${visual.lineColor}|${visual.lineGlow}|${visual.bright}|${visual.contrast}|${visual.env}|${visual.env ? `${visual.weather}/${visual.light}` : ''}`;
+  return `${skin.mode}|${field}|${pitchOutsideColor(field)}|${skin.strength}|${skin.brightness}|${skin.stripes}|${skin.cut}|${skin.imageAlpha}|${skin.relief}|${skin.reliefAmount}|${visual.weather}|${visual.weatherAmount}|${vip.pitchImage}|${JSON.stringify(vip.pitchCrop || null)}|${visual.pitchLine}|${flatGraphicsEnabled}|${visual.texture}|${visual.light}|${visual.crest}|${visual.crestOpacity}|${visual.crestSize}|${visual.lineColor}|${visual.lineGlow}|${visual.bright}|${visual.contrast}|${visual.env}|${visual.env ? `${visual.weather}/${visual.light}/${['envFresa', 'envCheer', 'envScoreLed', 'envNames', 'envFireworks'].map((k) => (state.config.visual || {})[k] !== false ? 1 : 0).join('')}` : ''}`;
 }
 
 /** Le tira el cache al estadio para que se vuelva a dibujar con el color nuevo. */
@@ -9269,12 +9315,23 @@ const env = { cheer: null, hot: false, mirror: false, timer: 0, pre: 0, bmp: nul
 
 /** Lo que no cambia en el festejo: clima, noche (la «Luz» de noche) y fuegos del final. */
 function envLook() {
-  return { weather: visual.weather || '', night: visual.light === 'night', fireworks: env.fireworks, fresaTeam: env.team };
+  const c = state.config.visual || {};
+  return {
+    weather: visual.weather || '', night: visual.light === 'night',
+    fireworks: c.envFireworks === false ? null : env.fireworks,
+    fresa: c.envFresa !== false, fresaTeam: env.team
+  };
 }
 
 /** El resultado para los LED («ROJO 2 - 1 AZUL»), si hay partido. */
 function envScore() {
+  if ((state.config.visual || {}).envScoreLed === false) return '';
   return Number.isFinite(env.red) && Number.isFinite(env.blue) ? `ROJO ${env.red} - ${env.blue} AZUL` : '';
+}
+
+/** Los nombres que se escriben en los trapos (ninguno si se apagó). */
+function envNamesShown() {
+  return (state.config.visual || {}).envNames === false ? [] : env.names;
 }
 
 /** Los de la sala que usan TL App (los otros primero), para los trapos. */
@@ -9289,7 +9346,7 @@ function envNames() {
 
 function envKey(world, bounds, cv) {
   const L = envLook();
-  return [visual.env, env.mirror, envScore(), env.names.join(','), L.weather, L.night, L.fireworks, L.fresaTeam, bounds.halfW, bounds.halfH, world.a, world.b, world.c, world.d, world.e, world.f, cv.width, cv.height].join('|');
+  return [visual.env, env.mirror, envScore(), envNamesShown().join(','), L.weather, L.night, L.fireworks, L.fresa, L.fresaTeam, bounds.halfW, bounds.halfH, world.a, world.b, world.c, world.d, world.e, world.f, cv.width, cv.height].join('|');
 }
 
 /** Arma lo normal en un canvas aparte (con el resultado y los nombres de ahora). */
@@ -9299,7 +9356,7 @@ function buildEnvBitmap(doc, world, bounds, w, h, key) {
   bmp.height = h;
   const g = bmp.getContext('2d');
   g.setTransform(world);
-  pitchEnv.paintEnv(g, visual.env, bounds, { mirror: env.mirror, score: envScore(), names: env.names, ...envLook() });
+  pitchEnv.paintEnv(g, visual.env, bounds, { mirror: env.mirror, score: envScore(), names: envNamesShown(), ...envLook() });
   env.bmp = bmp;
   env.key = key;
 }

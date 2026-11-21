@@ -494,6 +494,12 @@ const DEFAULTS = {
     /** Brillo y contraste de la cancha (1 = como viene). Van al cache del estadio: no cuestan nada por cuadro. */
     /** Alrededores de la cancha: none | noche | barrio | led | f5 | playa | campo | azotea | cortada | colegio | estadio. En el cache del estadio. */
     pitchEnv: 'none',
+    /** Lo de adentro de los alrededores: Fresa, festejo, resultado, nombres y fuegos. */
+    envFresa: true,
+    envCheer: true,
+    envScoreLed: true,
+    envNames: true,
+    envFireworks: true,
     pitchBright: 1,
     pitchContrast: 1,
     /** Colores de los equipos sólo en tu pantalla: `room` = los de la sala, `mine` = los tuyos. */
