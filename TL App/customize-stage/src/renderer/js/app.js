@@ -4819,8 +4819,6 @@ const PITCH_SWITCHES = {
     { key: 'clubArrival', label: 'Llegada del club', description: 'Un cartel con el escudo cuando hay tres o más socios en la sala.', hint: 'Sale una vez por sala y dura unos segundos.' },
     { key: 'matchSummary', label: 'Resumen del partido', description: 'Al terminar: el resultado, cada gol en su minuto y la figura del partido.', hint: 'Dura unos segundos; se cierra tocándolo o con Esc. La figura sale de 3 puntos por gol y 2 por asistencia.' },
     { key: 'possessionBar', label: 'Posesión en el marcador', description: 'Una línea roja y azul abajo del marcador con quién tuvo más la pelota.', hint: 'Se actualiza una vez por segundo y aparece a los pocos segundos de empezar.' },
-    { key: 'crowdOle', label: '«Ole» de la hinchada', description: 'Desde el sexto pase seguido del mismo equipo, la hinchada canta «ole» y se ve la cuenta.', hint: 'Usa el volumen del sonido de gol incluido. No cambia nada del juego.' },
-    { key: 'crowdPost', label: '«Uuuh» en el palo', description: 'Si un remate fuerte pega en el palo, el palo vibra y la tribuna se lamenta.', hint: 'Si la pelota termina entrando no suena: es gol.' },
   ],
   en: [
     { key: 'selfRing', label: 'Mark your disc', description: 'A ring in your colour on your disc.', hint: 'In a 4v4 it saves you from hunting for yourself.' },
@@ -4832,8 +4830,6 @@ const PITCH_SWITCHES = {
     { key: 'clubArrival', label: 'Club arrival', description: 'A banner with the crest when three or more club members are in the room.', hint: 'Shows once per room and lasts a few seconds.' },
     { key: 'matchSummary', label: 'Match summary', description: 'When the match ends: the score, every goal at its minute and the man of the match.', hint: 'Lasts a few seconds; tap it or press Esc to close. Man of the match: 3 points per goal, 2 per assist.' },
     { key: 'possessionBar', label: 'Possession on the scoreboard', description: 'A red and blue line under the scoreboard showing who had the ball more.', hint: 'Updates once a second and shows up a few seconds into the match.' },
-    { key: 'crowdOle', label: 'Crowd «Ole»', description: 'From the sixth pass in a row by one team, the crowd sings «ole» and the count shows.', hint: 'Uses the built-in goal sound volume. Changes nothing in the game.' },
-    { key: 'crowdPost', label: '«Ooh» off the post', description: 'When a hard shot hits the post, the post shakes and the stands groan.', hint: 'If the ball ends up going in it stays quiet: it is a goal.' },
   ]
 };
 
@@ -5595,7 +5591,7 @@ function renderPitch() {
   // Los aros van con las fichas y los festejos con lo de la partida; la cancha
   // se queda con lo que es de la cancha.
   const RING_KEYS = ['selfRing', 'teamRings'];
-  const GOAL_KEYS = ['goalFlash', 'goalShake', 'goalClub', 'clubKit', 'clubArrival', 'matchSummary', 'possessionBar', 'crowdOle', 'crowdPost'];
+  const GOAL_KEYS = ['goalFlash', 'goalShake', 'goalClub', 'clubKit', 'clubArrival', 'matchSummary', 'possessionBar'];
   const pitchSwitch = (i) => ({ ...i, value: () => live(i.key) });
   const pitchSave = (item, value) => patchConfig({ pitch: { [item.key]: value } });
   buildSwitches(

@@ -2685,7 +2685,7 @@ const QUICK_KEYS = {
   pitch: { mirror: ['off', 'red', 'blue'], ball3d: 'bool', clubKit: 'bool', clubGlow: 'bool', plainKits: 'bool', minimap: 'bool',
     miniSize: [0.6, 1.6], miniCorner: ['br', 'bl', 'tl'], miniOpacity: [0.3, 1], miniStyle: ['grass', 'dark', 'lines'],
     miniFade: 'bool', miniClub: 'bool', miniBigMe: 'bool', miniBigBall: 'bool', matchSummary: 'bool',
-    possessionBar: 'bool', crowdOle: 'bool', crowdPost: 'bool' },
+    possessionBar: 'bool' },
   visual: {
     discSize: [0.6, 1.6], ballSize: [0.6, 1.8], softShadows: 'bool', discOutline: 'color',
     discStyle: 'id', ballStyle: 'id', texture: 'id', pitchWeather: 'id',

@@ -849,14 +849,6 @@ function applyClientStyles(doc) {
     #tvm-poss > .r { background: #e25555; }
     #tvm-poss > .b { background: #4f7fe0; }
     html.tvm-mirror #tvm-poss { flex-direction: row-reverse; }
-    #tvm-ole { position: fixed; left: 50%; top: 74px; transform: translate(-50%, -6px); z-index: 6; pointer-events: none;
-      font: 800 15px/1 system-ui, sans-serif; letter-spacing: .02em; color: #fff; padding: 7px 14px; border-radius: 999px;
-      background: rgba(12,16,24,.88); border: 2px solid #e25555; opacity: 0; transition: opacity .25s, transform .25s; }
-    #tvm-ole[data-team="blue"] { border-color: #4f7fe0; }
-    #tvm-ole[data-pos="bottom"] { top: 16px; }
-    #tvm-ole.on { opacity: 1; transform: translate(-50%, 0); }
-    #tvm-ole.bump { animation: tvm-ole-bump .3s ease; }
-    @keyframes tvm-ole-bump { 40% { transform: translate(-50%, 0) scale(1.12); } }
 
     /* ── Reproductor de replays: barra flotante ──────────────────────────
        Una tarjeta abajo en el centro con DOS filas:
@@ -2502,8 +2494,6 @@ function buildQuickMenu() {
     if (b) { b.click(); setTimeout(() => safe(refreshQuickMenu), 60); }
   });
   strip('Sonido de patada', QM_KICKS, () => cfg().appearance.kickSfx || 'default', (v) => quickSet({ appearance: { kickSfx: v } }));
-  toggle('«Ole» de la hinchada', () => cfg().pitch.crowdOle !== false, (v) => quickSet({ pitch: { crowdOle: v } }));
-  toggle('«Uuuh» en el palo', () => cfg().pitch.crowdPost !== false, (v) => quickSet({ pitch: { crowdPost: v } }));
 
   head('PARTIDO');
   const rec = el('button', 'qm-act', 'Grabar');
@@ -6964,15 +6954,6 @@ function drawBall(ctx, x, y, r, indice) {
     ctx.beginPath();
     ctx.arc(x, y, r, 0, 2 * Math.PI, false);
   }
-  // El palo que vibra después de un pelotazo («uuuh»): sólo el dibujo, un rato.
-  if (indice > 0 && postShake.i === indice) {
-    const left = postShake.until - performance.now();
-    if (left > 0) {
-      x += Math.sin(left / 16) * 2.2 * (left / POST_SHAKE_MS);
-      ctx.beginPath();
-      ctx.arc(x, y, r, 0, 2 * Math.PI, false);
-    } else postShake.i = -1;
-  }
   // Palos con color propio: el relleno que sigue lo hace el juego con este color.
   if (indice > 0 && visual.postColor) ctx.fillStyle = visual.postColor;
   // Palos con estilo: una figura armada una vez por estilo/color/tamaño y pegada.
@@ -7896,9 +7877,7 @@ function newCard() {
     /** Cuántos ms de partido se contaron, para sacar porcentajes. */
     total: 0,
     /** La posesión por equipo, en ms: la línea del marcador. */
-    teamMs: { Red: 0, Blue: 0 },
-    /** Pases seguidos del mismo equipo (el «ole»). */
-    streak: 0
+    teamMs: { Red: 0, Blue: 0 }
   };
 }
 
@@ -7927,15 +7906,8 @@ function cardTouch(card, name, team) {
   const antes = card.owner;
   if (antes && antes.name !== name) {
     const suyo = cardEntry(card, antes.name, antes.team);
-    if (antes.team && team && antes.team === team) {
-      suyo.passes++;
-      card.streak++;
-    } else {
-      suyo.turnovers++;
-      card.streak = 0;
-    }
-    // Sólo la ficha del partido en vivo canta: el análisis de grabaciones arma la suya.
-    if (card === tracker.card && card.streak >= OLE_FROM) safe(crowdOle, card.streak, team);
+    if (antes.team && team && antes.team === team) suyo.passes++;
+    else suyo.turnovers++;
   }
   card.owner = { name, team };
 }
@@ -8502,7 +8474,6 @@ function installTracking(view) {
     }
     // El destello ya sabe de qué color va, sin esperar al marcador del DOM.
     if (scored) noteGoalTeam(scored);
-    crowdGoalReset();
     goalTextArmedUntil = Date.now() + 400;
     // Festejo propio (opcional). Si se dibujó, y el jugador lo pidió, reemplaza al destello del club.
     let customPlayed = false;
@@ -11247,117 +11218,13 @@ function adoptRealRoom(view, room) {
  * que mide `nearestToucher`.
  */
 /* ------------------------------------------------------------------ *
- * La hinchada y la posesión
+ * La posesión en el marcador
  * ------------------------------------------------------------------ *
- * Nada de esto toca el juego: no cambia la física ni lo que ve el motor, y no
- * dibuja nada por cuadro. El «ole» y el «uuuh» son un sonido y un cartelito
- * que aparecen cuando pasa algo; la línea de posesión se repinta una vez por
- * segundo, y el palo que vibra es el dibujo del palo corrido un par de píxeles
- * durante medio segundo.
+ * Sale de la ficha que ya se llevaba y se repinta una vez por segundo: no
+ * dibuja nada por cuadro ni toca el juego.
  * ------------------------------------------------------------------ */
-const OLE_FROM = 6;
-const POST_SHAKE_MS = 450;
-const postShake = { i: -1, until: 0 };
 let possAt = 0;
-let oleAt = -1e9;
-let oleTimer = 0;
-let postTimer = 0;
-let postCooldownUntil = 0;
-const postCache = { match: null, at: -1e9, list: [] };
-
 const pitchOpt = (k) => (state.config.pitch || {})[k] !== false;
-const crowdPostOn = () => pitchOpt('crowdPost');
-
-function crowdSound(kind) {
-  if (!goalSfx || !goalSfx.has(kind)) return;
-  const lv = gameSoundLevel();
-  if (lv <= 0) return;
-  const ap = state.config.appearance || {};
-  const vol = Number(ap.goalSfxVolume);
-  goalSfx.play(kind, (Number.isFinite(vol) ? vol : 0.7) * 0.8 * lv);
-}
-
-function crowdOle(n, team) {
-  if (!pitchOpt('crowdOle')) return;
-  const now = performance.now();
-  // Pases más rápidos que el canto se juntan en uno: no es una ametralladora.
-  if (now - oleAt > 420) { oleAt = now; crowdSound('ole'); }
-  const doc = gameDocument();
-  if (!doc) return;
-  let el = doc.getElementById('tvm-ole');
-  if (!el) {
-    el = doc.createElement('div');
-    el.id = 'tvm-ole';
-    doc.body.append(el);
-  }
-  el.dataset.team = team === 'Blue' ? 'blue' : 'red';
-  el.dataset.pos = (state.config.appearance || {}).scoreboardPos === 'bottom' ? 'bottom' : 'top';
-  el.textContent = `¡Ole! · ${n} pases`;
-  el.classList.remove('bump'); void el.offsetWidth; el.classList.add('on', 'bump');
-  clearTimeout(oleTimer);
-  oleTimer = setTimeout(() => el.classList.remove('on'), 2200);
-}
-
-/** Gol: la seguidilla se corta y un palo que terminó adentro no se lamenta. */
-function crowdGoalReset() {
-  if (tracker.card) tracker.card.streak = 0;
-  clearTimeout(postTimer);
-  postTimer = 0;
-}
-
-/**
- * Los palos son los discos quietos de la cancha que no son de nadie. Se
- * vuelven a mirar cada dos segundos de partido (alguien puede entrar a jugar,
- * y su disco no es un palo), no por paso.
- */
-function postsOf(f, room, match) {
-  if (postCache.match === match && real.clock - postCache.at < 2000) return postCache.list;
-  const world = match[f.world];
-  const discs = world && world[f.discs];
-  const list = [];
-  if (discs && f.radius) {
-    const mine = new Set();
-    for (const p of room[f.players] || []) if (p && p[f.disc]) mine.add(p[f.disc]);
-    for (let i = 1; i < discs.length; i++) {
-      const d = discs[i];
-      const at = d && d[f.pos];
-      const r = Number(d && d[f.radius]) || 0;
-      if (!at || mine.has(d) || r < 2 || r > 20) continue;
-      list.push({ i, d, x: at.x, y: at.y, r });
-    }
-  }
-  // Uno que se movió desde la última vez no es un palo.
-  if (postCache.match === match) {
-    const before = new Map(postCache.list.map((p) => [p.d, p]));
-    for (let k = list.length - 1; k >= 0; k--) {
-      const b = before.get(list[k].d);
-      if (b && (Math.abs(b.x - list[k].x) > 0.5 || Math.abs(b.y - list[k].y) > 0.5)) list.splice(k, 1);
-    }
-  }
-  postCache.match = match; postCache.at = real.clock; postCache.list = list;
-  return list;
-}
-
-function checkPostHit(f, room, match, ball, dx, dy) {
-  if (real.clock < postCooldownUntil || real.clock < real.quietUntil) return;
-  // Un remate de verdad (≈ 55 km/h o más), no la pelota apoyada contra el palo.
-  if (dx * dx + dy * dy < 4.4) return;
-  const world = match[f.world];
-  const b = world && world[f.discs] && world[f.discs][0];
-  const br = (b && Number(b[f.radius])) || DEFAULT_BALL_RADIUS;
-  for (const p of postsOf(f, room, match)) {
-    const ex = ball.x - p.x, ey = ball.y - p.y;
-    const reach = br + p.r + 2;
-    if (ex * ex + ey * ey > reach * reach) continue;
-    postCooldownUntil = real.clock + 1500;
-    postShake.i = p.i;
-    postShake.until = performance.now() + POST_SHAKE_MS;
-    // Se espera un toque: si la pelota termina adentro es gol, y eso no se lamenta.
-    clearTimeout(postTimer);
-    postTimer = setTimeout(() => { postTimer = 0; crowdSound('uuuh'); }, 260);
-    return;
-  }
-}
 
 /** La línea de posesión en el borde de abajo del marcador. */
 function paintPossession(doc, card) {
@@ -11401,7 +11268,6 @@ function onRealStep(view, room) {
   real.clock += STEP_MS;
 
   const at = ballPos(f, match);
-  if (at && real.ballSeen && crowdPostOn()) safe(checkPostHit, f, room, match, at, at.x - real.ballX, at.y - real.ballY);
   if (at) {
     if (real.ballSeen && real.shot && real.clock <= real.shot.until) {
       const dx = at.x - real.ballX;

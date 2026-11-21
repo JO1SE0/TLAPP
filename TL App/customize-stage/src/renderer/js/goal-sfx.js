@@ -103,44 +103,6 @@
     for (let i = 0; i < 9; i++) voice(ctx, out, t + 0.05 + Math.random() * 0.5, 130 + Math.random() * 110, dur * (0.55 + Math.random() * 0.3), vol * 0.07);
   }
 
-  /*
-   * Un coro de hinchada cantando una vocal: varias voces desafinadas entre sí
-   * (sierra), pasadas por dos filtros de formante que se mueven de una vocal a
-   * la otra. `vowels`: [[segundo, F1, F2], …]. Se arma una vez por grito.
-   */
-  function chant(ctx, out, t, dur, vol, pitchFrom, pitchTo, vowels, n) {
-    // Los filtros de formante se comen casi todo: se compensa para que quede
-    // apenas debajo del grito de gol.
-    vol *= 3.8;
-    const mix = ctx.createGain();
-    mix.gain.setValueAtTime(0.0001, t);
-    mix.gain.exponentialRampToValueAtTime(vol, t + Math.min(0.12, dur * 0.2));
-    mix.gain.setValueAtTime(vol, t + dur * 0.7);
-    mix.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-    const f1 = ctx.createBiquadFilter(), f2 = ctx.createBiquadFilter();
-    f1.type = f2.type = 'bandpass'; f1.Q.value = 5; f2.Q.value = 7;
-    const g2 = ctx.createGain(); g2.gain.value = 0.55;
-    for (const [s, a, b] of vowels) {
-      f1.frequency.linearRampToValueAtTime(a, t + s);
-      f2.frequency.linearRampToValueAtTime(b, t + s);
-    }
-    f1.frequency.setValueAtTime(vowels[0][1], t);
-    f2.frequency.setValueAtTime(vowels[0][2], t);
-    mix.connect(f1); mix.connect(f2); f2.connect(g2);
-    f1.connect(out); g2.connect(out);
-    for (let i = 0; i < n; i++) {
-      const o = ctx.createOscillator();
-      o.type = 'sawtooth';
-      const k = 0.88 + Math.random() * 0.3;
-      const start = t + Math.random() * 0.06;
-      o.frequency.setValueAtTime(pitchFrom * k, start);
-      o.frequency.linearRampToValueAtTime(pitchTo * k, t + dur);
-      const og = ctx.createGain(); og.gain.value = 1 / n;
-      o.connect(og); og.connect(mix);
-      o.start(start); o.stop(t + dur + 0.05);
-    }
-  }
-
   const RECIPES = {
     hinchada(c, o, t) { crowd(c, o, t, 3.2, 0.9); },
     estadio(c, o, t) {
@@ -177,16 +139,6 @@
     aplausos(c, o, t) {
       for (let i = 0; i < 40; i++) noise(c, o, t + Math.random() * 2.2, 0.04 + Math.random() * 0.05, 0.3, 1800 + Math.random() * 2500, 0.8);
       swell(c, o, t, 2.4, 0.14, 2500, 0.5, 0.4);
-    },
-    /* «¡Ole!»: la hinchada con cada pase de una seguidilla. o → le. */
-    ole(c, o, t) {
-      chant(c, o, t, 0.85, 0.5, 210, 250, [[0, 500, 880], [0.32, 520, 900], [0.42, 430, 1750], [0.85, 420, 1850]], 10);
-      swell(c, o, t, 0.9, 0.12, 900, 0.6, 0.15);
-    },
-    /* «Uuuh»: el lamento de la tribuna cuando pega en el palo. Baja de tono. */
-    uuuh(c, o, t) {
-      chant(c, o, t, 1.5, 0.55, 270, 165, [[0, 330, 780], [1.5, 300, 700]], 12);
-      swell(c, o, t, 1.4, 0.16, 450, 0.6, 0.2);
     },
     silbato(c, o, t) {
       /* Silbato de árbitro: tono con la bolilla (trino rápido) en el medio. */
