@@ -387,8 +387,8 @@ syncMinimap();
       const visual = { env: 'barrio' };
       // eslint-disable-next-line no-new-func
       window.FLUSH = 0;
-      const stubs = { flatGraphicsEnabled: false, state: { config: { visual: {} } }, safe: (fn, ...a) => fn(...a), peers: new Map([['Mati', {}]]), myNick: () => 'Yo', flushStadiumCache: () => { window.FLUSH++; }, gameWindow: () => null, gameDocument: () => null, teamNameOf: (f, p) => p.t };
-      const mod = new Function('pitchEnv', 'visual', 'document', ...Object.keys(stubs), `${code}; return { env, paintEnvCached, envTrackScore, envNames, envScore, envFinal, envLook, envNamesShown, envAliveOn };`)(pitchEnv, visual, document, ...Object.values(stubs));
+      const stubs = { log: () => {}, flatGraphicsEnabled: false, state: { config: { visual: {} } }, safe: (fn, ...a) => fn(...a), peers: new Map([['Mati', {}]]), myNick: () => 'Yo', flushStadiumCache: () => { window.FLUSH++; }, gameWindow: () => null, gameDocument: () => null, teamNameOf: (f, p) => p.t };
+      const mod = new Function('pitchEnv', 'visual', 'document', ...Object.keys(stubs), `${code}; return { env, paintEnvCached, envTrackScore, envNames, envScore, envFinal, envLook, envNamesShown, envAliveOn, envSlowNote, envSlow };`)(pitchEnv, visual, document, ...Object.values(stubs));
       const mk = () => { const c = document.createElement('canvas'); c.width = 900; c.height = 500; return c; };
       const world = new DOMMatrix([1.1, 0, 0, 1.1, 450, 250]);
       const b = { halfW: 370, halfH: 170 };
@@ -418,6 +418,12 @@ syncMinimap();
       // Con vida: prendido de fábrica; se apaga con el interruptor y con Gráficos planos.
       const aliveOn = mod.envAliveOn();
       stubs.state.config.visual = { envAlive: false }; const aliveOff = mod.envAliveOn(); stubs.state.config.visual = {};
+      // El seguro: con la capa tardando de más un rato, se apaga sola.
+      for (let i = 0; i < 60; i++) mod.envSlowNote(0.3);
+      const fastStill = mod.envAliveOn();
+      for (let i = 0; i < 400; i++) mod.envSlowNote(3);
+      const slowOff = mod.envAliveOn() === false && mod.envSlow.off === true;
+      mod.envSlow.off = false; mod.envSlow.avg = 0; mod.envSlow.n = 0;
       // Fuegos: ganó el azul; al arrancar otro partido se apagan.
       // Fresa se sienta en el banco del equipo de uno.
       const fT = { score: { red: 'r', blue: 'b' }, players: 'pl', name: 'n' };
@@ -428,11 +434,12 @@ syncMinimap();
       let fresaPx = 0; for (let i = 0; i < z1.length; i += 4) if (z1[i] !== z2[i]) fresaPx++;
       mod.envFinal(1, 3); const fw = mod.env.fireworks;
       mod.envTrackScore(null, f, { r: 0, b: 0 }); const fwAfter = mod.env.fireworks;
-      return { diff, first: Math.round(first), again: Math.round(again * 10) / 10, startFlush, same, inGoal, score, names, live, fw, fwAfter, fresaTeam, fresaPx, offs, aliveOn, aliveOff };
+      return { diff, first: Math.round(first), again: Math.round(again * 10) / 10, startFlush, same, inGoal, score, names, live, fw, fwAfter, fresaTeam, fresaPx, offs, aliveOn, aliveOff, fastStill, slowOff };
     }, CACHED);
     check('alrededores: lo guardado es igual a lo dibujado y pegarlo es instantáneo', r2.diff === 0 && r2.again < 5, JSON.stringify(r2));
     check('alrededores: Fresa, la DT, se dibuja y se sienta en el banco del equipo de uno', r2.fresaTeam === 'Blue' && r2.fresaPx > 200, JSON.stringify({ t: r2.fresaTeam, px: r2.fresaPx }));
     check('alrededores: los interruptores de Estadio apagan Fresa, fuegos, resultado y nombres', r2.offs && r2.offs.fresa === false && r2.offs.fw === null && r2.offs.score === '' && r2.offs.names === 0, JSON.stringify(r2.offs));
+    check('alrededores con vida: en una compu lenta se apaga sola', r2.fastStill === true && r2.slowOff === true, JSON.stringify({ fast: r2.fastStill, slow: r2.slowOff }));
     check('alrededores: «con vida» viene prendido y el interruptor lo apaga', r2.aliveOn === true && r2.aliveOff === false, JSON.stringify({ on: r2.aliveOn, off: r2.aliveOff }));
     check('alrededores: fuegos del ganador al final y se apagan con otro partido', r2.fw === 'Blue' && r2.fwAfter === null, JSON.stringify(r2));
     check('alrededores: marcador y nombres de TL; rehace al empezar, no en el festejo', r2.startFlush === 1 && r2.same === 1 && r2.inGoal === 1 && r2.score === 'ROJO 1 - 0 AZUL' && r2.names === 'Mati,Yo' && r2.live > 50, JSON.stringify(r2));

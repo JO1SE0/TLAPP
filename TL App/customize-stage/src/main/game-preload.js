@@ -9320,7 +9320,22 @@ const env = { cheer: null, hot: false, mirror: false, timer: 0, pre: 0, bmp: nul
 
 /** Los alrededores se mueven: interruptor prendido y sin «Gráficos planos». */
 function envAliveOn() {
-  return !!visual.env && (state.config.visual || {}).envAlive !== false && !flatGraphicsEnabled;
+  return !!visual.env && (state.config.visual || {}).envAlive !== false && !flatGraphicsEnabled && !envSlow.off;
+}
+
+/*
+ * El seguro: si la capa viva tarda de más (promedio de más de 1,5 ms por cuadro
+ * durante unos 3 segundos), en esta compu no da. Se apaga sola hasta reiniciar o
+ * cambiar de escenario, y el fondo vuelve a quedar quieto (con todo dibujado).
+ */
+const envSlow = { avg: 0, n: 0, off: false, scene: '' };
+function envSlowNote(ms) {
+  envSlow.avg = envSlow.avg * 0.97 + ms * 0.03;
+  if (++envSlow.n < 180 || envSlow.avg < 1.5) return;
+  envSlow.off = true;
+  log('info', `alrededores con vida: en esta compu tardan ${envSlow.avg.toFixed(2)} ms por cuadro; quedan quietos`, 'juego');
+  const view = gameWindow(gameDocument());
+  if (view) flushStadiumCache(view);
 }
 
 /** Lo que no cambia en el festejo: clima, noche (la «Luz» de noche) y fuegos del final. */
@@ -9454,7 +9469,9 @@ function paintEnvAlive(ctx) {
   }
   envVis.x0 = x0; envVis.y0 = y0; envVis.x1 = x1; envVis.y1 = y1;
   const L = envLook();
-  pitchEnv.paintAlive(ctx, visual.env, env.bounds, performance.now(), reg, { cheer: env.cheer, hot: env.hot, mirror: env.mirror, weather: L.weather, night: L.night }, envVis);
+  const t0 = performance.now();
+  pitchEnv.paintAlive(ctx, visual.env, env.bounds, t0, reg, { cheer: env.cheer, hot: env.hot, mirror: env.mirror, weather: L.weather, night: L.night }, envVis);
+  envSlowNote(performance.now() - t0);
 }
 
 function flushStadiumCache(view) {
@@ -12469,6 +12486,7 @@ function syncCanvasHotFlags() {
   visual.bright = clampNum(cfg.pitchBright, 0.5, 1.5, 1) - 1;
   visual.contrast = clampNum(cfg.pitchContrast, 0.6, 1.6, 1);
   visual.env = pitchEnv.has(cfg.pitchEnv) ? cfg.pitchEnv : '';
+  if (visual.env !== envSlow.scene) { envSlow.scene = visual.env; envSlow.off = false; envSlow.avg = 0; envSlow.n = 0; }
   if (!visual.env && env.bmp) { env.bmp = null; env.key = ''; env.last = null; }
   visual.light = ['vignette', 'spot', 'corners', 'stadium', 'sunset', 'night', 'stripes', 'cinema'].includes(cfg.pitchLight) ? cfg.pitchLight : '';
   visual.ownRingColor = lookfx.safeColor(cfg.ownRingColor);

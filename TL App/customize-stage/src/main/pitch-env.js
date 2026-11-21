@@ -180,7 +180,10 @@ function shirtFor(rnd, team) {
 
 /** Un bloque de gente (tribuna o montón): filas con algo de desorden. */
 function crowd(ctx, rnd, x0, y0, x1, y1, o, gapX = 16, gapY = 15, density = 0.9) {
-  if (REG) REG.crowds.push([x0, y0, x1, y1]);
+  const seed = Math.floor(rnd() * 1e9);
+  if (REG) REG.crowds.push({ x0, y0, x1, y1, gapX, gapY, density, seed });
+  // Con vida, la tribuna entera la dibuja la capa viva (se mueve toda junta).
+  if (LIVE.alive) return;
   for (let y = y0; y <= y1; y += gapY) {
     const shift = (Math.round((y - y0) / gapY) % 2) * gapX * 0.5;
     for (let x = x0 + shift; x <= x1; x += gapX) {
@@ -247,6 +250,7 @@ function stringLights(ctx, x0, y0, x1, y1, sag, n, warm) {
     ctx.beginPath(); ctx.arc(x, y, 6, 0, 7); ctx.fill();
     ctx.fillStyle = i % 3 === 0 ? '#ff9b6b' : (warm ? '#ffe2a0' : '#f2f8ff');
     ctx.beginPath(); ctx.arc(x, y, 2, 0, 7); ctx.fill();
+    if (REG && REG.bulbs.length < 160) REG.bulbs.push([x, y]);
   }
 }
 
@@ -273,6 +277,8 @@ function fence(ctx, x, y, w, h, alpha = 0.5) {
 
 /** Un trapo colgado (bandera de la hinchada) con texto o franjas. */
 function trapo(ctx, x, y, w, h, kind, text, mirror) {
+  // Con vida, los trapos van arriba de la tribuna que se mueve: los pega la capa viva.
+  if (REG && LIVE.alive && !REG.__inTrapo) { REG.trapos.push({ x, y, w, h, kind, text }); return; }
   ctx.fillStyle = 'rgba(0,0,0,0.25)';
   ctx.fillRect(x + 2, y + 3, w, h);
   if (kind === 'franjas-r' || kind === 'franjas-b') {
@@ -705,6 +711,7 @@ function canchitaF5(ctx, W, H, o) {
   paint(ctx, 'VESTUARIOS', -W * 0.5, -H - 140, '800 12px sans-serif', '#c9ced6', o.mirror);
   paint(ctx, 'BUFFET · TL', W * 0.5, -H - 140, '800 12px sans-serif', '#f0c25a', o.mirror);
   for (let i = 0; i < 6; i++) table(ctx, rnd, -W + 30 + i * ((2 * W - 60) / 5), -H - 80);
+  crowd(ctx, rnd, -W + 10, -H - 60, W - 10, -H - 52, o, 17, 10, 0.75);
   // Abajo: bancos, gente esperando y el estacionamiento.
   dugout(ctx, rnd, -150, H + 58, 120, 'Red', o);
   dugout(ctx, rnd, 30, H + 58, 120, 'Blue', o);
@@ -1047,6 +1054,21 @@ function azotea(ctx, W, H, o) {
   ctx.fillStyle = 'rgba(0,0,0,0.4)'; ctx.fillRect(-W - 135, H + 30, 80, 60);
   ctx.fillStyle = '#4d4a45'; ctx.fillRect(-W - 140, H + 24, 80, 60);
   paint(ctx, 'SALIDA', -W - 100, H + 54, '800 10px sans-serif', '#7fe0a0', o.mirror);
+  // Deck de madera donde está la gente.
+  const deck = (x, y, w, h) => {
+    ctx.fillStyle = '#7a5a3e'; ctx.fillRect(x, y, w, h);
+    ctx.fillStyle = 'rgba(0,0,0,0.18)';
+    for (let yy = y + 5; yy < y + h; yy += 6) ctx.fillRect(x, yy, w, 1);
+  };
+  deck(-W - 20, -H - 78, 2 * W + 40, 44);
+  deck(-W - 20, H + 34, 2 * W + 40, 44);
+  // Sillones con gente en las esquinas.
+  for (const [x, y] of [[-W - 100, -H - 40], [W + 100, H + 50]]) {
+    ctx.fillStyle = 'rgba(0,0,0,0.35)'; ctx.fillRect(x - 26, y - 8, 56, 26);
+    ctx.fillStyle = '#3d4a5e'; ctx.fillRect(x - 30, y - 12, 56, 26);
+    ctx.fillStyle = '#4b5a72'; ctx.fillRect(x - 30, y - 12, 56, 8);
+    for (let k = 0; k < 3; k++) person(ctx, rnd, x - 18 + k * 16, y + 4, shirtFor(rnd, x < 0 ? 'Red' : 'Blue'), false, 0.9);
+  }
   // Gente: sentados en el borde, con sillas, y la mesa con bebidas.
   crowd(ctx, rnd, -W + 10, -H - 66, W - 10, -H - 44, o, 16, 12, 0.8);
   crowd(ctx, rnd, -W + 10, H + 44, W - 10, H + 66, o, 16, 12, 0.75);
@@ -1112,7 +1134,15 @@ function cortada(ctx, W, H, o) {
     scatter(ctx, rnd, x0 - 25, 40, x0 + 25, gap, 6, o);
     ball(ctx, x0 + sx * 40, 0, 4.5);
   }
-  crowd(ctx, rnd, -W + 10, -H - 40, W - 10, -H - 28, o, 20, 12, 0.6);
+  // Vecinos en sillas de plástico en las veredas, mirando el partido.
+  for (const y of [-H - 74, H + 58]) {
+    for (let x = -W + 20; x < W - 10; x += 34) {
+      if (rnd() < 0.3) continue;
+      ctx.fillStyle = pick(rnd, ['#e8e2d0', '#3d6ad6', '#c9a24a', '#e86f4a']); ctx.fillRect(x - 6, y - 6, 12, 12);
+      person(ctx, rnd, x, y, shirtFor(rnd, x < 0 ? 'Red' : 'Blue'), o.cheer === (x < 0 ? 'Red' : 'Blue'), 0.95);
+    }
+  }
+  crowd(ctx, rnd, -W + 10, -H - 40, W - 10, -H - 28, o, 18, 12, 0.7);
   crowd(ctx, rnd, -W + 10, H + 28, W - 10, H + 38, o, 20, 12, 0.6);
   dog(ctx, W * 0.4, H + 60);
   if (REG) REG.lane = { y: -H - 16, x0: -W - 500, x1: W + 500 };
@@ -1162,7 +1192,14 @@ function colegio(ctx, W, H, o) {
     ctx.fillStyle = '#7a5a3a'; ctx.fillRect(x, -H - 62, 90, 14);
     for (let k = 0; k < 4; k++) if (rnd() < 0.8) person(ctx, rnd, x + 12 + k * 22, -H - 55, rnd() < 0.6 ? '#f1f1ec' : shirtFor(rnd, x < 0 ? 'Red' : 'Blue'), o.cheer === (x < 0 ? 'Red' : 'Blue'), 0.85);
   }
-  crowd(ctx, rnd, -W + 10, H + 26, W - 10, H + 64, o, 16, 13, 0.75);
+  crowd(ctx, rnd, -W + 10, -H - 40, W - 10, -H - 28, o, 15, 12, 0.85);
+  crowd(ctx, rnd, -W + 10, H + 26, W - 10, H + 64, o, 15, 12, 0.85);
+  // Árbol grande con su sombra, el bicicletero y la maestra con el silbato.
+  ctx.fillStyle = 'rgba(0,0,0,0.18)'; ctx.beginPath(); ctx.ellipse(-W - 110, -H - 10, 70, 46, 0.3, 0, 7); ctx.fill();
+  tree(ctx, rnd, -W - 120, -H - 30, 50);
+  for (let i = 0; i < 5; i++) bike(ctx, W + 40 + i * 12, -H - 60, Math.PI / 2);
+  person(ctx, rnd, -W - 30, H - 30, '#5b3a5e', false, 1.05);
+  ctx.fillStyle = '#f0c25a'; ctx.beginPath(); ctx.arc(-W - 24, H - 34, 1.8, 0, 7); ctx.fill();
   const pack = (x, y) => { ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.fillRect(x + 2, y + 2, 12, 14); ctx.fillStyle = pick(rnd, [RED, BLUE, '#3aa37a', '#f0c25a', '#b25ab5']); ctx.fillRect(x, y, 12, 14); ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.fillRect(x + 2, y + 8, 8, 4); };
   for (const sx of [-1, 1]) {
     for (let i = 0; i < 6; i++) pack(sx * (W + 30 + rnd() * 50), -H + rnd() * (H - gap - 20));
@@ -1504,19 +1541,56 @@ function hash01(n) {
   return x - Math.floor(x);
 }
 
-/** Los que se paran en la tribuna: unos pocos por bloque, cada uno a su ritmo. */
-function crowdActors(reg) {
-  if (reg.__actors) return reg.__actors;
-  const out = [];
-  let k = 1;
-  for (const [x0, y0, x1, y1] of reg.crowds) {
-    const n = Math.max(2, Math.min(9, Math.round(((x1 - x0) * (y1 - y0)) / 3000)));
-    for (let i = 0; i < n; i++, k++) {
-      out.push({ x: x0 + hash01(k) * (x1 - x0), y: y0 + hash01(k + 0.5) * (y1 - y0), per: 2600 + hash01(k + 0.3) * 4200, ph: hash01(k + 0.7), seed: 1000 + k });
+/*
+ * La tribuna como bloque vivo. Cada bloque de gente se arma como imagen en
+ * tres versiones —quieta A, quieta B (todos corridos un pelito, algunos con
+ * los brazos arriba) y todos arriba— y en cada cuadro se pega: alternar A y B
+ * la hace respirar, y pegar «arriba» recortado a una franja que avanza es la
+ * ola. Nadie aparece suelto: se mueve la tribuna entera.
+ */
+const BLOCKS = new Map();
+let blocksScene = '';
+const B_PX = 1.6;
+
+function crowdBlock(B, mode, tag) {
+  const key = `${B.seed}|${mode}|${tag}`;
+  let bl = BLOCKS.get(key);
+  if (bl) return bl;
+  const pad = 14;
+  const w = B.x1 - B.x0 + pad * 2, h = B.y1 - B.y0 + pad * 2;
+  const cv = mkCanvas(Math.ceil(w * B_PX), Math.ceil(h * B_PX));
+  const g = cv.getContext('2d');
+  g.setTransform(B_PX, 0, 0, B_PX, (pad - B.x0) * B_PX, (pad - B.y0) * B_PX);
+  const rnd = seeded(B.seed);
+  const jit = seeded(B.seed + (mode === 'b' ? 7919 : mode === 'up' ? 104729 : 1));
+  for (let y = B.y0; y <= B.y1; y += B.gapY) {
+    const shift = (Math.round((y - B.y0) / B.gapY) % 2) * B.gapX * 0.5;
+    for (let x = B.x0 + shift; x <= B.x1; x += B.gapX) {
+      if (rnd() > B.density) continue;
+      const px = x + (rnd() - 0.5) * B.gapX * 0.35;
+      const py = y + (rnd() - 0.5) * 3;
+      const team = px < 0 ? 'Red' : 'Blue';
+      const shirt = shirtFor(rnd, team);
+      const look = rnd() * 1e9;
+      const dx = mode === 'a' ? 0 : (jit() - 0.5) * 1.6, dy = mode === 'a' ? 0 : (jit() - 0.5) * 1.4;
+      const up = mode === 'up' ? jit() < 0.9 : jit() < 0.04;
+      person(g, seeded(look), px + dx, py + dy - (up ? 1.5 : 0), shirt, up);
     }
   }
-  reg.__actors = out;
-  return out;
+  // De noche, la gente se oscurece igual que el resto del fondo.
+  if (tag.includes('n')) {
+    g.setTransform(1, 0, 0, 1, 0, 0);
+    g.globalCompositeOperation = 'source-atop';
+    g.fillStyle = 'rgba(6,10,24,0.5)';
+    g.fillRect(0, 0, cv.width, cv.height);
+  }
+  bl = { cv, x: B.x0 - pad, y: B.y0 - pad, w, h };
+  BLOCKS.set(key, bl);
+  return bl;
+}
+
+function drawBlock(ctx, bl, dy = 0) {
+  ctx.drawImage(bl.cv, bl.x, bl.y + dy, bl.w, bl.h);
 }
 
 function flagWave(ctx, x, y, color, color2, t) {
@@ -1556,6 +1630,41 @@ function paintAlive(ctx, id, bounds, t, reg, o = {}, vis = null) {
     ctx.rect(-W * 50, -H * 50, W * 100, H * 100);
     ctx.rect(-W, -H, 2 * W, 2 * H);
     ctx.clip('evenodd');
+    // La tribuna: respira (A/B), pasa la ola cada tanto y en el gol salta la del que metió.
+    const tag = `${LIVE.wet ? 'w' : ''}${LIVE.snow ? 's' : ''}${night ? 'n' : ''}`;
+    if (blocksScene !== id + tag) { BLOCKS.clear(); blocksScene = id + tag; }
+    const beat = Math.floor(t / 280) % 2;
+    const wf = (t % 24000) / 24000;
+    const waveX = wf < 0.4 ? -W - 300 + (wf / 0.4) * (2 * W + 600) : NaN;
+    for (const B of reg.crowds) {
+      if (!see((B.x0 + B.x1) / 2, (B.y0 + B.y1) / 2, Math.max(B.x1 - B.x0, B.y1 - B.y0) / 2 + 20)) continue;
+      const cheering = o.hot && o.cheer;
+      drawBlock(ctx, crowdBlock(B, beat ? 'b' : 'a', tag)); n++;
+      // Festejo: la mitad del que metió, toda arriba y saltando.
+      if (cheering) {
+        const side = o.cheer === 'Red' ? -1 : 1;
+        ctx.save();
+        ctx.beginPath(); ctx.rect(side < 0 ? B.x0 - 20 : 0, B.y0 - 30, side < 0 ? -B.x0 + 20 : B.x1 + 20, B.y1 - B.y0 + 60); ctx.clip();
+        drawBlock(ctx, crowdBlock(B, 'up', tag), -Math.abs(Math.sin(t / 150)) * 2.5);
+        ctx.restore(); n++;
+      } else if (waveX === waveX && waveX + 50 > B.x0 && waveX - 50 < B.x1) {
+        // La ola: una franja que avanza con todos arriba.
+        ctx.save();
+        ctx.beginPath(); ctx.rect(waveX - 50, B.y0 - 30, 100, B.y1 - B.y0 + 60); ctx.clip();
+        drawBlock(ctx, crowdBlock(B, 'up', tag), -2);
+        ctx.restore(); n++;
+      }
+    }
+    // Los trapos colgados y los LED van arriba de la gente.
+    for (const T of reg.trapos) {
+      if (!see(T.x + T.w / 2, T.y + T.h / 2, T.w / 2 + 6)) continue;
+      const sp = sprite(`tr${T.kind}${T.text}${T.w}x${T.h}${o.mirror ? 1 : 0}${night ? 1 : 0}`, Math.max(T.w, T.h) / 2 + 4, (g) => {
+        REG = { __inTrapo: true };
+        try { trapo(g, -T.w / 2, -T.h / 2, T.w, T.h, T.kind, T.text, !!o.mirror); } finally { REG = null; }
+        if (night) { g.setTransform(1, 0, 0, 1, 0, 0); g.globalCompositeOperation = 'source-atop'; g.fillStyle = 'rgba(6,10,24,0.5)'; g.fillRect(0, 0, 9999, 9999); }
+      });
+      stamp(ctx, sp, T.x + T.w / 2, T.y + T.h / 2); n++;
+    }
     // LED con el texto corriendo.
     for (const L of reg.leds) {
       const cx = L.vertical ? L.x + L.h / 2 : L.x + L.w / 2, cy = L.vertical ? L.y + L.w / 2 : L.y + L.h / 2;
@@ -1563,15 +1672,39 @@ function paintAlive(ctx, id, bounds, t, reg, o = {}, vis = null) {
       aliveLed(ctx, L, t, o.mirror); n++;
     }
     ctx.globalAlpha = night ? 0.62 : 1;
-    // La tribuna: algunos se paran y levantan los brazos (en el festejo ya están todos).
-    if (!o.hot) {
-      for (const a of crowdActors(reg)) {
-        const f = ((t / a.per) + a.ph) % 1;
-        if (f > 0.16 || !see(a.x, a.y, 14)) continue;
-        const jump = Math.sin((f / 0.16) * Math.PI) * 3;
-        const team = a.x < 0 ? 'Red' : 'Blue';
-        const sp = sprite(`p${a.seed}${team}${LIVE.snow ? 's' : ''}`, 14, (g) => { const r = seeded(a.seed); person(g, r, 0, 0, shirtFor(r, team), true); });
-        stamp(ctx, sp, a.x, a.y - jump); n++;
+    // Banderazos: banderas grandes flameando adentro de la tribuna, de cada hinchada.
+    for (const B of reg.crowds) {
+      const span = B.x1 - B.x0;
+      if (span < 150 || B.y1 - B.y0 < 20) continue;
+      const k = Math.max(1, Math.floor(span / 260));
+      for (let i = 0; i < k; i++) {
+        const fx = B.x0 + ((i + 0.5) / k) * span + (hash01(B.seed % 997 + i) - 0.5) * 40;
+        const fy = B.y0 + (B.y1 - B.y0) * (0.3 + hash01(B.seed % 991 + i * 3) * 0.4);
+        if (!see(fx + 20, fy, 40)) continue;
+        const team = fx < 0 ? 'Red' : 'Blue';
+        ctx.save(); ctx.translate(fx, fy); ctx.scale(1.5, 1.5);
+        flagWave(ctx, 0, 0, team === 'Red' ? RED : BLUE, i % 2 ? '#f4f1ea' : null, t + i * 400);
+        ctx.restore(); n++;
+      }
+    }
+    // Lamparitas que titilan.
+    for (const [i, [x, y]] of reg.bulbs.entries()) {
+      if (hash01(Math.floor(t / 220) + i * 1.7) > 0.22 || !see(x, y, 6)) continue;
+      ctx.fillStyle = 'rgba(255,230,170,0.55)'; ctx.beginPath(); ctx.arc(x, y, 5, 0, 7); ctx.fill();
+      ctx.fillStyle = '#fff6d8'; ctx.beginPath(); ctx.arc(x, y, 2.2, 0, 7); ctx.fill(); n++;
+    }
+    // Una bandada que cruza de día (no en los de noche).
+    if (!night && !['noche', 'azotea'].includes(id)) {
+      const f = (t % 30000) / 30000;
+      if (f < 0.5) {
+        const bx = -W - 500 + (f / 0.5) * (2 * W + 1000), by = -H - 120 + Math.sin(f * 9) * 20;
+        for (let k = 0; k < 5; k++) {
+          const x = bx - k * 14 - (k % 2) * 4, y = by + (k % 2 ? 10 : -6) * Math.ceil(k / 2);
+          if (!see(x, y, 10)) continue;
+          ctx.strokeStyle = 'rgba(40,40,40,0.75)'; ctx.lineWidth = 1.4;
+          const fl = 2 + Math.sin(t / 110 + k) * 2.5;
+          ctx.beginPath(); ctx.moveTo(x - 5, y - fl); ctx.quadraticCurveTo(x - 2, y - 2, x, y); ctx.quadraticCurveTo(x + 2, y - 2, x + 5, y - fl); ctx.stroke(); n++;
+        }
       }
     }
     // Banderas que flamean.
@@ -1758,7 +1891,7 @@ function paintEnv(ctx, id, bounds, o = {}) {
     LIVE.night = !!o.night;
     LIVE.alive = !!o.alive;
     LIGHTS.length = 0;
-    REG = { leds: [], crowds: [], flags: [], dogs: [], kids: [], pitches: [], smoke: [], cows: [], flashes: [], screens: [], windows: [], walkers: [], runners: [], fresa: null, mill: null, volley: null, gulls: null, lane: null };
+    REG = { leds: [], crowds: [], flags: [], dogs: [], kids: [], pitches: [], smoke: [], cows: [], flashes: [], screens: [], windows: [], walkers: [], runners: [], bulbs: [], trapos: [], fresa: null, mill: null, volley: null, gulls: null, lane: null };
     fn(ctx, W, H, { cheer: o.cheer || null, hot: !!o.hot, mirror: !!o.mirror });
     // Fresa, la DT, en el banco del equipo de uno (rojo si mirás de afuera).
     if (o.fresa !== false && FRESA_SPOT[id]) {
@@ -1767,6 +1900,15 @@ function paintEnv(ctx, id, bounds, o = {}) {
       if (bench) fresaBench(ctx, fx, fy + 4);
       if (REG) REG.fresa = { x: fx, y: fy, team };
       if (!LIVE.alive) fresaDT(ctx, fx, fy, o.cheer === team, team, !!o.mirror);
+    }
+    // Viñeta: los bordes un poco más oscuros llevan la vista a la cancha.
+    {
+      const R = Math.hypot(W, H);
+      const g = ctx.createRadialGradient(0, 0, R * 0.95, 0, 0, R * 2.1);
+      g.addColorStop(0, 'rgba(0,0,0,0)');
+      g.addColorStop(1, 'rgba(0,0,0,0.42)');
+      ctx.fillStyle = g;
+      ctx.fillRect(-W - 900, -H - 700, 2 * W + 1800, 2 * H + 1400);
     }
     const rnd = seeded(7);
     if (LIVE.wet || LIVE.snow) weatherLayer(ctx, rnd, W, H);
