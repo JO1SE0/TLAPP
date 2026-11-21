@@ -334,7 +334,20 @@ function trapo(ctx, x, y, w, h, kind, text, mirror) {
     ctx.fillStyle = kind === 'azul' ? BLUE : kind === 'blanco' ? '#f4f1ea' : RED;
     ctx.fillRect(x, y, w, h);
   }
-  if (text) paint(ctx, text, x + w / 2, y + h / 2 + 0.5, `900 ${Math.round(h * 0.62)}px sans-serif`, kind === 'blanco' ? RED : '#ffffff', mirror, w - 6);
+  // Pliegues de la tela y los flecos de abajo.
+  for (let i = 1; i < 6; i++) { ctx.fillStyle = i % 2 ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.08)'; ctx.fillRect(x + (i * w) / 6 - 2, y, 4, h); }
+  ctx.fillStyle = 'rgba(255,255,255,0.14)'; ctx.fillRect(x, y, w, 1.5);
+  ctx.strokeStyle = kind === 'azul' || kind === 'franjas-b' ? tint(BLUE, 0.5) : kind === 'blanco' ? '#d8d2c4' : tint(RED, 0.5); ctx.lineWidth = 0.8;
+  ctx.beginPath(); for (let fx = x + 1.5; fx < x + w; fx += 2.5) { ctx.moveTo(fx, y + h); ctx.lineTo(fx, y + h + 2.5); } ctx.stroke();
+  if (text) {
+    // Letras con borde, como pintadas a mano.
+    ctx.save(); ctx.translate(x + w / 2, y + h / 2 + 0.5); if (mirror) ctx.scale(-1, 1);
+    ctx.font = `900 ${Math.round(h * 0.62)}px sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    const tw = ctx.measureText(text).width; if (tw > w - 6) ctx.scale((w - 6) / tw, (w - 6) / tw);
+    ctx.lineWidth = 2; ctx.strokeStyle = kind === 'blanco' ? 'rgba(255,255,255,0.9)' : 'rgba(0,0,0,0.45)'; ctx.strokeText(text, 0, 0);
+    ctx.fillStyle = kind === 'blanco' ? RED : '#ffffff'; ctx.fillText(text, 0, 0);
+    ctx.restore();
+  }
   ctx.fillStyle = 'rgba(0,0,0,0.6)';
   ctx.beginPath(); ctx.arc(x + 1.5, y + 1.5, 1.4, 0, 7); ctx.arc(x + w - 1.5, y + 1.5, 1.4, 0, 7); ctx.fill();
 }
@@ -514,21 +527,18 @@ function led(ctx, x, y, w, h, text, hot, mirror, vertical) {
   ctx.beginPath();
   ctx.rect(1, 1, w - 2, h - 2);
   ctx.clip();
-  // Resplandor del panel y la grilla de puntitos: dan textura sin costar (es una vez).
-  ctx.fillStyle = hot ? 'rgba(255,211,77,0.14)' : 'rgba(224,179,74,0.07)';
-  ctx.fillRect(0, 0, w, h);
-  ctx.fillStyle = 'rgba(255,255,255,0.05)';
-  for (let i = 2; i < w; i += 3) ctx.fillRect(i, 1, 1, h - 2);
+  // La misma matriz de puntos que corre con vida, quieta en el principio.
   const msg = hot ? (LIVE.scorer ? `¡GOL! · ${LIVE.scorer}   ` : '¡GOL!   ¡GOL!   ¡GOL!   ') : text;
-  ctx.font = `700 ${Math.round(h * 0.66)}px monospace`;
-  ctx.textBaseline = 'middle';
-  ctx.fillStyle = hot ? '#ffd34d' : '#f0c25a';
-  // El espejo del juego da vuelta la X de la cancha: en un cartel acostado es
-  // su largo; en uno parado, su ancho.
   if (mirror && !vertical) { ctx.translate(w, 0); ctx.scale(-1, 1); }
   if (mirror && vertical) { ctx.translate(0, h); ctx.scale(1, -1); }
-  const unit = ctx.measureText(msg).width || 1;
-  for (let tx = 4; tx < w; tx += unit) ctx.fillText(msg, tx, h / 2 + 0.5);
+  const st = ledStrip(msg, w, h, hot);
+  ctx.drawImage(st.cv, 0, 0, Math.min(st.cv.width, w * S_PX), h * S_PX, 0, 0, Math.min(st.cv.width / S_PX, w), h);
+  ctx.restore();
+  // Marco con un filito de luz.
+  ctx.save();
+  if (vertical) { ctx.translate(x + h, y); ctx.rotate(Math.PI / 2); } else ctx.translate(x, y);
+  ctx.strokeStyle = '#3a4456'; ctx.lineWidth = 1.5; ctx.strokeRect(0, 0, w, h);
+  ctx.strokeStyle = hot ? 'rgba(255,211,77,0.35)' : 'rgba(255,190,90,0.16)'; ctx.lineWidth = 1; ctx.strokeRect(-1.5, -1.5, w + 3, h + 3);
   ctx.restore();
 }
 
@@ -1294,9 +1304,16 @@ function bigScreen(ctx, x, y, w, h, mirror) {
   ctx.fillStyle = 'rgba(0,0,0,0.4)'; ctx.fillRect(x + 5, y + 6, w, h);
   ctx.fillStyle = '#0b0e14'; ctx.fillRect(x, y, w, h);
   ctx.strokeStyle = '#3a4252'; ctx.lineWidth = 2; ctx.strokeRect(x, y, w, h);
-  ctx.fillStyle = 'rgba(80,140,255,0.12)'; ctx.fillRect(x + 3, y + 3, w - 6, h - 6);
-  paint(ctx, LIVE.score || 'TODA LA LECCE', x + w / 2, y + h * 0.42, `900 ${Math.round(h * 0.28)}px sans-serif`, '#ffffff', mirror, w - 10);
-  paint(ctx, 'TL APP', x + w / 2, y + h * 0.78, `800 ${Math.round(h * 0.18)}px sans-serif`, '#f0c25a', mirror);
+  const g = ctx.createLinearGradient(x, y, x, y + h);
+  g.addColorStop(0, '#16233a'); g.addColorStop(1, '#0a0f18');
+  ctx.fillStyle = g; ctx.fillRect(x + 3, y + 3, w - 6, h - 6);
+  // Franjas con los colores de cada equipo y el resultado grande.
+  ctx.fillStyle = RED; ctx.fillRect(x + 3, y + 3, (w - 6) / 2, h * 0.16);
+  ctx.fillStyle = BLUE; ctx.fillRect(x + w / 2, y + 3, (w - 6) / 2, h * 0.16);
+  paint(ctx, LIVE.score || 'TODA LA LECCE', x + w / 2, y + h * 0.5, `900 ${Math.round(h * 0.3)}px sans-serif`, '#ffffff', mirror, w - 12);
+  paint(ctx, 'TL APP', x + w / 2, y + h * 0.82, `800 ${Math.round(h * 0.16)}px sans-serif`, '#f0c25a', mirror);
+  // Líneas de barrido de pantalla.
+  ctx.fillStyle = 'rgba(255,255,255,0.035)'; for (let yy = y + 3; yy < y + h - 3; yy += 3) ctx.fillRect(x + 3, yy, w - 6, 1);
 }
 
 function estadio(ctx, W, H, o) {
@@ -1689,25 +1706,53 @@ function stamp(ctx, sp, x, y, a) {
   } else ctx.drawImage(sp.cv, x - sp.r, y - sp.r, sp.r * 2, sp.r * 2);
 }
 
-/** El texto de un LED armado una vez como imagen larga, para correrlo. */
+/**
+ * El texto de un LED armado una vez como imagen larga, para correrlo: una
+ * matriz de puntitos de verdad (7 de alto), cada repetición de un color
+ * (ámbar, blanco y los de las camisetas) y los puntos prendidos con su brillo.
+ * En el gol, dorado y rojo. `unit` es lo que mide una vuelta completa.
+ */
 function ledStrip(text, w, h, hot) {
-  const key = `${text}|${w}|${h}|${hot ? 1 : 0}`;
+  const cols = hot ? ['#ffd34d', '#ff6a4a'] : ['#ffb347', '#f4f6ff', tint(RED, 0.25), tint(BLUE, 0.3)];
+  const key = `${text}|${w}|${h}|${hot ? 1 : 0}|${cols.join('')}`;
   let st = STRIPS.get(key);
   if (st) return st;
   if (STRIPS.size > 40) STRIPS.clear();
+  const rows = 7, pitch = h / (rows + 2);
+  const font = '700 8px monospace';
   const probe = mkCanvas(1, 1).getContext('2d');
-  probe.font = `700 ${Math.round(h * 0.66 * S_PX)}px monospace`;
-  const unit = Math.max(8, probe.measureText(text).width / S_PX);
-  const cw = Math.ceil((w + unit + 8) * S_PX), ch = Math.ceil(h * S_PX);
+  probe.font = font;
+  const unitDots = Math.max(6, Math.ceil(probe.measureText(text).width));
+  const period = unitDots * cols.length;
+  const total = Math.ceil(w / pitch) + period + 2;
+  // La máscara: el texto a un píxel por punto.
+  const mk = mkCanvas(total, rows + 2), mg = mk.getContext('2d');
+  mg.font = font; mg.textBaseline = 'middle'; mg.fillStyle = '#fff';
+  for (let x = 1; x < total; x += unitDots) mg.fillText(text, x, (rows + 2) / 2 + 0.5);
+  const px = mg.getImageData(0, 0, total, rows + 2).data;
+  const cw = Math.ceil(total * pitch * S_PX), ch = Math.ceil(h * S_PX);
   const cv = mkCanvas(cw, ch);
   const g = cv.getContext('2d');
-  g.fillStyle = '#07090d'; g.fillRect(0, 0, cw, ch);
-  g.fillStyle = hot ? 'rgba(255,211,77,0.14)' : 'rgba(224,179,74,0.07)'; g.fillRect(0, 0, cw, ch);
-  g.fillStyle = 'rgba(255,255,255,0.05)';
-  for (let i = 2 * S_PX; i < cw; i += 3 * S_PX) g.fillRect(i, S_PX, S_PX, ch - 2 * S_PX);
-  g.font = probe.font; g.textBaseline = 'middle'; g.fillStyle = hot ? '#ffd34d' : '#f0c25a';
-  for (let x = 4 * S_PX; x < cw; x += unit * S_PX) g.fillText(text, x, ch / 2 + S_PX * 0.5);
-  st = { cv, unit };
+  g.fillStyle = '#05070b'; g.fillRect(0, 0, cw, ch);
+  g.fillStyle = hot ? 'rgba(255,211,77,0.08)' : 'rgba(224,179,74,0.04)'; g.fillRect(0, 0, cw, ch);
+  const P = pitch * S_PX;
+  // Los apagados: una grilla tenue.
+  g.fillStyle = 'rgba(255,255,255,0.07)';
+  for (let r = 1; r <= rows; r++) for (let c = 0; c < total; c++) g.fillRect((c + 0.32) * P, (r + 0.32) * P, P * 0.36, P * 0.36);
+  for (let c = 0; c < total; c++) {
+    const col = cols[Math.floor(Math.max(0, c - 1) / unitDots) % cols.length];
+    for (let r = 1; r <= rows; r++) {
+      if (px[(r * total + c) * 4 + 3] < 110) continue;
+      const cx = (c + 0.5) * P, cy = (r + 0.5) * P;
+      g.globalAlpha = 0.28; g.fillStyle = col;
+      g.beginPath(); g.arc(cx, cy, P * 0.78, 0, 7); g.fill();
+      g.globalAlpha = 1;
+      g.beginPath(); g.arc(cx, cy, P * 0.36, 0, 7); g.fill();
+    }
+  }
+  // Reflejo arriba, como un panel con vidrio.
+  g.fillStyle = 'rgba(255,255,255,0.05)'; g.fillRect(0, 0, cw, ch * 0.4);
+  st = { cv, unit: period * pitch };
   STRIPS.set(key, st);
   return st;
 }
