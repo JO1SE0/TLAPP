@@ -410,6 +410,32 @@ syncMinimap();
     check('alrededores: la hinchada se viste con las camisetas del partido (y a franjas)', r4.hex === '#00a000,#ffffff|#000000' && r4.green > 300 && r4.greenDefault === 0, JSON.stringify(r4));
     check('alrededores: la tribuna se llena según la gente de la sala', r4.empty < r4.full * 0.6, JSON.stringify({ lleno: r4.full, vacio: r4.empty }));
     check('alrededores: Fresa se tapa los ojos con el gol en contra y da la vuelta si ganan', r4.dSad > 80 && r4.dLap > 200, JSON.stringify({ triste: r4.dSad, vuelta: r4.dLap }));
+    // Medidas reales: mapas que dibujan la cancha con líneas y declaran un pasto chico (LHL, futsal, x7).
+    const GEOM = between(GP, 'const matchGeomCache = new WeakMap();', '/**\n * Las medidas de la cancha, en coordenadas') + between(GP, 'function envBoundsFor(stadium, bg) {', '/** Lo que se ve de la cancha, en unidades');
+    const r5 = await p.evaluate((code) => {
+      const bg = { halfW: 300, halfH: 120 };
+      const mod = new Function('pitchBounds', `${code}; return { matchGeom, envBoundsFor };`)(() => bg);
+      const v = (x, y) => ({ a: { x, y }, B: 1 });
+      const team = {};
+      const pitch = (name, goals) => {
+        const V = [];
+        for (const sx of [-1, 1]) for (const sy of [-1, 1]) {
+          V.push(v(sx * 550, sy * 300), v(sx * 540, sy * 300), v(sx * 650, sy * 380));
+          V.push(v(sx * 550, sy * 90), v(sx * 590, sy * 90));
+        }
+        V.push(v(0, -300), v(0, 300), v(0, -80), v(0, 80));
+        const st = { n: name, V };
+        if (goals) st.G = [{ W: { x: -550, y: -90 }, ba: { x: -550, y: 90 }, q: team }, { W: { x: 550, y: -90 }, ba: { x: 550, y: 90 }, q: team }];
+        return st;
+      };
+      const x5 = mod.envBoundsFor(pitch('Futsal x5 - LHL', true), bg);
+      const training = mod.envBoundsFor(pitch('Training Room by Fede', true), bg);
+      const noGoals = mod.envBoundsFor(pitch('Fútbol libre', false), bg);
+      return { x5, training, noGoals };
+    }, GEOM);
+    check('alrededores: la cancha se mide de los arcos y las bandas (no del pasto declarado)',
+      r5.x5 && r5.x5.halfW === 550 && r5.x5.halfH === 300 && r5.x5.goalY === 90 && r5.x5.goalDepth === 40, JSON.stringify(r5.x5));
+    check('alrededores: sin arcos o de entrenamiento, no se ponen', r5.training === null && r5.noGoals === null, JSON.stringify({ t: r5.training, n: r5.noGoals }));
     const CACHED = between(GP, 'function worldView(m, w, h) {', '/**\n * Rectángulo con esquinas') + between(GP, 'const env = { cheer: null', 'function flushStadiumCache(view) {') + between(GP, '/** Terminó el partido: fuegos artificiales', 'function closeMatch(f, room, nextStarted) {');
     const r2 = await p.evaluate((code) => {
       const pitchEnv = module.exports;

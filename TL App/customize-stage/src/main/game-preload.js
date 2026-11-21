@@ -8858,12 +8858,12 @@ function skinPitch(ctx, w, h, stadium) {
 
   // Los alrededores: afuera de la cancha, guardados de una vez para toda la
   // cancha (no dependen de la cámara) y pegados en cada armado del cache.
-  if (visual.env && bounds) {
+  const eb = visual.env ? envBoundsFor(stadium, bounds) : null;
+  env.bounds = eb;
+  env.stadium = stadium;
+  if (eb) {
     ctx.save();
     try {
-      const geom = matchGeom(stadium);
-      const eb = geom ? { ...bounds, goalY: geom.goalY, goalDepth: geom.goalDepth } : bounds;
-      env.bounds = eb;
       paintEnvCached(ctx, world, eb, w, h);
     } catch (err) {
       log('error', `los alrededores no se pudieron dibujar: ${err.message}`, 'juego');
@@ -9180,7 +9180,36 @@ function matchGeom(stadium) {
           if (Math.abs(p.y) <= goalY + 20 && ax > halfW - 2 && ax <= halfW + 260) goalBack = Math.max(goalBack, ax);
         }
       }
-      res = { goals: goals.length, halfW, halfH, goalY, goalDepth: Math.max(0, goalBack - halfW) };
+      /*
+       * El ancho de la cancha de verdad. Muchos mapas (LHL, futsal, x7, RS)
+       * dibujan las líneas con segmentos y declaran un «pasto» más chico que la
+       * cancha: los alrededores se ponían adentro. Las líneas de banda son
+       * puntos a la misma altura que van de punta a punta: la más cercana al
+       * medio (más afuera del arco) es la banda.
+       */
+      let sideY = 0;
+      if (pts.length) {
+        const rows = new Map();
+        for (const p of pts) {
+          if (Math.abs(p.x) > halfW * 1.1) continue;
+          const k = Math.round(Math.abs(p.y));
+          const r = rows.get(k) || [Infinity, -Infinity];
+          if (p.x < r[0]) r[0] = p.x;
+          if (p.x > r[1]) r[1] = p.x;
+          rows.set(k, r);
+        }
+        for (const [k, r] of rows) {
+          if (r[1] - r[0] < halfW * 1.5 || k <= Math.max(goalY * 1.1, 20)) continue;
+          if (!sideY || k < sideY) sideY = k;
+        }
+      }
+      // Entrenamiento: por el nombre del mapa (training, entrenamiento, práctica…).
+      let training = false;
+      for (const key of Object.keys(stadium)) {
+        const v = stadium[key];
+        if (typeof v === 'string' && v.length < 80 && /train|entren|pr[aá]ctic|practice|warm ?up|calentam|1v0/i.test(v)) { training = true; break; }
+      }
+      res = { goals: goals.length, halfW, halfH, goalY, goalDepth: Math.max(0, goalBack - halfW), sideY, training };
     }
   } catch (e) { res = null; }
   matchGeomCache.set(stadium, res);
@@ -9536,6 +9565,21 @@ function envTrackScore(view, f, match, room) {
   if (!env.hot) { env.names = envNames(); flushStadiumCache(view); }
 }
 
+/*
+ * Las medidas de la cancha para los alrededores. El largo sale de los arcos y
+ * el ancho de las líneas de banda (ver matchGeom); el «pasto» del estadio sólo
+ * se usa si no hay nada mejor. Sin arcos (mapas de entrenamiento, de fútbol
+ * libre) o con nombre de entrenamiento, no hay alrededores.
+ */
+function envBoundsFor(stadium, bg) {
+  const geom = matchGeom(stadium);
+  if (!geom || !geom.goals || geom.training) return null;
+  const halfW = geom.halfW;
+  const halfH = geom.sideY || (bg && bg.halfH) || 0;
+  if (!(halfW > 0) || !(halfH > 0) || halfH > halfW * 1.2) return null;
+  return { halfW, halfH, corner: 0, goalY: geom.goalY, goalDepth: geom.goalDepth };
+}
+
 /** Lo que se ve de la cancha, en unidades: para no dibujar lo de afuera de la pantalla. */
 const envVis = { x0: 0, y0: 0, x1: 0, y1: 0 };
 function paintEnvAlive(ctx) {
@@ -9715,7 +9759,7 @@ function paintPitch(ctx, renderer, zoom) {
   const wantSelfTrail = visual.selfTrail && !replay;
   const wantWeather = !!visual.weather;
   const wantScore = !!visual.score;
-  const wantEnv = envAliveOn() && !!env.bounds;
+  const wantEnv = envAliveOn() && !!env.bounds && env.stadium === currentStadium;
   if (!wantTrail && !wantTeams && !wantSelf && !wantTouch && !wantHeat && !wantSelfTrail && !wantWeather && !wantScore && !wantEnv) return;
 
   // Los alrededores con vida: va primero, abajo de todo lo demás.

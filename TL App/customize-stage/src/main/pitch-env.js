@@ -1162,11 +1162,21 @@ function cortada(ctx, W, H, o) {
   ctx.beginPath();
   for (let x = -W - 800; x < W + 800; x += 14) { ctx.moveTo(x, -H - 86); ctx.lineTo(x, -H - 46); ctx.moveTo(x, H + 46); ctx.lineTo(x, H + 86); }
   ctx.stroke();
-  // Casas de los dos lados.
-  for (let x = -W - 420; x < W + 420; x += 0) { const w = 60 + rnd() * 40; house(ctx, rnd, x, -H - 86, w, 90, true, o); x += w + 4; }
-  for (let x = -W - 420; x < W + 420; x += 0) { const w = 60 + rnd() * 40; house(ctx, rnd, x, H + 86, w, 90, false, o); x += w + 4; }
+  // Las calles que cruzan, detrás de cada arco: por ahí pasa el auto (nunca
+  // por encima de la gente).
+  const cross = W + 250;
+  for (const sx of [-1, 1]) {
+    ctx.fillStyle = '#3d4046'; ctx.fillRect(sx * cross - 34, -H - 600, 68, 2 * H + 1200);
+    ctx.fillStyle = 'rgba(240,240,230,0.55)';
+    for (let y = -H - 600; y < H + 600; y += 30) ctx.fillRect(sx * cross - 1.5, y, 3, 16);
+  }
+  const clearOf = (x, w) => Math.abs(x + w / 2 - cross) > w / 2 + 40 && Math.abs(x + w / 2 + cross) > w / 2 + 40;
+  // Casas de los dos lados (menos donde cruzan las calles).
+  for (let x = -W - 420; x < W + 420; x += 0) { const w = 60 + rnd() * 40; if (clearOf(x, w)) house(ctx, rnd, x, -H - 86, w, 90, true, o); x += w + 4; }
+  for (let x = -W - 420; x < W + 420; x += 0) { const w = 60 + rnd() * 40; if (clearOf(x, w)) house(ctx, rnd, x, H + 86, w, 90, false, o); x += w + 4; }
   // Árboles en la vereda, autos estacionados en el cordón, vecinos mirando.
-  for (let x = -W - 300; x < W + 300; x += 120) { tree(ctx, rnd, x + 30, -H - 66, 22); tree(ctx, rnd, x + 90, H + 66, 22); }
+  const offStreet = (x) => Math.abs(Math.abs(x) - cross) > 60;
+  for (let x = -W - 300; x < W + 300; x += 120) { if (offStreet(x + 30)) tree(ctx, rnd, x + 30, -H - 66, 22); if (offStreet(x + 90)) tree(ctx, rnd, x + 90, H + 66, 22); }
   for (const sx of [-1, 1]) {
     const x0 = sx < 0 ? -W - 70 : W + 70;
     car(ctx, x0, -H - 30, 0, pick(rnd, CARS)); car(ctx, x0 + sx * 60, -H - 30, 0, pick(rnd, CARS));
@@ -1187,7 +1197,7 @@ function cortada(ctx, W, H, o) {
   crowd(ctx, rnd, -W + 10, -H - 40, W - 10, -H - 28, o, 18, 12, 0.7);
   crowd(ctx, rnd, -W + 10, H + 28, W - 10, H + 38, o, 20, 12, 0.6);
   dog(ctx, W * 0.4, H + 60);
-  if (REG) REG.lane = { y: -H - 16, x0: -W - 500, x1: W + 500 };
+  if (REG) REG.lane = { x: W + 250, y0: -H - 500, y1: H + 500 };
   // Kiosco en la esquina y cables de luz cruzando.
   ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.fillRect(-W - 160, -H - 60, 60, 36);
   ctx.fillStyle = '#f0c25a'; ctx.fillRect(-W - 164, -H - 64, 60, 36);
@@ -1196,7 +1206,7 @@ function cortada(ctx, W, H, o) {
   for (const k of [-0.6, 0.1, 0.7]) { ctx.beginPath(); ctx.moveTo(W * k - 40, -H - 90); ctx.quadraticCurveTo(W * k, 0, W * k + 40, H + 90); ctx.stroke(); }
   // Zapatillas colgadas del cable.
   ctx.fillStyle = '#f1f1ec'; ctx.fillRect(W * 0.1 - 3, -4, 6, 10); ctx.fillRect(W * 0.1 + 4, -2, 6, 10);
-  for (let x = -W - 200; x < W + 200; x += 210) { lampPost(ctx, x, -H - 52, true, 150); lampPost(ctx, x + 105, H + 52, true, 150); }
+  for (let x = -W - 200; x < W + 200; x += 210) { if (offStreet(x)) lampPost(ctx, x, -H - 52, true, 150); if (offStreet(x + 105)) lampPost(ctx, x + 105, H + 52, true, 150); }
   trapo(ctx, -50, -H - 98, 100, 13, 'blanco', cheerName(0, 'TODA LA LECCE'), o.mirror);
 }
 
@@ -1905,9 +1915,13 @@ function paintAlive(ctx, id, bounds, t, reg, o = {}, vis = null) {
     }
     // El auto que pasa por la cortada.
     if (reg.lane) {
-      const f = (t % 9000) / 9000;
-      const x = reg.lane.x0 + f * (reg.lane.x1 - reg.lane.x0);
-      if (see(x, reg.lane.y, 30)) { car(ctx, x, reg.lane.y, 0, '#c9a24a'); n++; }
+      // Por la calle que cruza: uno sube por un lado y otro baja por el otro.
+      for (const [k, sx] of [[0, 1], [1, -1]]) {
+        const f = ((t + k * 4500) % 9000) / 9000;
+        const y = sx > 0 ? reg.lane.y0 + f * (reg.lane.y1 - reg.lane.y0) : reg.lane.y1 - f * (reg.lane.y1 - reg.lane.y0);
+        const x = sx * reg.lane.x + (sx > 0 ? 14 : -14);
+        if (see(x, y, 30)) { stamp(ctx, sprite(`car${k}`, 26, (g) => car(g, 0, 0, 0, k ? '#c9a24a' : '#a33a33')), x, y, sx > 0 ? Math.PI / 2 : -Math.PI / 2); n++; }
+      }
     }
     // Fresa: mueve la cola; en el gol de los suyos, festeja.
     if (reg.fresa && see(reg.fresa.x, reg.fresa.y, 40)) {
