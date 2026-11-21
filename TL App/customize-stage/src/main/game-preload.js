@@ -9619,6 +9619,8 @@ function paintEnvAlive(ctx) {
  * verdad se rehace (la vista previa usa los mismos dibujos guardados).
  */
 let envView = null;
+// Cuando termina de armarse lo de afuera, la cancha se vuelve a pegar (una vez).
+safe(() => pitchEnv.onFarReady(() => { if (visual.env) flushStadiumCache(envView); }));
 let envPreview = null;
 function openEnvPreview(doc, start) {
   if (envPreview) return;
