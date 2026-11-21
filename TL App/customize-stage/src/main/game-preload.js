@@ -2044,7 +2044,7 @@ const QM_WEATHER = [['none', 'Sin clima'], ...Object.entries({"rain": "Lluvia", 
 const QM_BALLS = [['default', 'Como viene'], ...Object.entries({"soccer": "Futbolera", "neon": "Neón", "gold": "Dorada", "beach": "Playera", "eight": "Bola 8", "star": "Estrella", "triangles": "Fútbol triángulos", "vintage": "Fútbol de cuero", "tennis": "Tenis", "basket": "Básquet", "volley": "Vóley", "baseball": "Béisbol", "golf": "Golf", "bowling": "Bowling", "earth": "Planeta Tierra", "moon": "Luna", "disco": "Bola de espejos", "orb": "Orbe místico", "pumpkin": "Calabaza", "melon": "Sandía", "eye": "Ojo", "argentina": "Celeste y blanca", "fire": "Bola de fuego", "ice": "Hielo", "yinyang": "Yin yang", "smile": "Carita", "sun": "Sol", "donut": "Dona", "checker": "Cuadros", "candy": "Caramelo", "heart": "Corazón", "saturn": "Planeta", "lava": "Lava", "peso": "Moneda de un peso"})];
 const qmDiscs = () => [['default', 'Como viene'], ...Object.entries(DISC_NAMES)];
 const QM_KICKS = [['default', 'El del juego'], ['real1', 'Pelotazo real'], ['real2', 'Golpe seco'], ['real3', 'Patada real'], ['real4', 'Toque rápido'], ['real5', 'Bombazo'], ['real6', 'Zapatazo']];
-const QM_ENVS = [['none', 'Nada'], ['noche', 'Potrero de noche'], ['barrio', 'Club de barrio'], ['led', 'Potrero LED'], ['f5', 'Canchita F5']];
+const QM_ENVS = [['none', 'Nada'], ['noche', 'Potrero de noche'], ['barrio', 'Club de barrio'], ['led', 'Potrero LED'], ['f5', 'Canchita F5'], ['playa', 'Playa'], ['campo', 'Campito'], ['azotea', 'Azotea']];
 const QM_LIGHTS = [['none', 'Sin luz'], ['vignette', 'Viñeta'], ['spot', 'Foco central'], ['corners', 'Luces de esquina'], ['stadium', 'Estadio de noche'], ['sunset', 'Atardecer'], ['night', 'Noche fría'], ['stripes', 'Franjas de césped'], ['cinema', 'Cine']];
 const QM_BALL_COLORS = [['', 'Como viene'], ['#ecd593', 'Dorado'], ['#e56b6b', 'Rojo'], ['#5689e5', 'Azul'], ['#5ccf7a', 'Verde'], ['#ff9f43', 'Naranja'], ['#b07cff', 'Violeta']];
 const QM_OUTLINES = [['', 'Como viene'], ['#ffffff', 'Blanco'], ['#000000', 'Negro'], ['#ecd593', 'Dorado'], ['#e56b6b', 'Rojo'], ['#5689e5', 'Azul']];
@@ -8795,7 +8795,7 @@ function skinPitch(ctx, w, h, stadium) {
       ctx.setTransform(world);
       // El festejo se dibuja en el momento (el juego está parado por el gol);
       // lo normal queda guardado y se pega: volver del gol es casi gratis.
-      if (env.hot) pitchEnv.paintEnv(ctx, visual.env, bounds, { cheer: env.cheer, hot: true, mirror: env.mirror });
+      if (env.hot) pitchEnv.paintEnv(ctx, visual.env, bounds, { cheer: env.cheer, hot: true, mirror: env.mirror, scorer: env.scorer, score: envScore(), names: env.names });
       else paintEnvCached(ctx, world, bounds);
     } catch (err) {
       log('error', `los alrededores no se pudieron dibujar: ${err.message}`, 'juego');
@@ -9265,32 +9265,90 @@ function pitchSkinPrint() {
  * y la gente del que metió levanta los brazos) y el espejo. Cada cambio rehace
  * el cache del estadio una vez; entre cambios no se dibuja nada.
  */
-const env = { cheer: null, hot: false, mirror: false, timer: 0, bmp: null, key: '' };
+const env = { cheer: null, hot: false, mirror: false, timer: 0, pre: 0, bmp: null, key: '', last: null, red: NaN, blue: NaN, scorer: '', names: [] };
+
+/** El resultado para los LED («ROJO 2 - 1 AZUL»), si hay partido. */
+function envScore() {
+  return Number.isFinite(env.red) && Number.isFinite(env.blue) ? `ROJO ${env.red} - ${env.blue} AZUL` : '';
+}
+
+/** Los de la sala que usan TL App (los otros primero), para los trapos. */
+function envNames() {
+  const out = [];
+  for (const nick of peers.keys()) if (nick && !out.includes(nick)) out.push(nick);
+  let me = '';
+  try { me = myNick() || ''; } catch { me = ''; }
+  if (me && !out.includes(me)) out.push(me);
+  return out.slice(0, 3);
+}
+
+function envKey(world, bounds, cv) {
+  return [visual.env, env.mirror, envScore(), env.names.join(','), bounds.halfW, bounds.halfH, world.a, world.b, world.c, world.d, world.e, world.f, cv.width, cv.height].join('|');
+}
+
+/** Arma lo normal en un canvas aparte (con el resultado y los nombres de ahora). */
+function buildEnvBitmap(doc, world, bounds, w, h, key) {
+  const bmp = doc.createElement('canvas');
+  bmp.width = w;
+  bmp.height = h;
+  const g = bmp.getContext('2d');
+  g.setTransform(world);
+  pitchEnv.paintEnv(g, visual.env, bounds, { mirror: env.mirror, score: envScore(), names: env.names });
+  env.bmp = bmp;
+  env.key = key;
+}
 
 /** Lo normal de los alrededores, dibujado una vez en un canvas aparte y pegado. */
 function paintEnvCached(ctx, world, bounds) {
   const cv = ctx.canvas;
-  const key = [visual.env, env.mirror, bounds.halfW, bounds.halfH, world.a, world.b, world.c, world.d, world.e, world.f, cv.width, cv.height].join('|');
-  if (!env.bmp || env.key !== key) {
-    const doc = cv.ownerDocument || document;
-    const bmp = doc.createElement('canvas');
-    bmp.width = cv.width;
-    bmp.height = cv.height;
-    const g = bmp.getContext('2d');
-    g.setTransform(world);
-    pitchEnv.paintEnv(g, visual.env, bounds, { cheer: null, hot: false, mirror: env.mirror });
-    env.bmp = bmp;
-    env.key = key;
-  }
+  const doc = cv.ownerDocument || document;
+  env.last = { doc, world, bounds, cv };
+  const key = envKey(world, bounds, cv);
+  if (!env.bmp || env.key !== key) buildEnvBitmap(doc, world, bounds, cv.width, cv.height, key);
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.drawImage(env.bmp, 0, 0);
 }
+
+/*
+ * Gol: se rehace el cache con el festejo (el juego está parado). Al rato, todavía
+ * en la pausa, se deja listo lo normal con el resultado nuevo; cuando termina el
+ * festejo sólo se pega.
+ */
 function envGoal(view, team) {
   env.cheer = team;
   env.hot = true;
+  env.scorer = '';
   flushStadiumCache(view);
   clearTimeout(env.timer);
-  env.timer = setTimeout(() => { env.cheer = null; env.hot = false; flushStadiumCache(view); }, 3000);
+  clearTimeout(env.pre);
+  env.pre = setTimeout(() => {
+    env.names = envNames();
+    const L = env.last;
+    if (L && visual.env) safe(() => buildEnvBitmap(L.doc, L.world, L.bounds, L.cv.width, L.cv.height, envKey(L.world, L.bounds, L.cv)));
+  }, 1500);
+  env.timer = setTimeout(() => { env.cheer = null; env.hot = false; env.scorer = ''; flushStadiumCache(view); }, 3000);
+}
+
+/** El autor del gol llega un poco después: el LED del festejo lo escribe. */
+function envScorer(name) {
+  if (!env.hot || !visual.env || !name) return;
+  env.scorer = String(name);
+  const view = gameWindow(gameDocument());
+  if (view) flushStadiumCache(view);
+}
+
+/**
+ * El resultado, una comparación por paso. Cambia en un gol (eso lo maneja el
+ * festejo) o al empezar otro partido: ahí sí se rehace, con el juego arrancando.
+ */
+function envTrackScore(view, f, match) {
+  const S = f.score;
+  if (!S) return;
+  const r = Number(match[S.red]), b = Number(match[S.blue]);
+  if (r === env.red && b === env.blue) return;
+  env.red = r;
+  env.blue = b;
+  if (!env.hot) { env.names = envNames(); flushStadiumCache(view); }
 }
 
 function flushStadiumCache(view) {
@@ -10280,6 +10338,7 @@ function noteGoalNames(goal) {
   goalNames.assist = goal.assist || null;
   goalNames.own = !!goal.own;
   goalNames.at = Date.now();
+  if (!goalNames.own) safe(envScorer, goalNames.scorer);
   paintGoalNames();
   try { upgradeGoalFx(); } catch (e) { /* adorno */ }
 }
@@ -11322,6 +11381,7 @@ function onRealStep(view, room) {
     real.match = match;
   }
   real.clock += STEP_MS;
+  if (visual.env) safe(envTrackScore, view, f, match);
 
   const at = ballPos(f, match);
   if (at) {
@@ -12288,7 +12348,7 @@ function syncCanvasHotFlags() {
   visual.bright = clampNum(cfg.pitchBright, 0.5, 1.5, 1) - 1;
   visual.contrast = clampNum(cfg.pitchContrast, 0.6, 1.6, 1);
   visual.env = pitchEnv.has(cfg.pitchEnv) ? cfg.pitchEnv : '';
-  if (!visual.env && env.bmp) { env.bmp = null; env.key = ''; }
+  if (!visual.env && env.bmp) { env.bmp = null; env.key = ''; env.last = null; }
   visual.light = ['vignette', 'spot', 'corners', 'stadium', 'sunset', 'night', 'stripes', 'cinema'].includes(cfg.pitchLight) ? cfg.pitchLight : '';
   visual.ownRingColor = lookfx.safeColor(cfg.ownRingColor);
   visual.ownRingAlpha = clampNum(cfg.ownRingAlpha, 0.02, 1, 0.3);

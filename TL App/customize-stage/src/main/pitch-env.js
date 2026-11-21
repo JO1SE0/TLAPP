@@ -25,7 +25,10 @@ const ENVS = [
   ['noche', 'Potrero de noche'],
   ['barrio', 'Club de barrio'],
   ['led', 'Potrero LED'],
-  ['f5', 'Canchita F5']
+  ['f5', 'Canchita F5'],
+  ['playa', 'Playa'],
+  ['campo', 'Campito'],
+  ['azotea', 'Azotea']
 ];
 const IDS = new Set(ENVS.map(([id]) => id).filter((id) => id !== 'none'));
 const has = (id) => IDS.has(id);
@@ -241,7 +244,7 @@ function trapo(ctx, x, y, w, h, kind, text, mirror) {
     ctx.fillStyle = kind === 'azul' ? BLUE : kind === 'blanco' ? '#f4f1ea' : RED;
     ctx.fillRect(x, y, w, h);
   }
-  if (text) paint(ctx, text, x + w / 2, y + h / 2 + 0.5, `900 ${Math.round(h * 0.62)}px sans-serif`, kind === 'blanco' ? RED : '#ffffff', mirror);
+  if (text) paint(ctx, text, x + w / 2, y + h / 2 + 0.5, `900 ${Math.round(h * 0.62)}px sans-serif`, kind === 'blanco' ? RED : '#ffffff', mirror, w - 6);
   ctx.fillStyle = 'rgba(0,0,0,0.6)';
   ctx.beginPath(); ctx.arc(x + 1.5, y + 1.5, 1.4, 0, 7); ctx.arc(x + w - 1.5, y + 1.5, 1.4, 0, 7); ctx.fill();
 }
@@ -416,7 +419,7 @@ function led(ctx, x, y, w, h, text, hot, mirror, vertical) {
   ctx.fillRect(0, 0, w, h);
   ctx.fillStyle = 'rgba(255,255,255,0.05)';
   for (let i = 2; i < w; i += 3) ctx.fillRect(i, 1, 1, h - 2);
-  const msg = hot ? '¡GOL!   ¡GOL!   ¡GOL!   ' : text;
+  const msg = hot ? (LIVE.scorer ? `¡GOL! · ${LIVE.scorer}   ` : '¡GOL!   ¡GOL!   ¡GOL!   ') : text;
   ctx.font = `700 ${Math.round(h * 0.66)}px monospace`;
   ctx.textBaseline = 'middle';
   ctx.fillStyle = hot ? '#ffd34d' : '#f0c25a';
@@ -430,11 +433,13 @@ function led(ctx, x, y, w, h, text, hot, mirror, vertical) {
 }
 
 /** Texto suelto (paredón pintado, trapos), respetando el espejo. */
-function paint(ctx, text, x, y, font, color, mirror) {
+function paint(ctx, text, x, y, font, color, mirror, maxW) {
   ctx.save();
   ctx.translate(x, y);
   if (mirror) ctx.scale(-1, 1);
   ctx.font = font;
+  // Un nombre largo no se sale del trapo: se achica para entrar.
+  if (maxW) { const w = ctx.measureText(text).width; if (w > maxW) ctx.scale(maxW / w, maxW / w); }
   ctx.fillStyle = color;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
@@ -443,6 +448,24 @@ function paint(ctx, text, x, y, font, color, mirror) {
 }
 
 /* ── Las cuatro ─────────────────────────────────────────────────────── */
+
+/*
+ * Lo que sale del partido, puesto por paintEnv antes de dibujar: el marcador
+ * (los LED lo muestran), quién hizo el gol (en el festejo) y los nombres de
+ * los que usan TL App en la sala (los trapos les dan aliento).
+ */
+const LIVE = { score: '', scorer: '', names: [] };
+
+/** El texto de un LED con el resultado metido en el medio, si hay partido. */
+function ledText(base) {
+  return LIVE.score ? `  ${LIVE.score}  ·${base}` : base;
+}
+
+/** «FUERZA MATI» para el trapo número `i`, o el texto de siempre. */
+function cheerName(i, fallback) {
+  const n = LIVE.names[i];
+  return n ? `FUERZA ${n}` : fallback;
+}
 
 const ROOFS = ['#5a4b42', '#6e5a4a', '#4d5560', '#6a3e35', '#7a6a58'];
 const CARS = ['#a33a33', '#2c4f8a', '#d9d6cf', '#3c3c3c', '#7a8a4a', '#c9a24a'];
@@ -464,7 +487,7 @@ function potreroNoche(ctx, W, H, o) {
   ctx.fillRect(-180, -H - 88, 360, 32);
   paint(ctx, 'TL', -158, -H - 72, '900 18px sans-serif', RED, o.mirror);
   paint(ctx, 'LECCE', 156, -H - 72, 'italic 900 11px sans-serif', '#6b93ea', o.mirror);
-  led(ctx, -130, -H - 82, 260, 20, '  TODA LA LECCE  ·', o.hot, o.mirror);
+  led(ctx, -130, -H - 82, 260, 20, ledText('  TODA LA LECCE  ·'), o.hot, o.mirror);
   // La hinchada parada contra el alambrado.
   crowd(ctx, rnd, -W + 10, -H - 50, -195, -H - 28, o, 15, 11, 0.82);
   crowd(ctx, rnd, 195, -H - 50, W - 10, -H - 28, o, 15, 11, 0.82);
@@ -483,11 +506,11 @@ function potreroNoche(ctx, W, H, o) {
   dog(ctx, -W - 40, H + 12);
   fence(ctx, -W - 22, -H - 20, 2 * W + 44, 2 * H + 40, 0.55);
   // Trapos colgados del alambrado.
-  trapo(ctx, -W + 30, -H - 26, 80, 14, 'rojo', 'TL', o.mirror);
+  trapo(ctx, -W + 30, -H - 26, 80, 14, 'rojo', cheerName(1, 'TL'), o.mirror);
   trapo(ctx, -W + 130, -H - 26, 64, 14, 'franjas-r', '', o.mirror);
   trapo(ctx, W - 194, -H - 26, 64, 14, 'franjas-b', '', o.mirror);
-  trapo(ctx, W - 110, -H - 26, 80, 14, 'azul', 'LECCE', o.mirror);
-  trapo(ctx, -60, H + 14, 120, 14, 'blanco', 'TODA LA LECCE', o.mirror);
+  trapo(ctx, W - 110, -H - 26, 80, 14, 'azul', cheerName(2, 'LECCE'), o.mirror);
+  trapo(ctx, -60, H + 14, 120, 14, 'blanco', cheerName(0, 'TODA LA LECCE'), o.mirror);
   // Luces: postes en las esquinas y guirnaldas.
   stringLights(ctx, -W - 50, -H - 50, -10, -H - 54, 10, 14, true);
   stringLights(ctx, 10, -H - 54, W + 50, -H - 50, 10, 14, true);
@@ -535,7 +558,7 @@ function clubBarrio(ctx, W, H, o) {
   for (let i = 0; i * 30 < 2 * W + 120; i++) { ctx.fillStyle = i % 2 ? RED : BLUE; ctx.fillRect(-W - 60 + i * 30, H + 58, 30, 5); }
   paint(ctx, 'TL', -W + 2, H + 77, '900 22px sans-serif', '#b23a3a', o.mirror);
   paint(ctx, 'CLUB SOCIAL Y DEPORTIVO TODA LA LECCE', -W * 0.42, H + 77, '800 12px sans-serif', '#333', o.mirror);
-  led(ctx, W * 0.18, H + 64, W * 0.7, 20, '  SOCIOS AL DÍA  ·  CUOTA EN EL BUFFET  ·', o.hot, o.mirror);
+  led(ctx, W * 0.18, H + 64, W * 0.7, 20, ledText('  SOCIOS AL DÍA  ·  CUOTA EN EL BUFFET  ·'), o.hot, o.mirror);
   // Costados: el buffet con mesas, autos estacionados y gente.
   ctx.fillStyle = 'rgba(0,0,0,0.3)';
   ctx.fillRect(-W - 155, -56, 70, 120);
@@ -551,7 +574,7 @@ function clubBarrio(ctx, W, H, o) {
   fence(ctx, -W - 20, -H - 20, 2 * W + 40, 2 * H + 40, 0.5);
   trapo(ctx, -W + 60, -H - 24, 90, 13, 'franjas-r', '', o.mirror);
   trapo(ctx, W - 150, -H - 24, 90, 13, 'franjas-b', '', o.mirror);
-  trapo(ctx, -50, -H - 24, 100, 13, 'blanco', 'TODA LA LECCE', o.mirror);
+  trapo(ctx, -50, -H - 24, 100, 13, 'blanco', cheerName(0, 'TODA LA LECCE'), o.mirror);
   for (const [x, y] of [[-W - 40, -H - 40], [W + 40, -H - 40], [-W - 40, H + 40], [W + 40, H + 40]]) lampPost(ctx, x, y, true, 160);
   tree(ctx, rnd, -W - 140, -H - 60, 44); tree(ctx, rnd, -W - 140, H + 70, 48);
   tree(ctx, rnd, W + 170, -H - 50, 40); tree(ctx, rnd, W + 175, H + 60, 44);
@@ -580,7 +603,7 @@ function potreroLed(ctx, W, H, o) {
   }
   fence(ctx, -W - 48, -H - 48, 2 * W + 96, 2 * H + 96, 0.45);
   // LED al ras del pasto en los cuatro lados (en los fondos, sin tapar el arco).
-  led(ctx, -W, -H - 32, 2 * W, 20, '  TODA LA LECCE  ·  TL APP  ·', o.hot, o.mirror);
+  led(ctx, -W, -H - 32, 2 * W, 20, ledText('  TODA LA LECCE  ·  TL APP  ·'), o.hot, o.mirror);
   led(ctx, -W, H + 12, 2 * W, 20, '  TL APP  ·  TODA LA LECCE  ·', o.hot, o.mirror);
   for (const sx of [-1, 1]) {
     const x = sx < 0 ? -W - 36 : W + 16;
@@ -639,7 +662,7 @@ function canchitaF5(ctx, W, H, o) {
     ball(ctx, sx * (W + 80), 0);
   }
   // LED en las bandas.
-  led(ctx, -W, -H - 32, 2 * W, 20, '  TL APP  ·  TODA LA LECCE  ·  F5 LOS MARTES  ·', o.hot, o.mirror);
+  led(ctx, -W, -H - 32, 2 * W, 20, ledText('  TL APP  ·  TODA LA LECCE  ·  F5 LOS MARTES  ·'), o.hot, o.mirror);
   led(ctx, -W, H + 12, 2 * W, 20, '  TODA LA LECCE  ·  TL APP  ·  RESERVÁ TU TURNO  ·', o.hot, o.mirror);
   // Red alta alrededor (con hueco en la boca de los arcos).
   const net = (x, y, w, h) => {
@@ -664,12 +687,306 @@ function canchitaF5(ctx, W, H, o) {
   }
 }
 
-const DRAW = { noche: potreroNoche, barrio: clubBarrio, led: potreroLed, f5: canchitaF5 };
+/* ── Playa ──────────────────────────────────────────────────────────── */
+
+function umbrella(ctx, x, y, r, colors) {
+  ctx.fillStyle = 'rgba(0,0,0,0.22)';
+  ctx.beginPath(); ctx.arc(x + r * 0.35, y + r * 0.45, r, 0, 7); ctx.fill();
+  const n = colors.length * 2;
+  for (let i = 0; i < n; i++) {
+    ctx.fillStyle = colors[i % colors.length];
+    ctx.beginPath(); ctx.moveTo(x, y); ctx.arc(x, y, r, (i / n) * 6.283, ((i + 1) / n) * 6.283); ctx.closePath(); ctx.fill();
+  }
+  ctx.fillStyle = 'rgba(255,255,255,0.18)';
+  ctx.beginPath(); ctx.arc(x - r * 0.3, y - r * 0.3, r * 0.45, 0, 7); ctx.fill();
+  ctx.fillStyle = '#eee';
+  ctx.beginPath(); ctx.arc(x, y, 2, 0, 7); ctx.fill();
+}
+
+function towel(ctx, rnd, x, y, a) {
+  ctx.save(); ctx.translate(x, y); ctx.rotate(a);
+  const c = pick(rnd, [RED, BLUE, '#f0c25a', '#3aa37a', '#e86fa0']);
+  ctx.fillStyle = c; ctx.fillRect(-9, -16, 18, 32);
+  ctx.fillStyle = 'rgba(255,255,255,0.55)';
+  for (let i = -16; i < 16; i += 8) ctx.fillRect(-9, i, 18, 3);
+  ctx.restore();
+}
+
+function lounger(ctx, rnd, x, y, a) {
+  ctx.save(); ctx.translate(x, y); ctx.rotate(a);
+  ctx.fillStyle = 'rgba(0,0,0,0.2)'; ctx.fillRect(-6, -15, 15, 34);
+  ctx.fillStyle = '#e9e4d8'; ctx.fillRect(-8, -17, 16, 34);
+  ctx.strokeStyle = 'rgba(0,0,0,0.15)'; ctx.lineWidth = 1;
+  for (let i = -13; i < 17; i += 5) { ctx.beginPath(); ctx.moveTo(-8, i); ctx.lineTo(8, i); ctx.stroke(); }
+  ctx.restore();
+  if (rnd() < 0.7) person(ctx, rnd, x, y - 6, pick(rnd, ['#e86fa0', '#3aa37a', '#f0c25a', RED, BLUE]), false, 0.9);
+}
+
+function playa(ctx, W, H, o) {
+  const rnd = seeded(71);
+  const gap = goalGap(H);
+  ground(ctx, rnd, W, H, '#dcc48e', ['rgba(200,176,124,0.7)', 'rgba(232,212,160,0.7)'], ['rgba(140,110,60,0.18)', 'rgba(255,255,255,0.25)']);
+  // El mar arriba: agua, olas y espuma.
+  const sea = -H - 92;
+  ctx.fillStyle = '#2f7fa8';
+  ctx.fillRect(-W - 800, sea - 600, 2 * W + 1600, 600);
+  ctx.fillStyle = '#3a93bd';
+  ctx.fillRect(-W - 800, sea - 60, 2 * W + 1600, 60);
+  ctx.fillStyle = 'rgba(126,198,214,0.9)';
+  ctx.fillRect(-W - 800, sea - 18, 2 * W + 1600, 18);
+  ctx.strokeStyle = 'rgba(255,255,255,0.75)'; ctx.lineWidth = 3;
+  ctx.beginPath();
+  for (let x = -W - 800; x < W + 800; x += 30) { ctx.moveTo(x, sea); ctx.quadraticCurveTo(x + 15, sea + 6, x + 30, sea); }
+  ctx.stroke();
+  ctx.strokeStyle = 'rgba(255,255,255,0.35)'; ctx.lineWidth = 2;
+  for (let k = 1; k < 5; k++) {
+    ctx.beginPath();
+    for (let x = -W - 800 + k * 13; x < W + 800; x += 46) { ctx.moveTo(x, sea - 22 - k * 24); ctx.quadraticCurveTo(x + 12, sea - 18 - k * 24, x + 24, sea - 22 - k * 24); }
+    ctx.stroke();
+  }
+  // Arena mojada pegada al agua.
+  ctx.fillStyle = 'rgba(160,130,80,0.35)';
+  ctx.fillRect(-W - 800, sea, 2 * W + 1600, 14);
+  // Soga con banderines en lugar de alambrado.
+  ctx.strokeStyle = 'rgba(80,60,30,0.7)'; ctx.lineWidth = 1.5;
+  ctx.strokeRect(-W - 20, -H - 18, 2 * W + 40, 2 * H + 36);
+  for (let x = -W - 20; x <= W + 20; x += 18) {
+    for (const y of [-H - 18, H + 18]) {
+      ctx.fillStyle = (Math.round(x / 18) % 2) ? RED : BLUE;
+      ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + 9, y); ctx.lineTo(x + 4.5, y + 7); ctx.fill();
+    }
+  }
+  // Gente sentada mirando, sombrillas, lonas y reposeras.
+  crowd(ctx, rnd, -W, -H - 52, W, -H - 30, o, 17, 12, 0.7);
+  crowd(ctx, rnd, -W, H + 30, W, H + 52, o, 17, 12, 0.72);
+  for (let x = -W - 40; x < W + 60; x += 95 + rnd() * 40) umbrella(ctx, x, H + 82 + rnd() * 20, 20, rnd() < 0.5 ? [RED, '#f4f1ea'] : [BLUE, '#f0c25a']);
+  for (let x = -W; x < W; x += 70 + rnd() * 50) towel(ctx, rnd, x, H + 120 + rnd() * 30, (rnd() - 0.5) * 0.6);
+  for (const sx of [-1, 1]) {
+    const x = sx * (W + 70);
+    umbrella(ctx, x, -gap - 50, 22, [RED, '#f4f1ea']);
+    lounger(ctx, rnd, x - 22, -gap - 20, 0.1);
+    lounger(ctx, rnd, x + 22, -gap - 22, -0.1);
+    umbrella(ctx, x, gap + 60, 22, [BLUE, '#f4f1ea']);
+    lounger(ctx, rnd, x - 22, gap + 90, 0.15);
+    lounger(ctx, rnd, x + 22, gap + 92, -0.05);
+    scatter(ctx, rnd, x - 30, -40, x + 30, 40, 4, o);
+  }
+  // Carrito de helados y la red de vóley.
+  ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.fillRect(W + 32, H + 64, 50, 26);
+  ctx.fillStyle = '#f4f1ea'; ctx.fillRect(W + 28, H + 60, 50, 26);
+  ctx.fillStyle = '#e86fa0'; ctx.fillRect(W + 28, H + 60, 50, 7);
+  paint(ctx, 'HELADOS', W + 53, H + 77, '900 9px sans-serif', '#c43d7a', o.mirror);
+  ctx.strokeStyle = 'rgba(255,255,255,0.8)'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(-W - 150, H + 70); ctx.lineTo(-W - 150, H + 160); ctx.stroke();
+  scatter(ctx, rnd, -W - 190, H + 80, -W - 165, H + 150, 2, o);
+  scatter(ctx, rnd, -W - 135, H + 80, -W - 110, H + 150, 2, o);
+  ball(ctx, -W - 172, H + 100, 5);
+  led(ctx, -170, -H - 80, 340, 20, ledText('  TL BEACH  ·  TODA LA LECCE  ·'), o.hot, o.mirror);
+  trapo(ctx, -W + 20, H + 12, 90, 14, 'franjas-r', '', o.mirror);
+  trapo(ctx, -45, H + 12, 90, 14, 'blanco', cheerName(0, 'TODA LA LECCE'), o.mirror);
+  trapo(ctx, W - 110, H + 12, 90, 14, 'franjas-b', '', o.mirror);
+}
+
+/* ── Campito ────────────────────────────────────────────────────────── */
+
+function cow(ctx, rnd, x, y, a) {
+  ctx.save(); ctx.translate(x, y); ctx.rotate(a);
+  ctx.fillStyle = 'rgba(0,0,0,0.25)';
+  ctx.beginPath(); ctx.ellipse(4, 5, 20, 11, 0, 0, 7); ctx.fill();
+  ctx.fillStyle = '#f1efe9';
+  ctx.beginPath(); ctx.ellipse(0, 0, 19, 10, 0, 0, 7); ctx.fill();
+  ctx.fillStyle = '#1e1e1e';
+  for (let i = 0; i < 4; i++) { ctx.beginPath(); ctx.ellipse(-10 + rnd() * 18, -5 + rnd() * 10, 3 + rnd() * 4, 2 + rnd() * 3, rnd() * 3, 0, 7); ctx.fill(); }
+  ctx.fillStyle = '#e9d9c8';
+  ctx.beginPath(); ctx.ellipse(21, 0, 6, 5, 0, 0, 7); ctx.fill();
+  ctx.fillStyle = '#d8c6b0';
+  ctx.beginPath(); ctx.arc(19, -6, 2, 0, 7); ctx.arc(19, 6, 2, 0, 7); ctx.fill();
+  ctx.strokeStyle = '#1e1e1e'; ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.moveTo(-19, 0); ctx.lineTo(-25, 3); ctx.stroke();
+  ctx.restore();
+}
+
+function windmill(ctx, x, y) {
+  ctx.fillStyle = 'rgba(0,0,0,0.3)';
+  ctx.beginPath(); ctx.ellipse(x + 30, y + 14, 34, 10, 0.35, 0, 7); ctx.fill();
+  ctx.strokeStyle = '#7d7f80'; ctx.lineWidth = 2;
+  for (const [dx, dy] of [[-10, -10], [10, -10], [-10, 10], [10, 10]]) { ctx.beginPath(); ctx.moveTo(x + dx, y + dy); ctx.lineTo(x, y); ctx.stroke(); }
+  ctx.fillStyle = '#b9bcbf';
+  for (let i = 0; i < 12; i++) {
+    const a = (i / 12) * 6.283;
+    ctx.save(); ctx.translate(x, y); ctx.rotate(a);
+    ctx.fillRect(4, -2, 20, 4);
+    ctx.restore();
+  }
+  ctx.fillStyle = '#555';
+  ctx.beginPath(); ctx.arc(x, y, 4, 0, 7); ctx.fill();
+  // El tanque australiano al lado.
+  ctx.fillStyle = 'rgba(0,0,0,0.25)';
+  ctx.beginPath(); ctx.arc(x + 48, y + 30, 26, 0, 7); ctx.fill();
+  ctx.fillStyle = '#9aa0a3';
+  ctx.beginPath(); ctx.arc(x + 44, y + 26, 26, 0, 7); ctx.fill();
+  ctx.fillStyle = '#4f7fa0';
+  ctx.beginPath(); ctx.arc(x + 44, y + 26, 22, 0, 7); ctx.fill();
+}
+
+function pickup(ctx, x, y, a, color) {
+  ctx.save(); ctx.translate(x, y); ctx.rotate(a);
+  ctx.fillStyle = 'rgba(0,0,0,0.35)'; ctx.fillRect(-25, -10, 56, 24);
+  ctx.fillStyle = color; ctx.fillRect(-28, -12, 56, 24);
+  ctx.fillStyle = '#1c2633'; ctx.fillRect(6, -10, 8, 20);
+  ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.fillRect(-26, -10, 26, 20);
+  ctx.fillStyle = '#7a5a30'; ctx.fillRect(-23, -6, 9, 7);
+  ctx.restore();
+}
+
+function grill(ctx, rnd, x, y, o) {
+  ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.fillRect(x - 24, y - 10, 52, 26);
+  ctx.fillStyle = '#5a5552'; ctx.fillRect(x - 27, y - 13, 52, 26);
+  ctx.fillStyle = '#2a2523'; ctx.fillRect(x - 24, y - 10, 46, 20);
+  ctx.fillStyle = '#ff7b2e';
+  for (let i = 0; i < 9; i++) { ctx.beginPath(); ctx.arc(x - 20 + rnd() * 40, y - 7 + rnd() * 14, 1.6, 0, 7); ctx.fill(); }
+  ctx.fillStyle = '#8a3a22';
+  for (let i = 0; i < 5; i++) ctx.fillRect(x - 20 + i * 9, y - 6, 7, 12);
+  ctx.fillStyle = 'rgba(220,220,220,0.18)';
+  for (let i = 0; i < 6; i++) { ctx.beginPath(); ctx.arc(x + 10 + i * 9, y - 18 - i * 7, 8 + i * 2.5, 0, 7); ctx.fill(); }
+  for (let k = 0; k < 5; k++) { const a = 0.8 + k * 0.45; person(ctx, rnd, x + Math.cos(a) * 42, y + Math.sin(a) * 32, shirtFor(rnd, x < 0 ? 'Red' : 'Blue'), false); }
+}
+
+function hay(ctx, x, y) {
+  ctx.fillStyle = 'rgba(0,0,0,0.3)';
+  ctx.beginPath(); ctx.arc(x + 4, y + 5, 14, 0, 7); ctx.fill();
+  ctx.fillStyle = '#c9a24a';
+  ctx.beginPath(); ctx.arc(x, y, 14, 0, 7); ctx.fill();
+  ctx.strokeStyle = 'rgba(120,90,30,0.6)'; ctx.lineWidth = 1.2;
+  for (let r = 4; r < 14; r += 4) { ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.stroke(); }
+}
+
+function campo(ctx, W, H, o) {
+  const rnd = seeded(89);
+  const gap = goalGap(H);
+  ground(ctx, rnd, W, H, '#6f8a45', ['rgba(110,140,70,0.7)', 'rgba(95,120,58,0.7)', 'rgba(150,130,80,0.5)'], ['rgba(40,60,20,0.18)', 'rgba(220,220,140,0.12)']);
+  tufts(ctx, rnd, W, H, 220);
+  // Camino de tierra abajo.
+  ctx.fillStyle = '#a2865a';
+  ctx.fillRect(-W - 800, H + 96, 2 * W + 1600, 34);
+  ctx.fillStyle = 'rgba(80,60,30,0.25)';
+  ctx.fillRect(-W - 800, H + 104, 2 * W + 1600, 4); ctx.fillRect(-W - 800, H + 118, 2 * W + 1600, 4);
+  // Alambrado de campo: postes de madera e hilos.
+  const posts = (x0, y0, x1, y1) => {
+    const n = Math.max(1, Math.round(Math.hypot(x1 - x0, y1 - y0) / 40));
+    ctx.strokeStyle = 'rgba(200,200,200,0.55)'; ctx.lineWidth = 1;
+    for (const d of [-1.5, 1.5]) { ctx.beginPath(); ctx.moveTo(x0, y0 + d); ctx.lineTo(x1, y1 + d); ctx.stroke(); }
+    ctx.fillStyle = '#6b4a2b';
+    for (let i = 0; i <= n; i++) { const t = i / n; ctx.fillRect(x0 + (x1 - x0) * t - 2.5, y0 + (y1 - y0) * t - 2.5, 5, 5); }
+  };
+  posts(-W - 30, -H - 22, W + 30, -H - 22);
+  posts(-W - 30, H + 22, -40, H + 22); posts(40, H + 22, W + 30, H + 22);
+  // La tranquera en el medio, abierta.
+  ctx.strokeStyle = '#8a6a40'; ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.moveTo(-40, H + 22); ctx.lineTo(-40, H + 58); ctx.stroke();
+  // Vacas pastando arriba, del otro lado del alambre.
+  for (let i = 0; i < 6; i++) cow(ctx, rnd, -W + 40 + i * ((2 * W - 80) / 5) + (rnd() - 0.5) * 40, -H - 60 - rnd() * 40, (rnd() - 0.5) * 2.4);
+  // Molino y tanque, el asado, la camioneta, fardos.
+  windmill(ctx, W + 110, -H - 50);
+  grill(ctx, rnd, -W - 110, H - 10, o);
+  pickup(ctx, -W - 100, -40, 1.4, '#b23a3a');
+  pickup(ctx, W + 120, H + 60, 0.1, '#e6e2d8');
+  hay(ctx, W + 70, gap + 40); hay(ctx, W + 92, gap + 58); hay(ctx, W + 68, gap + 70);
+  // Gente mirando contra el alambre de abajo, con sillas y mate.
+  crowd(ctx, rnd, -W + 20, H + 34, -60, H + 60, o, 18, 13, 0.7);
+  crowd(ctx, rnd, 60, H + 34, W - 20, H + 60, o, 18, 13, 0.7);
+  dog(ctx, -50, H + 70);
+  for (const [x, y] of [[-W - 180, -H - 60], [-W - 160, H + 70], [W + 190, H - 20], [W + 200, -H - 140], [-W - 60, -H - 150], [60, -H - 160]]) tree(ctx, rnd, x, y, 40 + rnd() * 14);
+  trapo(ctx, -W + 40, -H - 30, 90, 14, 'blanco', cheerName(0, 'LA LECCE'), o.mirror);
+  trapo(ctx, W - 130, -H - 30, 90, 14, 'rojo', cheerName(1, 'TL'), o.mirror);
+}
+
+/* ── Azotea ─────────────────────────────────────────────────────────── */
+
+function acUnit(ctx, x, y) {
+  ctx.fillStyle = 'rgba(0,0,0,0.35)'; ctx.fillRect(x + 3, y + 4, 26, 18);
+  ctx.fillStyle = '#c8ccd2'; ctx.fillRect(x, y, 26, 18);
+  ctx.fillStyle = '#8f959d';
+  ctx.beginPath(); ctx.arc(x + 9, y + 9, 6, 0, 7); ctx.fill();
+  ctx.strokeStyle = '#6d737b'; ctx.lineWidth = 1;
+  for (let i = 0; i < 4; i++) { ctx.beginPath(); ctx.moveTo(x + 17, y + 3 + i * 4); ctx.lineTo(x + 24, y + 3 + i * 4); ctx.stroke(); }
+}
+
+function plant(ctx, rnd, x, y) {
+  ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.beginPath(); ctx.arc(x + 2, y + 3, 9, 0, 7); ctx.fill();
+  ctx.fillStyle = '#a0522d'; ctx.beginPath(); ctx.arc(x, y, 8, 0, 7); ctx.fill();
+  for (let i = 0; i < 6; i++) { ctx.fillStyle = i % 2 ? '#2f6b2a' : '#3d8a35'; ctx.beginPath(); ctx.arc(x + (rnd() - 0.5) * 10, y + (rnd() - 0.5) * 10, 4 + rnd() * 3, 0, 7); ctx.fill(); }
+}
+
+/** Un edificio vecino, más abajo: techo oscuro y ventanas prendidas en el borde. */
+function building(ctx, rnd, x, y, w, h) {
+  ctx.fillStyle = 'rgba(0,0,0,0.45)'; ctx.fillRect(x + 10, y + 12, w, h);
+  ctx.fillStyle = pick(rnd, ['#2c3038', '#33373f', '#2a2d33', '#3a3530']);
+  ctx.fillRect(x, y, w, h);
+  ctx.strokeStyle = 'rgba(0,0,0,0.5)'; ctx.lineWidth = 2; ctx.strokeRect(x, y, w, h);
+  for (let i = x + 6; i < x + w - 6; i += 10) {
+    for (const yy of [y + 3, y + h - 6]) { ctx.fillStyle = rnd() < 0.45 ? 'rgba(255,214,140,0.85)' : 'rgba(80,90,110,0.6)'; ctx.fillRect(i, yy, 5, 3); }
+  }
+  if (rnd() < 0.6) { ctx.fillStyle = '#444'; ctx.beginPath(); ctx.arc(x + w * 0.7, y + h * 0.4, 7, 0, 7); ctx.fill(); }
+  if (rnd() < 0.4) { ctx.strokeStyle = '#777'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(x + w * 0.3, y + h * 0.5); ctx.lineTo(x + w * 0.3 + 14, y + h * 0.5 - 10); ctx.stroke(); }
+}
+
+function azotea(ctx, W, H, o) {
+  const rnd = seeded(97);
+  const gap = goalGap(H);
+  // La ciudad abajo, de noche.
+  ctx.fillStyle = '#14171d';
+  ctx.fillRect(-W - 900, -H - 700, 2 * W + 1800, 2 * H + 1400);
+  for (let i = 0; i < 1400; i++) { ctx.fillStyle = rnd() < 0.7 ? 'rgba(255,200,120,0.5)' : 'rgba(180,210,255,0.4)'; ctx.fillRect(-W - 900 + rnd() * (2 * W + 1800), -H - 700 + rnd() * (2 * H + 1400), 1.6, 1.6); }
+  for (let x = -W - 520; x < W + 520; x += 120 + rnd() * 50) {
+    building(ctx, rnd, x, -H - 330 - rnd() * 40, 90 + rnd() * 40, 70 + rnd() * 30);
+    building(ctx, rnd, x, H + 220 + rnd() * 40, 90 + rnd() * 40, 70 + rnd() * 30);
+  }
+  for (const sx of [-1, 1]) for (let y = -H - 200; y < H + 200; y += 110 + rnd() * 40) building(ctx, rnd, sx < 0 ? -W - 420 - rnd() * 40 : W + 300 + rnd() * 40, y, 90 + rnd() * 30, 80 + rnd() * 20);
+  // La terraza: piso de baldosas, pretil alrededor.
+  const X = W + 150, Y = H + 112;
+  ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.fillRect(-X + 14, -Y + 16, 2 * X, 2 * Y);
+  ctx.fillStyle = '#5e5b55'; ctx.fillRect(-X, -Y, 2 * X, 2 * Y);
+  ctx.strokeStyle = 'rgba(0,0,0,0.12)'; ctx.lineWidth = 1;
+  ctx.beginPath();
+  for (let x = -X; x < X; x += 16) { ctx.moveTo(x, -Y); ctx.lineTo(x, Y); }
+  for (let y = -Y; y < Y; y += 16) { ctx.moveTo(-X, y); ctx.lineTo(X, y); }
+  ctx.stroke();
+  ctx.strokeStyle = '#b5b0a5'; ctx.lineWidth = 10; ctx.strokeRect(-X + 5, -Y + 5, 2 * X - 10, 2 * Y - 10);
+  // Red alta alrededor de la canchita.
+  ctx.strokeStyle = 'rgba(230,235,240,0.35)'; ctx.lineWidth = 0.8;
+  ctx.save(); ctx.beginPath(); ctx.rect(-W - 34, -H - 34, 2 * W + 68, 2 * H + 68); ctx.rect(-W - 26, -H - 26, 2 * W + 52, 2 * H + 52); ctx.clip('evenodd');
+  ctx.beginPath();
+  for (let x = -W - 34; x < W + 34; x += 5) { ctx.moveTo(x, -H - 34); ctx.lineTo(x, H + 34); }
+  for (let y = -H - 34; y < H + 34; y += 5) { ctx.moveTo(-W - 34, y); ctx.lineTo(W + 34, y); }
+  ctx.stroke(); ctx.restore();
+  ctx.strokeStyle = '#9aa3ad'; ctx.lineWidth = 2; ctx.strokeRect(-W - 34, -H - 34, 2 * W + 68, 2 * H + 68);
+  // Tanques de agua, equipos de aire, antenas y la sala de máquinas.
+  for (const x of [-W - 120, -W - 80]) { ctx.fillStyle = 'rgba(0,0,0,0.4)'; ctx.beginPath(); ctx.arc(x + 5, -H - 90 + 6, 18, 0, 7); ctx.fill(); ctx.fillStyle = '#2d3033'; ctx.beginPath(); ctx.arc(x, -H - 90, 18, 0, 7); ctx.fill(); ctx.fillStyle = '#41454a'; ctx.beginPath(); ctx.arc(x - 3, -H - 93, 12, 0, 7); ctx.fill(); }
+  for (let i = 0; i < 4; i++) acUnit(ctx, W + 70, -H - 10 + i * 30);
+  ctx.fillStyle = 'rgba(0,0,0,0.4)'; ctx.fillRect(-W - 135, H + 30, 80, 60);
+  ctx.fillStyle = '#4d4a45'; ctx.fillRect(-W - 140, H + 24, 80, 60);
+  paint(ctx, 'SALIDA', -W - 100, H + 54, '800 10px sans-serif', '#7fe0a0', o.mirror);
+  // Gente: sentados en el borde, con sillas, y la mesa con bebidas.
+  crowd(ctx, rnd, -W + 10, -H - 66, W - 10, -H - 44, o, 16, 12, 0.8);
+  crowd(ctx, rnd, -W + 10, H + 44, W - 10, H + 66, o, 16, 12, 0.75);
+  table(ctx, rnd, W + 110, H + 70); table(ctx, rnd, W + 110, H + 10);
+  for (const [x, y] of [[-W - 130, -H - 95], [W + 130, -H - 95], [-W - 130, H + 95], [W + 130, H + 95], [W + 130, -H - 30]]) plant(ctx, rnd, x, y);
+  // Guirnaldas y reflectores.
+  stringLights(ctx, -W - 60, -H - 40, W + 60, -H - 40, 16, 34, true);
+  stringLights(ctx, -W - 60, H + 40, W + 60, H + 40, 16, 34, true);
+  for (const [x, y] of [[-W - 60, -H - 40], [W + 60, -H - 40], [-W - 60, H + 40], [W + 60, H + 40]]) lampPost(ctx, x, y, false, 170);
+  led(ctx, -W, -H - 22, 2 * W, 16, ledText('  TL ROOFTOP  ·  TODA LA LECCE  ·'), o.hot, o.mirror);
+  trapo(ctx, -50, H + 16, 100, 13, 'blanco', cheerName(0, 'TODA LA LECCE'), o.mirror);
+  void gap;
+}
+
+const DRAW = { noche: potreroNoche, barrio: clubBarrio, led: potreroLed, f5: canchitaF5, playa, campo, azotea };
 
 /**
  * Dibuja los alrededores. `ctx` llega con la transformación de mundo puesta.
  * @param {{ halfW:number, halfH:number }} bounds
- * @param {{ cheer?: 'Red'|'Blue'|null, hot?: boolean, mirror?: boolean }} o
+ * @param {{ cheer?: 'Red'|'Blue'|null, hot?: boolean, mirror?: boolean, score?: string, scorer?: string, names?: string[] }} o
  */
 function paintEnv(ctx, id, bounds, o = {}) {
   const fn = DRAW[id];
@@ -687,6 +1004,9 @@ function paintEnv(ctx, id, bounds, o = {}) {
     ctx.rect(-W * 50, -H * 50, W * 100, H * 100);
     ctx.rect(-W, -H, 2 * W, 2 * H);
     ctx.clip('evenodd');
+    LIVE.score = typeof o.score === 'string' ? o.score : '';
+    LIVE.scorer = typeof o.scorer === 'string' ? o.scorer.toUpperCase().slice(0, 18) : '';
+    LIVE.names = Array.isArray(o.names) ? o.names.filter((n) => typeof n === 'string' && n).map((n) => n.toUpperCase().slice(0, 14)).slice(0, 3) : [];
     fn(ctx, W, H, { cheer: o.cheer || null, hot: !!o.hot, mirror: !!o.mirror });
   } finally {
     ctx.restore();

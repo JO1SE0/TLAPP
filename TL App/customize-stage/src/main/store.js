@@ -492,7 +492,7 @@ const DEFAULTS = {
     /** Luz de la cancha: `none` · `vignette` · `spot` · `corners`. */
     pitchLight: 'none',
     /** Brillo y contraste de la cancha (1 = como viene). Van al cache del estadio: no cuestan nada por cuadro. */
-    /** Alrededores de la cancha: none | noche | barrio | led | f5. En el cache del estadio. */
+    /** Alrededores de la cancha: none | noche | barrio | led | f5 | playa | campo | azotea. En el cache del estadio. */
     pitchEnv: 'none',
     pitchBright: 1,
     pitchContrast: 1,

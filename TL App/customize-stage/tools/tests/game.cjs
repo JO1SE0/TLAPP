@@ -351,13 +351,15 @@ syncMinimap();
       return out;
     });
     const bad = Object.entries(r).filter(([k, v]) => k !== 'none' && !(v.ok && v.inside === 0 && v.ink));
-    check('alrededores: las cuatro dibujan afuera y NADA adentro de la cancha (también en gol y espejo)', bad.length === 0 && r.none === false && errs.length === 0, JSON.stringify(bad) + errs.join('|'));
+    check('alrededores: todos dibujan afuera y NADA adentro de la cancha (también en gol y espejo)', bad.length === 0 && r.none === false && errs.length === 0, JSON.stringify(bad) + errs.join('|'));
     const CACHED = between(GP, 'const env = { cheer: null', 'function flushStadiumCache(view) {');
     const r2 = await p.evaluate((code) => {
       const pitchEnv = module.exports;
       const visual = { env: 'barrio' };
       // eslint-disable-next-line no-new-func
-      const mod = new Function('pitchEnv', 'visual', 'document', `${code}; return { env, paintEnvCached };`)(pitchEnv, visual, document);
+      window.FLUSH = 0;
+      const stubs = { safe: (fn, ...a) => fn(...a), peers: new Map([['Mati', {}]]), myNick: () => 'Yo', flushStadiumCache: () => { window.FLUSH++; }, gameWindow: () => null, gameDocument: () => null };
+      const mod = new Function('pitchEnv', 'visual', 'document', ...Object.keys(stubs), `${code}; return { env, paintEnvCached, envTrackScore, envNames, envScore };`)(pitchEnv, visual, document, ...Object.values(stubs));
       const mk = () => { const c = document.createElement('canvas'); c.width = 900; c.height = 500; return c; };
       const world = new DOMMatrix([1.1, 0, 0, 1.1, 450, 250]);
       const b = { halfW: 370, halfH: 170 };
@@ -368,9 +370,21 @@ syncMinimap();
       const t1 = performance.now(); mod.paintEnvCached(gc2, world, b); const again = performance.now() - t1;
       const da = ga.getImageData(0, 0, 900, 500).data, dc = gc2.getImageData(0, 0, 900, 500).data;
       let diff = 0; for (let i = 0; i < da.length; i++) if (Math.abs(da[i] - dc[i]) > 2) diff++;
-      return { diff, first: Math.round(first), again: Math.round(again * 10) / 10 };
+      // El resultado: al empezar el partido rehace; en el festejo, no (lo arma la pausa).
+      const f = { score: { red: 'r', blue: 'b' } };
+      mod.envTrackScore(null, f, { r: 0, b: 0 }); const startFlush = window.FLUSH;
+      mod.envTrackScore(null, f, { r: 0, b: 0 }); const same = window.FLUSH;
+      mod.env.hot = true; mod.envTrackScore(null, f, { r: 1, b: 0 }); const inGoal = window.FLUSH; mod.env.hot = false;
+      const score = mod.envScore(), names = mod.envNames().join(',');
+      // Con datos se dibuja distinto (LED con el resultado y trapos con nombre).
+      const p1 = mk(), g1 = p1.getContext('2d'); g1.setTransform(world); pitchEnv.paintEnv(g1, 'noche', b, {});
+      const p2 = mk(), g2 = p2.getContext('2d'); g2.setTransform(world); pitchEnv.paintEnv(g2, 'noche', b, { score: 'ROJO 1 - 0 AZUL', names: ['Mati'] });
+      const d1 = g1.getImageData(0, 0, 900, 500).data, d2 = g2.getImageData(0, 0, 900, 500).data;
+      let live = 0; for (let i = 0; i < d1.length; i += 4) if (d1[i] !== d2[i]) live++;
+      return { diff, first: Math.round(first), again: Math.round(again * 10) / 10, startFlush, same, inGoal, score, names, live };
     }, CACHED);
     check('alrededores: lo guardado es igual a lo dibujado y pegarlo es instantáneo', r2.diff === 0 && r2.again < 5, JSON.stringify(r2));
+    check('alrededores: marcador y nombres de TL; rehace al empezar, no en el festejo', r2.startFlush === 1 && r2.same === 1 && r2.inGoal === 1 && r2.score === 'ROJO 1 - 0 AZUL' && r2.names === 'Mati,Yo' && r2.live > 50, JSON.stringify(r2));
     await p.close();
   }
 
