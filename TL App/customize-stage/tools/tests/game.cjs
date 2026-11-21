@@ -339,7 +339,7 @@ syncMinimap();
           g.setTransform(1, 0, 0, 1, 500, 300);
           g.fillStyle = '#3a743a'; g.fillRect(-370, -170, 740, 340);
           const before = g.getImageData(130 + 2, 130 + 2, 736, 336).data.slice();
-          const ok = E.paintEnv(g, id, { halfW: 370, halfH: 170 }, { hot: flat, cheer: flat ? 'Red' : null, mirror: flat });
+          const ok = E.paintEnv(g, id, { halfW: 370, halfH: 170 }, flat ? { hot: true, cheer: 'Red', mirror: true, weather: 'rain', night: true, fireworks: 'Blue' } : { weather: 'snow' });
           const after = g.getImageData(130 + 2, 130 + 2, 736, 336).data;
           let changed = 0; for (let i = 0; i < after.length; i++) if (after[i] !== before[i]) { changed++; break; }
           const around = g.getImageData(0, 0, 1000, 120).data; let ink = 0; for (let i = 0; i < around.length; i += 4) if (around[i] !== 0x71) ink++;
@@ -351,15 +351,15 @@ syncMinimap();
       return out;
     });
     const bad = Object.entries(r).filter(([k, v]) => k !== 'none' && !(v.ok && v.inside === 0 && v.ink));
-    check('alrededores: todos dibujan afuera y NADA adentro de la cancha (también en gol y espejo)', bad.length === 0 && r.none === false && errs.length === 0, JSON.stringify(bad) + errs.join('|'));
-    const CACHED = between(GP, 'const env = { cheer: null', 'function flushStadiumCache(view) {');
+    check('alrededores: todos dibujan afuera y NADA adentro de la cancha (gol, espejo, lluvia, nieve, noche y fuegos)', bad.length === 0 && r.none === false && errs.length === 0, JSON.stringify(bad) + errs.join('|'));
+    const CACHED = between(GP, 'const env = { cheer: null', 'function flushStadiumCache(view) {') + between(GP, '/** Terminó el partido: fuegos artificiales', 'function closeMatch(f, room, nextStarted) {');
     const r2 = await p.evaluate((code) => {
       const pitchEnv = module.exports;
       const visual = { env: 'barrio' };
       // eslint-disable-next-line no-new-func
       window.FLUSH = 0;
       const stubs = { safe: (fn, ...a) => fn(...a), peers: new Map([['Mati', {}]]), myNick: () => 'Yo', flushStadiumCache: () => { window.FLUSH++; }, gameWindow: () => null, gameDocument: () => null };
-      const mod = new Function('pitchEnv', 'visual', 'document', ...Object.keys(stubs), `${code}; return { env, paintEnvCached, envTrackScore, envNames, envScore };`)(pitchEnv, visual, document, ...Object.values(stubs));
+      const mod = new Function('pitchEnv', 'visual', 'document', ...Object.keys(stubs), `${code}; return { env, paintEnvCached, envTrackScore, envNames, envScore, envFinal };`)(pitchEnv, visual, document, ...Object.values(stubs));
       const mk = () => { const c = document.createElement('canvas'); c.width = 900; c.height = 500; return c; };
       const world = new DOMMatrix([1.1, 0, 0, 1.1, 450, 250]);
       const b = { halfW: 370, halfH: 170 };
@@ -381,9 +381,13 @@ syncMinimap();
       const p2 = mk(), g2 = p2.getContext('2d'); g2.setTransform(world); pitchEnv.paintEnv(g2, 'noche', b, { score: 'ROJO 1 - 0 AZUL', names: ['Mati'] });
       const d1 = g1.getImageData(0, 0, 900, 500).data, d2 = g2.getImageData(0, 0, 900, 500).data;
       let live = 0; for (let i = 0; i < d1.length; i += 4) if (d1[i] !== d2[i]) live++;
-      return { diff, first: Math.round(first), again: Math.round(again * 10) / 10, startFlush, same, inGoal, score, names, live };
+      // Fuegos: ganó el azul; al arrancar otro partido se apagan.
+      mod.envFinal(1, 3); const fw = mod.env.fireworks;
+      mod.envTrackScore(null, f, { r: 0, b: 0 }); const fwAfter = mod.env.fireworks;
+      return { diff, first: Math.round(first), again: Math.round(again * 10) / 10, startFlush, same, inGoal, score, names, live, fw, fwAfter };
     }, CACHED);
     check('alrededores: lo guardado es igual a lo dibujado y pegarlo es instantáneo', r2.diff === 0 && r2.again < 5, JSON.stringify(r2));
+    check('alrededores: fuegos del ganador al final y se apagan con otro partido', r2.fw === 'Blue' && r2.fwAfter === null, JSON.stringify(r2));
     check('alrededores: marcador y nombres de TL; rehace al empezar, no en el festejo', r2.startFlush === 1 && r2.same === 1 && r2.inGoal === 1 && r2.score === 'ROJO 1 - 0 AZUL' && r2.names === 'Mati,Yo' && r2.live > 50, JSON.stringify(r2));
     await p.close();
   }
@@ -434,7 +438,7 @@ syncMinimap();
     const html = `<!doctype html><html><body style="margin:0;width:1280px;height:720px;background:#3d6e36">
 <script>
 const state={config:{pitch:{matchSummary:true},appearance:{}},view:'game'};
-const gameDocument=()=>document;const lastScore={red:2,blue:1};const assetUrl=()=>'';const peers=new Map();
+const gameDocument=()=>document;const visual={};const lastScore={red:2,blue:1};const assetUrl=()=>'';const peers=new Map();
 const safe=(f,...a)=>{try{return f(...a)}catch(e){console.error(e.message)}};
 const matchClock=()=>null;function sendHeatmap(){}const myNick=()=>"Ana";let sharedAvatar="";
 window.SENT=[];const ipcRenderer={send:(c,p)=>window.SENT.push(c)};

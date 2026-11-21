@@ -28,7 +28,10 @@ const ENVS = [
   ['f5', 'Canchita F5'],
   ['playa', 'Playa'],
   ['campo', 'Campito'],
-  ['azotea', 'Azotea']
+  ['azotea', 'Azotea'],
+  ['cortada', 'La cortada'],
+  ['colegio', 'Patio del colegio'],
+  ['estadio', 'Estadio grande']
 ];
 const IDS = new Set(ENVS.map(([id]) => id).filter((id) => id !== 'none'));
 const has = (id) => IDS.has(id);
@@ -74,6 +77,23 @@ function ground(ctx, rnd, W, H, base, spots, grain) {
     ctx.fillStyle = pick(rnd, grain);
     const s = 1 + rnd() * 1.8;
     ctx.fillRect(-X + rnd() * 2 * X, -Y + rnd() * 2 * Y, s, s);
+  }
+  // Lluvia: charcos en el piso (abajo de la gente y de las cosas).
+  if (LIVE.wet) {
+    for (let i = 0; i < 70; i++) {
+      const x = -W - 300 + rnd() * (2 * W + 600), y = -H - 200 + rnd() * (2 * H + 400);
+      if (Math.abs(x) < W && Math.abs(y) < H) continue;
+      puddle(ctx, x, y, 10 + rnd() * 22, 4 + rnd() * 7, 'rgba(200,220,255,0.16)');
+    }
+  }
+  // Nieve: va en el piso, así la gente y las cosas quedan encima.
+  if (LIVE.snow) {
+    ctx.fillStyle = 'rgba(236,242,250,0.6)';
+    ctx.fillRect(-X, -Y, 2 * X, 2 * Y);
+    for (let i = 0; i < 160; i++) {
+      ctx.fillStyle = 'rgba(252,253,255,0.7)';
+      ctx.beginPath(); ctx.ellipse(-X + rnd() * 2 * X, -Y + rnd() * 2 * Y, 8 + rnd() * 30, 4 + rnd() * 14, rnd() * 3, 0, 7); ctx.fill();
+    }
   }
 }
 
@@ -131,6 +151,23 @@ function person(ctx, rnd, x, y, shirt, up, scale = 1) {
   ctx.beginPath(); ctx.arc(x, y - 0.5 * s, 3.7 * s, 0, 7); ctx.fill();
   ctx.fillStyle = pick(rnd, HAIR);
   ctx.beginPath(); ctx.arc(x, y - 1.6 * s, 3.5 * s, Math.PI * 1.05, Math.PI * 1.95); ctx.fill();
+  // Con nieve, gorro de lana; con lluvia, algunos abren el paraguas.
+  if (LIVE.snow) {
+    ctx.fillStyle = pick(rnd, [RED, BLUE, '#f1f1ec', '#3f5a3a']);
+    ctx.beginPath(); ctx.arc(x, y - 1.2 * s, 3.9 * s, Math.PI, 0); ctx.fill();
+    ctx.fillStyle = '#f1f1ec';
+    ctx.beginPath(); ctx.arc(x, y - 4.8 * s, 1.4 * s, 0, 7); ctx.fill();
+  } else if (LIVE.wet && !up && rnd() < 0.4) {
+    const c = pick(rnd, ['#1f1f1f', RED, BLUE, '#3f5a3a', '#7a2f5e', '#c9a24a']);
+    ctx.fillStyle = 'rgba(0,0,0,0.25)';
+    ctx.beginPath(); ctx.arc(x + 3 * s, y + 3 * s, 10 * s, 0, 7); ctx.fill();
+    ctx.fillStyle = c;
+    ctx.beginPath(); ctx.arc(x, y - 1, 10 * s, 0, 7); ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.22)'; ctx.lineWidth = 0.8;
+    ctx.beginPath();
+    for (let i = 0; i < 4; i++) { const a = i * 0.785; ctx.moveTo(x - Math.cos(a) * 10 * s, y - 1 - Math.sin(a) * 10 * s); ctx.lineTo(x + Math.cos(a) * 10 * s, y - 1 + Math.sin(a) * 10 * s); }
+    ctx.stroke();
+  }
 }
 
 /** La remera de un hincha: del equipo o de calle. */
@@ -181,6 +218,7 @@ function tree(ctx, rnd, x, y, r) {
 
 /** Un poste de luz con su mancha en el piso. */
 function lampPost(ctx, x, y, warm, reach = 170) {
+  LIGHTS.push({ x, y, warm, reach });
   const c = warm ? '255,206,130' : '225,238,255';
   const g = ctx.createRadialGradient(x, y, 4, x, y, reach);
   g.addColorStop(0, `rgba(${c},0.30)`);
@@ -454,7 +492,9 @@ function paint(ctx, text, x, y, font, color, mirror, maxW) {
  * (los LED lo muestran), quién hizo el gol (en el festejo) y los nombres de
  * los que usan TL App en la sala (los trapos les dan aliento).
  */
-const LIVE = { score: '', scorer: '', names: [] };
+const LIVE = { score: '', scorer: '', names: [], wet: false, snow: false, night: false };
+/** Las luces de la escena (las anota lampPost): de noche son las que alumbran. */
+const LIGHTS = [];
 
 /** El texto de un LED con el resultado metido en el medio, si hay partido. */
 function ledText(base) {
@@ -981,12 +1021,271 @@ function azotea(ctx, W, H, o) {
   void gap;
 }
 
-const DRAW = { noche: potreroNoche, barrio: clubBarrio, led: potreroLed, f5: canchitaF5, playa, campo, azotea };
+/* ── La cortada ─────────────────────────────────────────────────────── */
+
+/** Frente de una casa visto de arriba: techo, puerta y a veces el vecino en la vereda. */
+function house(ctx, rnd, x, y, w, depth, up, o) {
+  const dir = up ? -1 : 1;
+  const top = up ? y - depth : y;
+  ctx.fillStyle = 'rgba(0,0,0,0.35)'; ctx.fillRect(x + 4, top + 5, w, depth);
+  ctx.fillStyle = pick(rnd, ['#c96f4a', '#b55a3c', '#d9c9a8', '#8a9aa6', '#e0d6c0', '#9a6a5a']);
+  ctx.fillRect(x, top, w, depth);
+  ctx.fillStyle = 'rgba(0,0,0,0.12)';
+  for (let i = 3; i < w; i += 7) ctx.fillRect(x + i, top, 2, depth);
+  ctx.strokeStyle = 'rgba(0,0,0,0.4)'; ctx.lineWidth = 1.5; ctx.strokeRect(x, top, w, depth);
+  // Puerta y ventana sobre la vereda.
+  const fy = up ? y - 3 : y;
+  ctx.fillStyle = '#4a3324'; ctx.fillRect(x + w * 0.2, fy, 10, 3);
+  ctx.fillStyle = 'rgba(160,200,230,0.8)'; ctx.fillRect(x + w * 0.55, fy, 16, 3);
+  if (rnd() < 0.6) {
+    const px = x + w * 0.2 + 5, py = y + dir * 12;
+    ctx.fillStyle = '#7a5a3a'; ctx.fillRect(px - 6, py - 6, 12, 12);
+    person(ctx, rnd, px, py, shirtFor(rnd, px < 0 ? 'Red' : 'Blue'), o.cheer === (px < 0 ? 'Red' : 'Blue'), 0.95);
+  }
+  if (rnd() < 0.5) { ctx.fillStyle = '#3d8a35'; ctx.beginPath(); ctx.arc(x + w - 8, y + dir * 8, 5, 0, 7); ctx.fill(); }
+}
+
+function cortada(ctx, W, H, o) {
+  const rnd = seeded(101);
+  const gap = goalGap(H);
+  // Asfalto (la cancha es la calle), cordón y vereda.
+  ground(ctx, rnd, W, H, '#3d4046', ['rgba(60,64,70,0.7)', 'rgba(48,51,56,0.7)'], ['rgba(255,255,255,0.05)', 'rgba(0,0,0,0.18)']);
+  ctx.fillStyle = '#4a4d53'; ctx.fillRect(-W - 800, -H - 46, 2 * W + 1600, 2 * H + 92);
+  for (const y of [-H - 46, H + 40]) { ctx.fillStyle = '#c9c4b6'; ctx.fillRect(-W - 800, y, 2 * W + 1600, 6); }
+  ctx.fillStyle = '#9b968a';
+  ctx.fillRect(-W - 800, -H - 86, 2 * W + 1600, 40); ctx.fillRect(-W - 800, H + 46, 2 * W + 1600, 40);
+  ctx.strokeStyle = 'rgba(0,0,0,0.12)'; ctx.lineWidth = 1;
+  ctx.beginPath();
+  for (let x = -W - 800; x < W + 800; x += 14) { ctx.moveTo(x, -H - 86); ctx.lineTo(x, -H - 46); ctx.moveTo(x, H + 46); ctx.lineTo(x, H + 86); }
+  ctx.stroke();
+  // Casas de los dos lados.
+  for (let x = -W - 420; x < W + 420; x += 0) { const w = 60 + rnd() * 40; house(ctx, rnd, x, -H - 86, w, 90, true, o); x += w + 4; }
+  for (let x = -W - 420; x < W + 420; x += 0) { const w = 60 + rnd() * 40; house(ctx, rnd, x, H + 86, w, 90, false, o); x += w + 4; }
+  // Árboles en la vereda, autos estacionados en el cordón, vecinos mirando.
+  for (let x = -W - 300; x < W + 300; x += 120) { tree(ctx, rnd, x + 30, -H - 66, 22); tree(ctx, rnd, x + 90, H + 66, 22); }
+  for (const sx of [-1, 1]) {
+    const x0 = sx < 0 ? -W - 70 : W + 70;
+    car(ctx, x0, -H - 30, 0, pick(rnd, CARS)); car(ctx, x0 + sx * 60, -H - 30, 0, pick(rnd, CARS));
+    car(ctx, x0, H + 26, Math.PI, pick(rnd, CARS)); car(ctx, x0 + sx * 70, H + 26, Math.PI, pick(rnd, CARS));
+    // Las «tribunas» son la gente en la esquina.
+    scatter(ctx, rnd, x0 - 25, -gap, x0 + 25, -40, 6, o);
+    scatter(ctx, rnd, x0 - 25, 40, x0 + 25, gap, 6, o);
+    ball(ctx, x0 + sx * 40, 0, 4.5);
+  }
+  crowd(ctx, rnd, -W + 10, -H - 40, W - 10, -H - 28, o, 20, 12, 0.6);
+  crowd(ctx, rnd, -W + 10, H + 28, W - 10, H + 38, o, 20, 12, 0.6);
+  dog(ctx, W * 0.4, H + 60);
+  // Kiosco en la esquina y cables de luz cruzando.
+  ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.fillRect(-W - 160, -H - 60, 60, 36);
+  ctx.fillStyle = '#f0c25a'; ctx.fillRect(-W - 164, -H - 64, 60, 36);
+  paint(ctx, 'KIOSCO', -W - 134, -H - 46, '900 11px sans-serif', '#7a2f1c', o.mirror);
+  ctx.strokeStyle = 'rgba(20,20,20,0.55)'; ctx.lineWidth = 1;
+  for (const k of [-0.6, 0.1, 0.7]) { ctx.beginPath(); ctx.moveTo(W * k - 40, -H - 90); ctx.quadraticCurveTo(W * k, 0, W * k + 40, H + 90); ctx.stroke(); }
+  // Zapatillas colgadas del cable.
+  ctx.fillStyle = '#f1f1ec'; ctx.fillRect(W * 0.1 - 3, -4, 6, 10); ctx.fillRect(W * 0.1 + 4, -2, 6, 10);
+  for (let x = -W - 200; x < W + 200; x += 210) { lampPost(ctx, x, -H - 52, true, 150); lampPost(ctx, x + 105, H + 52, true, 150); }
+  trapo(ctx, -50, -H - 98, 100, 13, 'blanco', cheerName(0, 'TODA LA LECCE'), o.mirror);
+}
+
+/* ── Patio del colegio ──────────────────────────────────────────────── */
+
+function colegio(ctx, W, H, o) {
+  const rnd = seeded(113);
+  const gap = goalGap(H);
+  ground(ctx, rnd, W, H, '#a6a29a', ['rgba(150,146,138,0.6)', 'rgba(170,166,158,0.6)'], ['rgba(0,0,0,0.07)', 'rgba(255,255,255,0.12)']);
+  // Baldosas grandes del patio.
+  ctx.strokeStyle = 'rgba(0,0,0,0.1)'; ctx.lineWidth = 1;
+  ctx.beginPath();
+  for (let x = -W - 400; x < W + 400; x += 40) { ctx.moveTo(x, -H - 300); ctx.lineTo(x, H + 300); }
+  for (let y = -H - 300; y < H + 300; y += 40) { ctx.moveTo(-W - 400, y); ctx.lineTo(W + 400, y); }
+  ctx.stroke();
+  // Paredes con murales arriba y abajo.
+  const mural = (y, h) => {
+    ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.fillRect(-W - 196, y + 4, 2 * W + 392, h);
+    ctx.fillStyle = '#e8e0cc'; ctx.fillRect(-W - 200, y, 2 * W + 400, h);
+    const cols = ['#e86f4a', '#f0c25a', '#3aa37a', '#4a7fd8', '#b25ab5', '#e85a7a'];
+    for (let x = -W - 190; x < W + 190; x += 26 + rnd() * 30) {
+      ctx.fillStyle = pick(rnd, cols);
+      const k = rnd();
+      if (k < 0.33) { ctx.beginPath(); ctx.arc(x + 10, y + h / 2, h * 0.32, 0, 7); ctx.fill(); }
+      else if (k < 0.66) { ctx.beginPath(); ctx.moveTo(x, y + h - 4); ctx.lineTo(x + 12, y + 4); ctx.lineTo(x + 24, y + h - 4); ctx.fill(); }
+      else ctx.fillRect(x, y + h * 0.25, 18, h * 0.5);
+    }
+  };
+  mural(-H - 104, 26);
+  mural(H + 80, 26);
+  paint(ctx, 'ESC. N° 7 · TODA LA LECCE', 0, -H - 91, '900 13px sans-serif', '#3a2a5a', o.mirror);
+  // Bancos con chicos mirando y mochilas tiradas.
+  for (let x = -W + 20; x < W - 60; x += 130) {
+    ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.fillRect(x + 3, -H - 58, 90, 14);
+    ctx.fillStyle = '#7a5a3a'; ctx.fillRect(x, -H - 62, 90, 14);
+    for (let k = 0; k < 4; k++) if (rnd() < 0.8) person(ctx, rnd, x + 12 + k * 22, -H - 55, rnd() < 0.6 ? '#f1f1ec' : shirtFor(rnd, x < 0 ? 'Red' : 'Blue'), o.cheer === (x < 0 ? 'Red' : 'Blue'), 0.85);
+  }
+  crowd(ctx, rnd, -W + 10, H + 26, W - 10, H + 64, o, 16, 13, 0.75);
+  const pack = (x, y) => { ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.fillRect(x + 2, y + 2, 12, 14); ctx.fillStyle = pick(rnd, [RED, BLUE, '#3aa37a', '#f0c25a', '#b25ab5']); ctx.fillRect(x, y, 12, 14); ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.fillRect(x + 2, y + 8, 8, 4); };
+  for (const sx of [-1, 1]) {
+    for (let i = 0; i < 6; i++) pack(sx * (W + 30 + rnd() * 50), -H + rnd() * (H - gap - 20));
+    for (let i = 0; i < 6; i++) pack(sx * (W + 30 + rnd() * 50), gap + 10 + rnd() * (H - gap - 20));
+  }
+  // Rayuela, aro de básquet, mástil y el kiosco.
+  ctx.strokeStyle = 'rgba(255,255,255,0.85)'; ctx.lineWidth = 2;
+  for (let i = 0; i < 6; i++) ctx.strokeRect(-W - 150 + (i % 2 ? 0 : 0), -60 + i * 20, 24, 20);
+  paint(ctx, 'CIELO', -W - 138, -76, '800 9px sans-serif', '#fff', o.mirror);
+  ctx.fillStyle = '#555'; ctx.fillRect(W + 150, -10, 6, 20);
+  ctx.strokeStyle = '#e86f4a'; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(W + 140, 0, 9, 0, 7); ctx.stroke();
+  ctx.fillStyle = '#fff'; ctx.fillRect(W + 154, -14, 4, 28);
+  flagPole(ctx, -W - 60, H + 50, '#7fb3e8', '#f1f1ec');
+  ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.fillRect(W + 64, H + 34, 70, 36);
+  ctx.fillStyle = '#e86f4a'; ctx.fillRect(W + 60, H + 30, 70, 36);
+  paint(ctx, 'KIOSCO', W + 95, H + 48, '900 11px sans-serif', '#fff', o.mirror);
+  scatter(ctx, rnd, W + 40, H + 70, W + 140, H + 80, 4, o);
+  // Árboles del patio.
+  tree(ctx, rnd, -W - 120, H + 40, 36); tree(ctx, rnd, W + 130, -H - 40, 36);
+}
+
+/* ── Estadio grande ─────────────────────────────────────────────────── */
+
+function bigScreen(ctx, x, y, w, h, mirror) {
+  ctx.fillStyle = 'rgba(0,0,0,0.4)'; ctx.fillRect(x + 5, y + 6, w, h);
+  ctx.fillStyle = '#0b0e14'; ctx.fillRect(x, y, w, h);
+  ctx.strokeStyle = '#3a4252'; ctx.lineWidth = 2; ctx.strokeRect(x, y, w, h);
+  ctx.fillStyle = 'rgba(80,140,255,0.12)'; ctx.fillRect(x + 3, y + 3, w - 6, h - 6);
+  paint(ctx, LIVE.score || 'TODA LA LECCE', x + w / 2, y + h * 0.42, `900 ${Math.round(h * 0.28)}px sans-serif`, '#ffffff', mirror, w - 10);
+  paint(ctx, 'TL APP', x + w / 2, y + h * 0.78, `800 ${Math.round(h * 0.18)}px sans-serif`, '#f0c25a', mirror);
+}
+
+function estadio(ctx, W, H, o) {
+  const rnd = seeded(127);
+  const gap = goalGap(H);
+  ground(ctx, rnd, W, H, '#1c1f26', ['rgba(30,34,42,0.7)'], ['rgba(255,255,255,0.03)']);
+  // Pasto que sobra y pista alrededor.
+  ctx.fillStyle = '#3f7a3c'; ctx.fillRect(-W - 40, -H - 40, 2 * W + 80, 2 * H + 80);
+  ctx.fillStyle = 'rgba(0,0,0,0.12)';
+  for (let x = -W - 40; x < W + 40; x += 30) ctx.fillRect(x, -H - 40, 15, 2 * H + 80);
+  // Las gradas: bandejas en escalones, con pasillos, en los cuatro lados.
+  const stand = (x0, y0, x1, y1, horiz) => {
+    ctx.fillStyle = 'rgba(0,0,0,0.4)'; ctx.fillRect(x0 + 4, y0 + 5, x1 - x0, y1 - y0);
+    ctx.fillStyle = '#3c414b'; ctx.fillRect(x0, y0, x1 - x0, y1 - y0);
+    ctx.fillStyle = 'rgba(255,255,255,0.05)';
+    if (horiz) for (let y = y0; y < y1; y += 12) ctx.fillRect(x0, y, x1 - x0, 1);
+    else for (let x = x0; x < x1; x += 12) ctx.fillRect(x, y0, 1, y1 - y0);
+  };
+  stand(-W - 60, -H - 170, W + 60, -H - 48, true);
+  stand(-W - 60, H + 48, W + 60, H + 170, true);
+  for (const sx of [-1, 1]) {
+    const x0 = sx < 0 ? -W - 200 : W + 58, x1 = sx < 0 ? -W - 58 : W + 200;
+    stand(x0, -H - 48, x1, H + 48, false);
+  }
+  // Gente: tupida, con pasillos.
+  const aisles = [-W * 0.6, -W * 0.2, W * 0.2, W * 0.6];
+  const block = (x0, y0, x1, y1) => {
+    let prev = x0;
+    for (const a of [...aisles.filter((v) => v > x0 && v < x1), x1]) { crowd(ctx, rnd, prev + 8, y0, a - 8, y1, o, 13, 12, 0.95); prev = a; }
+  };
+  block(-W - 50, -H - 164, W + 50, -H - 56);
+  block(-W - 50, H + 56, W + 50, H + 164);
+  for (const sx of [-1, 1]) {
+    const x0 = sx < 0 ? -W - 192 : W + 66, x1 = sx < 0 ? -W - 66 : W + 192;
+    crowd(ctx, rnd, x0, -H - 40, x1, -gap - 30, o, 13, 12, 0.95);
+    crowd(ctx, rnd, x0, gap + 30, x1, H + 40, o, 13, 12, 0.95);
+    // Pantalla gigante en cada cabecera.
+    bigScreen(ctx, sx < 0 ? -W - 186 : W + 74, -30, 112, 60, o.mirror);
+  }
+  // Palcos vidriados en el medio de la platea de abajo.
+  ctx.fillStyle = 'rgba(0,0,0,0.4)'; ctx.fillRect(-116, H + 64, 240, 32);
+  ctx.fillStyle = '#2a3240'; ctx.fillRect(-120, H + 60, 240, 32);
+  for (let i = 0; i < 8; i++) { ctx.fillStyle = 'rgba(150,200,240,0.45)'; ctx.fillRect(-116 + i * 30, H + 64, 26, 12); person(ctx, rnd, -103 + i * 30, H + 82, '#2b2b2b', false, 0.8); }
+  // El techo: borde con sombra sobre las últimas filas.
+  ctx.fillStyle = 'rgba(10,12,16,0.75)';
+  ctx.fillRect(-W - 220, -H - 200, 2 * W + 440, 34);
+  ctx.fillRect(-W - 220, H + 166, 2 * W + 440, 34);
+  ctx.strokeStyle = 'rgba(160,170,185,0.4)'; ctx.lineWidth = 1;
+  for (let x = -W - 220; x < W + 220; x += 40) { ctx.beginPath(); ctx.moveTo(x, -H - 200); ctx.lineTo(x + 20, -H - 166); ctx.moveTo(x, H + 200); ctx.lineTo(x + 20, H + 166); ctx.stroke(); }
+  // LED de campo, bancos con techo, el túnel, fotógrafos.
+  led(ctx, -W, -H - 30, 2 * W, 18, ledText('  TODA LA LECCE  ·  TL APP  ·  ESTADIO TL  ·'), o.hot, o.mirror);
+  led(ctx, -W, H + 12, 2 * W, 18, ledText('  TL APP  ·  TODA LA LECCE  ·'), o.hot, o.mirror);
+  dugout(ctx, rnd, -150, H + 32, 110, 'Red', o);
+  dugout(ctx, rnd, 40, H + 32, 110, 'Blue', o);
+  ctx.fillStyle = '#0d0f13'; ctx.fillRect(-20, H + 30, 40, 18);
+  for (let k = 0; k < 3; k++) { photographer(ctx, rnd, -W - 22, -gap - 10 - k * 14, 1); photographer(ctx, rnd, -W - 22, gap + 10 + k * 14, 1); photographer(ctx, rnd, W + 22, -gap - 10 - k * 14, -1); photographer(ctx, rnd, W + 22, gap + 10 + k * 14, -1); }
+  for (const [x, y] of [[-W - 210, -H - 180], [W + 210, -H - 180], [-W - 210, H + 180], [W + 210, H + 180]]) lampPost(ctx, x, y, false, 320);
+  trapo(ctx, -W + 40, -H - 60, 110, 14, 'rojo', cheerName(1, 'TL'), o.mirror);
+  trapo(ctx, -50, -H - 60, 100, 14, 'blanco', cheerName(0, 'TODA LA LECCE'), o.mirror);
+  trapo(ctx, W - 150, -H - 60, 110, 14, 'azul', cheerName(2, 'LECCE'), o.mirror);
+}
+
+/* ── Clima, noche y fuegos (sirven para todos) ──────────────────────── */
+
+function weatherLayer(ctx, rnd, W, H) {
+  const X = W + 700, Y = H + 500;
+  if (LIVE.wet) {
+    // Todo más oscuro y mojado; los charcos ya están en el piso.
+    ctx.fillStyle = 'rgba(20,32,48,0.18)';
+    ctx.fillRect(-X, -Y, 2 * X, 2 * Y);
+  }
+  if (LIVE.snow) {
+    // Un velo frío y nieve sobre los techos y las cosas, sin tapar a la gente.
+    ctx.fillStyle = 'rgba(225,235,250,0.12)';
+    ctx.fillRect(-X, -Y, 2 * X, 2 * Y);
+  }
+}
+
+function nightLayer(ctx, W, H) {
+  const X = W + 700, Y = H + 500;
+  ctx.fillStyle = 'rgba(6,10,24,0.55)';
+  ctx.fillRect(-X, -Y, 2 * X, 2 * Y);
+  const lights = LIGHTS.length ? LIGHTS : [[-W - 60, -H - 60], [W + 60, -H - 60], [-W - 60, H + 60], [W + 60, H + 60]].map(([x, y]) => ({ x, y, warm: false, reach: 220 }));
+  ctx.save();
+  ctx.globalCompositeOperation = 'lighter';
+  for (const L of lights) {
+    const c = L.warm ? '255,190,110' : '190,215,255';
+    const g = ctx.createRadialGradient(L.x, L.y, 4, L.x, L.y, L.reach * 1.1);
+    g.addColorStop(0, `rgba(${c},0.32)`);
+    g.addColorStop(1, `rgba(${c},0)`);
+    ctx.fillStyle = g;
+    ctx.fillRect(L.x - L.reach * 1.1, L.y - L.reach * 1.1, L.reach * 2.2, L.reach * 2.2);
+  }
+  ctx.restore();
+}
+
+/** Fuegos artificiales arriba de la hinchada del que ganó. */
+function fireworks(ctx, rnd, W, H, team) {
+  const cols = team === 'Blue' ? [BLUE, '#9fc0ff', '#f0c25a', '#ffffff'] : team === 'Red' ? [RED, '#ff9b8a', '#f0c25a', '#ffffff'] : ['#f0c25a', '#ffffff', '#9fc0ff', '#ff9b8a'];
+  const side = team === 'Blue' ? 1 : team === 'Red' ? -1 : 0;
+  const spots = [];
+  for (let i = 0; i < 7; i++) {
+    const x = side ? side * (W * 0.15 + rnd() * W * 0.95) : -W + rnd() * 2 * W;
+    const y = (i % 2 ? -1 : 1) * (H + 40 + rnd() * 80);
+    spots.push([x, y]);
+  }
+  ctx.save();
+  ctx.globalCompositeOperation = 'lighter';
+  for (const [x, y] of spots) {
+    const c = pick(rnd, cols), c2 = pick(rnd, cols);
+    const r = 34 + rnd() * 30;
+    const g = ctx.createRadialGradient(x, y, 2, x, y, r * 1.4);
+    g.addColorStop(0, 'rgba(255,240,200,0.35)'); g.addColorStop(1, 'rgba(255,240,200,0)');
+    ctx.fillStyle = g; ctx.fillRect(x - r * 1.4, y - r * 1.4, r * 2.8, r * 2.8);
+    const n = 26;
+    for (let k = 0; k < n; k++) {
+      const a = (k / n) * 6.283 + rnd() * 0.1;
+      const rr = r * (0.75 + rnd() * 0.3);
+      ctx.strokeStyle = k % 2 ? c : c2; ctx.lineWidth = 1.4;
+      ctx.beginPath(); ctx.moveTo(x + Math.cos(a) * rr * 0.35, y + Math.sin(a) * rr * 0.35); ctx.lineTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr); ctx.stroke();
+      ctx.fillStyle = k % 2 ? c : c2;
+      ctx.beginPath(); ctx.arc(x + Math.cos(a) * rr, y + Math.sin(a) * rr, 2.2, 0, 7); ctx.fill();
+    }
+    ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(x, y, 3, 0, 7); ctx.fill();
+  }
+  ctx.restore();
+}
+
+const DRAW = { noche: potreroNoche, barrio: clubBarrio, led: potreroLed, f5: canchitaF5, playa, campo, azotea, cortada, colegio, estadio };
 
 /**
  * Dibuja los alrededores. `ctx` llega con la transformación de mundo puesta.
  * @param {{ halfW:number, halfH:number }} bounds
- * @param {{ cheer?: 'Red'|'Blue'|null, hot?: boolean, mirror?: boolean, score?: string, scorer?: string, names?: string[] }} o
+ * @param {{ cheer?: 'Red'|'Blue'|null, hot?: boolean, mirror?: boolean, score?: string, scorer?: string, names?: string[], weather?: string, night?: boolean, fireworks?: 'Red'|'Blue'|'draw'|null }} o
  */
 function paintEnv(ctx, id, bounds, o = {}) {
   const fn = DRAW[id];
@@ -1007,7 +1306,15 @@ function paintEnv(ctx, id, bounds, o = {}) {
     LIVE.score = typeof o.score === 'string' ? o.score : '';
     LIVE.scorer = typeof o.scorer === 'string' ? o.scorer.toUpperCase().slice(0, 18) : '';
     LIVE.names = Array.isArray(o.names) ? o.names.filter((n) => typeof n === 'string' && n).map((n) => n.toUpperCase().slice(0, 14)).slice(0, 3) : [];
+    LIVE.wet = o.weather === 'rain' || o.weather === 'storm';
+    LIVE.snow = o.weather === 'snow' || o.weather === 'blizzard';
+    LIVE.night = !!o.night;
+    LIGHTS.length = 0;
     fn(ctx, W, H, { cheer: o.cheer || null, hot: !!o.hot, mirror: !!o.mirror });
+    const rnd = seeded(7);
+    if (LIVE.wet || LIVE.snow) weatherLayer(ctx, rnd, W, H);
+    if (LIVE.night) nightLayer(ctx, W, H);
+    if (o.fireworks) fireworks(ctx, rnd, W, H, o.fireworks);
   } finally {
     ctx.restore();
   }

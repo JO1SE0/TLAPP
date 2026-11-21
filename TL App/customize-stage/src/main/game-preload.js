@@ -2044,7 +2044,7 @@ const QM_WEATHER = [['none', 'Sin clima'], ...Object.entries({"rain": "Lluvia", 
 const QM_BALLS = [['default', 'Como viene'], ...Object.entries({"soccer": "Futbolera", "neon": "Neón", "gold": "Dorada", "beach": "Playera", "eight": "Bola 8", "star": "Estrella", "triangles": "Fútbol triángulos", "vintage": "Fútbol de cuero", "tennis": "Tenis", "basket": "Básquet", "volley": "Vóley", "baseball": "Béisbol", "golf": "Golf", "bowling": "Bowling", "earth": "Planeta Tierra", "moon": "Luna", "disco": "Bola de espejos", "orb": "Orbe místico", "pumpkin": "Calabaza", "melon": "Sandía", "eye": "Ojo", "argentina": "Celeste y blanca", "fire": "Bola de fuego", "ice": "Hielo", "yinyang": "Yin yang", "smile": "Carita", "sun": "Sol", "donut": "Dona", "checker": "Cuadros", "candy": "Caramelo", "heart": "Corazón", "saturn": "Planeta", "lava": "Lava", "peso": "Moneda de un peso"})];
 const qmDiscs = () => [['default', 'Como viene'], ...Object.entries(DISC_NAMES)];
 const QM_KICKS = [['default', 'El del juego'], ['real1', 'Pelotazo real'], ['real2', 'Golpe seco'], ['real3', 'Patada real'], ['real4', 'Toque rápido'], ['real5', 'Bombazo'], ['real6', 'Zapatazo']];
-const QM_ENVS = [['none', 'Nada'], ['noche', 'Potrero de noche'], ['barrio', 'Club de barrio'], ['led', 'Potrero LED'], ['f5', 'Canchita F5'], ['playa', 'Playa'], ['campo', 'Campito'], ['azotea', 'Azotea']];
+const QM_ENVS = [['none', 'Nada'], ['noche', 'Potrero de noche'], ['barrio', 'Club de barrio'], ['led', 'Potrero LED'], ['f5', 'Canchita F5'], ['playa', 'Playa'], ['campo', 'Campito'], ['azotea', 'Azotea'], ['cortada', 'La cortada'], ['colegio', 'Patio del colegio'], ['estadio', 'Estadio grande']];
 const QM_LIGHTS = [['none', 'Sin luz'], ['vignette', 'Viñeta'], ['spot', 'Foco central'], ['corners', 'Luces de esquina'], ['stadium', 'Estadio de noche'], ['sunset', 'Atardecer'], ['night', 'Noche fría'], ['stripes', 'Franjas de césped'], ['cinema', 'Cine']];
 const QM_BALL_COLORS = [['', 'Como viene'], ['#ecd593', 'Dorado'], ['#e56b6b', 'Rojo'], ['#5689e5', 'Azul'], ['#5ccf7a', 'Verde'], ['#ff9f43', 'Naranja'], ['#b07cff', 'Violeta']];
 const QM_OUTLINES = [['', 'Como viene'], ['#ffffff', 'Blanco'], ['#000000', 'Negro'], ['#ecd593', 'Dorado'], ['#e56b6b', 'Rojo'], ['#5689e5', 'Azul']];
@@ -8795,7 +8795,7 @@ function skinPitch(ctx, w, h, stadium) {
       ctx.setTransform(world);
       // El festejo se dibuja en el momento (el juego está parado por el gol);
       // lo normal queda guardado y se pega: volver del gol es casi gratis.
-      if (env.hot) pitchEnv.paintEnv(ctx, visual.env, bounds, { cheer: env.cheer, hot: true, mirror: env.mirror, scorer: env.scorer, score: envScore(), names: env.names });
+      if (env.hot) pitchEnv.paintEnv(ctx, visual.env, bounds, { cheer: env.cheer, hot: true, mirror: env.mirror, scorer: env.scorer, score: envScore(), names: env.names, ...envLook() });
       else paintEnvCached(ctx, world, bounds);
     } catch (err) {
       log('error', `los alrededores no se pudieron dibujar: ${err.message}`, 'juego');
@@ -9256,7 +9256,7 @@ function pitchSkinPrint() {
   const skin = (state.config.pitch && state.config.pitch.skin) || {};
   const field = pitchSkinColor();
   const vip = state.config.vip || {};
-  return `${skin.mode}|${field}|${pitchOutsideColor(field)}|${skin.strength}|${skin.brightness}|${skin.stripes}|${skin.cut}|${skin.imageAlpha}|${skin.relief}|${skin.reliefAmount}|${visual.weather}|${visual.weatherAmount}|${vip.pitchImage}|${JSON.stringify(vip.pitchCrop || null)}|${visual.pitchLine}|${flatGraphicsEnabled}|${visual.texture}|${visual.light}|${visual.crest}|${visual.crestOpacity}|${visual.crestSize}|${visual.lineColor}|${visual.lineGlow}|${visual.bright}|${visual.contrast}|${visual.env}`;
+  return `${skin.mode}|${field}|${pitchOutsideColor(field)}|${skin.strength}|${skin.brightness}|${skin.stripes}|${skin.cut}|${skin.imageAlpha}|${skin.relief}|${skin.reliefAmount}|${visual.weather}|${visual.weatherAmount}|${vip.pitchImage}|${JSON.stringify(vip.pitchCrop || null)}|${visual.pitchLine}|${flatGraphicsEnabled}|${visual.texture}|${visual.light}|${visual.crest}|${visual.crestOpacity}|${visual.crestSize}|${visual.lineColor}|${visual.lineGlow}|${visual.bright}|${visual.contrast}|${visual.env}|${visual.env ? `${visual.weather}/${visual.light}` : ''}`;
 }
 
 /** Le tira el cache al estadio para que se vuelva a dibujar con el color nuevo. */
@@ -9265,7 +9265,12 @@ function pitchSkinPrint() {
  * y la gente del que metió levanta los brazos) y el espejo. Cada cambio rehace
  * el cache del estadio una vez; entre cambios no se dibuja nada.
  */
-const env = { cheer: null, hot: false, mirror: false, timer: 0, pre: 0, bmp: null, key: '', last: null, red: NaN, blue: NaN, scorer: '', names: [] };
+const env = { cheer: null, hot: false, mirror: false, timer: 0, pre: 0, bmp: null, key: '', last: null, red: NaN, blue: NaN, scorer: '', names: [], match: null, fireworks: null };
+
+/** Lo que no cambia en el festejo: clima, noche (la «Luz» de noche) y fuegos del final. */
+function envLook() {
+  return { weather: visual.weather || '', night: visual.light === 'night', fireworks: env.fireworks };
+}
 
 /** El resultado para los LED («ROJO 2 - 1 AZUL»), si hay partido. */
 function envScore() {
@@ -9283,7 +9288,8 @@ function envNames() {
 }
 
 function envKey(world, bounds, cv) {
-  return [visual.env, env.mirror, envScore(), env.names.join(','), bounds.halfW, bounds.halfH, world.a, world.b, world.c, world.d, world.e, world.f, cv.width, cv.height].join('|');
+  const L = envLook();
+  return [visual.env, env.mirror, envScore(), env.names.join(','), L.weather, L.night, L.fireworks, bounds.halfW, bounds.halfH, world.a, world.b, world.c, world.d, world.e, world.f, cv.width, cv.height].join('|');
 }
 
 /** Arma lo normal en un canvas aparte (con el resultado y los nombres de ahora). */
@@ -9293,7 +9299,7 @@ function buildEnvBitmap(doc, world, bounds, w, h, key) {
   bmp.height = h;
   const g = bmp.getContext('2d');
   g.setTransform(world);
-  pitchEnv.paintEnv(g, visual.env, bounds, { mirror: env.mirror, score: envScore(), names: env.names });
+  pitchEnv.paintEnv(g, visual.env, bounds, { mirror: env.mirror, score: envScore(), names: env.names, ...envLook() });
   env.bmp = bmp;
   env.key = key;
 }
@@ -9345,6 +9351,11 @@ function envTrackScore(view, f, match) {
   const S = f.score;
   if (!S) return;
   const r = Number(match[S.red]), b = Number(match[S.blue]);
+  if (match !== env.match) {
+    env.match = match;
+    // Otro partido: se apagan los fuegos del anterior.
+    if (env.fireworks) { env.fireworks = null; env.red = NaN; }
+  }
   if (r === env.red && b === env.blue) return;
   env.red = r;
   env.blue = b;
@@ -11483,8 +11494,19 @@ const msum = { goals: [], keys: new Set(), sec: NaN };
  * resumen. Una sola función para los dos finales posibles (la sala queda sin
  * partido, o arranca otro en el mismo instante), así ninguno se olvida de nada.
  */
+/** Terminó el partido: fuegos artificiales arriba de la hinchada del que ganó. */
+function envFinal(red, blue) {
+  if (!visual.env) return;
+  const r = Number(red), b = Number(blue);
+  if (!Number.isFinite(r) || !Number.isFinite(b)) return;
+  env.fireworks = r > b ? 'Red' : b > r ? 'Blue' : 'draw';
+  const view = gameWindow(gameDocument());
+  if (view) flushStadiumCache(view);
+}
+
 function closeMatch(f, room, nextStarted) {
   safe(sendHeatmap);
+  if (!nextStarted) safe(envFinal, lastScore.red, lastScore.blue);
   ipcRenderer.send('game:match-end', { red: lastScore.red, blue: lastScore.blue });
   // Si ya arrancó el siguiente, el resumen dura menos: tapa el marcador y el chat.
   safe(showSummary, f, room, nextStarted ? SUMMARY_QUICK_MS : SUMMARY_MS);
