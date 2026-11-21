@@ -9589,7 +9589,8 @@ function paintEnvAlive(ctx) {
   const L = envLook();
   const t0 = performance.now();
   pitchEnv.paintAlive(ctx, visual.env, env.bounds, t0, reg, { cheer: env.cheer, hot: env.hot, mirror: env.mirror, weather: L.weather, night: L.night, kits: L.kits, fireworks: L.fireworks }, envVis);
-  envSlowNote(performance.now() - t0);
+  // El festejo del gol (papelitos, bengalas) dura 3 s: no cuenta como compu lenta.
+  if (!env.hot) envSlowNote(performance.now() - t0);
 }
 
 function flushStadiumCache(view) {
