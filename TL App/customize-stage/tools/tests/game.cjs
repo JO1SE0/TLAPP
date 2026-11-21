@@ -358,7 +358,7 @@ syncMinimap();
       const visual = { env: 'barrio' };
       // eslint-disable-next-line no-new-func
       window.FLUSH = 0;
-      const stubs = { safe: (fn, ...a) => fn(...a), peers: new Map([['Mati', {}]]), myNick: () => 'Yo', flushStadiumCache: () => { window.FLUSH++; }, gameWindow: () => null, gameDocument: () => null };
+      const stubs = { safe: (fn, ...a) => fn(...a), peers: new Map([['Mati', {}]]), myNick: () => 'Yo', flushStadiumCache: () => { window.FLUSH++; }, gameWindow: () => null, gameDocument: () => null, teamNameOf: (f, p) => p.t };
       const mod = new Function('pitchEnv', 'visual', 'document', ...Object.keys(stubs), `${code}; return { env, paintEnvCached, envTrackScore, envNames, envScore, envFinal };`)(pitchEnv, visual, document, ...Object.values(stubs));
       const mk = () => { const c = document.createElement('canvas'); c.width = 900; c.height = 500; return c; };
       const world = new DOMMatrix([1.1, 0, 0, 1.1, 450, 250]);
@@ -382,11 +382,19 @@ syncMinimap();
       const d1 = g1.getImageData(0, 0, 900, 500).data, d2 = g2.getImageData(0, 0, 900, 500).data;
       let live = 0; for (let i = 0; i < d1.length; i += 4) if (d1[i] !== d2[i]) live++;
       // Fuegos: ganó el azul; al arrancar otro partido se apagan.
+      // Fresa se sienta en el banco del equipo de uno.
+      const fT = { score: { red: 'r', blue: 'b' }, players: 'pl', name: 'n' };
+      mod.envTrackScore(null, fT, { r: 0, b: 0 }, { pl: [{ n: 'Otro', t: 'Red' }, { n: 'Yo', t: 'Blue' }] }); const fresaTeam = mod.env.team;
+      const fz1 = mk(), gz1 = fz1.getContext('2d'); gz1.setTransform(world); pitchEnv.paintEnv(gz1, 'barrio', b, { fresa: false });
+      const fz2 = mk(), gz2 = fz2.getContext('2d'); gz2.setTransform(world); pitchEnv.paintEnv(gz2, 'barrio', b, {});
+      const z1 = gz1.getImageData(0, 0, 900, 500).data, z2 = gz2.getImageData(0, 0, 900, 500).data;
+      let fresaPx = 0; for (let i = 0; i < z1.length; i += 4) if (z1[i] !== z2[i]) fresaPx++;
       mod.envFinal(1, 3); const fw = mod.env.fireworks;
       mod.envTrackScore(null, f, { r: 0, b: 0 }); const fwAfter = mod.env.fireworks;
-      return { diff, first: Math.round(first), again: Math.round(again * 10) / 10, startFlush, same, inGoal, score, names, live, fw, fwAfter };
+      return { diff, first: Math.round(first), again: Math.round(again * 10) / 10, startFlush, same, inGoal, score, names, live, fw, fwAfter, fresaTeam, fresaPx };
     }, CACHED);
     check('alrededores: lo guardado es igual a lo dibujado y pegarlo es instantáneo', r2.diff === 0 && r2.again < 5, JSON.stringify(r2));
+    check('alrededores: Fresa, la DT, se dibuja y se sienta en el banco del equipo de uno', r2.fresaTeam === 'Blue' && r2.fresaPx > 200, JSON.stringify({ t: r2.fresaTeam, px: r2.fresaPx }));
     check('alrededores: fuegos del ganador al final y se apagan con otro partido', r2.fw === 'Blue' && r2.fwAfter === null, JSON.stringify(r2));
     check('alrededores: marcador y nombres de TL; rehace al empezar, no en el festejo', r2.startFlush === 1 && r2.same === 1 && r2.inGoal === 1 && r2.score === 'ROJO 1 - 0 AZUL' && r2.names === 'Mati,Yo' && r2.live > 50, JSON.stringify(r2));
     await p.close();

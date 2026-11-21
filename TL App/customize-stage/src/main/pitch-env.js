@@ -1214,6 +1214,103 @@ function estadio(ctx, W, H, o) {
   trapo(ctx, W - 150, -H - 60, 110, 14, 'azul', cheerName(2, 'LECCE'), o.mirror);
 }
 
+/* ── Fresa, la DT ───────────────────────────────────────────────────── */
+
+const FW = '#fdfbf7', FS = '#ece4d6', FL = '#d9ccb8';
+
+/** Un rulo blanco con su sombrita. */
+function curl(ctx, x, y, r) {
+  ctx.fillStyle = FW;
+  ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill();
+  ctx.strokeStyle = FL; ctx.lineWidth = r * 0.18;
+  ctx.beginPath(); ctx.arc(x, y + r * 0.1, r * 0.55, Math.PI * 1.1, Math.PI * 1.9); ctx.stroke();
+}
+
+/**
+ * Fresa, caniche blanca, de DT: sentada al lado del banco de su equipo con la
+ * gorra de TL y la pizarrita. `up`: gol de su equipo, se para con las patitas
+ * arriba y mueve la cola.
+ */
+function fresaDT(ctx, x, y, up, team, mirror) {
+  const k = 1.15;
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.scale(k, k);
+  if (up) ctx.translate(0, -5);
+  // Sombra.
+  ctx.fillStyle = 'rgba(0,0,0,0.32)';
+  ctx.beginPath(); ctx.ellipse(3, up ? 17 : 12, 15, 6, 0, 0, 7); ctx.fill();
+  // Cola (moviéndose si festeja).
+  ctx.strokeStyle = FS; ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.moveTo(10, 8); ctx.quadraticCurveTo(up ? 22 : 18, up ? -2 : 4, up ? 18 : 20, up ? -8 : -2); ctx.stroke();
+  curl(ctx, up ? 18 : 20, up ? -9 : -3, 3.2);
+  // Cuerpo con rulos.
+  ctx.fillStyle = FS;
+  ctx.beginPath(); ctx.ellipse(0, 7, 12, 9, 0, 0, 7); ctx.fill();
+  for (const [cx, cy] of [[-8, 9], [-3, 13], [3, 13], [8, 9], [-10, 3], [10, 3]]) curl(ctx, cx, cy, 3.6);
+  // Patitas: adelante o arriba.
+  ctx.fillStyle = FW;
+  if (up) { ctx.beginPath(); ctx.arc(-11, -9, 3.4, 0, 7); ctx.arc(11, -9, 3.4, 0, 7); ctx.fill(); ctx.strokeStyle = FS; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(-7, 2); ctx.lineTo(-11, -7); ctx.moveTo(7, 2); ctx.lineTo(11, -7); ctx.stroke(); }
+  else { ctx.beginPath(); ctx.arc(-5, 15, 3.2, 0, 7); ctx.arc(5, 15, 3.2, 0, 7); ctx.fill(); }
+  // Pizarrita táctica al costado (si está sentada).
+  if (!up) {
+    ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.fillRect(-25, 3, 11, 13);
+    ctx.fillStyle = '#f4f1ea'; ctx.fillRect(-26, 1, 11, 13);
+    ctx.strokeStyle = RED; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(-24, 5); ctx.lineTo(-18, 9); ctx.moveTo(-24, 10); ctx.lineTo(-19, 4); ctx.stroke();
+    ctx.fillStyle = BLUE; ctx.beginPath(); ctx.arc(-19, 11, 1.2, 0, 7); ctx.fill();
+  }
+  // Orejas largas de rulos.
+  ctx.fillStyle = FS;
+  ctx.beginPath(); ctx.ellipse(-10, -3, 4.5, 8, 0.2, 0, 7); ctx.ellipse(10, -3, 4.5, 8, -0.2, 0, 7); ctx.fill();
+  curl(ctx, -11, 1, 3); curl(ctx, 11, 1, 3);
+  // Cabeza.
+  ctx.fillStyle = FW;
+  ctx.beginPath(); ctx.arc(0, -6, 9.5, 0, 7); ctx.fill();
+  // Gorra de TL con visera.
+  const cap = team === 'Blue' ? BLUE : RED;
+  ctx.fillStyle = cap;
+  ctx.beginPath(); ctx.arc(0, -10, 8.5, Math.PI, 0); ctx.fill();
+  ctx.fillStyle = team === 'Blue' ? '#2d55b0' : '#b83a3a';
+  ctx.beginPath(); ctx.ellipse(0, -9.5, 9.5, 2.4, 0, 0, 7); ctx.fill();
+  paint(ctx, 'TL', 0, -13.5, '900 5px sans-serif', '#ffffff', mirror);
+  curl(ctx, -7.5, -10, 2.6); curl(ctx, 7.5, -10, 2.6);
+  // Cara: ojos, nariz y boca (abierta si festeja).
+  ctx.fillStyle = '#2a1d16';
+  ctx.beginPath(); ctx.ellipse(-3.4, -5, 1.6, 1.8, 0, 0, 7); ctx.ellipse(3.4, -5, 1.6, 1.8, 0, 0, 7); ctx.fill();
+  ctx.fillStyle = '#fff';
+  ctx.beginPath(); ctx.arc(-2.9, -5.6, 0.6, 0, 7); ctx.arc(3.9, -5.6, 0.6, 0, 7); ctx.fill();
+  ctx.fillStyle = '#7a4a3a';
+  ctx.beginPath(); ctx.ellipse(0, -1.5, 2.2, 1.7, 0, 0, 7); ctx.fill();
+  if (up) { ctx.fillStyle = '#e8737a'; ctx.beginPath(); ctx.ellipse(0, 2, 1.8, 2.4, 0, 0, 7); ctx.fill(); }
+  else { ctx.strokeStyle = '#7a4a3a'; ctx.lineWidth = 0.8; ctx.beginPath(); ctx.moveTo(-2, 0.6); ctx.quadraticCurveTo(0, 2, 2, 0.6); ctx.stroke(); }
+  ctx.restore();
+}
+
+/** Un bancucho para Fresa donde la escena no tiene banco de suplentes. */
+function fresaBench(ctx, x, y) {
+  ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.fillRect(x - 18, y + 4, 40, 14);
+  ctx.fillStyle = '#7a5a3a'; ctx.fillRect(x - 21, y + 1, 40, 14);
+  ctx.fillStyle = 'rgba(255,255,255,0.12)'; ctx.fillRect(x - 21, y + 1, 40, 3);
+}
+
+/**
+ * Dónde se sienta Fresa en cada escena: al lado del banco de su equipo, del
+ * lado de adentro (hacia el medio). Donde no hay bancos, en un bancucho propio.
+ */
+const FRESA_SPOT = {
+  barrio: (W, H, t) => [t === 'Blue' ? 26 : -26, H + 38, false],
+  led: (W, H, t) => [t === 'Blue' ? 8 : -8, H + 46, false],
+  f5: (W, H, t) => [t === 'Blue' ? 14 : -14, H + 70, false],
+  estadio: (W, H, t) => [t === 'Blue' ? 30 : -30, H + 44, false],
+  noche: (W, H, t) => [t === 'Blue' ? W * 0.45 : -W * 0.45, H + 84, true],
+  playa: (W, H, t) => [t === 'Blue' ? W * 0.5 : -W * 0.5, H + 66, true],
+  campo: (W, H, t) => [t === 'Blue' ? 20 : -20, H + 76, true],
+  azotea: (W, H, t) => [t === 'Blue' ? W * 0.5 : -W * 0.5, H + 84, true],
+  cortada: (W, H, t) => [t === 'Blue' ? W * 0.3 : -W * 0.3, H + 34, true],
+  colegio: (W, H, t) => [t === 'Blue' ? W * 0.5 : -W * 0.5, H + 76, true]
+};
+
 /* ── Clima, noche y fuegos (sirven para todos) ──────────────────────── */
 
 function weatherLayer(ctx, rnd, W, H) {
@@ -1285,7 +1382,7 @@ const DRAW = { noche: potreroNoche, barrio: clubBarrio, led: potreroLed, f5: can
 /**
  * Dibuja los alrededores. `ctx` llega con la transformación de mundo puesta.
  * @param {{ halfW:number, halfH:number }} bounds
- * @param {{ cheer?: 'Red'|'Blue'|null, hot?: boolean, mirror?: boolean, score?: string, scorer?: string, names?: string[], weather?: string, night?: boolean, fireworks?: 'Red'|'Blue'|'draw'|null }} o
+ * @param {{ cheer?: 'Red'|'Blue'|null, hot?: boolean, mirror?: boolean, score?: string, scorer?: string, names?: string[], weather?: string, night?: boolean, fireworks?: 'Red'|'Blue'|'draw'|null, fresa?: boolean, fresaTeam?: 'Red'|'Blue' }} o
  */
 function paintEnv(ctx, id, bounds, o = {}) {
   const fn = DRAW[id];
@@ -1311,6 +1408,13 @@ function paintEnv(ctx, id, bounds, o = {}) {
     LIVE.night = !!o.night;
     LIGHTS.length = 0;
     fn(ctx, W, H, { cheer: o.cheer || null, hot: !!o.hot, mirror: !!o.mirror });
+    // Fresa, la DT, en el banco del equipo de uno (rojo si mirás de afuera).
+    if (o.fresa !== false && FRESA_SPOT[id]) {
+      const team = o.fresaTeam === 'Blue' ? 'Blue' : 'Red';
+      const [fx, fy, bench] = FRESA_SPOT[id](W, H, team);
+      if (bench) fresaBench(ctx, fx, fy + 4);
+      fresaDT(ctx, fx, fy, o.cheer === team, team, !!o.mirror);
+    }
     const rnd = seeded(7);
     if (LIVE.wet || LIVE.snow) weatherLayer(ctx, rnd, W, H);
     if (LIVE.night) nightLayer(ctx, W, H);

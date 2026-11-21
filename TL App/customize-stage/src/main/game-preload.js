@@ -9265,11 +9265,11 @@ function pitchSkinPrint() {
  * y la gente del que metió levanta los brazos) y el espejo. Cada cambio rehace
  * el cache del estadio una vez; entre cambios no se dibuja nada.
  */
-const env = { cheer: null, hot: false, mirror: false, timer: 0, pre: 0, bmp: null, key: '', last: null, red: NaN, blue: NaN, scorer: '', names: [], match: null, fireworks: null };
+const env = { cheer: null, hot: false, mirror: false, timer: 0, pre: 0, bmp: null, key: '', last: null, red: NaN, blue: NaN, scorer: '', names: [], match: null, fireworks: null, team: 'Red' };
 
 /** Lo que no cambia en el festejo: clima, noche (la «Luz» de noche) y fuegos del final. */
 function envLook() {
-  return { weather: visual.weather || '', night: visual.light === 'night', fireworks: env.fireworks };
+  return { weather: visual.weather || '', night: visual.light === 'night', fireworks: env.fireworks, fresaTeam: env.team };
 }
 
 /** El resultado para los LED («ROJO 2 - 1 AZUL»), si hay partido. */
@@ -9289,7 +9289,7 @@ function envNames() {
 
 function envKey(world, bounds, cv) {
   const L = envLook();
-  return [visual.env, env.mirror, envScore(), env.names.join(','), L.weather, L.night, L.fireworks, bounds.halfW, bounds.halfH, world.a, world.b, world.c, world.d, world.e, world.f, cv.width, cv.height].join('|');
+  return [visual.env, env.mirror, envScore(), env.names.join(','), L.weather, L.night, L.fireworks, L.fresaTeam, bounds.halfW, bounds.halfH, world.a, world.b, world.c, world.d, world.e, world.f, cv.width, cv.height].join('|');
 }
 
 /** Arma lo normal en un canvas aparte (con el resultado y los nombres de ahora). */
@@ -9347,12 +9347,22 @@ function envScorer(name) {
  * El resultado, una comparación por paso. Cambia en un gol (eso lo maneja el
  * festejo) o al empezar otro partido: ahí sí se rehace, con el juego arrancando.
  */
-function envTrackScore(view, f, match) {
+/** El equipo de uno (Fresa se sienta en ese banco); de afuera mirando, el rojo. */
+function envMyTeam(f, room) {
+  const me = myNick();
+  for (const p of (room && room[f.players]) || []) {
+    if (p && p[f.name] === me) { const t = teamNameOf(f, p); return t === 'Blue' ? 'Blue' : 'Red'; }
+  }
+  return 'Red';
+}
+
+function envTrackScore(view, f, match, room) {
   const S = f.score;
   if (!S) return;
   const r = Number(match[S.red]), b = Number(match[S.blue]);
   if (match !== env.match) {
     env.match = match;
+    if (room) { const t = safe(envMyTeam, f, room); if (t && t !== env.team) { env.team = t; env.red = NaN; } }
     // Otro partido: se apagan los fuegos del anterior.
     if (env.fireworks) { env.fireworks = null; env.red = NaN; }
   }
@@ -11392,7 +11402,7 @@ function onRealStep(view, room) {
     real.match = match;
   }
   real.clock += STEP_MS;
-  if (visual.env) safe(envTrackScore, view, f, match);
+  if (visual.env) safe(envTrackScore, view, f, match, room);
 
   const at = ballPos(f, match);
   if (at) {
