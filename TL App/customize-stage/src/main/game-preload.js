@@ -9371,7 +9371,7 @@ function pitchSkinPrint() {
  * y la gente del que metió levanta los brazos) y el espejo. Cada cambio rehace
  * el cache del estadio una vez; entre cambios no se dibuja nada.
  */
-const env = { startAt: -1e9, cheer: null, hot: false, mirror: false, timer: 0, pre: 0, bmp: null, key: '', last: null, red: NaN, blue: NaN, scorer: '', names: [], match: null, fireworks: null, team: 'Red', regNormal: null, regHot: null, bounds: null, kits: null, kitsSig: '', fill: 1 };
+const env = { cheer: null, hot: false, mirror: false, timer: 0, pre: 0, bmp: null, key: '', last: null, red: NaN, blue: NaN, scorer: '', names: [], match: null, fireworks: null, team: 'Red', regNormal: null, regHot: null, bounds: null, kits: null, kitsSig: '', fill: 1, startAt: -1e9 };
 
 /** Los alrededores se mueven: interruptor prendido y sin «Gráficos planos». */
 function envAliveOn() {
