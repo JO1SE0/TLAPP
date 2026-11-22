@@ -7357,7 +7357,7 @@ html[data-animations="off"] .upd, html[data-animations="off"] .upd *, html[data-
 .spdev__msg { margin: 0; padding: 12px; font-size: 13px; color: var(--text-dim); }
 
 /* ── Sección de abajo ── */
-.sp { --sp-rgb: 30 215 96; display: grid; gap: 12px; }
+.sp { --sp-rgb: 30 215 96; display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; min-width: 0; max-width: 100%; }
 .sp[hidden] { display: none; }
 .sp svg { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 
@@ -7412,7 +7412,7 @@ html[data-animations="off"] .upd, html[data-animations="off"] .upd *, html[data-
 .sp__ghost:hover { background: rgb(var(--sp-rgb) / 16%); transform: translateY(-1px); }
 
 /* Conectada */
-.sp__main { display: grid; gap: 12px; }
+.sp__main { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; min-width: 0; }
 .sp__msg { margin: 0; padding: 8px 12px; border-radius: 12px; font-size: 13px; line-height: 1.45; color: #f6cf7a; background: rgb(242 184 75 / 10%); border: 1px solid rgb(242 184 75 / 30%); }
 .sp__msg[hidden] { display: none; }
 .sp__msg.is-in { animation: spUp .3s cubic-bezier(.2, .8, .2, 1) both; }
@@ -7514,7 +7514,8 @@ html[data-animations="off"] .upd, html[data-animations="off"] .upd *, html[data-
 .sp__pnow { width: 20px; display: flex; justify-content: center; }
 
 /* Pie: cuenta y desconectar */
-.sp__foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 4px 4px 0; }
+.sp__foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 4px 4px 0; min-width: 0; }
+.sp__who { min-width: 0; flex: none; }
 .sp__who { display: inline-flex; align-items: center; gap: 8px; min-width: 0; }
 .sp__who > i { flex: none; width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; font-style: normal; font-size: 13px; font-weight: 900; color: var(--sp-ink); background: linear-gradient(145deg, #4af38a, var(--sp-2)); }
 .sp__who > span { display: grid; min-width: 0; line-height: 1.15; }

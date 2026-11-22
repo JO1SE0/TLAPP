@@ -6467,9 +6467,10 @@ async function spInAppPaint() {
     : !on ? (en ? 'Without opening Spotify' : 'Sin abrir Spotify')
     : !st.loggedIn ? (en ? 'First time: sign in on the browser' : 'La primera vez: entrá en el navegador')
     : st.blocked ? (en ? 'Spotify does not allow it with your account yet: playing on your PC' : 'Spotify todavía no lo deja con tu cuenta: suena en el Spotify de la PC')
-    : st.error ? `${en ? 'Problem' : 'Problema'}: ${st.error}`
+    : st.error ? `${en ? 'Problem' : 'Problema'}: ${String(st.error).replace(/^\[[^\]]*\]\s*/, '').replace(/^(WARN|ERROR)\s+\S+\]\s*/, '').slice(0, 90)}`
     : st.running ? (en ? 'On · device «TL App»' : 'Prendido · dispositivo «TL App»') : (en ? 'Ready' : 'Listo');
   $('#spInAppSt').textContent = tx;
+  $('#spInAppSt').title = tx;
 }
 $('#spInApp').addEventListener('change', async (e) => {
   const on = e.target.checked;
