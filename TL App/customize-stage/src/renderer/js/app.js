@@ -6300,7 +6300,16 @@ function spDevIcon(type) {
 {
   const pg = document.querySelector('.page[data-page="musica"]');
   const mus = pg && pg.querySelector('.mus');
-  if (mus && window.ResizeObserver) new ResizeObserver(([e]) => { if (e.contentRect.width > 0) mus.classList.toggle('is-wide', e.contentRect.width >= 820); }).observe(pg);
+  // Además se guarda el alto visible (sin el relleno de la página) para que el
+  // reproductor de la izquierda ocupe toda la altura y no queden huecos.
+  if (mus && window.ResizeObserver) new ResizeObserver(([e]) => {
+    const w = e.contentRect.width, h = e.contentRect.height;
+    if (!(w > 0)) return;
+    mus.classList.toggle('is-wide', w >= 820);
+    const cs = getComputedStyle(mus);
+    const hh = Math.max(520, Math.round(h - parseFloat(cs.paddingTop || 0) - parseFloat(cs.paddingBottom || 0)));
+    if (mus.style.getPropertyValue('--mus-h') !== hh + 'px') mus.style.setProperty('--mus-h', hh + 'px');
+  }).observe(pg);
 }
 
 /** Lo de Spotify que vive en el reproductor de arriba (fuente, fondo, controles, dispositivo). */

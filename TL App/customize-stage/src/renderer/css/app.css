@@ -8837,3 +8837,16 @@ html[data-scheme="light"] .vhud__p, html[data-scheme="light"] .vhud__me { color:
 .page[data-page="musica"] .mus.is-wide .mus__sws { grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); }
 .page[data-page="musica"] .mus.is-wide .mus__sw { align-items: center; }
 .page[data-page="musica"] .mus.is-wide .mus__sw span { flex: 1; }
+
+/* Música en dos columnas, sin huecos: el reproductor ocupa todo el alto visible
+   (queda fijo mientras la derecha se desplaza), la tapa crece con el lugar y la
+   lista de temas llega hasta abajo. --mus-h lo pone app.js. */
+.page[data-page="musica"] .mus.is-wide { --mus-h: 640px; }
+.page[data-page="musica"] .mus.is-wide > .mus__hero { height: var(--mus-h); grid-row: 1 / span 40; justify-content: flex-start; }
+.page[data-page="musica"] .mus.is-wide .mus__cover { margin-top: auto; flex: none; width: clamp(170px, calc(var(--mus-h) - 400px), 100%); max-width: 100%; }
+.page[data-page="musica"] .mus.is-wide .mus__info { margin-bottom: auto; width: 100%; }
+.page[data-page="musica"] .mus.is-wide .mus__list { max-height: max(320px, calc(var(--mus-h) - 520px)); }
+.page[data-page="musica"] .mus.is-wide #musLibrary { margin-bottom: 0; }
+.page[data-page="musica"] .mus.is-wide .sp__panel--l { height: max(380px, calc(var(--mus-h) - 40px)); }
+.page[data-page="musica"] .mus.is-wide .mus__sw { padding: 10px 14px; border-radius: 16px; }
+.page[data-page="musica"] .mus.is-wide .mus__sws { gap: 8px; }
