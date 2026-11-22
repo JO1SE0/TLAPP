@@ -5856,6 +5856,19 @@ async function musicCoverFor(t) {
   if (musCoverFor !== key) return;
   box.style.backgroundImage = url ? `url("${url}")` : '';
   box.classList.toggle('has-img', !!url);
+  musBgTl = url || '';
+  if (!$('.page[data-page="musica"]').classList.contains('is-spotify')) musBgSet(musBgTl);
+}
+
+// Fondo del reproductor: la tapa agrandada y difuminada (TL App y Spotify).
+let musBgTl = '';
+function musBgSet(url) {
+  const bg = $('#musBg');
+  if (!bg || bg.dataset.url === url) return;
+  bg.dataset.url = url;
+  bg.style.backgroundImage = url ? `url("${url}")` : '';
+  bg.classList.remove('is-on'); void bg.offsetWidth;
+  if (url) bg.classList.add('is-on');
 }
 
 function paintMusicPage() {
@@ -6295,23 +6308,6 @@ function spDevIcon(type) {
   return t === 'smartphone' || t === 'tablet' ? SP_ICON.phone : t === 'speaker' || t === 'tv' || t === 'castvideo' || t === 'castaudio' ? SP_ICON.speaker : SP_ICON.computer;
 }
 
-// Música en dos columnas cuando la página tiene lugar (también dentro del juego,
-// donde la ventana es más chica que la pantalla: por eso se mide la página).
-{
-  const pg = document.querySelector('.page[data-page="musica"]');
-  const mus = pg && pg.querySelector('.mus');
-  // Además se guarda el alto visible (sin el relleno de la página) para que el
-  // reproductor de la izquierda ocupe toda la altura y no queden huecos.
-  if (mus && window.ResizeObserver) new ResizeObserver(([e]) => {
-    const w = e.contentRect.width, h = e.contentRect.height;
-    if (!(w > 0)) return;
-    mus.classList.toggle('is-wide', w >= 820);
-    const cs = getComputedStyle(mus);
-    const hh = Math.max(520, Math.round(h - parseFloat(cs.paddingTop || 0) - parseFloat(cs.paddingBottom || 0)));
-    if (mus.style.getPropertyValue('--mus-h') !== hh + 'px') mus.style.setProperty('--mus-h', hh + 'px');
-  }).observe(pg);
-}
-
 /** Lo de Spotify que vive en el reproductor de arriba (fuente, fondo, controles, dispositivo). */
 function paintSpotifyHero(sp, on) {
   const T = spT();
@@ -6320,14 +6316,7 @@ function paintSpotifyHero(sp, on) {
   $('#musSrcTl').classList.toggle('is-on', !sp);
   $('#musSrcSp').classList.toggle('is-on', !!sp);
   // Fondo: la tapa, agrandada y oscurecida (se pinta una vez por tema).
-  const bg = $('#musBg');
-  const url = (sp && sp.cover) || '';
-  if (bg.dataset.url !== url) {
-    bg.dataset.url = url;
-    bg.style.backgroundImage = url ? `url("${url}")` : '';
-    bg.classList.remove('is-on'); void bg.offsetWidth;
-    if (url) bg.classList.add('is-on');
-  }
+  musBgSet(sp ? (sp.cover || '') : (musBgTl || ''));
   const api = !!sp && on;
   for (const id of ['spShuffle', 'spRepeat', 'spLike']) $('#' + id).hidden = !api;
   $('#spDevWrap').hidden = !api;
