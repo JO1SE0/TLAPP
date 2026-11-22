@@ -112,7 +112,7 @@ const DEFAULTS = {
     /** De dónde sale la música del menú: `tl` (las canciones de la app) · `spotify` (lo que suena en tu Spotify). */
     musicSource: 'tl',
     /** Spotify suena en la propia app (librespot), sin abrir Spotify. */
-    spotifyInApp: false,
+    spotifyInApp: true,
     // Tamaño de la interfaz: 'auto' (según el monitor) o un porcentaje fijo (60–150).
     uiScale: 'auto',
     /** Estructura de la interfaz: classic | top (barra superior) | dock (dock flotante). */

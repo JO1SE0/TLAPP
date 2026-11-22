@@ -6466,6 +6466,7 @@ async function spInAppPaint() {
   const tx = !st || !st.available ? (en ? 'Player missing: update the app' : 'Falta el reproductor: actualizá la app')
     : !on ? (en ? 'Without opening Spotify' : 'Sin abrir Spotify')
     : !st.loggedIn ? (en ? 'First time: sign in on the browser' : 'La primera vez: entrá en el navegador')
+    : st.error ? `${en ? 'Problem' : 'Problema'}: ${st.error}`
     : st.running ? (en ? 'On · device «TL App»' : 'Prendido · dispositivo «TL App»') : (en ? 'Ready' : 'Listo');
   $('#spInAppSt').textContent = tx;
 }

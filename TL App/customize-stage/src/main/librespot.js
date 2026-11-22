@@ -28,6 +28,21 @@ let lastErr = '';
 const exe = () => path.join(__dirname, '..', '..', 'bin', process.platform === 'win32' ? 'librespot.exe' : 'librespot');
 const cacheDir = () => path.join(app.getPath('userData'), 'librespot');
 const credsFile = () => path.join(cacheDir(), 'credentials.json');
+const logFile = () => path.join(cacheDir(), 'registro.txt');
+
+/*
+ * Todo lo que dice el reproductor queda en «librespot/registro.txt» (carpeta
+ * de datos de la app): si algo no suena, ahí está el porqué. Se corta solo
+ * para no crecer. Las advertencias y errores van también al registro de la app.
+ */
+let logBytes = 0;
+function logLine(text) {
+  try {
+    if (logBytes === 0) { try { if (fs.statSync(logFile()).size > 400000) fs.writeFileSync(logFile(), ''); } catch { /* nuevo */ } }
+    fs.appendFile(logFile(), text.endsWith('\n') ? text : `${text}\n`, () => {});
+    logBytes += text.length;
+  } catch { /* sin disco */ }
+}
 
 function available() {
   try { return fs.existsSync(exe()); } catch { return false; }
@@ -54,12 +69,15 @@ function start() {
     '--system-cache', cacheDir(),
     '--enable-volume-normalisation',
     '--initial-volume', '70',
+    '--backend', 'rodio',
+    '--verbose',
     '--disable-discovery'
   ];
   // Sin sesión guardada: entrar con la cuenta en el navegador (una sola vez).
   if (!loggedIn()) args.push('--enable-oauth');
   lastErr = '';
   lastUrl = '';
+  logLine(`\n=== ${new Date().toISOString()} arranca: librespot ${args.join(' ')}`);
   proc = spawn(exe(), args, { windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
   // Prioridad baja: el audio pesa poquito y nunca le saca procesador al juego.
   try { require('os').setPriority(proc.pid, require('os').constants.priority.PRIORITY_BELOW_NORMAL); } catch { /* sin permiso */ }
@@ -70,7 +88,10 @@ function start() {
       lastUrl = m[0];
       try { shell.openExternal(m[0]); } catch { /* sin navegador */ }
     }
-    if (/\b(ERROR|error)\b/.test(text)) lastErr = text.trim().split('\n').pop().slice(0, 200);
+    logLine(text);
+    for (const line of text.split(/\r?\n/)) {
+      if (/\b(ERROR|WARN)\b/.test(line)) { lastErr = line.trim().slice(0, 200); if (/ERROR/.test(line)) note(`librespot: ${lastErr}`); }
+    }
   };
   proc.stdout.on('data', read);
   proc.stderr.on('data', read);
