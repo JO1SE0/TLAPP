@@ -264,17 +264,27 @@ async function wakeDesktop(play) {
     // que suene en la app con esa cuenta): que no salte la ventana encima.
     let opened = false;
     try {
-      const exe = path.join(process.env.APPDATA || '', 'Spotify', 'Spotify.exe');
-      if (process.platform === 'win32' && fs.existsSync(exe)) {
+      const exe = [
+        path.join(process.env.APPDATA || '', 'Spotify', 'Spotify.exe'),
+        path.join(process.env.LOCALAPPDATA || '', 'Microsoft', 'WindowsApps', 'Spotify.exe') // la de Microsoft Store
+      ].find((f) => { try { return fs.existsSync(f); } catch { return false; } });
+      if (process.platform === 'win32' && exe) {
         require('child_process').spawn(exe, ['--minimized'], { detached: true, stdio: 'ignore', windowsHide: true }).unref();
         opened = true;
       }
     } catch { /* probamos con el enlace */ }
     if (!opened) { try { openUrl('spotify:'); } catch { /* sin Spotify instalado */ } }
-    for (let i = 0; i < 14 && !list.length; i++) {
-      await new Promise((ok) => setTimeout(ok, 1000));
-      try { list = (await devices()).filter((d) => d.name !== own); } catch { /* sigue probando */ }
-    }
+    const wait = async (n) => {
+      for (let i = 0; i < n && !list.length; i++) {
+        await new Promise((ok) => setTimeout(ok, 1000));
+        try { list = (await devices()).filter((d) => d.name !== own); } catch { /* sigue probando */ }
+      }
+    };
+    await wait(20);
+    // Sin Spotify en la PC: el reproductor web en el navegador también sirve
+    // como dispositivo (ahí sí suena, el navegador tiene la protección que
+    // Spotify pide).
+    if (!list.length) { try { openUrl('https://open.spotify.com/'); } catch { /* sin navegador */ } await wait(25); }
   }
   if (!list.length) { const e = new Error('no device'); e.status = 404; throw e; }
   if (list.some((d) => d.active)) return list.find((d) => d.active);
