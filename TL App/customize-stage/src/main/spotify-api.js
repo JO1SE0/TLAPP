@@ -223,7 +223,32 @@ function status() {
  * música. Así se usa todo desde la app, sin tener que ir a abrirlo a mano.
  */
 let openUrl = () => {};
+// Reproductor propio (librespot): si está prendido en Música, la música va ahí.
+let inApp = { on: () => false, lsp: null };
+function setInApp(on, lsp) { inApp = { on, lsp }; }
+async function wakeInApp() {
+  const L = inApp.lsp;
+  const first = !L.status().loggedIn;
+  L.start();
+  // La primera vez hay que entrar con la cuenta en el navegador: se espera más.
+  const tries = first ? 120 : 20;
+  for (let i = 0; i < tries; i++) {
+    let list = [];
+    try { list = await devices(); } catch { /* sigue probando */ }
+    const dev = list.find((d) => d.name === L.NAME);
+    if (dev) {
+      if (!dev.active) await api('PUT', '/me/player', { json: { device_ids: [dev.id], play: false } });
+      return dev;
+    }
+    await new Promise((ok) => setTimeout(ok, 1000));
+  }
+  return null;
+}
 async function wake() {
+  if (inApp.lsp && inApp.on() && inApp.lsp.available()) {
+    const dev = await wakeInApp().catch((e) => { note(`Spotify en la app: ${e.message}`); return null; });
+    if (dev) return dev;
+  }
   let list = await devices();
   if (!list.length) {
     try { openUrl('spotify:'); } catch { /* sin Spotify instalado */ }
@@ -362,6 +387,7 @@ function register(handle, shell, log) {
   handle('spapi:queue', wrap(() => queueList()));
   handle('spapi:liked', wrap((_e, uri) => liked(uri)));
   handle('spapi:wake', wrap(() => wake()));
+  handle('spapi:inapp', wrap(() => wake()));
 }
 
-module.exports = { register, REDIRECT };
+module.exports = { register, REDIRECT, setInApp };

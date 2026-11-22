@@ -7520,6 +7520,16 @@ html[data-animations="off"] .upd, html[data-animations="off"] .upd *, html[data-
 .sp__who > span { display: grid; min-width: 0; line-height: 1.15; }
 .sp__who small { font-size: 11px; font-weight: 700; color: var(--text-faint); }
 .sp__who b { font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sp__inapp { flex: 1; display: inline-flex; align-items: center; gap: 10px; cursor: pointer; min-width: 0; justify-content: flex-end; }
+.sp__inapp input { position: absolute; opacity: 0; pointer-events: none; }
+.sp__inapp i { flex: none; width: 34px; height: 20px; border-radius: 99px; background: rgb(255 255 255 / 14%); position: relative; transition: background .2s; }
+.sp__inapp i::after { content: ''; position: absolute; top: 3px; left: 3px; width: 14px; height: 14px; border-radius: 50%; background: #fff; transition: transform .2s; }
+.sp__inapp input:checked + i { background: #1ed760; }
+.sp__inapp input:checked + i::after { transform: translateX(14px); }
+.sp__inapp input:focus-visible + i { outline: 2px solid #1ed760; outline-offset: 2px; }
+.sp__inapp span { display: flex; flex-direction: column; line-height: 1.2; min-width: 0; }
+.sp__inapp b { font-size: 13px; }
+.sp__inapp small { font-size: 11.5px; opacity: .6; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .sp__out { flex: none; display: inline-flex; align-items: center; gap: 8px; height: 34px; padding: 0 12px; border-radius: 99px; cursor: pointer; font-size: 13px; font-weight: 700;
   color: var(--text-dim); background: none; border: 1px solid var(--line); transition: color var(--t-ui), border-color var(--t-ui), background-color var(--t-ui); }
 .sp__out svg { width: 16px; height: 16px; }

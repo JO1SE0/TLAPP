@@ -1,0 +1,49 @@
+# Arma el reproductor de Spotify de la app (librespot) para Windows y lo deja
+# en «TL App/customize-stage/bin/librespot.exe». Con eso, la opción «Que suene
+# en la TL App» (Música › Spotify) hace sonar Spotify sin abrir Spotify.
+#
+# Cómo se usa: pestaña Actions → «Armar librespot» → Run workflow. Tarda unos
+# 10 minutos. Después: git pull + robocopy como siempre.
+
+name: Armar librespot
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Herramientas (Rust y NASM)
+        shell: pwsh
+        run: |
+          rustup toolchain install stable --profile minimal
+          rustup default stable
+          choco install nasm -y --no-progress
+          "C:\Program Files\NASM" | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8
+
+      - name: Compilar librespot
+        shell: pwsh
+        run: |
+          cargo install librespot --locked --root build
+          if (!(Test-Path build\bin\librespot.exe)) { throw "No salió librespot.exe" }
+          & build\bin\librespot.exe --version
+
+      - name: Dejarlo en la app
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force "TL App\customize-stage\bin" | Out-Null
+          Copy-Item build\bin\librespot.exe "TL App\customize-stage\bin\librespot.exe" -Force
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "TL App/customize-stage/bin/librespot.exe"
+          git diff --cached --quiet
+          if ($LASTEXITCODE -ne 0) {
+            git commit -m "Reproductor de Spotify (librespot) para Windows"
+            git push
+          }

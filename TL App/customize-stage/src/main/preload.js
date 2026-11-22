@@ -183,7 +183,14 @@ contextBridge.exposeInMainWorld('tvm', {
     devices: () => call('spapi:devices'),
     queue: () => call('spapi:queue'),
     liked: (uri) => call('spapi:liked', uri),
-    wake: () => call('spapi:wake')
+    wake: () => call('spapi:wake'),
+    inApp: () => call('spapi:inapp'),
+    player2: {
+      status: () => call('lsp:status'),
+      start: () => call('lsp:start'),
+      stop: () => call('lsp:stop'),
+      logout: () => call('lsp:logout')
+    }
   },
 
   tracks: {

@@ -2430,6 +2430,12 @@ handle('tracks:list', async () => {
 require('./spotify').register(handle, app);
 /* Spotify con cuenta (API web, Premium): ver spotify-api.js. */
 require('./spotify-api').register(handle, shell, (msg) => logToApp('info', msg));
+/* Spotify sonando en la app (librespot), si está prendido en Música. */
+{
+  const lsp = require('./librespot');
+  lsp.register(handle, app, shell, (msg) => logToApp('info', msg));
+  require('./spotify-api').setInApp(() => { try { return store.get().appearance.spotifyInApp === true; } catch { return false; } }, lsp);
+}
 
 /** Tapa embebida de una canción (club o propia), si el archivo la trae. */
 handle('tracks:cover', async (_e, name, user) => {
