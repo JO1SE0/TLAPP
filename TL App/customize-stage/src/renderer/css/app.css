@@ -8833,3 +8833,7 @@ html[data-scheme="light"] .vhud__p, html[data-scheme="light"] .vhud__me { color:
 .page[data-page="musica"] .mus.is-wide .sp__pnow { position: absolute; top: 14px; right: 14px; }
 .page[data-page="musica"] .mus.is-wide .sp__foot { padding: 12px 16px; border-radius: 18px; border: 1px solid var(--line); background: linear-gradient(165deg, rgb(var(--text-rgb) / 5%), rgb(var(--text-rgb) / 1.5%)); }
 .sp__inapp.is-fixed { cursor: default; }
+/* Ajustes de música en la columna derecha: tarjetas de dos en dos, no cuatro apretadas. */
+.page[data-page="musica"] .mus.is-wide .mus__sws { grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); }
+.page[data-page="musica"] .mus.is-wide .mus__sw { align-items: center; }
+.page[data-page="musica"] .mus.is-wide .mus__sw span { flex: 1; }
