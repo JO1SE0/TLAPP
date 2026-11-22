@@ -260,7 +260,17 @@ async function wakeDesktop(play) {
   const own = inApp.lsp ? inApp.lsp.NAME : '';
   let list = (await devices()).filter((d) => d.name !== own);
   if (!list.length) {
-    try { openUrl('spotify:'); } catch { /* sin Spotify instalado */ }
+    // Spotify de la PC, minimizado (sólo como respaldo si Spotify no deja
+    // que suene en la app con esa cuenta): que no salte la ventana encima.
+    let opened = false;
+    try {
+      const exe = path.join(process.env.APPDATA || '', 'Spotify', 'Spotify.exe');
+      if (process.platform === 'win32' && fs.existsSync(exe)) {
+        require('child_process').spawn(exe, ['--minimized'], { detached: true, stdio: 'ignore', windowsHide: true }).unref();
+        opened = true;
+      }
+    } catch { /* probamos con el enlace */ }
+    if (!opened) { try { openUrl('spotify:'); } catch { /* sin Spotify instalado */ } }
     for (let i = 0; i < 14 && !list.length; i++) {
       await new Promise((ok) => setTimeout(ok, 1000));
       try { list = (await devices()).filter((d) => d.name !== own); } catch { /* sigue probando */ }

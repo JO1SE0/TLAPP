@@ -6295,6 +6295,14 @@ function spDevIcon(type) {
   return t === 'smartphone' || t === 'tablet' ? SP_ICON.phone : t === 'speaker' || t === 'tv' || t === 'castvideo' || t === 'castaudio' ? SP_ICON.speaker : SP_ICON.computer;
 }
 
+// Música en dos columnas cuando la página tiene lugar (también dentro del juego,
+// donde la ventana es más chica que la pantalla: por eso se mide la página).
+{
+  const pg = document.querySelector('.page[data-page="musica"]');
+  const mus = pg && pg.querySelector('.mus');
+  if (mus && window.ResizeObserver) new ResizeObserver(([e]) => { if (e.contentRect.width > 0) mus.classList.toggle('is-wide', e.contentRect.width >= 1000); }).observe(pg);
+}
+
 /** Lo de Spotify que vive en el reproductor de arriba (fuente, fondo, controles, dispositivo). */
 function paintSpotifyHero(sp, on) {
   const T = spT();
@@ -6458,9 +6466,8 @@ async function spInAppPaint() {
   const en = isEn();
   const box = $('#spInApp');
   if (!box) return;
-  const on = !!(state.config && state.config.appearance && state.config.appearance.spotifyInApp);
-  box.checked = on;
-  $('#spInAppTx').textContent = en ? 'Play it in TL App' : 'Que suene en la TL App';
+  const on = true; // siempre: Spotify suena dentro de la TL App
+  $('#spInAppTx').textContent = en ? 'Plays in TL App' : 'Suena en la TL App';
   let st = null;
   try { st = await window.tvm.spotifyApi.player2.status(); } catch { /* sin reproductor */ }
   const tx = !st || !st.available ? (en ? 'Player missing: update the app' : 'Falta el reproductor: actualizá la app')
@@ -6472,26 +6479,9 @@ async function spInAppPaint() {
   $('#spInAppSt').textContent = tx;
   $('#spInAppSt').title = tx;
 }
-$('#spInApp').addEventListener('change', async (e) => {
-  const on = e.target.checked;
-  await patchConfig({ appearance: { spotifyInApp: on } });
-  try {
-    if (on) {
-      const st = await window.tvm.spotifyApi.player2.status();
-      if (!st.available) { toast(isEn() ? 'The Spotify player is not in this version yet: update the app.' : 'El reproductor de Spotify todavía no está en esta versión: actualizá la app.', 'err'); }
-      else {
-        if (!st.loggedIn) toast(isEn() ? 'Sign in on the browser that opens (only the first time).' : 'Entrá con tu cuenta en el navegador que se abre (sólo la primera vez).');
-        spInAppPaint();
-        await window.tvm.spotifyApi.inApp();
-      }
-    } else await window.tvm.spotifyApi.player2.stop();
-  } catch (err) { toast(String(err.message || err), 'err'); }
-  spInAppPaint();
-  spStatus(true);
-});
-// Con la opción prendida, el reproductor queda listo desde que abre la app.
+// El reproductor de la app queda listo desde que abre (suena siempre acá).
 setTimeout(async () => {
-  try { if (state.config && state.config.appearance && state.config.appearance.spotifyInApp) { const st = await window.tvm.spotifyApi.player2.status(); if (st.available && st.loggedIn) await window.tvm.spotifyApi.player2.start(); } } catch { /* sin reproductor */ }
+  try { { const st = await window.tvm.spotifyApi.player2.status(); if (st.available && st.loggedIn) await window.tvm.spotifyApi.player2.start(); } } catch { /* sin reproductor */ }
 }, 2500);
 
 $('#spLogout').addEventListener('click', async () => {

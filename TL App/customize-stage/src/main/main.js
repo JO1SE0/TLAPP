@@ -2434,7 +2434,7 @@ require('./spotify-api').register(handle, shell, (msg) => logToApp('info', msg))
 {
   const lsp = require('./librespot');
   lsp.register(handle, app, shell, (msg) => logToApp('info', msg));
-  require('./spotify-api').setInApp(() => { try { return store.get().appearance.spotifyInApp === true; } catch { return false; } }, lsp);
+  require('./spotify-api').setInApp(() => true, lsp); // obligatorio: siempre suena en la app
 }
 
 /** Tapa embebida de una canción (club o propia), si el archivo la trae. */

@@ -8790,3 +8790,46 @@ html[data-scheme="light"] .vhud__p, html[data-scheme="light"] .vhud__me { color:
 .sbprev__view iframe { position: absolute; left: 0; top: 0; width: 160%; height: 160%; border: 0; transform: scale(.625); transform-origin: top left; pointer-events: none; }
 .sbprev__name { font-size: 12.5px; font-weight: 600; opacity: .85; }
 .sbprev.is-active .sbprev__name { color: var(--accent-text, var(--accent)); opacity: 1; }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   Música, diseño en dos columnas (cuando entra): el reproductor a la
+   izquierda, alto y con la tapa grande; a la derecha la cola, la búsqueda,
+   las playlists (como tarjetas) y los temas. Vale para Spotify y para la
+   música de la TL App. Si no hay lugar, queda como antes.
+   ═══════════════════════════════════════════════════════════════════════ */
+.page[data-page="musica"] .mus.is-wide { max-width: 1240px; display: grid; grid-template-columns: minmax(320px, 380px) minmax(0, 1fr); column-gap: 18px; row-gap: 14px; align-items: start; }
+.page[data-page="musica"] .mus.is-wide > * { grid-column: 2; min-width: 0; }
+.page[data-page="musica"] .mus.is-wide > .mus__hero { grid-column: 1; grid-row: 1 / span 40; position: sticky; top: 0; flex-direction: column; align-items: stretch; gap: 16px; padding: 18px 20px 20px; overflow: hidden; }
+.page[data-page="musica"] .mus.is-wide .mus__srcsw { position: relative; top: auto; right: auto; align-self: flex-start; }
+.page[data-page="musica"] .mus.is-wide .mus__cover { width: min(100%, 300px); height: auto; aspect-ratio: 1 / 1; align-self: center; border-radius: 20px; box-shadow: 0 26px 50px -18px rgb(0 0 0 / 85%); }
+.page[data-page="musica"] .mus.is-wide .mus__cover svg { width: 84px; height: 84px; }
+.page[data-page="musica"] .mus.is-wide .mus__cover::after { display: none; }
+.page[data-page="musica"] .mus.is-wide .mus__info { gap: 6px; }
+.page[data-page="musica"] .mus.is-wide .mus__title { font-size: 26px; white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.page[data-page="musica"] .mus.is-wide .mus__artist { color: var(--text-dim); font-size: 14px; }
+.page[data-page="musica"] .mus.is-wide .mus__bar { height: 6px; margin-top: 10px; overflow: visible; background: rgb(var(--text-rgb) / 16%); }
+.page[data-page="musica"] .mus.is-wide .mus__bar i { background: var(--text); box-shadow: none; }
+.page[data-page="musica"] .mus.is-wide .mus__ctl { justify-content: space-between; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+.page[data-page="musica"] .mus.is-wide .mus__btn { width: 42px; height: 42px; background: transparent; border-color: transparent; box-shadow: none; color: var(--text-dim); }
+.page[data-page="musica"] .mus.is-wide .mus__btn:hover { background: rgb(var(--text-rgb) / 8%); color: var(--text); }
+.page[data-page="musica"] .mus.is-wide .mus__btn.is-on, .page[data-page="musica"] .mus.is-wide .mus__btn--like.is-on { background: transparent; border-color: transparent; }
+.page[data-page="musica"] .mus.is-wide .mus__btn--main { width: 64px; height: 64px; color: #101317; background: #fff; box-shadow: 0 14px 28px -12px rgb(0 0 0 / 80%); }
+.page[data-page="musica"] .mus.is-wide .mus__btn--main:hover { background: #fff; filter: none; transform: scale(1.05); }
+.page[data-page="musica"] .mus.is-wide .mus__vol { order: 20; flex: 1 1 100%; margin: 8px 0 0; height: 40px; padding: 0 14px; background: rgb(var(--bg-0-rgb) / 35%); }
+.page[data-page="musica"] .mus.is-wide .mus__vol input { flex: 1; width: auto; min-width: 0; }
+.page[data-page="musica"] .mus.is-wide .spdev { position: absolute; top: 18px; right: 20px; margin: 0; z-index: 4; }
+.page[data-page="musica"] .mus.is-wide .page__inner > .csec, .page[data-page="musica"] .mus.is-wide > .csec { border-radius: 24px; }
+
+/* Spotify, del lado derecho: la cola/búsqueda arriba y las playlists como tarjetas abajo. */
+.page[data-page="musica"] .mus.is-wide .sp__grid { grid-template-columns: minmax(0, 1fr); height: auto; }
+.page[data-page="musica"] .mus.is-wide .sp__panel--l { height: 430px; }
+.page[data-page="musica"] .mus.is-wide .sp__panel--r { height: auto; }
+.page[data-page="musica"] .mus.is-wide .sp__pls { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 14px; overflow: visible; margin: 0; padding: 4px; }
+.page[data-page="musica"] .mus.is-wide .sp__pl { display: flex; flex-direction: column; align-items: stretch; gap: 8px; padding: 8px; position: relative; }
+.page[data-page="musica"] .mus.is-wide .sp__pcov { width: 100%; height: auto; aspect-ratio: 1 / 1; border-radius: 14px; }
+.page[data-page="musica"] .mus.is-wide .sp__pgo svg { width: 34px; height: 34px; }
+.page[data-page="musica"] .mus.is-wide .sp__ptx b { font-size: 13.5px; }
+.page[data-page="musica"] .mus.is-wide .sp__ptx small { font-size: 12px; }
+.page[data-page="musica"] .mus.is-wide .sp__pnow { position: absolute; top: 14px; right: 14px; }
+.page[data-page="musica"] .mus.is-wide .sp__foot { padding: 12px 16px; border-radius: 18px; border: 1px solid var(--line); background: linear-gradient(165deg, rgb(var(--text-rgb) / 5%), rgb(var(--text-rgb) / 1.5%)); }
+.sp__inapp.is-fixed { cursor: default; }
