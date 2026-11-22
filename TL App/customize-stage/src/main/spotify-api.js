@@ -225,7 +225,11 @@ function status() {
 let openUrl = () => {};
 // Reproductor propio (librespot): si está prendido en Música, la música va ahí.
 let inApp = { on: () => false, lsp: null };
-function setInApp(on, lsp) { inApp = { on, lsp }; }
+function setInApp(on, lsp) {
+  inApp = { on, lsp };
+  // Spotify no deja sonar en la app con esta cuenta: la música sigue en el Spotify de la PC.
+  if (lsp && lsp.setOnBlocked) lsp.setOnBlocked(() => { wakeDesktop(true).catch((e) => note(`Spotify de la PC: ${e.message}`)); });
+}
 async function wakeInApp() {
   const L = inApp.lsp;
   const first = !L.status().loggedIn;
@@ -245,22 +249,27 @@ async function wakeInApp() {
   return null;
 }
 async function wake() {
-  if (inApp.lsp && inApp.on() && inApp.lsp.available()) {
+  if (inApp.lsp && inApp.on() && inApp.lsp.available() && !(inApp.lsp.blocked && inApp.lsp.blocked())) {
     const dev = await wakeInApp().catch((e) => { note(`Spotify en la app: ${e.message}`); return null; });
     if (dev) return dev;
   }
-  let list = await devices();
+  return wakeDesktop(false);
+}
+/** El Spotify de la PC (o el que esté abierto en otro lado, que no sea el de la app). */
+async function wakeDesktop(play) {
+  const own = inApp.lsp ? inApp.lsp.NAME : '';
+  let list = (await devices()).filter((d) => d.name !== own);
   if (!list.length) {
     try { openUrl('spotify:'); } catch { /* sin Spotify instalado */ }
     for (let i = 0; i < 14 && !list.length; i++) {
       await new Promise((ok) => setTimeout(ok, 1000));
-      try { list = await devices(); } catch { /* sigue probando */ }
+      try { list = (await devices()).filter((d) => d.name !== own); } catch { /* sigue probando */ }
     }
   }
   if (!list.length) { const e = new Error('no device'); e.status = 404; throw e; }
   if (list.some((d) => d.active)) return list.find((d) => d.active);
   const pick = list.find((d) => d.type === 'Computer') || list[0];
-  await api('PUT', '/me/player', { json: { device_ids: [pick.id], play: false } });
+  await api('PUT', '/me/player', { json: { device_ids: [pick.id], play: !!play } });
   return pick;
 }
 

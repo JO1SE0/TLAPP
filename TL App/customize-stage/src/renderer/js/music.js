@@ -252,14 +252,34 @@
       vol: d.device && d.device.vol >= 0 ? d.device.vol : undefined
     };
   }
+  /*
+   * Lo que se acaba de pedir (pausa, saltar, otro tema) se muestra al toque y
+   * se sostiene hasta que Spotify lo confirme (o pasen unos segundos): antes,
+   * una lectura que llegaba un pelito tarde lo pisaba con lo viejo y parecía
+   * que la pausa tardaba, que saltar no andaba o que el cambio de tema tosía.
+   */
+  const expectOn = () => S.expect && performance.now() < S.expect.until;
+  function sExpect(e) { S.expect = { ...(expectOn() ? S.expect : {}), ...e, until: performance.now() + 3000 }; S.seq = (S.seq || 0) + 1; }
   async function sRead() {
     if (!S.on || S.busy || !window.tvm || !window.tvm.spotify) return;
     S.busy = true;
+    const seq = S.seq || 0;
     let r = null;
     if (S.api && window.tvm.spotifyApi) r = await sReadApi();
     else { try { r = await window.tvm.spotify.get(); } catch (e) { r = null; } }
     S.busy = false;
     if (!S.on) return;
+    // Una orden salió mientras leíamos: esta lectura ya es vieja.
+    if (seq !== (S.seq || 0)) { setTimeout(sRead, 200); return; }
+    if (r && r.ok !== false && expectOn()) {
+      const E = S.expect;
+      let pending = false;
+      if (typeof E.playing === 'boolean' && !!r.playing !== E.playing) { r.playing = S.playing; r.pos = sCur(); r.age = 0; pending = true; }
+      if (typeof E.pos === 'number' && Math.abs((Number(r.pos) || 0) + (r.playing ? Math.max(0, Number(r.age) || 0) : 0) - (E.pos + (S.playing ? (performance.now() - E.posAt) / 1000 : 0))) > 2.5) { r.pos = sCur(); r.age = 0; pending = true; }
+      if (E.notKey && String(r.key || `${r.artist}|${r.title}`) === E.notKey) { pending = true; r.key = S.key; r.title = S.title; r.artist = S.artist; r.album = S.album; r.cover = S.cover; r.dur = S.dur; r.pos = sCur(); r.age = 0; }
+      if (!pending) S.expect = null;
+      else setTimeout(sRead, 450);
+    }
     if (!r || r.ok === false) {
       const was = S.status;
       S.status = r && r.error === 'not windows' ? 'nowin' : 'error';
@@ -304,12 +324,16 @@
   async function sCmd(name, arg) {
     if (!window.tvm || !window.tvm.spotify) return;
     const apiName = name === 'toggle' ? (S.playing ? 'play' : 'pause') : name;
+    if (name === 'toggle') sExpect({ playing: S.playing });
+    else if (name === 'seek') sExpect({ pos: Number(arg) || 0, posAt: performance.now() });
+    else if (name === 'prev' && sCur() > 3) { sExpect({ pos: 0, posAt: performance.now() }); S.pos = 0; S.at = performance.now(); }
+    else if (name === 'next' || name === 'prev') { sExpect({ notKey: S.key }); S.pos = 0; S.at = performance.now(); }
     // `S.playing` ya se dio vuelta (optimista) antes de llamar acá: por eso 'play' si ahora dice que suena.
     const viaApi = await sApi(apiName, arg);
     if (!viaApi) { try { await window.tvm.spotify.cmd(name, arg); } catch (e) { /* sin Spotify */ } }
-    // Spotify tarda un pelito en publicar el cambio.
-    setTimeout(sRead, 350);
-    setTimeout(sRead, 1100);
+    // Spotify tarda un pelito en publicar el cambio: se relee enseguida.
+    sRead();
+    setTimeout(sRead, 600);
   }
   /** Volumen de Spotify (0–1), el del mezclador de Windows. Manda el último valor, uno a la vez. */
   async function sVolume(v) {

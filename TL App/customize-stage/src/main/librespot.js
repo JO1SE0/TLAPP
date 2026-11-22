@@ -25,6 +25,21 @@ let proc = null;
 let lastUrl = '';
 let lastErr = '';
 
+/*
+ * Spotify a veces no le da la llave del audio al reproductor para algunas
+ * cuentas («audio key error 0 1»): suena mudo y salta de tema en tema. No se
+ * arregla desde acá (es del lado de Spotify), así que al verlo se para el
+ * reproductor, la música pasa al Spotify de la PC y se vuelve a probar en 12 h.
+ */
+const BLOCK_MS = 12 * 60 * 60 * 1000;
+let keyErrs = [];
+let onBlocked = () => {};
+const blockFile = () => path.join(cacheDir(), 'sin-llave.json');
+function blockedUntil() {
+  try { return Number(JSON.parse(fs.readFileSync(blockFile(), 'utf8')).until) || 0; } catch { return 0; }
+}
+function blocked() { return Date.now() < blockedUntil(); }
+
 const exe = () => path.join(__dirname, '..', '..', 'bin', process.platform === 'win32' ? 'librespot.exe' : 'librespot');
 const cacheDir = () => path.join(app.getPath('userData'), 'librespot');
 const credsFile = () => path.join(cacheDir(), 'credentials.json');
@@ -53,7 +68,7 @@ function loggedIn() {
 function running() { return !!(proc && proc.exitCode === null && !proc.killed); }
 
 function status() {
-  return { available: available(), running: running(), loggedIn: loggedIn(), name: NAME, error: lastErr };
+  return { available: available(), running: running(), loggedIn: loggedIn(), name: NAME, error: blocked() ? '' : lastErr, blocked: blocked() };
 }
 
 /** Arranca el reproductor (si no está andando ya). */
@@ -90,6 +105,17 @@ function start() {
     }
     logLine(text);
     for (const line of text.split(/\r?\n/)) {
+      if (/audio key error|Unable to load key/i.test(line)) {
+        const now = Date.now();
+        keyErrs = keyErrs.filter((t) => now - t < 60000);
+        keyErrs.push(now);
+        if (keyErrs.length >= 2 && !blocked()) {
+          try { fs.writeFileSync(blockFile(), JSON.stringify({ until: now + BLOCK_MS })); } catch { /* sin disco */ }
+          note('librespot: Spotify no da la llave del audio para esta cuenta; pasa al Spotify de la PC');
+          keyErrs = [];
+          setTimeout(() => { stop(); try { onBlocked(); } catch { /* aviso */ } }, 0);
+        }
+      }
       if (/\b(ERROR|WARN)\b/.test(line)) { lastErr = line.trim().slice(0, 200); if (/ERROR/.test(line)) note(`librespot: ${lastErr}`); }
     }
   };
@@ -127,4 +153,6 @@ function register(handle, electronApp, electronShell, log) {
   app.on('before-quit', () => stop());
 }
 
-module.exports = { register, start, stop, status, available, running, NAME };
+function setOnBlocked(fn) { onBlocked = typeof fn === 'function' ? fn : () => {}; }
+
+module.exports = { register, start, stop, status, available, running, blocked, setOnBlocked, NAME };
