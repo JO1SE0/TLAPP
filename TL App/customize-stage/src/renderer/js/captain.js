@@ -66,6 +66,32 @@
     });
   }
 
+  /** Sacar a alguien en el momento: de la sala o de la app, con un motivo opcional. */
+  function kickDialog(m) {
+    const back = el('div', 'cap__modal');
+    const card = el('div', 'cap__mcard');
+    card.append(el('p', null, `¿Sacar a ${m.name}?`), el('p', 'cap__muted', `${m.room ? `Está en «${m.room}». ` : ''}No le cambia la clave: puede volver a entrar cuando quiera.`));
+    const input = el('input', 'cap__input'); input.placeholder = 'Motivo (opcional, lo ve él)'; input.maxLength = 120;
+    const row = el('div', 'cap__form');
+    const room = el('button', 'cap__btn', 'Sacarlo de la sala'); room.type = 'button'; room.disabled = !m.room;
+    if (!m.room) room.title = 'No está en ninguna sala ahora.';
+    const appB = el('button', 'cap__btn', 'Cerrarle la app'); appB.type = 'button';
+    const no = el('button', 'cap__btn cap__btn--ghost', 'Cancelar'); no.type = 'button';
+    const go = async (mode) => {
+      back.remove();
+      if (await act({ type: 'kick', name: m.name, mode, why: input.value.trim() })) flash(mode === 'app' ? `Le cerraste la app a ${m.name}.` : `Sacaste a ${m.name} de la sala.`);
+    };
+    room.addEventListener('click', () => go('room'));
+    appB.addEventListener('click', () => go('app'));
+    no.addEventListener('click', () => back.remove());
+    input.addEventListener('keydown', (e) => { if (e.key === 'Escape') { e.stopPropagation(); back.remove(); } });
+    row.append(room, appB, no);
+    card.append(input, row);
+    back.append(card);
+    box.append(back);
+    setTimeout(() => input.focus(), 30);
+  }
+
   const flat = (s) => String(s).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/g, '');
   function dist(a, b) {
     if (Math.abs(a.length - b.length) > 1) return 2;
@@ -255,6 +281,13 @@
       for (const [b, on] of [[soc, !!(m.soc || m.ext)], [host, !!m.host], [rep, !!m.rep], [voz, !!m.voz]]) b.classList.add('cap__chip', ...(on ? ['is-on'] : []));
       const who = el('div', 'cap__who'); who.append(name, state);
       acts.append(soc, host, rep, voz, free, nk, del);
+      if (m.online && !m.self) {
+        const kk = el('button', 'cap__btn cap__btn--sm cap__btn--kick', 'Sacar');
+        kk.type = 'button'; kk.disabled = busy;
+        kk.title = 'Sacarlo de la sala o cerrarle la app ahora (sin tocar su clave).';
+        kk.addEventListener('click', () => kickDialog(m));
+        acts.prepend(kk);
+      }
       if (m.online && m.room && !m.self) who.append(goBtn(m, 'cap__btn cap__btn--sm cap__go'));
       row.append(av, who, ver, acts);
       table.append(row);
@@ -458,6 +491,7 @@
       mk(m.rep ? 'Informes: sí' : 'Informes: no', async () => { if (await act({ type: 'setReports', name: m.name, value: !m.rep })) flash('Listo.'); }, m.rep);
       if (!isSoc) mk(m.host ? 'Hostea: sí' : 'Hostea: no', async () => { if (await act({ type: 'setHost', name: m.name, value: !m.host })) flash('Listo.'); }, m.host);
       mk(m.voz ? 'Voz: sí' : 'Voz: no', async () => { if (await act({ type: 'setVoice', name: m.name, value: !m.voz })) flash('Listo.'); }, m.voz);
+      if (m.online) mk('Sacar ahora…', () => kickDialog(m));
       mk('Liberar PC', async () => { if (await act({ type: 'resetDevice', name: m.name })) { flash(`PC de ${m.name} liberada.`); loadPerson(m.name); } });
       mk('Clave nueva', () => newKey(m.name));
       q.append(acts);

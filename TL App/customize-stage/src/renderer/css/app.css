@@ -8865,3 +8865,14 @@ html[data-scheme="light"] .vhud__p, html[data-scheme="light"] .vhud__me { color:
   .page[data-page="musica"] .mus__sws { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .page[data-page="musica"] .sp__pls { grid-auto-columns: calc((100% - 3 * 14px) / 4); }
 }
+
+/* Aviso: el admin te sacó de la sala / cerró la app */
+.kicknote { position: fixed; inset: 0; z-index: 9999; display: grid; place-items: center; background: rgb(4 8 18 / 72%); backdrop-filter: blur(6px); animation: kicknoteIn .25s ease-out; }
+.kicknote__card { display: flex; flex-direction: column; align-items: center; gap: 10px; max-width: 420px; padding: 28px 32px; text-align: center; border-radius: 22px; border: 1px solid rgb(255 255 255 / 12%); background: linear-gradient(165deg, #1b2740, #111a2c); box-shadow: 0 30px 70px -20px rgb(0 0 0 / 80%); }
+.kicknote__card b { font-size: 20px; }
+.kicknote__card p { margin: 0; color: var(--text-dim); }
+.kicknote__card small { color: var(--text-dim); }
+.kicknote__card .btn { margin-top: 8px; }
+@keyframes kicknoteIn { from { opacity: 0; } }
+.cap__btn--kick { background: #c0392b; color: #fff; border: 1px solid transparent; }
+.cap__btn--kick:not(:disabled):hover { background: #e04a3a; }

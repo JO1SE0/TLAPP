@@ -208,7 +208,9 @@ contextBridge.exposeInMainWorld('tvm', {
     do: (action) => call('admin:do', action),
     person: (name) => call('admin:person', name),
     clearAttempts: () => call('admin:clear-attempts'),
-    pending: () => call('admin:pending')
+    pending: () => call('admin:pending'),
+    /** El admin me sacó: `cb({ mode: 'room' | 'app', why })`. */
+    onKick: (cb) => on('kick:now', cb)
   },
 
   club: {

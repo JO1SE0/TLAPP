@@ -649,4 +649,4 @@ async function profileOf(ctx, pid) {
   return out;
 }
 
-module.exports = { profileOf, watchRoom, stopWatch, peersNow, putAvatar, avatarOf, avatarHash, sseParser, applyEvent, looksProblem, putStats, readStats, call, online, leaveOnline, why: () => why, leave, beat, cleanUrl, signedText, EVERY_MS, ALIVE_MS };
+module.exports = { netOpen, profileOf, watchRoom, stopWatch, peersNow, putAvatar, avatarOf, avatarHash, sseParser, applyEvent, looksProblem, putStats, readStats, call, online, leaveOnline, why: () => why, leave, beat, cleanUrl, signedText, EVERY_MS, ALIVE_MS };

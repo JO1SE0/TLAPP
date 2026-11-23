@@ -10824,6 +10824,44 @@ function isLoadingVisible() {
  * —el webview todavía no montado, por ejemplo—, el jugador igual sale de la
  * pantalla trabada, que es de lo que se trata.
  */
+/**
+ * El admin me sacó (ver main/kick.js). De la sala: se vuelve a la lista de
+ * salas. De la app: se avisa y la app se cierra sola a los pocos segundos.
+ * No se toca la clave: se puede volver a entrar.
+ */
+function onKicked(k) {
+  const app = k && k.mode === 'app';
+  try {
+    state.autoJoin = null; autoJoinArmed = null; stopAutoJoinPoll();
+    if (state.stage === 'game') { hideLoading(); setStage('browser'); setView('play'); syncJoinButton(); tvm.rooms.leave().catch(() => {}); }
+  } catch (e) { /* igual se avisa */ }
+  document.getElementById('kickNote')?.remove();
+  const box = document.createElement('div');
+  box.id = 'kickNote';
+  box.className = 'kicknote';
+  const card = document.createElement('div');
+  card.className = 'kicknote__card';
+  const h = document.createElement('b');
+  h.textContent = app ? 'El admin cerró tu app' : 'El admin te sacó de la sala';
+  const p = document.createElement('p');
+  p.textContent = k && k.why ? `Motivo: ${k.why}` : (app ? 'Podés volver a abrirla cuando quieras.' : 'Podés seguir usando la app.');
+  card.append(h, p);
+  if (app) {
+    const c = document.createElement('small');
+    let n = 6;
+    const tick = () => { c.textContent = `Se cierra en ${n} s…`; n--; };
+    tick(); setInterval(tick, 1000);
+    card.append(c);
+  } else {
+    const ok = document.createElement('button');
+    ok.type = 'button'; ok.className = 'btn'; ok.textContent = 'Entendido';
+    ok.addEventListener('click', () => box.remove());
+    card.append(ok);
+  }
+  box.append(card);
+  document.body.append(box);
+}
+
 function cancelConnecting() {
   autoJoinArmed = null;
   state.autoJoin = null;
@@ -11704,6 +11742,7 @@ async function boot() {
     tvm.access.onChange(onAccess);
     onAccess(await tvm.access.status());
   } catch (e) { /* sin lista de acceso: la app abre normal */ }
+  try { tvm.admin.onKick(onKicked); } catch (e) { /* versión vieja del puente */ }
 
   // Recién acá se sabe el idioma y la versión: hasta este punto la pantalla de
   // carga muestra el texto que trae el HTML.

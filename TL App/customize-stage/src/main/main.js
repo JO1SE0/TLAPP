@@ -2308,7 +2308,16 @@ if (!app.requestSingleInstanceLock()) {
     firstProbe = probeHaxball().catch(() => ({ down: false, reason: '' }));
     accessReady = access.init(app.getPath('userData'), (st) => {
       if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('access:changed', st);
+      try { require('./kick').sync(); } catch { /* sin red */ }
     }, app.getVersion()).catch(() => {});
+    // El admin puede sacar a alguien de la sala o cerrarle la app (ver kick.js).
+    accessReady.then(() => {
+      require('./kick').init(app.getPath('userData'), (k) => {
+        logToApp('info', `El admin ${k.mode === 'app' ? 'cerró la app' : 'te sacó de la sala'}${k.why ? `: ${k.why}` : ''}`);
+        if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('kick:now', k);
+        if (k.mode === 'app') setTimeout(() => app.quit(), 7000);
+      });
+    }).catch(() => {});
     createWindow();
     const syncActiveDisplay = () => {
       if (!mainWindow || mainWindow.isDestroyed()) return;

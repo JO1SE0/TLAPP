@@ -9,6 +9,7 @@
 const identity = require('./identity');
 const presence = require('./presence');
 const access = require('./access');
+const kick = require('./kick');
 
 const ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // sin 0/O/1/I
 const crypto = require('crypto');
@@ -51,6 +52,7 @@ function describe(action, extra) {
       return { text: `${to ? `Mensaje a ${to}` : action.urgent ? 'Aviso URGENTE' : 'Aviso'}: ${cleanText(action.title || action.text, 50)}${when}`, who: to };
     }
     case 'removeNotice': return { text: 'Borró un aviso', who: '' };
+    case 'kick': return { text: `${action.mode === 'app' ? `Le cerró la app a ${n}` : `Sacó a ${n} de la sala`}${cleanText(action.why, 120) ? ` («${cleanText(action.why, 120)}»)` : ''}`, who: n };
     default: return { text: String(action.type || 'Acción'), who: '' };
   }
 }
@@ -180,6 +182,8 @@ function applyAction(cur, action, myPub) {
     case 'setEnabled':
       doc.enabled = action.value === true;
       break;
+    case 'kick': // no cambia la lista: sólo queda anotado en el historial
+      break;
     case 'addNotice': {
       const text = cleanText(action.text, 600);
       if (!text) throw new Error('Escribí el texto del aviso.');
@@ -234,6 +238,7 @@ async function run(action) {
   let doc;
   let extra = null;
   let entry;
+  if (action && action.type === 'kick') await kick.send(action.name, action.mode, action.why);
   if (action && action.type === 'undo') {
     if (!undoInfo()) throw new Error('Ya no hay nada para deshacer.');
     doc = { ...JSON.parse(JSON.stringify(undoSnap.snap)) };
@@ -250,7 +255,7 @@ async function run(action) {
   const raw = { p, s: id.sign(p) };
   await presence.call(`${url}/admin/state.json`, 'PUT', raw);
   await access.adoptAdmin(raw);
-  undoSnap = action.type === 'undo' ? null : { snap: before, label: entry.text, who: entry.who, at: Date.now() };
+  if (action.type !== 'kick') undoSnap = action.type === 'undo' ? null : { snap: before, label: entry.text, who: entry.who, at: Date.now() };
   // Liberada la PC o cambiada la clave, la alerta ya no corresponde.
   if (action.type === 'resetDevice' || action.type === 'changeKey') {
     const pid = alertPid();
