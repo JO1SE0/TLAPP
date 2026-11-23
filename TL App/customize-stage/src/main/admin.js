@@ -10,6 +10,8 @@ const identity = require('./identity');
 const presence = require('./presence');
 const access = require('./access');
 const kick = require('./kick');
+/** Tope de admin/state/p en las reglas de Firebase (dejar un poco de margen). */
+const STATE_MAX = 58000;
 
 const ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // sin 0/O/1/I
 const crypto = require('crypto');
@@ -251,7 +253,15 @@ async function run(action) {
   doc.history = [...(doc.history || []), { t: Date.now(), text: entry.text, who: entry.who }].slice(-200);
   doc.seq = (cur.seq || 0) + 1;
   doc.ts = Date.now();
-  const p = JSON.stringify(doc);
+  // La base acepta hasta STATE_MAX caracteres (reglas: admin/state/p). Con mucho
+  // plantel y mucho historial se podía pasar y el cambio fallaba: se recorta el
+  // historial (lo más viejo) hasta que entre.
+  let p = JSON.stringify(doc);
+  while (p.length > STATE_MAX && doc.history.length > 20) {
+    doc.history = doc.history.slice(Math.ceil(doc.history.length / 4));
+    p = JSON.stringify(doc);
+  }
+  if (p.length > STATE_MAX) throw new Error('La lista del club quedó demasiado grande para la base. Borrá avisos viejos o gente de «Quitados».');
   const raw = { p, s: id.sign(p) };
   await presence.call(`${url}/admin/state.json`, 'PUT', raw);
   await access.adoptAdmin(raw);
