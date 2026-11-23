@@ -9588,14 +9588,23 @@ function envBoundsFor(stadium, bg) {
 
 /** Lo que se ve de la cancha, en unidades: para no dibujar lo de afuera de la pantalla. */
 const envVis = { x0: 0, y0: 0, x1: 0, y1: 0 };
+/** Las opciones del estadio vivo: un solo objeto que se reusa en cada cuadro. */
+const envAliveOpts = {};
 function paintEnvAlive(ctx) {
   const reg = env.hot ? env.regHot : env.regNormal;
   if (!reg) return;
   const cv = ctx.canvas;
-  const inv = ctx.getTransform().inverse();
+  // Lo que se ve de la cancha, sin armar matrices ni listas nuevas en cada
+  // cuadro (la basura de memoria es la que hace los microtirones).
+  const m = ctx.getTransform();
+  const det = m.a * m.d - m.b * m.c || 1;
+  const ia = m.d / det, ib = -m.b / det, ic = -m.c / det, id = m.a / det;
+  const ie = -(ia * m.e + ic * m.f), iff = -(ib * m.e + id * m.f);
+  const W = cv.width, H = cv.height;
   let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
-  for (const [px, py] of [[0, 0], [cv.width, 0], [0, cv.height], [cv.width, cv.height]]) {
-    const x = inv.a * px + inv.c * py + inv.e, y = inv.b * px + inv.d * py + inv.f;
+  for (let k = 0; k < 4; k++) {
+    const px = k & 1 ? W : 0, py = k & 2 ? H : 0;
+    const x = ia * px + ic * py + ie, y = ib * px + id * py + iff;
     if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y;
   }
   envVis.x0 = x0; envVis.y0 = y0; envVis.x1 = x1; envVis.y1 = y1;
@@ -9606,7 +9615,10 @@ function paintEnvAlive(ctx) {
   const ball = t0 - liveBall.t < 500 ? liveBall : null;
   const since = t0 - env.startAt;
   const welcome = c.envWelcome !== false && since >= 0 && since < 4500 ? since / 4500 : 0;
-  pitchEnv.paintAlive(ctx, visual.env, env.bounds, t0, reg, { cheer: env.cheer, hot: env.hot, mirror: env.mirror, weather: L.weather, night: L.night, kits: L.kits, fireworks: L.fireworks, tifo: L.tifo, myTeam: L.fresaTeam, ball, welcome }, envVis);
+  const o = envAliveOpts;
+  o.cheer = env.cheer; o.hot = env.hot; o.mirror = env.mirror; o.weather = L.weather; o.night = L.night;
+  o.kits = L.kits; o.fireworks = L.fireworks; o.tifo = L.tifo; o.myTeam = L.fresaTeam; o.ball = ball; o.welcome = welcome;
+  pitchEnv.paintAlive(ctx, visual.env, env.bounds, t0, reg, o, envVis);
   // El festejo del gol (papelitos, bengalas) dura 3 s: no cuenta como compu lenta.
   if (!env.hot && !welcome) envSlowNote(performance.now() - t0);
 }

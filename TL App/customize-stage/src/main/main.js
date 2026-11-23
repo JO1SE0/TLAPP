@@ -1381,14 +1381,37 @@ function uiScaleWanted() {
   return Math.round(clamped * 20) / 20;
 }
 
+/**
+ * Ventana chica = todo más chico, como una pantalla completa en miniatura.
+ * Sin esto, al achicar la ventana la interfaz y el juego (sala, marcador,
+ * cancha) quedaban del mismo tamaño que en pantalla completa y no entraban:
+ * se veía «estirado». Con la ventana maximizada o en pantalla completa es 1.
+ */
+function windowFit() {
+  try {
+    if (!mainWindow || mainWindow.isDestroyed()) return 1;
+    if (store.get().appearance.scaleWithWindow === false) return 1;
+    if (windowFullscreen || mainWindow.isFullScreen() || mainWindow.isMaximized()) return 1;
+    const [w, h] = mainWindow.getContentSize();
+    const d = currentDisplayState();
+    if (!d || !d.workArea.width || !d.workArea.height || !w || !h) return 1;
+    // Contra el área útil (sin la barra de tareas): ahí entra una ventana maximizada.
+    const fit = Math.min(w / d.workArea.width, h / d.workArea.height);
+    return Math.max(0.5, Math.min(1, Math.round(fit * 20) / 20));
+  } catch { return 1; }
+}
+let appliedWindowFit = 1;
+
 function applyUiScale() {
   if (!mainWindow || mainWindow.isDestroyed()) return;
-  const wanted = uiScaleWanted();
+  const fit = windowFit();
+  const wanted = Math.round(uiScaleWanted() * fit * 100) / 100;
   try {
     if (Math.abs(mainWindow.webContents.getZoomFactor() - wanted) > 0.001) {
       mainWindow.webContents.setZoomFactor(wanted);
     }
   } catch { return; }
+  if (fit !== appliedWindowFit) { appliedWindowFit = fit; applyGameZoom(); }
   if (wanted !== appliedUiScale) {
     appliedUiScale = wanted;
     emitWindowState();
@@ -1722,21 +1745,26 @@ function createWindow() {
     display: currentDisplayState(),
     uiScale: appliedUiScale
   });
-  mainWindow.on('maximize', () => { emitWindowState(); saveWindowState(); });
-  mainWindow.on('unmaximize', () => { emitWindowState(); saveWindowState(); });
+  // Achicar/agrandar la ventana: se reacomoda el tamaño de todo (ver windowFit).
+  let fitTimer = null;
+  const refit = () => { clearTimeout(fitTimer); fitTimer = setTimeout(() => { applyUiScale(); emitWindowState(); }, 150); };
+  mainWindow.on('maximize', () => { emitWindowState(); saveWindowState(); refit(); });
+  mainWindow.on('unmaximize', () => { emitWindowState(); saveWindowState(); refit(); });
   // Red de seguridad si el SO o DevTools activa el fullscreen nativo: el estado
   // no puede quedar distinto del que ve el usuario.
   mainWindow.on('enter-full-screen', () => {
     windowFullscreen = true;
+    refit();
     emitWindowState();
     repaintWindowSoon();
   });
   mainWindow.on('leave-full-screen', () => {
     windowFullscreen = false;
+    refit();
     emitWindowState();
     repaintWindowSoon();
   });
-  mainWindow.on('resize', saveWindowState);
+  mainWindow.on('resize', () => { saveWindowState(); refit(); });
   let displayMoveTimer = null;
   mainWindow.on('move', () => {
     saveWindowState();
@@ -2080,8 +2108,10 @@ function applyGameZoom() {
   for (const contents of gameTabs) {
     if (contents.isDestroyed()) continue;
     try {
-      // Render at native pixel density. Only the game's world/camera scale changes.
-      if (contents.getZoomFactor() !== 1) contents.setZoomFactor(1);
+      // A 100 % de densidad de píxeles; sólo con la ventana achicada se achica
+      // junto con ella (ver `windowFit`), igual que la interfaz.
+      const z = appliedWindowFit || 1;
+      if (Math.abs(contents.getZoomFactor() - z) > 0.001) contents.setZoomFactor(z);
       contents.send('game:zoom-factor', ZOOM_STEPS[gameZoomIndex()]);
     } catch (err) { logToApp('warn', 'No se pudo aplicar el zoom: ' + err.message); }
   }

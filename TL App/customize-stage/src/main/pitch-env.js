@@ -4001,12 +4001,19 @@ function paintEnv(ctx, id, bounds, o = {}) {
   const k = envK(bounds);
   return scaledCall(ctx, k, () => paintEnvU(ctx, id, shrink(bounds, k), o));
 }
+// Cancha grande: lo que se pasa por cuadro se reusa (sin objetos nuevos cada vez).
+const AL = { b: null, bk: 0, bs: null, v: { x0: 0, y0: 0, x1: 0, y1: 0 }, o: {}, ball: { x: 0, y: 0 } };
 function paintAlive(ctx, id, bounds, t, reg, o = {}, vis = null) {
   const k = envK(bounds);
   if (k === 1) return paintAliveU(ctx, id, bounds, t, reg, o, vis);
-  const v = vis ? { x0: vis.x0 / k, y0: vis.y0 / k, x1: vis.x1 / k, y1: vis.y1 / k } : vis;
-  const o2 = o.ball ? { ...o, ball: { x: o.ball.x / k, y: o.ball.y / k } } : o;
-  return scaledCall(ctx, k, () => paintAliveU(ctx, id, shrink(bounds, k), t, reg, o2, v));
+  if (AL.b !== bounds || AL.bk !== k || !AL.bs || AL.bs.halfW !== bounds.halfW / k) { AL.b = bounds; AL.bk = k; AL.bs = shrink(bounds, k); }
+  let v = null;
+  if (vis) { v = AL.v; v.x0 = vis.x0 / k; v.y0 = vis.y0 / k; v.x1 = vis.x1 / k; v.y1 = vis.y1 / k; }
+  let o2 = o;
+  if (o.ball) { o2 = Object.assign(AL.o, o); AL.ball.x = o.ball.x / k; AL.ball.y = o.ball.y / k; o2.ball = AL.ball; }
+  ctx.save();
+  ctx.scale(k, k);
+  try { return paintAliveU(ctx, id, AL.bs, t, reg, o2, v); } finally { ctx.restore(); }
 }
 function extent(bounds) {
   const k = envK(bounds);

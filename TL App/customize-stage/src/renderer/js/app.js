@@ -14086,6 +14086,21 @@ function paintScale() {
     b.textContent = en ? d[2] : d[1];
     return b;
   }));
+  // Con la ventana achicada, todo se achica con ella (ver windowFit en main.js).
+  let win = document.getElementById('scaleWin');
+  if (!win) {
+    win = document.createElement('button');
+    win.type = 'button'; win.id = 'scaleWin'; win.className = 'chip';
+    win.style.marginTop = '10px';
+    win.addEventListener('click', () => {
+      const on = state.config.appearance.scaleWithWindow !== false;
+      patchConfig({ appearance: { scaleWithWindow: !on } }).then(paintScale);
+    });
+    host.after(win);
+  }
+  const on = state.config.appearance.scaleWithWindow !== false;
+  win.classList.toggle('is-active', on);
+  win.textContent = (en ? 'Shrink with the window: ' : 'Achicar junto con la ventana: ') + (on ? (en ? 'on' : 'sí') : 'no');
 }
 $('#scaleChips').addEventListener('click', (e) => {
   const b = e.target.closest('[data-scale]');

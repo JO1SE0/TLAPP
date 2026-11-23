@@ -115,6 +115,8 @@ const DEFAULTS = {
     spotifyInApp: true,
     // Tamaño de la interfaz: 'auto' (según el monitor) o un porcentaje fijo (60–150).
     uiScale: 'auto',
+    /** Con la ventana achicada, la interfaz y el juego se achican con ella (como una pantalla completa en chico). */
+    scaleWithWindow: true,
     /** Estructura de la interfaz: classic | top (barra superior) | dock (dock flotante). */
     layout: 'classic',
     /** Alto de las filas de la lista de salas: dense | normal | large. */
