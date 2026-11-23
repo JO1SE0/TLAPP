@@ -8876,3 +8876,24 @@ html[data-scheme="light"] .vhud__p, html[data-scheme="light"] .vhud__me { color:
 @keyframes kicknoteIn { from { opacity: 0; } }
 .cap__btn--kick { background: #c0392b; color: #fff; border: 1px solid transparent; }
 .cap__btn--kick:not(:disabled):hover { background: #e04a3a; }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   Jugando, la interfaz de atrás no se mueve NADA.
+   Cualquier animación infinita que quede corriendo (las barritas de la música,
+   el fondo que se desliza detrás del juego, el punto de la pestaña) obliga a
+   la interfaz a fabricar cuadros sin parar: con FPS sin límite eso son cientos
+   por segundo peleándole la placa al juego, y en video integrado se nota en
+   los FPS y en el retardo. Al volver al menú arrancan solas otra vez.
+   ═══════════════════════════════════════════════════════════════════════ */
+.app[data-stage="game"] .eq i,
+.app[data-stage="game"] .gametab__dot,
+.app[data-stage="game"] .browser::before,
+.app[data-stage="game"] .browser::after,
+.app[data-stage="game"] .ambient::before,
+.app[data-stage="game"] .ambient::after,
+.app[data-stage="game"] .brand__crest,
+.app[data-stage="game"] .brand__crest::after,
+.app[data-stage="game"] .np__marq b,
+.app[data-stage="game"] .nowplaying::before { animation: none !important; }
+html[data-stage="game"] .ambient::before,
+html[data-stage="game"] .ambient::after { animation: none !important; }
