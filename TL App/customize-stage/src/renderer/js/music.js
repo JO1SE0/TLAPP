@@ -311,7 +311,8 @@
     S.timer = 0;
     if (!S.on || M.inGame) return;
     if (!document.hidden) sRead();
-    S.timer = setTimeout(sLoop, document.hidden ? 5000 : 1500);
+    // En pausa se pregunta menos (el tiempo avanza solo mientras suena).
+    S.timer = setTimeout(sLoop, document.hidden ? 5000 : S.playing ? 1500 : 4000);
   }
   /** Orden por la API; `false` si no se pudo (sin Premium, sin dispositivo…). */
   async function sApi(name, arg) {

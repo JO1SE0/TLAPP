@@ -1695,7 +1695,7 @@ function sprite(key, r, draw) {
   key = LIVE.pk + key;
   let sp = SPRITES.get(key);
   if (sp) return sp;
-  if (SPRITES.size > 260) SPRITES.clear();
+  if (SPRITES.size > 420) SPRITES.clear();
   const px = Math.ceil(r * 2 * S_PX);
   const cv = mkCanvas(px, px);
   const g = cv.getContext('2d');
@@ -1774,6 +1774,10 @@ function ledStrip(text, w, h, hot) {
 function aliveLed(ctx, L, t, mirror) {
   const st = ledStrip(L.text, L.w, L.h, L.hot);
   const off = ((t / 1000) * 34) % st.unit;
+  if (!L.vertical && !mirror) {
+    ctx.drawImage(st.cv, (off + 1) * S_PX, S_PX, (L.w - 2) * S_PX, (L.h - 2) * S_PX, L.x + 1, L.y + 1, L.w - 2, L.h - 2);
+    return;
+  }
   ctx.save();
   if (L.vertical) { ctx.translate(L.x + L.h, L.y); ctx.rotate(Math.PI / 2); } else ctx.translate(L.x, L.y);
   if (mirror && !L.vertical) { ctx.translate(L.w, 0); ctx.scale(-1, 1); }
@@ -1798,7 +1802,9 @@ function hash01(n) {
  */
 const BLOCKS = new Map();
 let blocksScene = '';
-const B_PX = 1.6;
+// Resolución de los bloques de gente: la de la pantalla (ver paintAliveU), así
+// se pegan casi 1 a 1 y el navegador no tiene que achicar ni agrandar en cada cuadro.
+let B_PX = 1.6;
 
 function crowdBlock(B, mode, tag) {
   const key = `${B.seed}|${B.density}|${mode}|${tag}`;
@@ -1840,9 +1846,24 @@ function crowdBlock(B, mode, tag) {
 function drawBlock(ctx, bl, dy = 0) {
   ctx.drawImage(bl.cv, bl.x, bl.y + dy, bl.w, bl.h);
 }
+/** Sólo la franja de x0 a x1 del bloque (la ola, la mitad que festeja): sin clip. */
+function drawBlockPart(ctx, bl, x0, x1, dy = 0) {
+  const a = Math.max(bl.x, x0), b = Math.min(bl.x + bl.w, x1);
+  if (!(b > a)) return;
+  const k = bl.cv.width / bl.w;
+  ctx.drawImage(bl.cv, (a - bl.x) * k, 0, (b - a) * k, bl.cv.height, a, bl.y + dy, b - a, bl.h);
+}
 
-function flagWave(ctx, x, y, color, color2, t) {
-  const w = Math.sin(t / 260 + x) * 4, w2 = Math.sin(t / 260 + x + 1.4) * 4;
+const TAU = Math.PI * 2;
+/** Bandera flameando: 16 dibujos por vuelta guardados como imagen; en cada cuadro se pega el que toca. */
+function flagWave(ctx, x, y, color, color2, t, sc = 1) {
+  const q = Math.floor(((((t / 260 + x) % TAU) + TAU) % TAU) / TAU * 16) % 16;
+  const sp = sprite(`fw${color}|${color2}|${q}`, 19, (g) => flagWaveRaw(g, -14, -3, color, color2, (q / 16) * TAU));
+  const r = sp.r * sc;
+  ctx.drawImage(sp.cv, x + 14 * sc - r, y + 3 * sc - r, r * 2, r * 2);
+}
+function flagWaveRaw(ctx, x, y, color, color2, ph) {
+  const w = Math.sin(ph) * 4, w2 = Math.sin(ph + 1.4) * 4;
   ctx.fillStyle = 'rgba(0,0,0,0.25)';
   ctx.beginPath(); ctx.ellipse(x + 16, y + 6, 16, 5, 0, 0, 7); ctx.fill();
   ctx.fillStyle = color;
@@ -1882,7 +1903,9 @@ function paintAliveU(ctx, id, bounds, t, reg, o = {}, vis = null) {
     ctx.clip('evenodd');
     // La tribuna: respira (A/B), pasa la ola cada tanto y en el gol salta la del que metió.
     const tag = `${LIVE.wet ? 'w' : ''}${LIVE.snow ? 's' : ''}${night ? 'n' : ''}${LIVE.pk}`;
-    if (blocksScene !== id + tag) { BLOCKS.clear(); blocksScene = id + tag; }
+    const m = ctx.getTransform();
+    const px = Math.min(3, Math.max(0.75, Math.round(Math.hypot(m.a, m.b) * 4) / 4));
+    if (blocksScene !== id + tag + px) { BLOCKS.clear(); blocksScene = id + tag + px; B_PX = px; }
     const beat = Math.floor(t / 420) % 2;
     const wf = (t % 24000) / 24000;
     const waveX = wf < 0.4 ? -W - 300 + (wf / 0.4) * (2 * W + 600) : NaN;
@@ -1893,16 +1916,10 @@ function paintAliveU(ctx, id, bounds, t, reg, o = {}, vis = null) {
       // Festejo: la mitad del que metió, toda arriba y saltando.
       if (cheering) {
         const side = o.cheer === 'Red' ? -1 : 1;
-        ctx.save();
-        ctx.beginPath(); ctx.rect(side < 0 ? B.x0 - 20 : 0, B.y0 - 30, side < 0 ? -B.x0 + 20 : B.x1 + 20, B.y1 - B.y0 + 60); ctx.clip();
-        drawBlock(ctx, crowdBlock(B, 'up', tag), -Math.abs(Math.sin(t / 150)) * 2.5);
-        ctx.restore(); n++;
+        drawBlockPart(ctx, crowdBlock(B, 'up', tag), side < 0 ? -1e9 : 0, side < 0 ? 0 : 1e9, -Math.abs(Math.sin(t / 150)) * 2.5); n++;
       } else if (waveX === waveX && waveX + 50 > B.x0 && waveX - 50 < B.x1) {
         // La ola: una franja que avanza con todos arriba.
-        ctx.save();
-        ctx.beginPath(); ctx.rect(waveX - 50, B.y0 - 30, 100, B.y1 - B.y0 + 60); ctx.clip();
-        drawBlock(ctx, crowdBlock(B, 'up', tag), -2);
-        ctx.restore(); n++;
+        drawBlockPart(ctx, crowdBlock(B, 'up', tag), waveX - 50, waveX + 50, -2); n++;
       }
     }
     // Ganó alguno: su tribuna arma el tifo, con un brillo que la recorre.
@@ -1914,9 +1931,9 @@ function paintAliveU(ctx, id, bounds, t, reg, o = {}, vis = null) {
         const bl = tifoBlock(B, team, tag);
         drawBlock(ctx, bl, Math.round(Math.sin(t / 300 + B.seed) * 2) / 2);
         const bx = B.x0 + ((t / 2400 + hash01(B.seed % 97)) % 1) * (B.x1 - B.x0);
-        ctx.save(); ctx.beginPath(); ctx.rect(bl.x, bl.y, bl.w, bl.h); ctx.clip();
-        ctx.fillStyle = 'rgba(255,255,255,0.16)'; ctx.fillRect(bx - 14, bl.y, 28, bl.h);
-        ctx.restore(); n += 2;
+        const sx0 = Math.max(bl.x, bx - 14), sx1 = Math.min(bl.x + bl.w, bx + 14);
+        if (sx1 > sx0) { ctx.fillStyle = 'rgba(255,255,255,0.16)'; ctx.fillRect(sx0, bl.y, sx1 - sx0, bl.h); }
+        n += 2;
       }
     }
     // Recibimiento: al arrancar el partido, papelitos de los dos lados y banderas grandes.
@@ -1973,9 +1990,7 @@ function paintAliveU(ctx, id, bounds, t, reg, o = {}, vis = null) {
         const team = fx < 0 ? 'Red' : 'Blue';
         // Con el tifo levantado no hay banderazo encima.
         if (o.tifo !== false && o.fireworks === team && tifoOk(B)) continue;
-        ctx.save(); ctx.translate(fx, fy); ctx.scale(1.5, 1.5);
-        flagWave(ctx, 0, 0, team === 'Red' ? RED : BLUE, i % 2 ? '#f4f1ea' : null, t + i * 400);
-        ctx.restore(); n++;
+        flagWave(ctx, fx, fy, team === 'Red' ? RED : BLUE, i % 2 ? '#f4f1ea' : null, t + i * 400 - fx * 260, 1.5); n++;
       }
     }
     // Lamparitas que titilan.

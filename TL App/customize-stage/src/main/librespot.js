@@ -31,12 +31,16 @@ let lastErr = '';
  * arregla desde acá (es del lado de Spotify), así que al verlo se para el
  * reproductor, la música pasa al Spotify de la PC y se vuelve a probar en 12 h.
  */
-const BLOCK_MS = 12 * 60 * 60 * 1000;
+// Spotify no da la llave a ciertas cuentas y no se arregla solo: se reintenta a los 3 días.
+const BLOCK_MS = 3 * 24 * 60 * 60 * 1000;
 let keyErrs = [];
 let onBlocked = () => {};
 const blockFile = () => path.join(cacheDir(), 'sin-llave.json');
+// Se lee del disco una sola vez (antes, en cada consulta de estado).
+let blockMemo = null;
 function blockedUntil() {
-  try { return Number(JSON.parse(fs.readFileSync(blockFile(), 'utf8')).until) || 0; } catch { return 0; }
+  if (blockMemo === null) { try { blockMemo = Number(JSON.parse(fs.readFileSync(blockFile(), 'utf8')).until) || 0; } catch { blockMemo = 0; } }
+  return blockMemo;
 }
 function blocked() { return Date.now() < blockedUntil(); }
 
@@ -74,6 +78,8 @@ function status() {
 /** Arranca el reproductor (si no está andando ya). */
 function start() {
   if (running()) return status();
+  // Con la cuenta bloqueada no se abre: sería un proceso que no puede sonar.
+  if (blocked()) return status();
   if (!available()) { const e = new Error('Falta el reproductor de Spotify en la app'); e.code = 'missing'; throw e; }
   fs.mkdirSync(cacheDir(), { recursive: true });
   const args = [
@@ -85,7 +91,6 @@ function start() {
     '--enable-volume-normalisation',
     '--initial-volume', '70',
     '--backend', 'rodio',
-    '--verbose',
     '--disable-discovery'
   ];
   // Sin sesión guardada: entrar con la cuenta en el navegador (una sola vez).
@@ -110,7 +115,8 @@ function start() {
         keyErrs = keyErrs.filter((t) => now - t < 60000);
         keyErrs.push(now);
         if (keyErrs.length >= 2 && !blocked()) {
-          try { fs.writeFileSync(blockFile(), JSON.stringify({ until: now + BLOCK_MS })); } catch { /* sin disco */ }
+          blockMemo = now + BLOCK_MS;
+          try { fs.writeFileSync(blockFile(), JSON.stringify({ until: blockMemo })); } catch { /* sin disco */ }
           note('librespot: Spotify no da la llave del audio para esta cuenta; pasa al Spotify de la PC');
           keyErrs = [];
           setTimeout(() => { stop(); try { onBlocked(); } catch { /* aviso */ } }, 0);
@@ -139,6 +145,7 @@ function stop() {
 function logout() {
   stop();
   try { fs.rmSync(cacheDir(), { recursive: true, force: true }); } catch { /* nada guardado */ }
+  blockMemo = 0; // otra cuenta puede andar
   return status();
 }
 
