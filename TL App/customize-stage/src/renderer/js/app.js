@@ -3549,8 +3549,9 @@ async function doJoin(tokenOrLink) {
 
 /* ── Auto-entrar ────────────────────────────────────────── */
 function toggleAutoJoin() {
-  if (state.autoJoin) {
+  if (state.autoJoin || autoJoinArmed) {
     autoJoinArmed = null;
+    clearTimeout(autoJoinWatch);
     state.autoJoin = null;
     stopAutoJoinPoll();
     toast(t('rooms.autoJoinOff'), 'ok');
@@ -3560,6 +3561,8 @@ function toggleAutoJoin() {
   if (!state.selected) return;
   const room = (state.rooms.list || []).find((r) => r.token === state.selected);
   state.autoJoin = state.selected;
+  autoJoinName = room ? room.name : '';
+  autoJoinMisses = 0;
   syncJoinButton();
   toast(t('rooms.autoJoinOn', { name: room ? room.name.slice(0, 24) : '' }), 'ok');
   autoJoinFails = 0;
@@ -3580,10 +3583,18 @@ const AUTOJOIN_EVERY = 3000;
 const AUTOJOIN_MAX = 60000;
 let autoJoinTimer = 0;
 let autoJoinFails = 0;
+let autoJoinName = '';   // si la sala se reinicia cambia el enlace: se la busca por nombre
+let autoJoinMisses = 0;  // intentos seguidos que no llegaron a entrar (para no insistir cada 3 s)
+let autoJoinWatch = 0;   // tope de espera de un intento colgado en «Conectando…»
 
 function checkAutoJoin() {
   if (!state.autoJoin || state.stage === 'game') return;
-  const room = (state.rooms.list || []).find((r) => r.token === state.autoJoin);
+  const list = state.rooms.list || [];
+  let room = list.find((r) => r.token === state.autoJoin);
+  if (!room && autoJoinName) {
+    room = list.find((r) => r.name === autoJoinName);
+    if (room) { state.autoJoin = room.token; state.selected = room.token; }
+  }
   if (!room || room.players >= room.maxPlayers) { scheduleAutoJoin(); return; }
   const token = state.autoJoin;
   state.autoJoin = null;
@@ -3597,7 +3608,17 @@ function checkAutoJoin() {
    * vuelve a la lista y se sigue mirando (ver `autoJoinRetry`).
    */
   autoJoinArmed = token;
+  // Si queda colgado conectando (la sala no contesta), se suelta y se sigue esperando.
+  clearTimeout(autoJoinWatch);
+  autoJoinWatch = setTimeout(() => { if (autoJoinArmed === token) autoJoinRetry(); }, 15000);
   doJoin(token).then((ok) => { if (!ok) autoJoinRetry(); }, () => autoJoinRetry());
+}
+
+/** Ya adentro (o la sala pide contraseña): el auto-entrar terminó. */
+function autoJoinDone() {
+  autoJoinArmed = null;
+  autoJoinMisses = 0;
+  clearTimeout(autoJoinWatch);
 }
 
 /** El intento de entrar no llegó a la sala: se vuelve a esperar lugar. */
@@ -3606,6 +3627,8 @@ function autoJoinRetry() {
   const token = autoJoinArmed;
   if (!token) return;
   autoJoinArmed = null;
+  clearTimeout(autoJoinWatch);
+  autoJoinMisses++;
   state.autoJoin = token;
   state.pendingJoin = null;
   hideLoading();
@@ -3625,8 +3648,10 @@ function stopAutoJoinPoll() {
 
 function scheduleAutoJoin() {
   if (!state.autoJoin || autoJoinTimer) return;
-  // Si HaxBall contesta mal, se espera el doble cada vez (hasta un minuto).
-  const wait = Math.min(AUTOJOIN_EVERY * 2 ** autoJoinFails, AUTOJOIN_MAX);
+  // Si HaxBall contesta mal, se espera el doble cada vez (hasta un minuto). Y si
+  // la sala rebota seguido (la lista dice que hay lugar y no lo hay), también se
+  // espera un poco más entre intentos, hasta 20 s.
+  const wait = Math.max(Math.min(AUTOJOIN_EVERY * 2 ** autoJoinFails, AUTOJOIN_MAX), Math.min(AUTOJOIN_EVERY * Math.max(1, autoJoinMisses), 20000));
   autoJoinTimer = setTimeout(pollAutoJoin, wait);
 }
 
@@ -11022,9 +11047,11 @@ function onGameView(kind) {
   else if (kind === 'connecting') showLoading(t('game.connecting'));
   // Auto-entrar: adentro de la sala, cumplido; si la sala lo rechazó (llena), se
   // sigue esperando lugar. Con contraseña no se insiste: hay que escribirla.
+  // Si volvió a la lista de salas del juego, tampoco entró: se reintenta.
   if (autoJoinArmed) {
-    if (kind === 'room' || kind === 'game' || kind === 'password') autoJoinArmed = null;
-    else if (kind === 'disconnected') autoJoinRetry();
+    if (kind === 'room' || kind === 'game') autoJoinDone();
+    else if (kind === 'password') { autoJoinDone(); toast(t('rooms.autoJoinPassword'), ''); }
+    else if (kind === 'disconnected' || kind === 'roomlist') autoJoinRetry();
   }
   pushPresence();
   /*
