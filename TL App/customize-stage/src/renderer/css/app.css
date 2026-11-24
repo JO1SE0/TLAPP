@@ -8897,3 +8897,130 @@ html[data-scheme="light"] .vhud__p, html[data-scheme="light"] .vhud__me { color:
 .app[data-stage="game"] .nowplaying::before { animation: none !important; }
 html[data-stage="game"] .ambient::before,
 html[data-stage="game"] .ambient::after { animation: none !important; }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   INTERFAZ «ESTADIO»  (html[data-skin="estadio"])
+   Estadio de noche de fondo, todo en paneles de vidrio, dorado para lo
+   importante. Es la piel por defecto; «Clásica» la apaga (Personalización).
+   Fuera de esta piel: el encabezado grande no existe y el envoltorio de las
+   salas es transparente para el layout (display: contents).
+   ═══════════════════════════════════════════════════════════════════════ */
+.stadiumbg, .esthero { display: none; }
+.estpanel { display: contents; }
+
+html[data-skin="estadio"] {
+  --est-gold: #ffd76a; --est-gold2: #f5b93a; --est-ink: #1a1405;
+  --est-glass: linear-gradient(160deg, rgb(22 30 48 / 74%), rgb(10 15 26 / 68%));
+  --est-line: rgb(255 255 255 / 13%);
+  --est-shadow: 0 30px 60px -30px rgb(0 0 0 / 85%), inset 0 1px 0 rgb(255 255 255 / 7%);
+  --est-green: #3ddc84;
+}
+/* ── El estadio de fondo (quieto: no cuesta nada) ── */
+html[data-skin="estadio"] .stadiumbg { display: block; position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden;
+  background: radial-gradient(560px 300px at 14% 0, rgb(255 250 220 / 50%), transparent 70%), radial-gradient(560px 300px at 86% 0, rgb(255 250 220 / 45%), transparent 70%),
+    radial-gradient(900px 500px at 50% 110%, rgb(80 170 90 / 32%), transparent 70%), linear-gradient(180deg, #0a1324 0, #0f2038 38%, #173b29 60%, #1f5530 100%); }
+html[data-skin="estadio"] .stadiumbg__beam { position: absolute; top: -40px; width: 420px; height: 700px; background: linear-gradient(180deg, rgb(255 250 220 / 20%), transparent 75%); filter: blur(10px); transform-origin: top; }
+html[data-skin="estadio"] .stadiumbg__beam--l { left: 40px; transform: rotate(-18deg); }
+html[data-skin="estadio"] .stadiumbg__beam--r { right: 40px; transform: rotate(18deg); }
+html[data-skin="estadio"] .stadiumbg__crowd { position: absolute; left: 0; right: 0; top: 40%; height: 17%;
+  background: radial-gradient(circle, rgb(255 255 255 / 20%) 1.2px, transparent 1.7px) 0 0 / 9px 8px, radial-gradient(circle, rgb(230 90 80 / 32%) 1.2px, transparent 1.7px) 4px 3px / 17px 15px,
+    radial-gradient(circle, rgb(90 140 230 / 32%) 1.2px, transparent 1.7px) 9px 6px / 19px 13px, linear-gradient(180deg, #0a1220, #122236); }
+html[data-skin="estadio"] .stadiumbg__grass { position: absolute; left: -15%; right: -15%; top: 57%; bottom: -30%; background: repeating-linear-gradient(90deg, rgb(255 255 255 / 6%) 0 120px, transparent 120px 240px); transform: perspective(520px) rotateX(56deg); transform-origin: top; }
+html[data-skin="estadio"] .stadiumbg::after { content: ''; position: absolute; inset: 0; background: radial-gradient(1200px 700px at 55% 45%, transparent 50%, rgb(0 0 0 / 55%)); }
+/* Jugando no se ve nada de esto (el juego tapa todo y así no se compone). */
+html[data-skin="estadio"][data-stage="game"] .stadiumbg, html[data-skin="estadio"][data-stage="replay"] .stadiumbg { display: none; }
+/* El fondo de la app deja ver el estadio (y se apaga el fondo animado del menú). */
+html[data-skin="estadio"] .ambient { display: none; }
+html[data-skin="estadio"] body, html[data-skin="estadio"] .app { background: transparent; }
+html[data-skin="estadio"] .app { position: relative; z-index: 1; }
+html[data-skin="estadio"] .browser::before, html[data-skin="estadio"] .browser::after { display: none !important; }
+html[data-skin="estadio"] .browser { background: transparent !important; }
+
+/* ── Vidrio común ── */
+html[data-skin="estadio"] .topbar,
+html[data-skin="estadio"] .estpanel, html[data-skin="estadio"] .esthero__side {
+  background: var(--est-glass) !important; border: 1px solid var(--est-line) !important; box-shadow: var(--est-shadow) !important; }
+
+/* ── Barra de arriba ── */
+html[data-skin="estadio"] .topbar { margin: 10px 12px 0; border-radius: 18px !important; }
+html[data-skin="estadio"] .linkbar { border-radius: 99px !important; background: rgb(0 0 0 / 25%) !important; border: 1px solid rgb(255 255 255 / 8%) !important; }
+html[data-skin="estadio"] .linkbar__go { color: var(--est-gold) !important; }
+html[data-skin="estadio"] .toplast, html[data-skin="estadio"] .topchip, html[data-skin="estadio"] .friendsbtn, html[data-skin="estadio"] .audio, html[data-skin="estadio"] .mechip {
+  border-radius: 99px !important; background: rgb(255 255 255 / 7%) !important; border: 1px solid rgb(255 255 255 / 8%) !important; }
+html[data-skin="estadio"] .topchip { color: #9ff0c2 !important; border-color: rgb(62 220 132 / 35%) !important; }
+html[data-skin="estadio"] .topchip__dot { background: var(--est-green) !important; box-shadow: 0 0 10px var(--est-green); }
+html[data-skin="estadio"] .topbar .iconbtn { border-radius: 99px !important; }
+html[data-skin="estadio"] .gametab { border-radius: 99px !important; min-width: 78px; flex-shrink: 0; }
+html[data-skin="estadio"] .gametab.is-active, html[data-skin="estadio"] .gametab[aria-selected="true"] { background: #fff !important; color: #0b1220 !important; }
+html[data-skin="estadio"] .gametabs__add { border-radius: 99px !important; }
+html[data-skin="estadio"] .audio__vol { accent-color: var(--est-gold); }
+html[data-skin="estadio"] .mechip__vip { background: var(--est-gold) !important; color: var(--est-ink) !important; }
+
+/* ── Barra lateral: tarjeta arriba, menú en su panel, el plantel abajo ── */
+html[data-skin="estadio"] .rail { background: transparent !important; border: 0 !important; box-shadow: none !important; gap: 10px; padding: 10px 0 12px 12px; }
+/* Todo el riel es un solo panel de vidrio (por detrás, así no se mueve nada de lugar);
+   la tarjeta y el plantel van adentro, un poco más oscuros. */
+html[data-skin="estadio"] .rail::before { content: ''; position: absolute; inset: 10px 0 12px 12px; z-index: -1; border-radius: 22px; pointer-events: none;
+  background: var(--est-glass); border: 1px solid var(--est-line); box-shadow: var(--est-shadow); }
+html[data-skin="estadio"] .rail > * { margin-left: 8px; margin-right: 8px; }
+html[data-skin="estadio"] .rail > .railedge { margin: 0; }
+html[data-skin="estadio"] .rail > .profcard { order: -2; margin-top: 8px; border-radius: 18px !important; background: rgb(0 0 0 / 22%) !important; border: 1px solid rgb(255 255 255 / 7%) !important; box-shadow: none !important; }
+html[data-skin="estadio"] .rail > .roster { order: 50; margin-bottom: 8px; border-radius: 18px !important; background: rgb(0 0 0 / 22%) !important; border: 0 !important; box-shadow: none !important; }
+html[data-skin="estadio"] .rail__hr { display: none !important; }
+html[data-skin="estadio"] .railitem { border-radius: 12px !important; position: relative; color: #c6cfdf; }
+html[data-skin="estadio"] .railitem.is-active { background: linear-gradient(90deg, rgb(255 215 106 / 24%), rgb(255 215 106 / 4%)) !important; color: #fff !important; }
+html[data-skin="estadio"] .railitem.is-active::before { content: ''; position: absolute; left: 0; top: 8px; bottom: 8px; width: 3px; border-radius: 3px; background: var(--est-gold); }
+html[data-skin="estadio"] .railitem.is-active svg { color: var(--est-gold); stroke: var(--est-gold); }
+html[data-skin="estadio"] .profcard__ring { background: conic-gradient(var(--est-gold) var(--pc-xp, 62%), rgb(255 255 255 / 12%) 0) !important; }
+html[data-skin="estadio"] .profcard__badge { background: var(--est-gold) !important; color: var(--est-ink) !important; }
+html[data-skin="estadio"] .profcard__lvl { color: var(--est-gold) !important; letter-spacing: .2em; }
+html[data-skin="estadio"] .profcard__bar i { background: linear-gradient(90deg, var(--est-gold), var(--est-gold2)) !important; }
+html[data-skin="estadio"] .roster__crest { color: var(--est-gold) !important; }
+
+/* ── El saludo grande y los dos atajos ── */
+html[data-skin="estadio"] .esthero { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; padding: 6px 4px 4px; }
+html[data-skin="estadio"] .esthero__kicker { display: block; font-size: 11px; letter-spacing: .24em; font-weight: 800; color: var(--est-gold); text-transform: uppercase; }
+html[data-skin="estadio"] .esthero__kicker::before { content: '● '; }
+html[data-skin="estadio"] .esthero__title { margin: 8px 0 14px; font-size: clamp(30px, min(4.2vw, 7.4vh), 62px); font-weight: 900; letter-spacing: -.03em; line-height: 1; color: #fff; text-shadow: 0 10px 40px rgb(0 0 0 / 60%); }
+html[data-skin="estadio"] .esthero__title em { font-style: normal; background: linear-gradient(90deg, #ffe28f, var(--est-gold2)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+html[data-skin="estadio"] .esthero__ctas { display: flex; gap: 12px; flex-wrap: wrap; }
+html[data-skin="estadio"] .estcta, html[data-skin="estadio"] .estclub { display: inline-flex; align-items: center; gap: 10px; height: clamp(44px, 6vh, 54px); border-radius: 16px; font: inherit; font-weight: 900; font-size: 15px; cursor: pointer; border: 0; transition: transform .15s var(--ease-ui), filter .15s; }
+html[data-skin="estadio"] .estcta { padding: 0 26px; background: linear-gradient(135deg, #ffe28f, var(--est-gold2)); color: var(--est-ink); box-shadow: 0 16px 40px -12px rgb(255 200 80 / 70%), inset 0 1px 0 rgb(255 255 255 / 60%); }
+html[data-skin="estadio"] .estcta svg, html[data-skin="estadio"] .estclub svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+html[data-skin="estadio"] .estcta:disabled { filter: grayscale(.9) brightness(.7); cursor: default; box-shadow: none; }
+html[data-skin="estadio"] .estcta:not(:disabled):hover, html[data-skin="estadio"] .estclub:hover { transform: translateY(-1px); filter: brightness(1.06); }
+html[data-skin="estadio"] .estclub { padding: 0 18px 0 10px; background: linear-gradient(135deg, rgb(62 220 132 / 26%), rgb(62 220 132 / 10%)); border: 1px solid rgb(62 220 132 / 45%); color: #c8f7dc; }
+html[data-skin="estadio"] .estclub__faces { display: flex; padding-left: 6px; }
+html[data-skin="estadio"] .estclub__faces i { width: 30px; height: 30px; margin-left: -6px; border-radius: 50%; display: grid; place-items: center; font-style: normal; font-size: 11px; font-weight: 900; color: #fff; border: 2px solid #0d1a14; }
+html[data-skin="estadio"] .esthero__side { display: flex; align-items: center; gap: 16px; padding: 12px 18px; border-radius: 18px; flex: none; }
+html[data-skin="estadio"] .estfact { display: grid; gap: 2px; }
+html[data-skin="estadio"] .estfact small { font-size: 10px; letter-spacing: .2em; font-weight: 800; color: #9aa6bf; text-transform: uppercase; }
+html[data-skin="estadio"] .estfact b { font-size: 15px; color: #fff; }
+html[data-skin="estadio"] .estfact:first-child b { color: #9ff0c2; }
+html[data-skin="estadio"] .estfact__sep { width: 1px; height: 30px; background: rgb(255 255 255 / 12%); }
+/* El botón viejo de «Volver a la última sala» y el saludo chico: ya están arriba. */
+html[data-skin="estadio"] #lastRoom, html[data-skin="estadio"] #greet { display: none !important; }
+
+/* ── El panel de las salas ── */
+html[data-skin="estadio"] .browser__shell { gap: 14px; }
+html[data-skin="estadio"] .estpanel { display: flex; flex-direction: column; gap: 10px; min-height: 0; flex: 1; border-radius: 22px; padding: 14px 16px; }
+html[data-skin="estadio"] .estpanel .rpanel { background: transparent !important; border: 0 !important; box-shadow: none !important; }
+html[data-skin="estadio"] .roommode { border-radius: 99px !important; }
+html[data-skin="estadio"] .roommode.is-on { background: #fff !important; color: #0b1220 !important; }
+html[data-skin="estadio"] .rsearch { border-radius: 99px !important; background: rgb(0 0 0 / 25%) !important; border: 1px solid rgb(255 255 255 / 8%) !important; }
+html[data-skin="estadio"] .filterchip, html[data-skin="estadio"] .sortselect, html[data-skin="estadio"] #roomsRefresh { border-radius: 99px !important; }
+html[data-skin="estadio"] .filterchip.is-on { background: #fff !important; color: #0b1220 !important; border-color: #fff !important; }
+html[data-skin="estadio"] .rtable__head { color: #9aa6bf; letter-spacing: .2em; }
+html[data-skin="estadio"] .rrow { border-radius: 14px !important; margin: 2px 0; }
+html[data-skin="estadio"] .rrow:nth-child(even) { background: rgb(255 255 255 / 2.5%); }
+html[data-skin="estadio"] .rrow.is-selected, html[data-skin="estadio"] .rrow[aria-selected="true"] { background: linear-gradient(90deg, rgb(255 215 106 / 18%), rgb(255 255 255 / 4%)) !important; box-shadow: inset 0 0 0 1px rgb(255 215 106 / 45%) !important; }
+html[data-skin="estadio"] .rrow__club { background: rgb(62 220 132 / 18%) !important; color: #9ff0c2 !important; border-radius: 99px !important; }
+html[data-skin="estadio"] .rrow__fav.is-on { color: var(--est-gold) !important; }
+html[data-skin="estadio"] .rpanel__foot { border-top: 0 !important; background: transparent !important; }
+html[data-skin="estadio"] .ghostbtn { border-radius: 99px !important; background: rgb(255 255 255 / 8%) !important; border: 1px solid rgb(255 255 255 / 8%) !important; }
+html[data-skin="estadio"] .joinbtn { border-radius: 16px !important; background: linear-gradient(135deg, #ffe28f, var(--est-gold2)) !important; color: var(--est-ink) !important; font-weight: 900 !important; box-shadow: 0 16px 40px -14px rgb(255 200 80 / 70%) !important; }
+html[data-skin="estadio"] .joinbtn:disabled { filter: grayscale(.8) brightness(.75); box-shadow: none !important; }
+
+/* ── Jugando: las marquitas que dicen dónde llevar el mouse ── */
+html[data-skin="estadio"] .railedge { background: var(--est-gold) !important; box-shadow: 0 0 14px var(--est-gold); }
+html[data-skin="estadio"] .topbar-reveal { background: var(--est-glass) !important; border: 1px solid rgb(255 215 106 / 55%) !important; border-radius: 0 0 14px 14px !important; color: #fff !important; }

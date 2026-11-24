@@ -39,6 +39,8 @@
     <span class="splash__version" id="splashVersion"></span>
   </div>
 
+  <!-- Interfaz «Estadio»: el estadio de noche de fondo (sólo en el menú; jugando no se ve). -->
+  <div class="stadiumbg" aria-hidden="true"><i class="stadiumbg__beam stadiumbg__beam--l"></i><i class="stadiumbg__beam stadiumbg__beam--r"></i><i class="stadiumbg__crowd"></i><i class="stadiumbg__grass"></i></div>
   <div class="ambient" aria-hidden="true">
     <span class="blob blob--1"></span>
     <span class="blob blob--2"></span>
@@ -539,12 +541,30 @@
                arriba de la lista: cuando se te cae la conexión, esto es lo
                único que querés tocar y no tenés que buscar la sala de nuevo
                entre doscientas. -->
+          <!-- Interfaz «Estadio»: el saludo grande y los dos atajos (última sala y
+               donde está jugando el club). En las otras interfaces no se ve. -->
+          <section class="esthero" id="estHero">
+            <div class="esthero__main">
+              <span class="esthero__kicker" id="estKicker"></span>
+              <h1 class="esthero__title" id="estTitle">¿Volvemos a <em>la cancha?</em></h1>
+              <div class="esthero__ctas">
+                <button type="button" class="estcta" id="estLast" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12a8 8 0 1 0 2.4-5.7M4 4v4h4"/></svg><span id="estLastText">Volver a la última sala</span></button>
+                <button type="button" class="estclub" id="estClub" hidden><span class="estclub__faces" id="estClubFaces"></span><span id="estClubText">Ir donde juega el club</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></button>
+              </div>
+            </div>
+            <div class="esthero__side" id="estSide">
+              <span class="estfact"><small id="estFactAL">Del club en línea</small><b id="estFactA">—</b></span>
+              <span class="estfact__sep" aria-hidden="true"></span>
+              <span class="estfact"><small id="estFactBL">Salas abiertas</small><b id="estFactB">—</b></span>
+            </div>
+          </section>
           <button class="btn btn--ghost lastroom" id="lastRoom" hidden>
             <svg data-icon viewBox="0 0 24 24"><path d="M19.7 12a7.7 7.7 0 1 1-2.4-5.5l3.3 3.1M20.8 4.6l-.2 5.2-5.2-.2"/></svg>
             <span data-i18n="rooms.back">Volver a la última sala</span>
             <b id="lastRoomName"></b>
           </button>
 
+          <div class="estpanel" id="estPanel">
           <div class="roommodes" id="roomModes">
             <div class="roommodes__set" role="tablist">
               <button type="button" class="roommode" data-mode="all" data-i18n="rooms.mode.all">Todas</button>
@@ -621,6 +641,7 @@
                 </button>
               </div>
             </footer>
+          </div>
           </div>
         </div>
       </section>
@@ -1042,6 +1063,10 @@
               <div class="row">
                 <div class="row__text"><span class="row__label" id="pwLabel">Ancho de los paneles</span></div>
                 <div class="row__ctl"><div class="chips" id="pwChips"></div></div>
+              </div>
+              <div class="row">
+                <div class="row__text"><span class="row__label" id="skinLabel">Estilo</span><span class="row__desc" id="skinHint"></span></div>
+                <div class="row__ctl"><div class="chips" id="skinChips"></div></div>
               </div>
               <div class="row">
                 <div class="row__text"><span class="row__label" id="rowsLabel">Filas de la lista de salas</span></div>

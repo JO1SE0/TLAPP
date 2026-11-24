@@ -899,6 +899,9 @@ function applyConfig(config) {
   rd.pageTrans = config.appearance.pageTransition || 'fade';
   { const rr = config.appearance.roomRows; const prev = rd.roomRows; if (rr === 'dense' || rr === 'large') rd.roomRows = rr; else delete rd.roomRows; if (prev !== rd.roomRows) { try { if (roomParts) paintRoomWindow(true); } catch (e) { /* aún no hay lista */ } } }
   if (LAYOUT_IDS.includes(config.appearance.layout)) rd.layout = config.appearance.layout; else delete rd.layout;
+  // Interfaz «Estadio»: va con la estructura clásica (riel a la izquierda), que es para la que está armada.
+  if (config.appearance.skin !== 'classic' && !rd.layout) rd.skin = 'estadio'; else delete rd.skin;
+  try { paintEstHero(); } catch (e) { /* todavía no se armó */ }
   if (state.layoutSeen !== rd.layout) {
     state.layoutSeen = rd.layout;
     /* Consola arranca en el Inicio; al salir de ella el Inicio se cierra. */
@@ -2838,6 +2841,7 @@ function roomSkeleton() {
 
 function renderRooms() {
   const summary = $('#roomsSummary');
+  paintEstHero();
 
   if (state.rooms.loading && !state.rooms.list.length) {
     summary.textContent = t('rooms.loading');
@@ -3225,9 +3229,73 @@ function updateClubRooms(list) {
   clubRoomMap.clear();
   for (const [k, v] of next) clubRoomMap.set(k, v);
   paintClubChip();
+  paintEstHero();
   // Sólo se redibuja si la lista de salas está a la vista.
   if (state.view === 'play' && state.stage === 'browser' && state.rooms.list.length) renderRooms();
 }
+
+/* ── Interfaz «Estadio»: el saludo grande y sus dos atajos ──────────────────
+ * «Volver a la última sala» (la misma que el atajo de la barra) e «Ir donde
+ * juega el club» (la sala con más gente del club adentro). Se repinta sólo
+ * cuando cambia algo de eso; con otra interfaz el bloque ni se ve. */
+let estClubOnline = 0;
+let estClubToken = '';
+let estSig = '';
+function estClubRoom() {
+  let best = null;
+  for (const [k, names] of clubRoomMap) {
+    const room = (state.rooms.list || []).find((r) => String(r.name || '').trim().slice(0, 40).toLowerCase() === k);
+    if (!best || names.length > best.names.length) best = { room, names };
+  }
+  return best;
+}
+const EST_COLORS = ['#e2483d', '#3b7be0', '#2fb36b', '#b05be0', '#e08a2f', '#2fb3b3'];
+function paintEstHero() {
+  const hero = document.getElementById('estHero');
+  if (!hero || document.documentElement.dataset.skin !== 'estadio') return;
+  const en = isEn();
+  const greet = document.getElementById('greet');
+  const last = state.lastRoom && state.lastRoom.token ? state.lastRoom : null;
+  const club = estClubRoom();
+  const rooms = (state.rooms.list || []).length;
+  const sig = [en, greet ? greet.textContent : '', last ? last.token + last.name : '', club ? (club.room ? club.room.token : '') + club.names.join(',') : '', rooms, estClubOnline].join('|');
+  if (sig === estSig) return;
+  estSig = sig;
+  $('#estKicker').textContent = greet ? greet.textContent : '';
+  $('#estTitle').innerHTML = en ? 'Back to <em>the pitch?</em>' : '¿Volvemos a <em>la cancha?</em>';
+  const lb = $('#estLast');
+  lb.disabled = !last;
+  $('#estLastText').textContent = en ? 'Back to the last room' : 'Volver a la última sala';
+  lb.title = last ? (last.name || '') : (en ? 'You have not played in any room yet' : 'Todavía no entraste a ninguna sala');
+  const cb = $('#estClub');
+  cb.hidden = !club;
+  estClubToken = club && club.room ? club.room.token : '';
+  if (club) {
+    const n = club.names.length;
+    $('#estClubText').textContent = en ? `Go where the club plays · ${n} in` : `Ir donde juega el club · ${n} adentro`;
+    cb.title = club.room ? club.room.name : club.names.join(', ');
+    $('#estClubFaces').replaceChildren(...club.names.slice(0, 3).map((name, i) => {
+      const f = document.createElement('i');
+      let h = 0; for (const ch of String(name)) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+      f.style.background = EST_COLORS[h % EST_COLORS.length];
+      f.style.zIndex = String(3 - i);
+      f.textContent = String(name).trim().slice(0, 1).toUpperCase() || '?';
+      return f;
+    }));
+  }
+  $('#estFactAL').textContent = en ? 'Club online' : 'Del club en línea';
+  $('#estFactA').textContent = String(estClubOnline);
+  $('#estFactBL').textContent = en ? 'Open rooms' : 'Salas abiertas';
+  $('#estFactB').textContent = rooms ? rooms.toLocaleString(en ? 'en' : 'es') : '—';
+}
+$('#estLast').addEventListener('click', () => {
+  if (state.lastRoom && state.lastRoom.token) joinRoom(state.lastRoom.token);
+});
+$('#estClub').addEventListener('click', () => {
+  if (estClubToken) { joinRoom(estClubToken); return; }
+  const first = $('.rrow.is-club');
+  if (first) first.scrollIntoView({ block: 'center', behavior: 'smooth' });
+});
 
 /** Chip de la barra: cuántos del club están jugando ahora (sólo si hay). */
 function paintClubChip() {
@@ -3498,6 +3566,7 @@ function paintLastRoom(last) {
       nameEl.hidden = !(last && last.name);
     }
   }
+  paintEstHero();
   if (!last || !last.token) return;
   // Sin nombre igual se ofrece: el token alcanza para volver, y decir «la
   // última sala» a secas es mejor que esconder el botón.
@@ -12680,6 +12749,8 @@ function paintRosterOnline(online) {
     li.classList.toggle('is-playing', !!(m && m.room));
   }
   rosterFit(true);
+  estClubOnline = on.size;
+  paintEstHero();
 }
 
 function paintClubNow(list) {
@@ -13430,6 +13501,21 @@ function paintLayout() {
       return b;
     }));
   }
+  const sk = state.config.appearance.skin === 'classic' ? 'classic' : 'estadio';
+  $('#skinLabel').textContent = en ? 'Look' : 'Estilo';
+  $('#skinHint').textContent = en ? 'Stadium goes with the Classic layout.' : 'Estadio va con la interfaz Clásica.';
+  const khost = $('#skinChips');
+  if (khost.dataset.sig !== `${sk}|${en}`) {
+    khost.dataset.sig = `${sk}|${en}`;
+    khost.replaceChildren(...[['estadio', 'Estadio', 'Stadium'], ['classic', 'Clásico', 'Classic']].map((d) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'chip' + (d[0] === sk ? ' is-active' : '');
+      b.dataset.skin = d[0];
+      b.textContent = en ? d[2] : d[1];
+      return b;
+    }));
+  }
   const rr = state.config.appearance.roomRows || 'normal';
   $('#rowsLabel').textContent = en ? 'Room list rows' : 'Filas de la lista de salas';
   const rhost = $('#rowsChips');
@@ -13470,6 +13556,10 @@ function paintLayout() {
 $('#layoutCards').addEventListener('click', (e) => {
   const b = e.target.closest('[data-lay]');
   if (b) patchConfig({ appearance: { layout: b.dataset.lay } });
+});
+$('#skinChips').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-skin]');
+  if (b) patchConfig({ appearance: { skin: b.dataset.skin } });
 });
 $('#rowsChips').addEventListener('click', (e) => {
   const b = e.target.closest('[data-rows]');
@@ -14132,6 +14222,7 @@ function paintGreeting() {
   const nick = String((state.config.general && state.config.general.nickname) || '').trim();
   const text = nick ? `${hi}, ${nick}` : hi;
   if (el.textContent !== text) el.textContent = text;
+  paintEstHero();
 }
 setInterval(paintGreeting, 10 * 60 * 1000);
 
