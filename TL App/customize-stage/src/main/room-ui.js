@@ -723,6 +723,9 @@ function css(p, opts = {}) {
 .room-view .player-list-item.tvm-peer-row.tvm-peer-row.tvm-peer-row [data-hook="name"] { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .room-view .player-list-item.tvm-peer-row.tvm-peer-row.tvm-peer-row .tvm-marks { margin: 0 4px; padding: 1px 4px; gap: 3px; }
 .room-view .player-list-item.tvm-peer-row.tvm-peer-row.tvm-peer-row .tvm-mark { width: 14px; height: 14px; }
+/* La chapita SOCIO es texto: con el ancho fijo de 14 px de arriba quedaba aplastada
+   y cortada («SO…»). Va con su ancho y a la misma altura que las otras insignias. */
+.room-view .player-list-item.tvm-peer-row.tvm-peer-row.tvm-peer-row .tvm-mark--socio { width: auto; min-width: 0; height: 14px; padding: 0 5px; font-size: 8.5px; line-height: 14px; overflow: visible; white-space: nowrap; }
 .room-view .player-list-item.tvm-peer-row.tvm-peer-row.tvm-peer-row [data-hook="ping"] { flex: none; box-sizing: border-box; width: 30px; min-width: 0; padding: 1px 0; text-align: center; font-size: 11px; }
 /* El ping de todas las filas centrado en la misma columna de 30 px, así los
    números quedan uno debajo del otro con o sin tarjeta. */

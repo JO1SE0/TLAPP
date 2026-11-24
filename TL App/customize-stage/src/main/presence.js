@@ -290,11 +290,21 @@ let onlineMarked = false;
 const onlineText = (r, v, x, t) => `online|${r}|${v}|${x}|${t}`;
 const clean = (v, n) => String(v || '').replace(/[\r\n]/g, ' ').slice(0, n);
 
+/*
+ * El reloj de cada PC puede estar corrido. Antes se comparaba la hora que escribió el
+ * otro con la de esta PC: si la de él estaba atrasada o adelantada más de 75 s, figuraba
+ * DESCONECTADO para todos aunque tuviera la app abierta. Ahora:
+ *  · se escribe con la hora de Firebase (la diferencia sale de la cabecera Date), y
+ *  · se lo da por conectado también si su marca CAMBIÓ hace poco, sin mirar relojes
+ *    (como ya hace la lista de la sala). Así anda aunque el otro tenga una versión vieja.
+ */
+let clockSkew = 0;
+const onlineSeen = new Map(); // pid → { t, at } (at = hora de esta PC cuando cambió su marca)
 async function putOnline(ctx, x) {
   const base = cleanUrl(ctx && ctx.url);
   if (!base || !ctx.key) return null;
   const id = idOf(ctx.key);
-  const t = Date.now();
+  const t = Date.now() + clockSkew;
   const r = clean(ctx.room, 40);
   const v = clean(ctx.version, 20);
   await call(`${base}/online/${id.pid}.json`, 'PUT', { t, r, v, x, s: id.sign(onlineText(r, v, x, t)) });
@@ -317,7 +327,7 @@ async function online(ctx) {
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     data = (await res.json()) || {};
     const d = res.headers && res.headers.get ? Date.parse(res.headers.get('date') || '') : NaN;
-    if (isFinite(d)) skew = d - Date.now(); // el reloj de Firebase manda sobre el de esta PC
+    if (isFinite(d)) { skew = d - Date.now(); clockSkew = skew; } // el reloj de Firebase manda sobre el de esta PC
   } finally { clearTimeout(timer); }
   const mine = data[id.pid];
   const prevSelf = mine && typeof mine.t === 'number' ? mine.t : 0;
@@ -339,7 +349,10 @@ async function online(ctx) {
       const x = e.x === 1 ? 1 : 0;
       ok = identity.verify(u.pub, onlineText(r, v, x, e.t), e.s);
       if (ok) {
-        const alive = self || (!x && Math.abs(now - e.t) <= ONLINE_ALIVE_MS);
+        const was = onlineSeen.get(pid);
+        if (!was || was.t !== e.t) onlineSeen.set(pid, { t: e.t, at: was ? Date.now() : 0 });
+        const changedAgo = Date.now() - onlineSeen.get(pid).at;
+        const alive = self || (!x && (Math.abs(now - e.t) <= ONLINE_ALIVE_MS || changedAgo <= ONLINE_ALIVE_MS));
         out.push({ name: u.name, room: alive ? r : '', lastRoom: r, version: self ? clean(ctx.version, 20) : v, lastSeen: self ? Date.now() : e.t, online: alive, self, trial: !!u.trial, rep: !!u.rep, host: !!u.host, ext: !!u.ext, soc: !!u.soc, voz: !!u.voz });
         continue;
       }
