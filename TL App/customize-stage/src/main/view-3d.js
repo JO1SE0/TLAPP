@@ -821,6 +821,8 @@ function install(view, opts = {}) {
   const kitCv = view.document.createElement('canvas');
   kitCv.width = kitCv.height = KIT;
   const kitCtx = kitCv.getContext('2d');
+  // Plana: el tamaño de las fichas y la sombra los pone la 3D, no el gancho del 2D.
+  kitCv.__tvmFlat = true;
   function paintKit(t, L, N, d, pl, check) {
     const rad = d[N.radius] || 15, pos = d[N.pos];
     const k = KIT_R / rad;

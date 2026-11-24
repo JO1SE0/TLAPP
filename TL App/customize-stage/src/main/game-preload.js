@@ -7005,7 +7005,10 @@ function postSprite(ctx, style, color) {
 }
 
 function drawBall(ctx, x, y, r, indice) {
-  const wantSize = indice === 0 && visual.ballSize !== 1;
+  // La tapa de la pelota de la vista 3D (canvas marcado `__tvmFlat`): el tamaño y la
+  // sombra los pone la 3D. Si se hacían acá también, salían dobles (y recortada).
+  const flat3d = !!(ctx.canvas && ctx.canvas.__tvmFlat);
+  const wantSize = indice === 0 && visual.ballSize !== 1 && !flat3d;
   if (wantSize) {
     // El trazo del círculo ya está armado con el radio de HaxBall, y un trazo
     // ya armado no se agranda con la escala: se rehace con el radio nuevo.
@@ -7024,7 +7027,7 @@ function drawBall(ctx, x, y, r, indice) {
       return true;
     }
   }
-  if (visual.shadows && indice === 0 && r > 0) softShadow(ctx, x, y, r, true);
+  if (visual.shadows && indice === 0 && r > 0 && !flat3d) softShadow(ctx, x, y, r, true);
   let handled = false;
   try {
     handled = drawBallInner(ctx, x, y, r, indice);
@@ -7067,7 +7070,7 @@ function drawBallInner(ctx, x, y, r, indice) {
      * centro. El recorte no se mueve: ya quedó fijado contra el círculo, y un
      * círculo espejado es el mismo círculo.
      */
-    if (mirrorOn) {
+    if (mirrorOn && !(ctx.canvas && ctx.canvas.__tvmFlat)) {
       ctx.translate(2 * x, 0);
       ctx.scale(-1, 1);
     }
@@ -13308,9 +13311,12 @@ function installCanvasHooks(doc) {
         this.translate(-pend.x, -pend.y);
         pend.on = false;
       }
-      const k = visual.discSize;
+      // En la tapa de una ficha de la vista 3D (canvas `__tvmFlat`) el tamaño y la
+      // sombra los pone la 3D: acá iban dobles (ficha recortada y sombra pintada encima).
+      const flat3d = !!(this.canvas && this.canvas.__tvmFlat);
+      const k = flat3d ? 1 : visual.discSize;
       // La sombra va antes de agrandar: se agranda junto con la ficha.
-      if (visual.shadows) softShadow(this, x, y, r, false);
+      if (visual.shadows && !flat3d) softShadow(this, x, y, r, false);
       pend.on = true;
       pend.kind = 'disc';
       pend.k = k;
