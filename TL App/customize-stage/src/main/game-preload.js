@@ -2500,9 +2500,9 @@ function buildQuickMenu() {
   });
 
   head('VISTA');
-  seg('Vista', [['2d', 'Normal'], ['vertical', 'Vertical']],
-    () => (cfg().perf.vertical ? 'vertical' : '2d'),
-    (v) => quickSet({ perf: { vertical: v === 'vertical' } }));
+  seg('Vista', [['2d', '2D'], ['vertical', 'Vertical'], ['3d', '3D']],
+    () => (cfg().perf.view3d ? '3d' : cfg().perf.vertical ? 'vertical' : '2d'),
+    (v) => quickSet({ perf: { view3d: v === '3d', vertical: v === 'vertical' } }));
   seg('Lado fijo', [['off', 'No'], ['red', 'Rojo'], ['blue', 'Azul']], () => cfg().pitch.mirror || 'off', (v) => quickSet({ pitch: { mirror: v } }));
   toggle('Gráficos planos', () => cfg().perf.flatGraphics, (v) => quickSet({ perf: { flatGraphics: v } }));
   toggle('Mapa chico', () => cfg().pitch.minimap, (v) => quickSet({ pitch: { minimap: v } }));
@@ -7049,7 +7049,8 @@ function drawBallInner(ctx, x, y, r, indice) {
   if (indice !== 0) return false;
   if (!(r > 0)) return false;
   const animada = ballGifOn();
-  const depth = !!(state.config.pitch && state.config.pitch.ball3d);
+  // En la vista 3D la pelota se dibuja plana: la esfera, el giro y la luz los pone la 3D (ver FS3 en view-3d.js).
+  const depth = !!(state.config.pitch && state.config.pitch.ball3d) && !(ctx.canvas && ctx.canvas.__tvmFlat);
   ballFx3dOn = false;
   if (!animada && !ballImage && !depth) return false;
   if (depth && !ball3dLogged) { ball3dLogged = true; log('info', 'pelota 3D: dibujando', 'juego'); }
@@ -9740,25 +9741,78 @@ function openEnvPreview(doc, start) {
 
 function flushStadiumCache(view) {
   if (view && typeof view.__tvmStadiumFlush === 'function') view.__tvmStadiumFlush();
+  if (view3dApi) view3dApi.refreshFloor();
 }
 
 /*
- * Vista vertical, en vivo y sin reiniciar.
+ * Vistas de la cancha, en vivo y sin reiniciar.
  *
- * Su enganche va siempre en el juego servido, dormido (ver viewsBody en
- * main.js): acá sólo se prende o se apaga la bandera `__tvmVertOn`, que el
- * juego lee en el próximo cuadro (y reacomoda las flechas solo).
+ * Los enganches de las dos van siempre en el juego servido, dormidos (ver
+ * viewsBody en main.js). Acá se despiertan o se duermen cada vez que cambia el
+ * ajuste:
+ *  · 3D (view-3d.js): se arma al prenderla; al apagarla se desarma entera
+ *    (canvas, texturas, flechas) y vuelve a verse el 2D. Apagada, ni se carga.
+ *  · Vertical (vertical-patch.js): una bandera, `__tvmVertOn`. Con la 3D
+ *    prendida no se usa: la 3D tiene su propia cámara Vertical.
  */
+let view3dApi = null;
+let view3dView = null;
 function applyViews(view) {
   if (!view) return;
   const perf = state.config.perf || {};
-  view.__tvmVertOn = !!perf.vertical;
-  // Apagada: las flechas vuelven a las de siempre en el acto.
+  const want3d = !!perf.view3d;
+  if (want3d && (!view3dApi || view3dView !== view)) installView3d(view);
+  if (!want3d && view3dApi) {
+    try { view3dApi.dispose(); } catch (e) { /* ya estaba desarmada */ }
+    view3dApi = null;
+    view3dView = null;
+  }
+  // «Vista vertical» con la 3D prendida es la cámara Vertical de la 3D (detrás de tu arco).
+  if (view3dApi) view3dApi.setCam(perf.vertical ? 'vertical' : perf.view3dCam);
+  // La vertical: el juego la lee en el próximo cuadro y reacomoda las flechas solo.
+  view.__tvmVertOn = !!perf.vertical && !want3d;
+  // Su inclinación (ver TILT en vertical-patch.js): apagada, vuelve sola a plana.
+  view.__tvmTiltOn = view.__tvmVertOn && perf.verticalTilt !== false;
+  /*
+   * Con la 3D dibujando, el cuadro 2D no llega a la parte que actualiza las
+   * flechas de la vertical: si la vertical estaba prendida, las flechas
+   * quedaban giradas (izquierda y derecha subían y bajaban), y con la cámara
+   * Vertical de la 3D se sumaban los dos giros. Se apagan acá, en el acto: en
+   * 3D las flechas las gira sólo la 3D (`__tvm3dRot`).
+   */
   if (!view.__tvmVertOn && (view.__tvmRotKeys || view.__tvmRot)) {
     view.__tvmRot = 0;
     view.__tvmRotKeys = null;
     try { if (view.__tvmInputSync && typeof view.__tvmInputSync.A === 'function') view.__tvmInputSync.A(); } catch (e) { /* nada */ }
   }
+}
+function installView3d(view) {
+  if (!view || view3dView === view) return;
+  view3dView = view;
+  const perf = state.config.perf || {};
+  view3dApi = require('./view-3d').install(view, {
+    cam: perf.vertical ? 'vertical' : perf.view3dCam,
+    // Sin antialias: cuesta ~1/3 del dibujo y medido en partida, sin él suben mucho los FPS.
+    antialias: false,
+    lowLatency: !!perf.lowLatencyCanvas,
+    /* Con «Gráficos planos» la 3D no dibuja la red de los arcos. */
+    flat: () => flatOn(),
+    /* Lo del cliente que en 2D se dibuja aparte y la 3D hace a su manera. */
+    look: () => ({
+      shadows: !!visual.shadows,
+      discSize: visual.discSize,
+      ballSize: visual.ballSize,
+      ringColor: visual.ownRingColor,
+      ringAlpha: visual.ownRingAlpha,
+      ringRadius: visual.ownRingRadius,
+      nameScale: visual.nameScale
+    }),
+    /* ¿La pelota tiene algo del cliente? Entonces la 3D la dibuja con los mismos
+       pasos del 2D (y se ve igual); si no, una esfera simple. */
+    ballCustom: () => !!(ballImage || ballGifOn() || (state.config.pitch && state.config.pitch.ball3d) ||
+      visual.ballStyle !== 'default' || visual.ballColor || visual.ballOutline || visual.ballSize !== 1 || visual.lines),
+    log: (level, message) => log(level, message, 'juego')
+  });
 }
 
 /** Un número de la config, acotado y con respaldo. Entra de afuera. */

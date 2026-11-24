@@ -292,8 +292,8 @@ syncMinimap();
 
   /* ── Lista blanca de main ─────────────────────────────────────── */
   {
-    const ok = [{ visual: { pitchLight: 'vignette' } }, { pitch: { minimap: true, miniSize: 1.2 } }, { visual: { ballColor: '#ecd593' } }, { perf: { vertical: true } }];
-    const no = [{ visual: { pitchLight: 'disco' } }, { visual: { ballColor: 'red;x' } }, { pitch: { matchSummary: 'si' } }, { perf: { view3d: true } }, { voice: { mode: 'open' } }, { pitch: { miniSize: 9 } }];
+    const ok = [{ visual: { pitchLight: 'vignette' } }, { pitch: { minimap: true, miniSize: 1.2 } }, { visual: { ballColor: '#ecd593' } }, { perf: { vertical: true } }, { perf: { view3d: true } }];
+    const no = [{ visual: { pitchLight: 'disco' } }, { visual: { ballColor: 'red;x' } }, { pitch: { matchSummary: 'si' } }, { perf: { view3d: 'si' } }, { voice: { mode: 'open' } }, { pitch: { miniSize: 9 } }];
     const okR = ok.every((pt) => JSON.stringify(cleanQuick(pt)) === JSON.stringify(pt));
     const noR = no.every((pt) => cleanQuick(pt) === null);
     check('main: acepta lo válido y rechaza lo raro', okR && noR, JSON.stringify({ okR, noR }));

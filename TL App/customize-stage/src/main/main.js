@@ -968,11 +968,15 @@ const GAME_BUNDLE_HOST = 'game-bundle';
 let patchedBundles = new Map();
 
 /*
- * Vista vertical: su enganche va SIEMPRE en el juego servido, dormido, para
- * poder prenderla y apagarla en vivo sin reiniciar. La despierta el preload
- * según el ajuste (`window.__tvmVertOn`). Dormida, sólo queda una comprobación
- * de «¿está prendida?» por cuadro, como la del modo espejo: sin costo medible.
- * Si no encaja, el juego se sirve sin ella y la vista simplemente no aparece.
+ * Vista 3D y vista vertical (2D): sus enganches van SIEMPRE en el juego
+ * servido, dormidos, para poder prenderlas y apagarlas en vivo sin reiniciar.
+ * Las despierta el preload según el ajuste (`window.__tvm3d` y
+ * `window.__tvmVertOn`). Dormidos, sólo quedan comprobaciones de «¿está
+ * prendida?» por cuadro, como las del modo espejo: sin costo medible.
+ *
+ * Primero la 3D y después la vertical: la vertical se engancha alrededor del
+ * centro de la pantalla, que la 3D deja intacto. Si alguno no encaja, el juego
+ * se sirve sin él y esa vista simplemente no aparece.
  */
 const viewBundles = new Map();
 function viewsBody(url, body) {
@@ -986,6 +990,11 @@ function viewsBody(url, body) {
     logToApp(rd.applied ? 'info' : 'warn', rd.applied ? 'estilo de ficha compartido enganchado al juego' : `estilo de ficha compartido sin enganchar (${rd.reason})`);
     out = rd.source;
   } catch (err) { logToApp('warn', `estilo de ficha compartido sin enganchar (${err.message})`); }
+  try {
+    const r3 = require('./view-3d-patch').patch3d(out);
+    logToApp(r3.applied ? 'info' : 'warn', r3.applied ? 'vista 3D enganchada al juego' : `vista 3D sin enganchar (${r3.reason})`);
+    out = r3.source;
+  } catch (err) { logToApp('warn', `vista 3D sin enganchar (${err.message})`); }
   try {
     const rv = require('./vertical-patch').patchVertical(out);
     logToApp(rv.applied ? 'info' : 'warn', rv.applied ? 'vista vertical enganchada al juego' : `vista vertical sin enganchar (${rv.reason})`);
@@ -2726,7 +2735,7 @@ handle('cfg:reset', () => broadcastConfig(store.reset()));
  * aceptan ESTAS claves y con valores de su tipo: nada más se puede tocar.
  */
 const QUICK_KEYS = {
-  perf: { vertical: 'bool', flatGraphics: 'bool' },
+  perf: { view3d: 'bool', vertical: 'bool', flatGraphics: 'bool' },
   pitch: { mirror: ['off', 'red', 'blue'], ball3d: 'bool', clubKit: 'bool', clubGlow: 'bool', plainKits: 'bool', minimap: 'bool',
     miniSize: [0.6, 1.6], miniCorner: ['br', 'bl', 'tl'], miniOpacity: [0.3, 1], miniStyle: ['grass', 'dark', 'lines'],
     miniFade: 'bool', miniClub: 'bool', miniBigMe: 'bool', miniBigBall: 'bool', matchSummary: 'bool',
@@ -4147,6 +4156,15 @@ listen('game:log', (_e, payload) => {
   // en el devtools de la interfaz, que es justo el que nadie tiene abierto
   // cuando algo del juego no arranca; la terminal de `npm run dev` sí.
   if (isDev && payload) console.log(`[juego:${payload.level}] ${payload.source}: ${payload.message}`);
+  // Los problemas de la vista 3D quedan en errores.log: sin eso no hay forma de saber
+  // por qué se apagó o se vio negra en la PC de alguien.
+  try {
+    const msg = payload && String(payload.message || '');
+    if (msg.startsWith('vista 3D') && (payload.level === 'warn' || payload.level === 'error')) {
+      const f = crashLogPath();
+      if (f) fs.appendFileSync(f, `[${new Date().toISOString()}] ${msg.slice(0, 400)}\n`, 'utf8');
+    }
+  } catch { /* el log no puede romper nada */ }
   send('game:log', payload);
 });
 /** El preload pide mostrar un aviso: hay un solo sistema de carteles, el de la app. */

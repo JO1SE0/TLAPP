@@ -103,7 +103,7 @@ const PANEL_TABS = {
   ],
   ajustes: [
     { id: 'rapido', group: 'tabg.perf', label: 'tab.quick', hint: 'tab.quickHint', secs: ['perfil', 'respuesta'] },
-    { id: 'graficos', group: 'tabg.perf', label: 'tab.gfx', hint: 'tab.gfxHint', secs: ['graficos', 'vista', 'graficosav'] },
+    { id: 'graficos', group: 'tabg.perf', label: 'tab.gfx', hint: 'tab.gfxHint', secs: ['graficos', 'vista3d', 'graficosav'] },
     { id: 'red', group: 'tabg.perf', label: 'tab.net', hint: 'tab.netHint', secs: ['latencia', 'sistemaperf', 'red'] },
     { id: 'controles', group: 'tabg.game', label: 'tab.controls', hint: 'tab.controlsHint', secs: ['teclas'] },
     { id: 'cliente', group: 'tabg.game', label: 'tab.client', hint: 'tab.clientHint', secs: ['cliente'] },
@@ -127,7 +127,7 @@ const MODAL_SECS = {
 
   // Lo de Rendimiento se muda a Configuración; las líneas y tamaños, a la cancha.
   if (perfPage) {
-    for (const id of ['perfil', 'respuesta', 'graficos', 'vista', 'graficosav', 'red', 'teclas', 'latencia', 'sistemaperf']) {
+    for (const id of ['perfil', 'respuesta', 'graficos', 'vista3d', 'graficosav', 'red', 'teclas', 'latencia', 'sistemaperf']) {
       const sec = $(`[data-sec="${id}"]`, perfPage);
       if (sec) settingsPage.append(sec);
     }
@@ -4401,7 +4401,7 @@ function renderFpsCap() {
 /*
  * ── Modo «PC lenta» ─────────────────────────────────────────────────────
  * Un interruptor que apaga de una vez todo lo VISUAL que cuesta (animaciones,
- * partículas, pelota 3D, destellos, fondo animado, gráficos planos, marcador en
+ * partículas, pelota 3D, vista 3D, destellos, fondo animado, gráficos planos, marcador en
  * la cancha, estilos de ficha y pelota, sombras, cola y aro) y guarda lo
  * que había para poder volver. Al apagarlo se devuelve sólo lo que sigue con el
  * valor que puso el modo: si en el medio tocaste algo a mano, se respeta.
@@ -4413,7 +4413,8 @@ const LOW_END = {
   // guardado en el cache no cuesta por cuadro y se respeta).
   visual: { menuBg: 'none', pitchWeather: 'none', pitchScore: 'none', discStyle: 'default', softShadows: false, selfTrail: false, ringStyle: 'default', ballStyle: 'default' },
   pitch: { ball3d: false, goalFlash: false, goalShake: false },
-  perf: { flatGraphics: true, gpuRasterization: true, zeroCopy: true, highProcessPriority: true, disableBackgroundThrottling: true }
+  // La vista 3D cuesta más que el 2D: el modo PC lenta la apaga (y la devuelve al salir).
+  perf: { flatGraphics: true, gpuRasterization: true, zeroCopy: true, highProcessPriority: true, disableBackgroundThrottling: true, view3d: false }
 };
 
 async function setLowEnd(on) {
@@ -4466,8 +4467,8 @@ function renderLowEnd() {
   const row = settingRow({
     label: en ? 'Low-end PC mode' : 'Modo PC lenta',
     description: en
-      ? 'Turns off what costs FPS in one go: animations, particles, 3D ball, goal flashes, animated menu background, on-pitch score, disc and ball styles, shadows, trail and ring styles, plus flat graphics.'
-      : 'Apaga de una vez lo que cuesta FPS: animaciones, partículas, pelota 3D, destellos de gol, fondo animado del menú, marcador en la cancha, estilos de ficha y pelota, sombras, cola y aro, y pone gráficos planos.',
+      ? 'Turns off what costs FPS in one go: animations, particles, 3D ball, 3D view, goal flashes, animated menu background, on-pitch score, disc and ball styles, shadows, trail and ring styles, plus flat graphics.'
+      : 'Apaga de una vez lo que cuesta FPS: animaciones, partículas, pelota 3D, vista 3D, destellos de gol, fondo animado del menú, marcador en la cancha, estilos de ficha y pelota, sombras, cola y aro, y pone gráficos planos.',
     hint: en
       ? 'It remembers what you had and restores it when you turn it off (anything you changed by hand in the meantime is kept). Does not touch gameplay, sound or game resolution; for more FPS also lower “Resolution scale” in Graphics. Some changes need a restart.'
       : 'Recuerda lo que tenías y lo devuelve al apagarlo (lo que cambies a mano mientras tanto se respeta). No toca la jugabilidad, el sonido ni la resolución del juego; para ganar más FPS bajá también la «Escala de resolución» en Gráficos. Algunos cambios piden reiniciar.',
@@ -4503,36 +4504,105 @@ function renderPerf() {
   }
   renderPerfPresets();
   renderLowEnd();
-  renderViewBox();
+  renderView3d();
 }
 
 /*
- * ═══ Vista de la cancha ═══
+ * ═══ Vista 3D ═══
  *
- * Sólo la vertical: la cancha girada de arco a arco. Se cambia en vivo (ver
- * vertical-patch.js); también desde el menú del escudo en la partida.
+ * Apagada de fábrica. Prenderla o apagarla pide reiniciar a propósito: así,
+ * apagada, el juego que se sirve y el preload son exactamente los de siempre
+ * (ver view-3d-patch.js). La perspectiva sí se cambia en vivo.
  */
-function renderViewBox() {
-  const host = $('#viewBox');
+function renderView3d() {
+  const host = $('#view3dBox');
   if (!host || typeof settingRow !== 'function') return;
   const en = isEn();
+  const perf = state.config.perf || {};
   host.replaceChildren();
+
+  // Vista vertical en 2D: la cancha de arco a arco, tu equipo hacia arriba.
   const vert = document.createElement('div');
   vert.className = 'rows__flat';
   buildSwitches(vert, [{
     key: 'vertical',
-    label: en ? 'Vertical view' : 'Vista vertical',
+    label: en ? 'Vertical view (2D)' : 'Vista vertical (2D)',
     description: en
       ? 'The normal pitch turned goal to goal: your team always attacks upwards, and the arrows turn with it (up takes you to the rival goal). Names and numbers stay upright.'
       : 'La cancha de siempre girada de arco a arco: tu equipo ataca siempre hacia arriba y las flechas giran con ella (arriba te lleva al arco rival). Nombres y números quedan derechos.',
     hint: en
-      ? 'Changes live, even mid-match, with the same FPS as horizontal. Mirror mode is off while this is on.'
-      : 'Se cambia en vivo, aunque estés jugando, con los mismos FPS que en horizontal. El modo espejo se apaga mientras esté prendida.',
+      ? 'Changes live, even mid-match. There are two: in 2D it turns the pitch (same FPS as horizontal); with the 3D view on it uses the 3D Vertical camera, behind your goal. Mirror mode is off while this is on.'
+      : 'Se cambia en vivo, aunque estés jugando. Hay dos: en 2D gira la cancha (mismos FPS que en horizontal); con la vista 3D prendida usa la cámara Vertical de la 3D, detrás de tu arco. El modo espejo se apaga mientras esté prendida.',
     value: () => !!(state.config.perf || {}).vertical
   }], async (_item, value) => {
     await patchConfig({ perf: { vertical: value } });
+    renderView3d();
   });
   host.append(vert);
+
+  // Su inclinación: sólo tiene sentido con la vertical prendida.
+  if (perf.vertical) {
+    const tilt = document.createElement('div');
+    tilt.className = 'rows__flat';
+    buildSwitches(tilt, [{
+      key: 'verticalTilt',
+      label: en ? 'Tilt when attacking' : 'Inclinar al atacar',
+      description: en
+        ? 'Flat in your half. As soon as the ball crosses midfield, the camera tilts and looks ahead (a bit more near the rival goal): what is close stays the same size and you see more of the pitch in front.'
+        : 'Plana en tu mitad. Apenas la pelota pasa la mitad de la cancha, la cámara se inclina y mira hacia adelante (y un poco más cerca del arco rival): lo de cerca queda del mismo tamaño y ves más cancha por delante.',
+      hint: en
+        ? 'Changes live. The tilt is done by the graphics card and the game draws the same as always: no FPS cost while it holds still. Only when you are playing (not as a spectator).'
+        : 'Se cambia en vivo. La inclinación la hace la placa de video y el juego dibuja igual que siempre: no cuesta FPS mientras está quieta. Sólo cuando estás jugando (no de espectador).',
+      value: () => (state.config.perf || {}).verticalTilt !== false
+    }], async (_item, value) => {
+      await patchConfig({ perf: { verticalTilt: value } });
+    });
+    host.append(tilt);
+  }
+
+  const sw = document.createElement('div');
+  sw.className = 'rows__flat';
+  buildSwitches(sw, [{
+    key: 'view3d',
+    label: en ? '3D view' : 'Vista 3D',
+    description: en
+      ? 'Draws the pitch in 3D with a tilted camera: discs with depth, a real ball and shadows. Only you see it.'
+      : 'Dibuja la cancha en 3D con la cámara inclinada: fichas con volumen, pelota de verdad y sombras. Sólo lo ves vos.',
+    hint: en
+      ? 'Changes live, even mid-match. It does not touch physics, keys or the network: it only changes how the frame is drawn. It costs more FPS than 2D. Turned off, it is fully taken down and the normal 2D comes back. If 3D fails on your graphics card, the game goes back to 2D by itself.'
+      : 'Se cambia en vivo, aunque estés jugando. No toca la física, las teclas ni la red: sólo cambia cómo se dibuja el cuadro. Cuesta más FPS que el 2D. Al apagarla se desarma entera y vuelve el 2D de siempre. Si el 3D falla en tu placa de video, el juego vuelve solo al 2D.',
+    value: () => !!(state.config.perf || {}).view3d
+  }], async (_item, value) => {
+    await patchConfig({ perf: { view3d: value } });
+    renderView3d();
+  });
+  host.append(sw);
+
+  const cams = document.createElement('div');
+  cams.className = 'chips';
+  const CAM_LABELS = [
+    ['dron', 'Dron', 'Drone'],
+    ['tribuna', 'Tribuna', 'Stand'],
+    ['tv', 'TV', 'TV'],
+    ['vertical', 'Vertical', 'Vertical']
+  ];
+  for (const [id, es, eng] of CAM_LABELS) {
+    const c = document.createElement('button');
+    c.type = 'button';
+    // «Vista vertical» prendida manda: con la 3D es la cámara Vertical. Elegir otra la apaga.
+    const activeCam = perf.vertical ? 'vertical' : (perf.view3dCam || 'tribuna');
+    c.className = `chip${activeCam === id ? ' is-active' : ''}`;
+    c.textContent = en ? eng : es;
+    c.addEventListener('click', async () => { await patchConfig({ perf: { view3dCam: id, vertical: id === 'vertical' } }); renderView3d(); });
+    cams.append(c);
+  }
+  host.append(settingRow({
+    label: en ? 'Camera' : 'Cámara',
+    description: en
+      ? 'Drone: almost from above. Stand: from the side stand. TV: low, like a broadcast. Vertical: from behind your goal, following your disc (keys do not turn: the key that moves you towards the rival goal is the same as always). Changes live.'
+      : 'Dron: casi desde arriba. Tribuna: desde la tribuna. TV: baja, como en la tele. Vertical: desde atrás de tu arco, siguiendo tu ficha (las teclas no giran: la que te lleva al arco rival es la de siempre). Se cambia en vivo.',
+    control: cams
+  }));
 }
 
 /*
