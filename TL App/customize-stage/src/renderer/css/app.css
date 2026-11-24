@@ -4913,7 +4913,9 @@ html:not([data-animations="off"]):not([data-crest-breath="off"]) .startcard__log
 }
 html:not([data-animations="off"]) .app[data-stage="game"] .brand__mark { animation: none; }
 
-/* 3 · Cortina con el escudo al entrar a una sala */
+/* 3 · Al entrar a una sala: el escudo aparece y la cancha se abre desde el centro
+   (un círculo que crece, con un filo dorado, como el círculo central). */
+@property --cr { syntax: '<length>'; inherits: false; initial-value: 0px; }
 .room-curtain {
   position: fixed;
   inset: 0;
@@ -4922,17 +4924,18 @@ html:not([data-animations="off"]) .app[data-stage="game"] .brand__mark { animati
   align-items: center;
   justify-content: center;
   pointer-events: none;
-  background: radial-gradient(60% 55% at 50% 50%, rgb(var(--accent-rgb) / 22%), var(--bg-0) 78%);
-  animation: curtainFade 1.15s ease both;
+  --cr: 0px;
+  background: radial-gradient(circle at 50% 50%, transparent var(--cr), rgb(236 213 147 / 90%) var(--cr), rgb(236 213 147 / 90%) calc(var(--cr) + 3px), var(--bg-0) calc(var(--cr) + 3px));
+  animation: curtainIris 1.25s cubic-bezier(.6, 0, .2, 1) both;
 }
 .room-curtain img {
   width: 120px;
   height: 120px;
   object-fit: contain;
-  animation: curtainCrest 1.15s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  animation: curtainCrest 1.25s cubic-bezier(.2, .8, .2, 1) both;
 }
-@keyframes curtainFade { 0% { opacity: 0; } 22% { opacity: 1; } 62% { opacity: 1; } 100% { opacity: 0; } }
-@keyframes curtainCrest { 0% { transform: scale(0.7); } 40% { transform: scale(1.04); } 100% { transform: scale(1.12); } }
+@keyframes curtainIris { 0% { opacity: 0; --cr: 0px; } 12% { opacity: 1; --cr: 0px; } 38% { --cr: 0px; } 100% { opacity: 1; --cr: 110vmax; } }
+@keyframes curtainCrest { 0% { transform: scale(.7); opacity: 0; } 14% { transform: scale(1.02); opacity: 1; } 38% { transform: scale(1); opacity: 1; } 62% { transform: scale(1.5); opacity: 0; } 100% { opacity: 0; } }
 html[data-animations="off"] .room-curtain,
 html[data-room-curtain="off"] .room-curtain { display: none; }
 
@@ -8897,3 +8900,18 @@ html[data-scheme="light"] .vhud__p, html[data-scheme="light"] .vhud__me { color:
 .app[data-stage="game"] .nowplaying::before { animation: none !important; }
 html[data-stage="game"] .ambient::before,
 html[data-stage="game"] .ambient::after { animation: none !important; }
+
+/* Pantalla de carga: el escudo quieto con un reflejo que lo cruza cada tanto,
+   como metal pulido. El reflejo tiene la forma del escudo (máscara con la misma imagen). */
+.splash__ring { display: none !important; }
+.splash__inner { padding-top: 0 !important; }
+.splash__logo { animation: none !important; }
+.splash__crest { position: relative; display: inline-block; line-height: 0; }
+.splash__shine { position: absolute; inset: 0; overflow: hidden; pointer-events: none;
+  -webkit-mask-size: contain; -webkit-mask-repeat: no-repeat; -webkit-mask-position: center;
+  /* La silueta del escudo embebida (2,6 KB): una máscara desde un archivo local no carga en file://. */
+  -webkit-mask-image: url("data:image/png;base64,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"); }
+.splash__shine b { position: absolute; top: -10%; bottom: -10%; left: -40%; width: 26%;
+  background: linear-gradient(90deg, transparent, rgb(255 255 255 / 70%), transparent); transform: skewX(-20deg);
+  animation: splashShine 2.2s cubic-bezier(.5, 0, .3, 1) infinite; }
+@keyframes splashShine { 0% { left: -40%; } 55%, 100% { left: 130%; } }

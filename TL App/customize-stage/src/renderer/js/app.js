@@ -2315,7 +2315,7 @@ function roomCurtain() {
   img.alt = '';
   c.append(img);
   document.body.append(c);
-  setTimeout(() => c.remove(), 1300);
+  setTimeout(() => c.remove(), 1350);
 }
 
 /** El juego se muestra sólo dentro de una sala; si no, mandamos nuestra lista. */
@@ -6794,7 +6794,7 @@ $('#audVol').addEventListener('change', (e) => {
 const ANIM_SWITCHES = {
   es: [
     { key: 'crestBreath', label: 'Escudo que respira', description: 'Un latido muy suave del escudo en la barra y la pantalla de inicio.' },
-    { key: 'roomCurtain', label: 'Cortina al entrar a una sala', description: 'El escudo tapa la pantalla un instante mientras carga la sala.' },
+    { key: 'roomCurtain', label: 'Cortina al entrar a una sala', description: 'Aparece el escudo y la cancha se abre desde el centro.' },
     { key: 'toggleBounce', label: 'Interruptores con rebote', description: 'Los interruptores dan un saltito al cambiar.' },
     { key: 'listStagger', label: 'Filas que entran de a una', description: 'Las salas y los ajustes aparecen en cascada al abrir la pantalla.' },
     { key: 'musicGlow', label: 'Fondo con la música', description: 'Un resplandor suave del color de acento late abajo mientras suena la música del menú.' },
@@ -6804,7 +6804,7 @@ const ANIM_SWITCHES = {
   ],
   en: [
     { key: 'crestBreath', label: 'Breathing crest', description: 'A very soft pulse on the crest in the sidebar and start screen.' },
-    { key: 'roomCurtain', label: 'Curtain when entering a room', description: 'The crest covers the screen briefly while the room loads.' },
+    { key: 'roomCurtain', label: 'Curtain when entering a room', description: 'The crest shows up and the pitch opens from the centre.' },
     { key: 'toggleBounce', label: 'Bouncy switches', description: 'Switches give a little hop when toggled.' },
     { key: 'listStagger', label: 'Rows that enter one by one', description: 'Rooms and settings cascade in when a screen opens.' },
     { key: 'musicGlow', label: 'Background with the music', description: 'A soft glow in the accent colour pulses at the bottom while the menu music plays.' },
