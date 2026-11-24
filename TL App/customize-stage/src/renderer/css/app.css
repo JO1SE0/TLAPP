@@ -8712,6 +8712,7 @@ html[data-scheme="light"] .vhud__p, html[data-scheme="light"] .vhud__me { color:
 :is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .sec__body > .sec__sub { margin: 8px 4px -4px; font-size: 13px; font-weight: 700; color: var(--text); }
 :is(#app[data-view="ajustes"], #app[data-view="aspecto"]) .panel .sec__body > .sec__subdesc { margin: -6px 4px 0; font-size: 12px; color: var(--text-dim); }
 .sec[data-sec="graficosav"] { --sec-ico: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%20fill='none'%20stroke='%2314161f'%20stroke-width='2'%20stroke-linecap='round'%20stroke-linejoin='round'%3E%3Crect%20x='6'%20y='6'%20width='12'%20height='12'%20rx='2'/%3E%3Cpath%20d='M9%202.5v3M15%202.5v3M9%2018.5v3M15%2018.5v3M2.5%209h3M2.5%2015h3M18.5%209h3M18.5%2015h3'/%3E%3C/svg%3E"); }
+.sec[data-sec="vista3d"] { --sec-ico: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%20fill='none'%20stroke='%2314161f'%20stroke-width='2'%20stroke-linecap='round'%20stroke-linejoin='round'%3E%3Cpath%20d='M12%202.5l8.5%204.75v9.5L12%2021.5l-8.5-4.75v-9.5z'/%3E%3Cpath%20d='M12%2012l8.5-4.75M12%2012v9.5M12%2012L3.5%207.25'/%3E%3C/svg%3E"); }
 /* Relleno abajo = alto real de la vista previa flotante (lo mide watchPvHeight). */
 #app .panel.has-pv:not(.pv-docked) .page[data-page="aspecto"] .page__inner { padding-bottom: calc(var(--pv-h, 0px) + 36px); }
 /* Tu fila dentro de una columna de sala de verdad (mismo ancho que en HaxBall),
@@ -8915,3 +8916,11 @@ html[data-stage="game"] .ambient::after { animation: none !important; }
   background: linear-gradient(90deg, transparent, rgb(255 255 255 / 70%), transparent); transform: skewX(-20deg);
   animation: splashShine 2.2s cubic-bezier(.5, 0, .3, 1) infinite; }
 @keyframes splashShine { 0% { left: -40%; } 55%, 100% { left: 130%; } }
+
+/* Fila con lista + barra (Escala de resolución): el texto arriba y los controles
+   abajo a todo el ancho. Al lado, en una columna angosta, el texto quedaba de a
+   una palabra por línea. */
+.row.row--stack { flex-wrap: wrap; row-gap: 10px; }
+.row.row--stack > .row__text { flex: 1 1 100%; max-width: none; }
+.row.row--stack > .row__ctl { flex: 1 1 100%; display: flex; align-items: center; gap: 12px; justify-content: flex-start; }
+.row.row--stack > .row__ctl input[type="range"] { flex: 1; min-width: 0; }

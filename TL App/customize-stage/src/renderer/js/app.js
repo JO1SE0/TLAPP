@@ -4134,6 +4134,8 @@ function gameSettingRow(setting) {
     queueMicrotask(() => syncRangeFill(range));
     const row = settingRow({ label: label(setting), description, hint, control: [select, range, shown] });
     row.dataset.ctl = 'select';
+    // Lista + barra + número no entran al lado del texto en una columna angosta: van abajo.
+    row.classList.add('row--stack');
     return row;
   }
 
@@ -4578,6 +4580,9 @@ function renderView3d() {
   });
   host.append(sw);
 
+  // La cámara es de la 3D: con la 3D apagada no se muestra (tocarla cambiaba la
+  // vista vertical del 2D sin querer).
+  if (!perf.view3d) return;
   const cams = document.createElement('div');
   cams.className = 'chips';
   const CAM_LABELS = [
@@ -4603,6 +4608,8 @@ function renderView3d() {
       : 'Dron: casi desde arriba. Tribuna: desde la tribuna. TV: baja, como en la tele. Vertical: desde atrás de tu arco, siguiendo tu ficha (las teclas no giran: la que te lleva al arco rival es la de siempre). Se cambia en vivo.',
     control: cams
   }));
+  const camRow = host.lastElementChild;
+  if (camRow && camRow.classList) camRow.classList.add('row--stack');
 }
 
 /*

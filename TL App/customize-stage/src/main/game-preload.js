@@ -8637,12 +8637,12 @@ function installTracking(view) {
    * un adorno no puede dejar la cancha sin dibujar.
    */
   let skinBroken = false;
-  view.__tvmSkin = (ctx, w, h, stadium) => {
-    if (stadium !== currentStadium) { currentStadium = stadium; try { lookfx.resetTrail(); lookfx.resetMatchMark(); } catch (e) {} }
+  view.__tvmSkin = (ctx, w, h, stadium, floor3d) => {
+    if (!floor3d && stadium !== currentStadium) { currentStadium = stadium; try { lookfx.resetTrail(); lookfx.resetMatchMark(); } catch (e) {} }
     if (skinBroken) return;
     ownDraw++;
     try {
-      skinPitch(ctx, w, h, stadium);
+      skinPitch(ctx, w, h, stadium, !!floor3d);
     } catch (err) {
       skinBroken = true;
       log('error', `el color de cancha se apagó: ${err && err.message ? err.message : err}`, 'juego');
@@ -8724,7 +8724,7 @@ function pitchOutsideColor(field) {
  * @param {number} w  ancho en píxeles de esa superficie
  * @param {number} h  alto en píxeles
  */
-function skinPitch(ctx, w, h, stadium) {
+function skinPitch(ctx, w, h, stadium, floor3d) {
   if (!(w > 0) || !(h > 0)) return;
 
   const skin = (state.config.pitch && state.config.pitch.skin) || {};
@@ -8847,9 +8847,10 @@ function skinPitch(ctx, w, h, stadium) {
 
   // Los alrededores: afuera de la cancha, guardados de una vez para toda la
   // cancha (no dependen de la cámara) y pegados en cada armado del cache.
-  const eb = visual.env ? envBoundsFor(stadium, bounds) : null;
-  env.bounds = eb;
-  env.stadium = stadium;
+  // En el piso de la vista 3D no van: la 3D arma sus propias tribunas, y pintadas
+  // planas en el piso quedaban como una alfombra debajo de ellas.
+  const eb = visual.env && !floor3d ? envBoundsFor(stadium, bounds) : null;
+  if (!floor3d) { env.bounds = eb; env.stadium = stadium; }
   if (eb) {
     ctx.save();
     try {

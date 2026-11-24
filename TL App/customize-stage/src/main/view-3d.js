@@ -736,7 +736,7 @@ function install(view, opts = {}) {
       r[N.drawFloor](st);
       if (typeof view.__tvmSkin === 'function') {
         ctx.save();
-        try { view.__tvmSkin(ctx, W, H, st); } catch (e) { /* la piel es un adorno */ }
+        try { view.__tvmSkin(ctx, W, H, st, true); } catch (e) { /* la piel es un adorno */ }
         ctx.restore();
       }
       ctx.setTransform(sx, 0, 0, sy, W / 2, H / 2);
