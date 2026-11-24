@@ -95,7 +95,7 @@ module.exports = async function runGameChecks(check, browser) {
           mask: btns.filter((b) => b.querySelector('i')).every((b) => getComputedStyle(b.querySelector('i')).webkitMaskImage.startsWith('url('))
         };
       });
-      if (r.names !== 'sound-btn,menu,tl' || r.sizes !== '34x30' || r.off > 0.6 || !r.mask) bad.push(`${id}: ${JSON.stringify(r)}`);
+      if (r.names !== 'sound-btn,menu,tl' || r.sizes !== '32x28' || r.off > 0.6 || !r.mask) bad.push(`${id}: ${JSON.stringify(r)}`);
     }
     check('pastilla: sonido, Menu y TL iguales y centrados con los 17 temas', bad.length === 0 && errs.length === 0, bad.concat(errs).join(' | '));
     // Los tres íconos de sonido de HaxBall.

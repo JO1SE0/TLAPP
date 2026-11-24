@@ -2136,16 +2136,13 @@ function quickCss(doc) {
        vidrio redonda; el engranaje lo reemplaza el botón de TL. Gana a la del
        tema por especificidad (html body …). */
     html body .game-view > .buttons { top: 10px !important; right: 12px !important; height: auto !important; display: flex !important;
-      align-items: center !important; gap: 3px !important; padding: 4px !important; margin: 0 !important;
-      background: linear-gradient(160deg, rgba(22,30,48,.82), rgba(10,15,26,.78)) !important; border: 1px solid rgba(255,255,255,.13) !important; border-radius: 999px !important;
-      box-shadow: 0 14px 30px -16px rgba(0,0,0,.9), inset 0 1px 0 rgba(255,255,255,.07) !important; }
-    /* Estilo «Estadio»: el volumen de HaxBall en dorado. */
-    html body .game-view > .buttons input[type=range] { accent-color: #ffd76a !important; }
+      align-items: center !important; gap: 2px !important; padding: 3px !important; margin: 0 !important;
+      background: rgba(11,18,36,.55) !important; border: 0 !important; border-radius: 999px !important; box-shadow: none !important; }
     html body .game-view > .buttons > * { margin: 0 !important; }
     /* El engranaje de HaxBall lo reemplaza el botón de TL. Con el mismo refuerzo (#tvm-x) que
        las reglas de los botones: si no, la de abajo le ganaba y volvía a aparecer (cuadrado blanco). */
     html body .game-view > .buttons > button[data-hook="settings"]:not(#tvm-x) { display: none !important; }
-    html body .game-view > .buttons button:not(#tvm-x) { width: 34px !important; min-width: 34px !important; max-width: none !important; height: 30px !important;
+    html body .game-view > .buttons button:not(#tvm-x) { width: 32px !important; min-width: 32px !important; max-width: none !important; height: 28px !important;
       padding: 0 !important; display: inline-flex !important; align-items: center !important; justify-content: center !important; gap: 0 !important; border: 0 !important; border-radius: 999px !important;
       background: transparent !important; color: #cfd5e3 !important; box-shadow: none !important; font-size: 0 !important; overflow: visible !important;
       cursor: pointer !important; transition: background .12s ease, color .12s ease !important; filter: none !important; }
@@ -2160,23 +2157,23 @@ function quickCss(doc) {
     html body .game-view > .buttons button:not(#tvm-x) > i.icon-menu { -webkit-mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%23000%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M5%207h14M5%2012h14M5%2017h14%22%2F%3E%3C%2Fsvg%3E"); mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%23000%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M5%207h14M5%2012h14M5%2017h14%22%2F%3E%3C%2Fsvg%3E"); }
     html body .game-view > .buttons button:not(#tvm-x):hover:not(:disabled) { background: rgba(255,255,255,.1) !important; color: #fff !important; }
     html body .game-view > .buttons button:not(#tvm-x) .tooltip { font-size: 11.5px !important; }
-    html body .game-view > .buttons button:not(#tvm-x).tvm-qm-btn { color: #1a1405 !important; background: linear-gradient(135deg, #ffe28f, #f5b93a) !important; box-shadow: 0 6px 16px -6px rgba(255,200,80,.75), inset 0 1px 0 rgba(255,255,255,.55) !important; }
-    html body .game-view > .buttons button:not(#tvm-x).tvm-qm-btn:hover, html body .game-view > .buttons button:not(#tvm-x).tvm-qm-btn.is-open { background: linear-gradient(135deg, #fff0b8, #ffc94d) !important; color: #1a1405 !important; }
+    html body .game-view > .buttons button:not(#tvm-x).tvm-qm-btn { color: #ecd593 !important; background: rgba(236,213,147,.16) !important; }
+    html body .game-view > .buttons button:not(#tvm-x).tvm-qm-btn:hover, html body .game-view > .buttons button:not(#tvm-x).tvm-qm-btn.is-open { background: rgba(236,213,147,.3) !important; color: #f6e6b4 !important; }
     html body .game-view > .buttons button:not(#tvm-x).tvm-qm-btn svg { width: 17px; height: 17px; pointer-events: none; }
     #tvm-qm { position: fixed; right: 12px; top: 10px; width: 0; height: 0; z-index: 2147482400; font-family: Outfit, Bahnschrift, 'Segoe UI', sans-serif; user-select: none; }
     #tvm-qm .qm-panel { position: absolute; right: 0; top: 44px; width: 300px; max-height: calc(100vh - 80px); overflow-y: auto; overscroll-behavior: contain;
-      padding: 6px 8px 8px; border-radius: 20px; background: linear-gradient(160deg, rgba(22,30,48,.98), rgba(10,15,26,.97)); color: #e9edf6;
-      box-shadow: 0 18px 36px -12px rgba(0,0,0,.85), inset 0 0 0 1px rgba(255,255,255,.12), inset 0 2px 0 rgba(255,215,106,.55);
+      padding: 6px 8px 8px; border-radius: 18px; background: rgba(11,18,36,.97); color: #e9edf6;
+      box-shadow: 0 18px 36px -12px rgba(0,0,0,.85), inset 0 0 0 1px rgba(255,255,255,.08);
       transform-origin: top right; animation: tvmQmIn .16s cubic-bezier(.2,.9,.3,1.15) both; scrollbar-width: thin; scrollbar-color: rgba(255,255,255,.2) transparent; }
     #tvm-qm .qm-panel[hidden] { display: none; }
     /* Barra de scroll de la lista, del estilo del menú (Chromium 91 no entiende scrollbar-color). */
     #tvm-qm .qm-panel::-webkit-scrollbar { width: 6px; }
     #tvm-qm .qm-panel::-webkit-scrollbar-track { background: transparent; margin: 14px 0; }
-    #tvm-qm .qm-panel::-webkit-scrollbar-thumb { background: rgba(255,215,106,.28); border-radius: 999px; }
-    #tvm-qm .qm-panel::-webkit-scrollbar-thumb:hover { background: rgba(255,215,106,.5); }
+    #tvm-qm .qm-panel::-webkit-scrollbar-thumb { background: rgba(236,213,147,.28); border-radius: 999px; }
+    #tvm-qm .qm-panel::-webkit-scrollbar-thumb:hover { background: rgba(236,213,147,.5); }
     #tvm-qm .qm-panel::-webkit-scrollbar-button { display: none; height: 0; }
     @keyframes tvmQmIn { from { opacity: 0; transform: translateY(-6px) scale(.97); } }
-    #tvm-qm .qm-h { font-size: 10px; letter-spacing: .24em; color: #ffd76a; font-weight: 800; padding: 10px 8px 4px; }
+    #tvm-qm .qm-h { font-size: 10px; letter-spacing: .24em; color: #ecd593; font-weight: 800; padding: 10px 8px 4px; }
     #tvm-qm .qm-row { display: flex; align-items: center; gap: 10px; min-height: 34px; padding: 3px 8px; border-radius: 12px; font-size: 13.5px; }
     #tvm-qm .qm-row:hover { background: rgba(255,255,255,.04); }
     #tvm-qm .qm-row[hidden] { display: none; }
@@ -2186,48 +2183,48 @@ function quickCss(doc) {
     #tvm-qm .qm-tg.on { background: #c39a45; } #tvm-qm .qm-tg.on::after { left: 16px; }
     #tvm-qm .qm-seg { flex: none; display: flex; gap: 2px; background: rgba(255,255,255,.07); border-radius: 999px; padding: 2px; }
     #tvm-qm .qm-seg b { font-weight: 700; font-size: 12px; padding: 4px 9px; border-radius: 999px; cursor: pointer; color: #cfd5e3; }
-    #tvm-qm .qm-seg b.on { background: #ffd76a; color: #1a1405; }
+    #tvm-qm .qm-seg b.on { background: #ecd593; color: #13254a; }
     #tvm-qm .qm-pick { flex: none; display: flex; align-items: center; gap: 4px; max-width: 150px; }
     #tvm-qm .qm-pick i { font-style: normal; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; cursor: pointer;
       background: rgba(255,255,255,.08); font-size: 13px; color: #fff; }
-    #tvm-qm .qm-pick i:hover { background: rgba(255,215,106,.25); }
-    #tvm-qm .qm-pick em { font-style: normal; font-size: 12.5px; font-weight: 700; color: #ffd76a; min-width: 0; max-width: 98px; text-align: center;
+    #tvm-qm .qm-pick i:hover { background: rgba(236,213,147,.25); }
+    #tvm-qm .qm-pick em { font-style: normal; font-size: 12.5px; font-weight: 700; color: #ecd593; min-width: 0; max-width: 98px; text-align: center;
       white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     #tvm-qm .qm-sl { flex: none; width: 120px; height: 18px; position: relative; cursor: pointer; touch-action: none; }
     #tvm-qm .qm-sl::before { content: ''; position: absolute; left: 0; right: 0; top: 7px; height: 4px; border-radius: 4px; background: rgba(255,255,255,.15); }
-    #tvm-qm .qm-sl u { position: absolute; left: 0; top: 7px; height: 4px; border-radius: 4px; background: #ffd76a; }
+    #tvm-qm .qm-sl u { position: absolute; left: 0; top: 7px; height: 4px; border-radius: 4px; background: #ecd593; }
     #tvm-qm .qm-sl s { position: absolute; top: 2px; width: 14px; height: 14px; margin-left: -7px; border-radius: 50%; background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,.5); }
     #tvm-qm .qm-val { flex: none; width: 36px; text-align: right; font-size: 11.5px; opacity: .7; }
     #tvm-qm .qm-sw { flex: none; display: flex; gap: 5px; }
     #tvm-qm .qm-sw i { width: 18px; height: 18px; border-radius: 50%; cursor: pointer; box-shadow: inset 0 0 0 1.5px rgba(255,255,255,.25); }
-    #tvm-qm .qm-sw i.on { box-shadow: 0 0 0 2px #ffd76a, inset 0 0 0 1.5px rgba(0,0,0,.3); }
+    #tvm-qm .qm-sw i.on { box-shadow: 0 0 0 2px #ecd593, inset 0 0 0 1.5px rgba(0,0,0,.3); }
     #tvm-qm .qm-sw i.none { background: repeating-linear-gradient(135deg, #3a4560 0 3px, #2a3350 3px 6px); }
     #tvm-qm .qm-top { display: flex; align-items: center; justify-content: space-between; padding: 6px 6px 8px 8px; }
-    #tvm-qm .qm-title { font-size: 12px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: #ffd76a; }
+    #tvm-qm .qm-title { font-size: 12px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: #ecd593; }
     #tvm-qm .qm-undo { flex: none; width: 30px; height: 30px; padding: 0; border: 0; border-radius: 10px; cursor: pointer; display: grid; place-items: center;
-      color: #ffd76a; background: rgba(255,215,106,.14); transition: background .15s, color .15s; }
+      color: #ecd593; background: rgba(236,213,147,.14); transition: background .15s, color .15s; }
     #tvm-qm .qm-undo svg { width: 17px; height: 17px; }
-    #tvm-qm .qm-undo:hover:not(:disabled) { background: rgba(255,215,106,.28); }
+    #tvm-qm .qm-undo:hover:not(:disabled) { background: rgba(236,213,147,.28); }
     #tvm-qm .qm-undo:disabled { color: rgba(233,237,246,.3); background: rgba(255,255,255,.04); cursor: default; }
     #tvm-qm .qm-tabs { display: grid; grid-template-columns: repeat(6, 1fr); gap: 2px; padding: 3px; margin: 0 2px 6px; border-radius: 14px; background: rgba(255,255,255,.05); }
     #tvm-qm .qm-tab { display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 7px 0 6px; border: 0; border-radius: 11px; cursor: pointer;
       background: transparent; color: #9aa3b8; font: 700 9.5px Outfit, Bahnschrift, 'Segoe UI', sans-serif; transition: background .15s, color .15s; }
     #tvm-qm .qm-tab svg { width: 18px; height: 18px; }
     #tvm-qm .qm-tab:hover { color: #e9edf6; background: rgba(255,255,255,.05); }
-    #tvm-qm .qm-tab.on { color: #ffd76a; background: rgba(255,215,106,.16); }
+    #tvm-qm .qm-tab.on { color: #ecd593; background: rgba(236,213,147,.16); }
     #tvm-qm .qm-pane[hidden] { display: none; }
     #tvm-qm .qm-pane { animation: tvmQmPane .14s ease both; }
     @keyframes tvmQmPane { from { opacity: 0; transform: translateY(3px); } }
     #tvm-qm .qm-block { display: block; padding-top: 6px; padding-bottom: 6px; }
     #tvm-qm .qm-bt { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 6px; }
-    #tvm-qm .qm-cur { font-style: normal; font-size: 12.5px; font-weight: 700; color: #ffd76a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 150px; }
+    #tvm-qm .qm-cur { font-style: normal; font-size: 12.5px; font-weight: 700; color: #ecd593; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 150px; }
     #tvm-qm .qm-strip { display: flex; gap: 6px; overflow-x: auto; overflow-y: hidden; padding: 2px 2px 6px; scroll-behavior: smooth; overscroll-behavior: contain; }
     #tvm-qm .qm-strip::-webkit-scrollbar { height: 4px; }
-    #tvm-qm .qm-strip::-webkit-scrollbar-thumb { background: rgba(255,215,106,.25); border-radius: 999px; }
+    #tvm-qm .qm-strip::-webkit-scrollbar-thumb { background: rgba(236,213,147,.25); border-radius: 999px; }
     #tvm-qm .qm-strip::-webkit-scrollbar-button { display: none; width: 0; }
     #tvm-qm .qm-it { flex: none; cursor: pointer; padding: 5px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; white-space: nowrap;
       color: #cfd5e3; background: rgba(255,255,255,.07); box-shadow: inset 0 0 0 1px transparent; transition: background .12s, color .12s, box-shadow .12s; }
-    #tvm-qm .qm-it:hover { background: rgba(255,215,106,.14); color: #fff; }
+    #tvm-qm .qm-it:hover { background: rgba(236,213,147,.14); color: #fff; }
     #tvm-qm .qm-it.on { color: #13254a; background: #ecd593; }
     #tvm-qm .qm-strip.th .qm-it { padding: 3px; border-radius: 50%; background: transparent; }
     #tvm-qm .qm-strip.th .qm-it canvas { display: block; width: 38px; height: 38px; }

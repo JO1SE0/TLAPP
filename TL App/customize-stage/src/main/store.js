@@ -117,8 +117,6 @@ const DEFAULTS = {
     uiScale: 'auto',
     /** Con la ventana achicada, la interfaz y el juego se achican con ella (como una pantalla completa en chico). */
     scaleWithWindow: true,
-    /** Estilo visual: estadio (estadio de noche y vidrio, por defecto) | classic (el de antes). */
-    skin: 'estadio',
     /** Estructura de la interfaz: classic | top (barra superior) | dock (dock flotante). */
     layout: 'classic',
     /** Alto de las filas de la lista de salas: dense | normal | large. */
