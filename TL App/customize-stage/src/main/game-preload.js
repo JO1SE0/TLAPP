@@ -4022,6 +4022,42 @@ const HOTKEY_OPTS = { capture: true };
  * `''` significa «ninguna»: ahí el resumen se abre sólo desde la interfaz y
  * ninguna tecla se intercepta.
  */
+/*
+ * Atajos de la cancha (config `general.keyFlat`, `keyMirror`, `keyTeamColors`):
+ * prenden y apagan en vivo lo mismo que el menú de TL, con su Deshacer. No
+ * cuentan escribiendo en el chat, ni con Ctrl/Alt, ni con la tecla mantenida.
+ */
+function toggleHotkey(event) {
+  const g = (state.config && state.config.general) || {};
+  const key = event.key;
+  if (!key || event.ctrlKey || event.altKey || event.metaKey) return false;
+  const pick = (k, def) => (typeof g[k] === 'string' ? g[k] : def);
+  const which = key === pick('keyFlat', 'F3') ? 'flat' : key === pick('keyMirror', 'F7') ? 'mirror' : key === pick('keyTeamColors', 'F10') ? 'colors' : '';
+  if (!which) return false;
+  const active = event.target && event.target.ownerDocument ? event.target.ownerDocument.activeElement : null;
+  const tag = active && active.tagName;
+  if (tag === 'INPUT' || tag === 'TEXTAREA' || (active && active.isContentEditable)) return false;
+  event.preventDefault();
+  event.stopPropagation();
+  if (event.repeat) return true;
+  const cfg = state.config || {};
+  if (which === 'flat') {
+    const on = !(cfg.perf && cfg.perf.flatGraphics);
+    quickSet({ perf: { flatGraphics: on } }, 'Gráficos planos');
+    notify(on ? 'Gráficos planos: prendidos' : 'Gráficos planos: apagados');
+  } else if (which === 'mirror') {
+    const cur = (cfg.pitch && cfg.pitch.mirror) || 'off';
+    const next = cur === 'off' ? 'red' : cur === 'red' ? 'blue' : 'off';
+    quickSet({ pitch: { mirror: next } }, 'Lado fijo');
+    notify(next === 'off' ? 'Lado fijo: no' : next === 'red' ? 'Lado fijo: siempre del lado rojo' : 'Lado fijo: siempre del lado azul');
+  } else {
+    const mine = !(cfg.visual && cfg.visual.teamColors === 'mine');
+    quickSet({ visual: { teamColors: mine ? 'mine' : 'room' } }, 'Colores de los equipos');
+    notify(mine ? 'Colores de los equipos: los tuyos' : 'Colores de los equipos: los de la sala');
+  }
+  return true;
+}
+
 function summaryKey() {
   const key = state.config && state.config.general && state.config.general.summaryKey;
   return typeof key === 'string' ? key : 'Tab';
@@ -4149,6 +4185,8 @@ function onKeyDown(event) {
     safe(togglePerfProbe, event.target && event.target.ownerDocument && event.target.ownerDocument.defaultView);
     return;
   }
+
+  if (toggleHotkey(event)) return;
 
   if (event.key === 'F8') {
     state.overlayVisible = !state.overlayVisible;

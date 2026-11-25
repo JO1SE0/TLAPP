@@ -4745,12 +4745,40 @@ function renderSummaryKey() {
   }));
 }
 
+/*
+ * Atajos de la cancha: prender y apagar en el momento gráficos planos, el lado
+ * fijo y los colores propios de los equipos. Las teclas las escucha el preload
+ * del juego (ver `toggleHotkey` en game-preload.js). F5, F6, F8, F9 y F11 ya tienen dueño.
+ */
+const TOGGLE_KEY_OPTS = ['F1', 'F2', 'F3', 'F4', 'F7', 'F10', 'F12', ''];
+function renderToggleKeys() {
+  const host = $('#toggleKeysField');
+  if (!host) return;
+  const en = isEn();
+  const g = state.config.general || {};
+  const rows = [
+    ['keyFlat', en ? 'Flat graphics' : 'Gráficos planos', en ? 'Turns flat graphics on and off mid-match.' : 'Prende y apaga los gráficos planos en plena partida.', 'F3'],
+    ['keyMirror', en ? 'Fixed side' : 'Lado fijo', en ? 'Cycles: off → always red side → always blue side.' : 'Va pasando: No → siempre del lado rojo → siempre del lado azul.', 'F7'],
+    ['keyTeamColors', en ? 'Custom team colors' : 'Colores propios de los equipos', en ? 'Switches between the room colors and yours.' : 'Cambia entre los colores de la sala y los tuyos.', 'F10']
+  ];
+  host.replaceChildren(...rows.map(([k, label, hint, def]) => {
+    const cur = typeof g[k] === 'string' ? g[k] : def;
+    const opts = TOGGLE_KEY_OPTS.map((v) => [v, v || (en ? 'No key' : 'Sin tecla')]);
+    if (cur && !TOGGLE_KEY_OPTS.includes(cur)) opts.push([cur, cur]);
+    return selectRow({
+      label, hint, id: `tk-${k}`, options: opts, value: cur,
+      onChange: async (value) => { await patchConfig({ general: { [k]: value } }); renderToggleKeys(); }
+    });
+  }));
+}
+
 function renderKeys() {
   const lang = isEn() ? 'en' : 'es';
   const keys = activeKeys();
   const list = $('#keyList');
   list.replaceChildren();
   renderSummaryKey();
+  renderToggleKeys();
 
   for (const action of state.schema.actions) {
     const row = document.createElement('div');

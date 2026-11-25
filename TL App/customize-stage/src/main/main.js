@@ -2741,7 +2741,7 @@ const QUICK_KEYS = {
     miniFade: 'bool', miniClub: 'bool', miniBigMe: 'bool', miniBigBall: 'bool', matchSummary: 'bool',
     possessionBar: 'bool' },
   visual: {
-    discSize: [0.6, 1.6], ballSize: [0.6, 1.8], softShadows: 'bool', discOutline: 'color',
+    discSize: [0.6, 1.6], teamColors: ['room', 'mine'], ballSize: [0.6, 1.8], softShadows: 'bool', discOutline: 'color',
     discStyle: 'id', ballStyle: 'id', texture: 'id', pitchWeather: 'id',
     ballColor: 'color', ballOutline: 'color', crest: 'bool',
     pitchLight: ['none', 'vignette', 'spot', 'corners', 'stadium', 'sunset', 'night', 'stripes', 'cinema'],

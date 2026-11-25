@@ -41,7 +41,14 @@ const DEFAULTS = {
      * Con cualquier otro valor (o con `''`, que es «ninguna») el preload deja
      * pasar Tab y vuelve a ser de HaxBall.
      */
-    summaryKey: 'Tab'
+    summaryKey: 'Tab',
+    /**
+     * Atajos dentro de la cancha (vacío = sin tecla): gráficos planos, lado fijo
+     * (cambia No → Rojo → Azul) y colores propios de los equipos. Se cambian en vivo.
+     */
+    keyFlat: 'F3',
+    keyMirror: 'F7',
+    keyTeamColors: 'F10'
   },
   /**
    * Cómo quedó la ventana la última vez, para volver a abrirla igual.
