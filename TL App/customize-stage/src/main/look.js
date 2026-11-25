@@ -669,6 +669,41 @@ function discOverlay(ctx, style, x, y, r, strokeFn) {
     ctx.restore();
     return;
   }
+  /*
+   * Los demás estilos (neón, gema, lunares…) son varios trazados con recorte:
+   * hacerlos de cero por ficha y por cuadro era lo más caro del dibujo con un
+   * estilo puesto. Se arman UNA vez por estilo, tamaño y zoom en una figurita y
+   * en cada cuadro sólo se pega. El trazado del disco no se toca (`drawImage` no
+   * lo usa), así que el contorno que viene después sale igual.
+   */
+  if (typeof ctx.getTransform === 'function' && ctx.canvas && ctx.canvas.ownerDocument) {
+    try {
+      const m = ctx.getTransform();
+      const sc = Math.hypot(m.a, m.b) || 1;
+      const key = `${style}|${r}|${Math.round(sc * 8)}`;
+      let spr = overlaySprites.get(key);
+      if (!spr) {
+        if (overlaySprites.size > 96) overlaySprites.clear();
+        const half = Math.ceil(r * 1.15 * sc) + 2;
+        const cv = ctx.canvas.ownerDocument.createElement('canvas');
+        cv.width = cv.height = half * 2;
+        const g = cv.getContext('2d');
+        g.setTransform(sc, 0, 0, sc, half, half);
+        g.beginPath();
+        g.arc(0, 0, r, 0, TAU);
+        overlayBody(g, style, 0, 0, r, strokeFn);
+        spr = { cv, half: half / sc };
+        overlaySprites.set(key, spr);
+      }
+      ctx.drawImage(spr.cv, x - spr.half, y - spr.half, spr.half * 2, spr.half * 2);
+      return;
+    } catch (e) { /* sin figurita: se dibuja directo, como antes */ }
+  }
+  overlayBody(ctx, style, x, y, r, strokeFn);
+}
+
+const overlaySprites = new Map();
+function overlayBody(ctx, style, x, y, r, strokeFn) {
   // `stroke` es el que parchea el preload: llamarlo desde acá se re-entraba a sí
   // mismo (era lo que hacía desaparecer todo con «Neón»). Se usa el original.
   const doStroke = () => (strokeFn ? strokeFn.call(ctx) : ctx.stroke());

@@ -4141,6 +4141,35 @@ handle('game:reload', () => {
 /** Muestra el avatar fijo sin esperar a la próxima recarga. */
 listen('game:avatar-preview', () => sendToGame('game:avatar-preview'));
 
+/*
+ * F6 dentro de la cancha: el medidor del juego avisa cuándo empieza y cuándo
+ * termina. Acá se suma lo que el juego no ve —cuánta CPU usa cada proceso de la
+ * app y si el reproductor de Spotify está corriendo— y todo queda en
+ * rendimiento.log, para comparar versiones con datos y no a ojo.
+ */
+listen('game:perf', (_e, p) => {
+  try {
+    if (!p || typeof p !== 'object') return;
+    if (p.phase === 'start') { app.getAppMetrics(); return; } // arranca la cuenta de CPU
+    if (p.phase !== 'end') return;
+    const procs = app.getAppMetrics().map((m) => `${m.type}${m.name ? `(${m.name})` : ''} ${m.cpu ? m.cpu.percentCPUUsage.toFixed(1) : '?'}%`).join(', ');
+    let lsp = '';
+    try { const L = require('./librespot'); lsp = `spotify-en-app: ${L.running && L.running() ? 'corriendo' : 'apagado'}${L.blocked && L.blocked() ? ' (bloqueado)' : ''}`; } catch { lsp = 'spotify-en-app: ?'; }
+    const perf = store.get().perf || {};
+    const line = [
+      `[${new Date().toISOString()}] v${app.getVersion()} ${p.fps} FPS`,
+      `  ${String(p.msg || '').slice(0, 400)}`,
+      `  ganchos por cuadro: ${JSON.stringify(p.hooks || {})}`,
+      `  prendido: ${JSON.stringify(p.on || {})}`,
+      `  procesos (CPU % de un núcleo): ${procs}`,
+      `  ${lsp} · ventana: ${mainWindow && !mainWindow.isDestroyed() ? (mainWindow.isFullScreen() ? 'pantalla completa' : mainWindow.isMaximized() ? 'maximizada' : mainWindow.getContentSize().join('x')) : '?'} · escala ventana ${appliedWindowFit}`,
+      `  perf: ${JSON.stringify(perf).slice(0, 500)}`,
+      ''
+    ].join('\n');
+    fs.appendFileSync(path.join(app.getPath('userData'), 'rendimiento.log'), line + '\n');
+  } catch (err) { logToApp('warn', `rendimiento.log: ${err.message}`); }
+});
+
 listen('game:telemetry', (_e, payload) => {
   matchLive = !!(payload && payload.playing);
   send('game:telemetry', payload);

@@ -4057,6 +4057,8 @@ function applyCameraZoom(doc = gameDocument()) {
 }
 
 const perfProbe = { frames: 0, tickMs: 0, t0: 0 };
+/* Cuántas veces pasa el juego por los ganchos del canvas mientras mide F6 (sólo cuenta con el medidor prendido). */
+const probeCalls = { on: false, arc: 0, fill: 0, stroke: 0, text: 0 };
 
 function togglePerfProbe(view) {
   const win = view || (gameDocument() && gameDocument().defaultView);
@@ -4066,6 +4068,8 @@ function togglePerfProbe(view) {
   if (!S.on) {
     S.on = true; S.hits = 0; S.misses = 0; S.why = {}; S.drawMs = 0; S.skinMs = 0; S.pintarMs = 0;
     perfProbe.frames = 0; perfProbe.tickMs = 0; perfProbe.t0 = now;
+    probeCalls.on = true; probeCalls.arc = probeCalls.fill = probeCalls.stroke = probeCalls.text = 0;
+    ipcRenderer.send('game:perf', { phase: 'start' });
     notify('Midiendo… jugá un rato y apretá F6 de nuevo');
     return;
   }
@@ -4078,6 +4082,19 @@ function togglePerfProbe(view) {
   const msg = `${Math.round(frames / secs)} FPS · caché ${total ? Math.round((100 * S.hits) / total) : 0}% de aciertos (fallas: ${why}) · por cuadro: cancha ${per(S.drawMs)} ms, color/textura ${per(S.skinMs)} ms, ayudas ${per(S.pintarMs)} ms, estadísticas ${per(perfProbe.tickMs)} ms`;
   notify(msg);
   log('info', `Medidor F6: ${msg}`, 'rendimiento');
+  probeCalls.on = false;
+  // El informe completo (con los procesos y lo prendido) queda en rendimiento.log.
+  let hooks = {};
+  try { hooks = { arc: probeCalls.arc / frames, fill: probeCalls.fill / frames, stroke: probeCalls.stroke / frames, text: probeCalls.text / frames }; } catch (e) { /* sin datos */ }
+  let on = {};
+  try {
+    on = {
+      flat: flatOn(), sizes: !!visual.sizes, lines: !!visual.lines, discFx: !!visual.discFx, peerFx: !!peerFxOn,
+      score: visual.score || '', env: visual.env || '', ownRing: !!visual.ownRing, discOff: !!(win && win.__tvmDiscOff),
+      vert: !!(win && win.__tvmVertOn), v3d: !!(win && win.__tvm3d), canvas: pitchCanvas ? `${pitchCanvas.width}x${pitchCanvas.height}` : '', dpr: win ? win.devicePixelRatio : 0
+    };
+  } catch (e) { /* sin datos */ }
+  ipcRenderer.send('game:perf', { phase: 'end', msg, fps: Math.round(frames / secs), hooks, on });
 }
 
 /** Soltar la tecla de las estadísticas las cierra (en vivo; en un replay siguen siendo abrir/cerrar). */
@@ -13047,16 +13064,26 @@ function installCanvasHooks(doc) {
   };
 
   const origFill = proto.fill;
-  proto.fill = function (...args) {
+  /*
+   * `fill`, `stroke`, `fillText` y `strokeText` corren decenas de veces por cuadro
+   * (cada ficha, la pelota, los palos). Van sin `...args`: eso armaba un arreglo
+   * nuevo en cada llamada, miles por segundo, y el recolector de basura cortaba
+   * cuadros para juntarlos. Se reenvía con la misma cantidad de argumentos que
+   * llegó, porque `fill(undefined)` no es lo mismo que `fill()`.
+   */
+  const callFill = (ctx, n, a, b) => (n === 0 ? origFill.call(ctx) : n === 1 ? origFill.call(ctx, a) : origFill.call(ctx, a, b));
+  proto.fill = function (a, b) {
+    const n = arguments.length;
+    if (probeCalls.on) probeCalls.fill++;
     // `WeakMap.get` con una cadena —un color— devuelve undefined y no tira, así
     // que no hace falta preguntar antes de qué tipo es el relleno.
     const flat = flatOn() && flatPatterns.get(this.fillStyle);
-    if (!flat) return origFill.apply(this, args);
+    if (!flat) return callFill(this, n, a, b);
 
     const before = this.fillStyle;
     this.fillStyle = flat;
     try {
-      return origFill.apply(this, args);
+      return callFill(this, n, a, b);
     } finally {
       this.fillStyle = before;
     }
@@ -13118,10 +13145,12 @@ function installCanvasHooks(doc) {
   const BLACK_STROKES = new Set(['#000000', '#000', 'black', 'rgba(0, 0, 0, 1)']);
 
   const origStroke = proto.stroke;
-  const baseStroke = function (args) {
+  // Ver `callFill`: mismo trato, sin arreglos por llamada.
+  const callStroke = (ctx, n, p) => (n === 0 ? origStroke.call(ctx) : origStroke.call(ctx, p));
+  const baseStroke = function (n, p) {
     if (!flatOn()) {
       // Grosor y colores propios. «Gráficos planos» manda sobre esto.
-      if (!(visual.lines || visual.discFx || visual.lineColor || visual.lineGlow || peerFxOn) || ownDraw > 0) return origStroke.apply(this, args);
+      if (!(visual.lines || visual.discFx || visual.lineColor || visual.lineGlow || peerFxOn) || ownDraw > 0) return callStroke(this, n, p);
       let mul = 1;
       let color = '';
       let overlay = false;
@@ -13177,10 +13206,10 @@ function installCanvasHooks(doc) {
           this.strokeStyle = glow;
           this.globalAlpha = a0 * 0.18;
           this.lineWidth = w0 * mul * 4;
-          origStroke.apply(this, args);
+          callStroke(this, n, p);
           this.globalAlpha = a0 * 0.35;
           this.lineWidth = w0 * mul * 2;
-          origStroke.apply(this, args);
+          callStroke(this, n, p);
         } finally {
           ownDraw--;
           this.lineWidth = w0;
@@ -13188,7 +13217,7 @@ function installCanvasHooks(doc) {
           this.globalAlpha = a0;
         }
       }
-      if (mul === 1 && !color) return origStroke.apply(this, args);
+      if (mul === 1 && !color) return callStroke(this, n, p);
       const prevWidth = this.lineWidth;
       const prevStyle = color ? this.strokeStyle : null;
       this.lineWidth = prevWidth * mul;
@@ -13200,7 +13229,7 @@ function installCanvasHooks(doc) {
         if (this.lineWidth < px) this.lineWidth = px;
       }
       try {
-        return origStroke.apply(this, args);
+        return callStroke(this, n, p);
       } finally {
         this.lineWidth = prevWidth;
         if (color) this.strokeStyle = prevStyle;
@@ -13252,18 +13281,20 @@ function installCanvasHooks(doc) {
       if (this.lineWidth < px) this.lineWidth = px;
     } else if (recolor) this.strokeStyle = '#FFFFFF';
     try {
-      return origStroke.apply(this, args);
+      return callStroke(this, n, p);
     } finally {
       this.lineWidth = width;
       if (recolor || custom) this.strokeStyle = style;
     }
   };
 
-  proto.stroke = function (...args) {
-    if (!pend.on) return baseStroke.call(this, args);
-    const { k, x, y } = pend;
+  proto.stroke = function (p) {
+    const n = arguments.length;
+    if (probeCalls.on) probeCalls.stroke++;
+    if (!pend.on) return baseStroke.call(this, n, p);
+    const k = pend.k, x = pend.x, y = pend.y;
     try {
-      return baseStroke.call(this, args);
+      return baseStroke.call(this, n, p);
     } finally {
       pend.on = false;
       // Se deshace el agrandado de este disco: la escala se hizo alrededor de
@@ -13286,6 +13317,7 @@ function installCanvasHooks(doc) {
    */
   const origArc = proto.arc;
   proto.arc = function (x, y, r, a0, a1, ccw) {
+    if (probeCalls.on) probeCalls.arc++;
     /*
      * El anillo gris de tu ficha: HaxBall lo arma con un arco de radio 25, blanco
      * y al 30 %, justo antes de los discos. Se lo reemplaza por el propio y se
@@ -13350,7 +13382,10 @@ function installCanvasHooks(doc) {
    *     que se pueden copiar limpias.
    */
   const originalFillText = proto.fillText;
-  proto.fillText = function (text, x, y, ...rest) {
+  const NO_REST = Object.freeze([]);
+  proto.fillText = function (text, x, y, maxW) {
+    const nArgs = arguments.length;
+    if (probeCalls.on) probeCalls.text++;
     const esTextura = this.canvas && this.canvas.width === 64 && this.canvas.height === 64;
     // De quién es esta textura, si es de alguien de TL App (se consume acá).
     const texNick = esTextura ? textureNick : null;
@@ -13422,16 +13457,16 @@ function installCanvasHooks(doc) {
     }
     if (!esTextura && isGoalAnnounce(text, this)) return undefined;
     if (visual.names && !esTextura && ownDraw === 0) {
-      return drawNameText(this, originalFillText, text, x, y, rest);
+      return drawNameText(this, originalFillText, text, x, y, nArgs > 3 ? [maxW] : NO_REST);
     }
-    return originalFillText.call(this, text, x, y, ...rest);
+    return nArgs > 3 ? originalFillText.call(this, text, x, y, maxW) : originalFillText.call(this, text, x, y);
   };
 
   // El cartel de gol también puede llevar contorno: se saca igual que el relleno.
   const originalStrokeText = proto.strokeText;
-  proto.strokeText = function (text, ...rest) {
+  proto.strokeText = function (text, x, y, maxW) {
     if (isGoalAnnounce(text, this)) return undefined;
-    return originalStrokeText.call(this, text, ...rest);
+    return arguments.length > 3 ? originalStrokeText.call(this, text, x, y, maxW) : originalStrokeText.call(this, text, x, y);
   };
 
   /*
@@ -15175,7 +15210,8 @@ function hookNetLatency(win) {
   const proto = win.RTCDataChannel && win.RTCDataChannel.prototype;
   if (!proto || typeof proto.send !== 'function' || proto.send.__tvmNet) return () => {};
   const orig = proto.send;
-  const wrapped = function (...args) {
+  // `send` lleva un solo dato: sin `...args`, que armaba un arreglo por paquete.
+  const wrapped = function (data) {
     if (latency.net) {
       const lat = win.performance.now() - latency.net;
       latency.net = 0;
@@ -15184,7 +15220,7 @@ function hookNetLatency(win) {
         if (latency.netSamples.length > 40) latency.netSamples.shift();
       }
     }
-    return orig.apply(this, args);
+    return orig.call(this, data);
   };
   wrapped.__tvmNet = true;
   proto.send = wrapped;
@@ -15323,9 +15359,21 @@ function syncTelemetry() {
 /* ------------------------------------------------------------------ *
  * Utilidades
  * ------------------------------------------------------------------ */
-function safe(fn, ...args) {
+/*
+ * Sin `...args`: `safe` corre varias veces por cuadro (alrededores, mapa chico,
+ * marcador) y cada `...args` era un arreglo nuevo por llamada, basura que después
+ * el recolector frena a juntar en medio del partido.
+ */
+function safe(fn, a, b, c, d) {
   try {
-    return fn(...args);
+    switch (arguments.length) {
+      case 1: return fn();
+      case 2: return fn(a);
+      case 3: return fn(a, b);
+      case 4: return fn(a, b, c);
+      case 5: return fn(a, b, c, d);
+      default: return fn.apply(null, Array.prototype.slice.call(arguments, 1));
+    }
   } catch (err) {
     log('error', err && err.message ? err.message : String(err));
   }
