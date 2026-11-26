@@ -708,21 +708,30 @@ function photographer(ctx, rnd, x, y, dir) {
   person(ctx, rnd, x, y, pick(rnd, ['#2b2b2b', '#3f5a3a', '#e8e2d0']), false, 0.85);
 }
 
-/** Techo de una casa con tanque de agua (vista de arriba). */
+/**
+ * Techo de una casa vista de arriba: losa con membrana, chapa o tejas, con su
+ * sombra, el tanque de agua y alguna cosa arriba. Mismo azar = mismo techo.
+ */
 function roof(ctx, rnd, x, y, w, h, tone) {
-  ctx.fillStyle = 'rgba(0,0,0,0.35)';
-  ctx.fillRect(x + 5, y + 6, w, h);
-  ctx.fillStyle = tone;
-  ctx.fillRect(x, y, w, h);
-  ctx.fillStyle = 'rgba(255,255,255,0.06)';
-  for (let i = 4; i < w; i += 8) ctx.fillRect(x + i, y, 2, h);
-  ctx.strokeStyle = 'rgba(0,0,0,0.35)'; ctx.lineWidth = 1.5;
-  ctx.strokeRect(x, y, w, h);
-  const tx = x + 8 + rnd() * (w - 24), ty = y + 6 + rnd() * (h - 20);
-  ctx.fillStyle = '#2a2a2a';
-  ctx.beginPath(); ctx.arc(tx + 7, ty + 7, 7, 0, 7); ctx.fill();
-  ctx.fillStyle = '#3c3c3c';
-  ctx.beginPath(); ctx.arc(tx + 6, ty + 6, 5, 0, 7); ctx.fill();
+  const kind = rnd();
+  if (kind < 0.3) sheetRoof(ctx, rnd, x, y, w, h, rnd() < 0.5, h > w);
+  else if (kind < 0.55) tileRoof(ctx, rnd, x, y, w, h);
+  else {
+    // Losa: el color de la casa, textura de membrana y la carga perimetral.
+    ctx.fillStyle = 'rgba(0,0,0,0.35)'; ctx.fillRect(x + 5, y + 6, w, h);
+    material(ctx, x, y, w, h, /^#[0-9a-f]{6}$/i.test(tone) ? tone : '#8a8a86', 14, 10, 21);
+    ctx.strokeStyle = 'rgba(255,255,255,0.14)'; ctx.lineWidth = 2; ctx.strokeRect(x + 1, y + 1, w - 2, h - 2);
+    ctx.strokeStyle = 'rgba(0,0,0,0.35)'; ctx.lineWidth = 1.2; ctx.strokeRect(x, y, w, h);
+    if (rnd() < 0.5) { ctx.fillStyle = 'rgba(230,230,225,0.22)'; ctx.fillRect(x + 4, y + 4, w * 0.5, h * 0.4); }
+  }
+  // Tanque de agua (negro o celeste) con su tapa.
+  const tx = x + 8 + rnd() * Math.max(1, w - 24), ty = y + 6 + rnd() * Math.max(1, h - 20);
+  const blue = rnd() < 0.4;
+  ctx.fillStyle = 'rgba(0,0,0,0.35)'; ctx.beginPath(); ctx.arc(tx + 9, ty + 10, 7, 0, 7); ctx.fill();
+  const g = ctx.createRadialGradient(tx + 5, ty + 5, 1, tx + 7, ty + 7, 7.5);
+  g.addColorStop(0, blue ? '#9fd0ea' : '#5a5d62'); g.addColorStop(1, blue ? '#3d7fa8' : '#202226');
+  ctx.fillStyle = g; ctx.beginPath(); ctx.arc(tx + 7, ty + 7, 7, 0, 7); ctx.fill();
+  ctx.fillStyle = blue ? '#2f6a90' : '#15171a'; ctx.beginPath(); ctx.arc(tx + 7, ty + 7, 2.6, 0, 7); ctx.fill();
 }
 
 /* ── Carteles y texto ─────────────────────────────────────────────── */
@@ -826,8 +835,7 @@ function potreroNoche(ctx, W, H, o) {
   // Paredón con un LED y pintadas.
   ctx.fillStyle = 'rgba(0,0,0,0.3)';
   ctx.fillRect(-176, -H - 84, 360, 32);
-  ctx.fillStyle = '#4a4843';
-  ctx.fillRect(-180, -H - 88, 360, 32);
+  material(ctx, -180, -H - 88, 360, 32, '#4f4c46', 18, 12, 16);
   paint(ctx, 'TL', -158, -H - 72, '900 18px sans-serif', RED, o.mirror);
   paint(ctx, 'LECCE', 156, -H - 72, 'italic 900 11px sans-serif', '#6b93ea', o.mirror);
   led(ctx, -130, -H - 82, 260, 20, ledText('  TODA LA LECCE  ·'), o.hot, o.mirror);
@@ -922,19 +930,17 @@ function potreroLed(ctx, W, H, o) {
   const gap = goalGap(H);
   ground(ctx, rnd, W, H, '#35392f', ['rgba(60,66,52,0.6)', 'rgba(44,48,38,0.6)'], ['rgba(255,255,255,0.04)', 'rgba(0,0,0,0.12)']);
   // Pasto que sobra alrededor de la cancha.
-  ctx.fillStyle = 'rgba(70,110,60,0.55)';
-  ctx.fillRect(-W - 46, -H - 46, 2 * W + 92, 2 * H + 92);
-  // Tribunas en los cuatro lados, llenas.
-  ctx.fillStyle = '#4a4f57';
-  ctx.fillRect(-W - 60, -H - 100, 2 * W + 120, 48);
-  ctx.fillRect(-W - 60, H + 52, 2 * W + 120, 48);
+  material(ctx, -W - 46, -H - 46, 2 * W + 92, 2 * H + 92, '#46703c', 14, 10, 11);
+  // Tribunas en los cuatro lados, llenas: escalones con butacas.
+  terrace(ctx, -W - 60, -H - 100, W + 60, -H - 52, 'down', { seats: [shadeC(RED, -0.3), shadeC(BLUE, -0.3)], sections: 2, cuts: [0], step: 12 });
+  terrace(ctx, -W - 60, H + 52, W + 60, H + 100, 'up', { seats: [shadeC(RED, -0.3), shadeC(BLUE, -0.3)], sections: 2, cuts: [0], step: 12 });
   crowd(ctx, rnd, -W - 40, -H - 94, W + 40, -H - 58, o, 14, 12, 0.93);
   crowd(ctx, rnd, -W - 40, H + 58, W + 40, H + 96, o, 14, 12, 0.93);
   for (const sx of [-1, 1]) {
     const x0 = sx < 0 ? -W - 150 : W + 62, x1 = sx < 0 ? -W - 62 : W + 150;
-    ctx.fillStyle = '#4a4f57';
-    ctx.fillRect(x0 - 8, -H - 46, x1 - x0 + 16, H + 46 - gap - 22);
-    ctx.fillRect(x0 - 8, gap + 22, x1 - x0 + 16, H + 46 - gap - 22);
+    const toward = sx < 0 ? 'right' : 'left', seat = [shadeC(sx < 0 ? RED : BLUE, -0.3)];
+    terrace(ctx, x0 - 8, -H - 46, x1 + 8, -gap - 22, toward, { seats: seat, sections: 1, cuts: [], step: 13 });
+    terrace(ctx, x0 - 8, gap + 22, x1 + 8, H + 46, toward, { seats: seat, sections: 1, cuts: [], step: 13 });
     crowd(ctx, rnd, x0, -H - 40, x1, -gap - 30, o, 14, 13, 0.9);
     crowd(ctx, rnd, x0, gap + 30, x1, H + 40, o, 14, 13, 0.9);
   }
@@ -964,22 +970,17 @@ function canchitaF5(ctx, W, H, o) {
   const rnd = seeded(53);
   const gap = goalGap(H);
   ground(ctx, rnd, W, H, '#2a2e35', ['rgba(40,44,52,0.6)', 'rgba(34,38,45,0.6)'], ['rgba(255,255,255,0.03)', 'rgba(0,0,0,0.12)']);
-  // Sintético alrededor, con las franjas del corte.
-  ctx.fillStyle = '#23663b';
-  ctx.fillRect(-W - 44, -H - 44, 2 * W + 88, 2 * H + 88);
-  ctx.fillStyle = 'rgba(0,0,0,0.18)';
+  // Sintético alrededor, con las franjas del corte y el granulado de caucho.
+  material(ctx, -W - 44, -H - 44, 2 * W + 88, 2 * H + 88, '#23663b', 12, 16, 12);
+  ctx.fillStyle = 'rgba(0,0,0,0.14)';
   for (let x = -W - 44; x < W + 44; x += 24) ctx.fillRect(x, -H - 44, 12, 2 * H + 88);
   // Pasillos de cemento.
-  ctx.fillStyle = '#4a4f57';
-  ctx.fillRect(-W - 120, H + 50, 2 * W + 240, 60);
-  ctx.fillRect(-W - 120, -H - 110, 2 * W + 240, 60);
-  // Arriba: vestuarios y buffet; en el pasillo, las mesas.
-  ctx.fillStyle = '#3a3f48';
-  ctx.fillRect(-W - 120, -H - 175, 2 * W + 240, 66);
-  for (let i = 0; i < 10; i++) {
-    ctx.fillStyle = i % 2 ? '#454b55' : '#40464f';
-    ctx.fillRect(-W - 110 + i * ((2 * W + 220) / 10), -H - 170, (2 * W + 220) / 10 - 6, 56);
-  }
+  material(ctx, -W - 120, H + 50, 2 * W + 240, 60, '#5a5f67', 16, 10, 13);
+  material(ctx, -W - 120, -H - 110, 2 * W + 240, 60, '#5a5f67', 16, 10, 13);
+  // Arriba: vestuarios y buffet (techo de chapa); en el pasillo, las mesas.
+  sheetRoof(ctx, rnd, -W - 120, -H - 175, 2 * W + 240, 66, false);
+  ctx.fillStyle = 'rgba(20,24,30,0.7)';
+  ctx.fillRect(-W * 0.5 - 52, -H - 150, 104, 20); ctx.fillRect(W * 0.5 - 52, -H - 150, 104, 20);
   paint(ctx, 'VESTUARIOS', -W * 0.5, -H - 140, '800 12px sans-serif', '#c9ced6', o.mirror);
   paint(ctx, 'BUFFET · TL', W * 0.5, -H - 140, '800 12px sans-serif', '#f0c25a', o.mirror);
   const nTab = more(6, LIVE.kx);
@@ -995,8 +996,9 @@ function canchitaF5(ctx, W, H, o) {
   // Costados: la canchita de al lado (se ve un pedazo) y la gente esperando turno.
   for (const sx of [-1, 1]) {
     const x0 = sx < 0 ? -W - 330 : W + 120;
-    ctx.fillStyle = '#23663b';
-    ctx.fillRect(x0, -H, 210, 2 * H);
+    material(ctx, x0, -H, 210, 2 * H, '#23663b', 12, 16, 12);
+    ctx.fillStyle = 'rgba(0,0,0,0.12)';
+    for (let x = x0; x < x0 + 210; x += 24) ctx.fillRect(x, -H, 12, 2 * H);
     ctx.strokeStyle = 'rgba(240,248,240,0.75)'; ctx.lineWidth = 2;
     ctx.strokeRect(x0 + 10, -H + 10, 190, 2 * H - 20);
     ctx.beginPath(); ctx.moveTo(x0 + 10, 0); ctx.lineTo(x0 + 200, 0); ctx.stroke();
@@ -1072,12 +1074,21 @@ function playa(ctx, W, H, o) {
   ground(ctx, rnd, W, H, '#dcc48e', ['rgba(200,176,124,0.7)', 'rgba(232,212,160,0.7)'], ['rgba(140,110,60,0.18)', 'rgba(255,255,255,0.25)']);
   // El mar arriba: agua, olas y espuma.
   const sea = -H - 92;
-  ctx.fillStyle = '#2f7fa8';
+  // Profundidad: de azul hondo a turquesa en la orilla, con textura de oleaje.
+  const deep = ctx.createLinearGradient(0, sea - 600, 0, sea);
+  deep.addColorStop(0, '#174e78'); deep.addColorStop(0.7, '#2a7fae'); deep.addColorStop(0.93, '#3fa6c4'); deep.addColorStop(1, '#7cd0d6');
+  ctx.fillStyle = deep;
   ctx.fillRect(-W - 800, sea - 600, 2 * W + 1600, 600);
-  ctx.fillStyle = '#3a93bd';
-  ctx.fillRect(-W - 800, sea - 60, 2 * W + 1600, 60);
-  ctx.fillStyle = 'rgba(126,198,214,0.9)';
-  ctx.fillRect(-W - 800, sea - 18, 2 * W + 1600, 18);
+  ctx.save();
+  ctx.globalAlpha = 0.35; ctx.globalCompositeOperation = 'overlay';
+  material(ctx, -W - 800, sea - 600, 2 * W + 1600, 600, '#808080', 40, 6, 31);
+  ctx.restore();
+  // Reflejos de sol sobre el agua.
+  for (let i = 0; i < 260; i++) {
+    const x = -W - 800 + rnd() * (2 * W + 1600), y = sea - 20 - rnd() * 500;
+    ctx.fillStyle = `rgba(255,255,255,${0.12 + rnd() * 0.25})`;
+    ctx.fillRect(x, y, 3 + rnd() * 7, 1);
+  }
   ctx.strokeStyle = 'rgba(255,255,255,0.75)'; ctx.lineWidth = 3;
   ctx.beginPath();
   for (let x = -W - 800; x < W + 800; x += 30) { ctx.moveTo(x, sea); ctx.quadraticCurveTo(x + 15, sea + 6, x + 30, sea); }
@@ -1088,9 +1099,17 @@ function playa(ctx, W, H, o) {
     for (let x = -W - 800 + k * 13; x < W + 800; x += 46) { ctx.moveTo(x, sea - 22 - k * 24); ctx.quadraticCurveTo(x + 12, sea - 18 - k * 24, x + 24, sea - 22 - k * 24); }
     ctx.stroke();
   }
-  // Arena mojada pegada al agua.
-  ctx.fillStyle = 'rgba(160,130,80,0.35)';
-  ctx.fillRect(-W - 800, sea, 2 * W + 1600, 14);
+  // Arena mojada pegada al agua, que brilla un poco.
+  const wet = ctx.createLinearGradient(0, sea, 0, sea + 22);
+  wet.addColorStop(0, 'rgba(150,120,72,0.55)'); wet.addColorStop(1, 'rgba(150,120,72,0)');
+  ctx.fillStyle = wet;
+  ctx.fillRect(-W - 800, sea, 2 * W + 1600, 22);
+  // La espuma que dejó la última ola, irregular.
+  ctx.fillStyle = 'rgba(255,255,255,0.55)';
+  ctx.beginPath();
+  for (let x = -W - 800; x <= W + 800; x += 10) ctx.lineTo(x, sea + 4 + Math.sin(x * 0.03) * 3 + Math.sin(x * 0.011) * 4);
+  for (let x = W + 800; x >= -W - 800; x -= 10) ctx.lineTo(x, sea + 1 + Math.sin(x * 0.03) * 3 + Math.sin(x * 0.011) * 4);
+  ctx.fill();
   // Soga con banderines en lugar de alambrado.
   ctx.strokeStyle = 'rgba(80,60,30,0.7)'; ctx.lineWidth = 1.5;
   ctx.strokeRect(-W - 20, -H - 18, 2 * W + 40, 2 * H + 36);
@@ -1280,9 +1299,10 @@ function plant(ctx, rnd, x, y) {
 /** Un edificio vecino, más abajo: techo oscuro y ventanas prendidas en el borde. */
 function building(ctx, rnd, x, y, w, h) {
   ctx.fillStyle = 'rgba(0,0,0,0.45)'; ctx.fillRect(x + 10, y + 12, w, h);
-  ctx.fillStyle = pick(rnd, ['#2c3038', '#33373f', '#2a2d33', '#3a3530']);
-  ctx.fillRect(x, y, w, h);
-  ctx.strokeStyle = 'rgba(0,0,0,0.5)'; ctx.lineWidth = 2; ctx.strokeRect(x, y, w, h);
+  material(ctx, x, y, w, h, pick(rnd, ['#2c3038', '#33373f', '#2a2d33', '#3a3530']), 14, 10, 23);
+  // Pretil alrededor de la terraza del edificio.
+  ctx.strokeStyle = 'rgba(120,125,135,0.5)'; ctx.lineWidth = 2.5; ctx.strokeRect(x + 1.5, y + 1.5, w - 3, h - 3);
+  ctx.strokeStyle = 'rgba(0,0,0,0.5)'; ctx.lineWidth = 1.5; ctx.strokeRect(x, y, w, h);
   for (let i = x + 6; i < x + w - 6; i += 10) {
     for (const yy of [y + 3, y + h - 6]) {
       ctx.fillStyle = rnd() < 0.45 ? 'rgba(255,214,140,0.85)' : 'rgba(80,90,110,0.6)'; ctx.fillRect(i, yy, 5, 3);
@@ -1308,8 +1328,8 @@ function azotea(ctx, W, H, o) {
   // La terraza: piso de baldosas, pretil alrededor.
   const X = W + 150, Y = H + 112;
   ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.fillRect(-X + 14, -Y + 16, 2 * X, 2 * Y);
-  ctx.fillStyle = '#5e5b55'; ctx.fillRect(-X, -Y, 2 * X, 2 * Y);
-  ctx.strokeStyle = 'rgba(0,0,0,0.12)'; ctx.lineWidth = 1;
+  material(ctx, -X, -Y, 2 * X, 2 * Y, '#625e57', 16, 10, 14);
+  ctx.strokeStyle = 'rgba(0,0,0,0.16)'; ctx.lineWidth = 1;
   ctx.beginPath();
   for (let x = -X; x < X; x += 16) { ctx.moveTo(x, -Y); ctx.lineTo(x, Y); }
   for (let y = -Y; y < Y; y += 16) { ctx.moveTo(-X, y); ctx.lineTo(X, y); }
@@ -1364,12 +1384,16 @@ function azotea(ctx, W, H, o) {
 function house(ctx, rnd, x, y, w, depth, up, o) {
   const dir = up ? -1 : 1;
   const top = up ? y - depth : y;
-  ctx.fillStyle = 'rgba(0,0,0,0.35)'; ctx.fillRect(x + 4, top + 5, w, depth);
-  ctx.fillStyle = pick(rnd, ['#c96f4a', '#b55a3c', '#d9c9a8', '#8a9aa6', '#e0d6c0', '#9a6a5a']);
-  ctx.fillRect(x, top, w, depth);
-  ctx.fillStyle = 'rgba(0,0,0,0.12)';
-  for (let i = 3; i < w; i += 7) ctx.fillRect(x + i, top, 2, depth);
-  ctx.strokeStyle = 'rgba(0,0,0,0.4)'; ctx.lineWidth = 1.5; ctx.strokeRect(x, top, w, depth);
+  // Techo de verdad: tejas, chapa o losa pintada.
+  const kind = rnd();
+  if (kind < 0.4) tileRoof(ctx, rnd, x, top, w, depth);
+  else if (kind < 0.62) sheetRoof(ctx, rnd, x, top, w, depth, rnd() < 0.4, true);
+  else {
+    ctx.fillStyle = 'rgba(0,0,0,0.35)'; ctx.fillRect(x + 4, top + 5, w, depth);
+    material(ctx, x, top, w, depth, pick(rnd, ['#d9c9a8', '#8a9aa6', '#e0d6c0', '#b8a48a', '#c9c2b4']), 14, 10, 22);
+    ctx.strokeStyle = 'rgba(255,255,255,0.15)'; ctx.lineWidth = 2; ctx.strokeRect(x + 1, top + 1, w - 2, depth - 2);
+    ctx.strokeStyle = 'rgba(0,0,0,0.4)'; ctx.lineWidth = 1.2; ctx.strokeRect(x, top, w, depth);
+  }
   // Puerta y ventana sobre la vereda.
   const fy = up ? y - 3 : y;
   ctx.fillStyle = '#4a3324'; ctx.fillRect(x + w * 0.2, fy, 10, 3);
@@ -1458,7 +1482,7 @@ function colegio(ctx, W, H, o) {
   // Paredes con murales arriba y abajo.
   const mural = (y, h) => {
     ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.fillRect(-W - 196, y + 4, 2 * W + 392, h);
-    ctx.fillStyle = '#e8e0cc'; ctx.fillRect(-W - 200, y, 2 * W + 400, h);
+    material(ctx, -W - 200, y, 2 * W + 400, h, '#e8e0cc', 14, 8, 15);
     const cols = ['#e86f4a', '#f0c25a', '#3aa37a', '#4a7fd8', '#b25ab5', '#e85a7a'];
     for (let x = -W - 190; x < W + 190; x += 26 + rnd() * 30) {
       ctx.fillStyle = pick(rnd, cols);
