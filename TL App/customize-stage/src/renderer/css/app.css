@@ -9231,3 +9231,14 @@ html:not([data-animations="off"]) .is-bad { animation: fieldShake 0.4s; }
 .mus__hero .panel__close--mus:hover { background: rgb(var(--accent-rgb) / 22%); border-color: var(--accent-line); color: var(--text); }
 .mus__hero .panel__close--mus svg { width: 14px; height: 14px; }
 #app[data-view="musica"] .mus__srcsw { right: 62px; }
+
+/* ── Club sin marco (boceto 3 + X afuera): cabecera de lado a lado pegada arriba ── */
+#app[data-view="club"] .panel { padding-top: 0; }
+#app[data-view="club"] .panel__card { border: 0; background: none; box-shadow: none; border-radius: 0; }
+#app[data-view="club"] .panel.is-open .panel__scrim { background: rgba(4, 3, 8, 0.74); }
+#app[data-view="club"] .page[data-page="club"] .page__inner { padding: 0 2px 24px; }
+.page[data-page="club"] .club__hero { border-top: 0; border-radius: 0 0 24px 24px; padding-top: 30px; }
+.panel > .panel__close--out { position: absolute; top: 16px; right: 18px; z-index: 5; width: 40px; height: 40px; border-radius: 50%;
+  color: var(--text); background: rgb(var(--bg-0-rgb) / 70%); border: 1px solid rgb(var(--text-rgb) / 16%); box-shadow: 0 6px 18px rgb(0 0 0 / 40%); }
+.panel > .panel__close--out:hover { background: rgb(var(--accent-rgb) / 22%); border-color: var(--accent-line); color: var(--text); }
+.panel > .panel__close--out svg { width: 16px; height: 16px; }

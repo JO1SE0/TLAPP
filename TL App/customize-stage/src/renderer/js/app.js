@@ -2339,7 +2339,9 @@ function setView(name) {
   if (name === 'replays') loadReplays();
   if (name === 'cuenta') loadAuth();
   if (name === 'club') { loadClubRank(); loadKings(); }
+  if (name !== 'club') clubCloseOut(false);
   if (name === 'musica') musicPageOpen(); else musicPageClose();
+  if (name === 'club') clubCloseOut(true);
   // El tema del club suena sólo con la página Club abierta y en el menú.
   if (window.TLClubTheme) { if (name === 'club' && state.stage !== 'game') window.TLClubTheme.start(); else window.TLClubTheme.stop(); }
   if (name === 'hostear') loadHostState();
@@ -6123,7 +6125,16 @@ function musCloseIn(on) {
   const card = $('#panel .panel__card');
   if (!x || !hero || !card) return;
   if (on && x.parentElement !== hero) { hero.append(x); x.classList.add('panel__close--mus'); }
-  else if (!on && x.parentElement !== card) { card.prepend(x); x.classList.remove('panel__close--mus'); }
+  else if (!on && x.parentElement === hero) { card.prepend(x); x.classList.remove('panel__close--mus'); }
+}
+/* Club sin marco: la X va afuera, arriba a la derecha de la pantalla (sobre el velo). */
+function clubCloseOut(on) {
+  const x = $('#panelClose');
+  const panel = $('#panel');
+  const card = $('#panel .panel__card');
+  if (!x || !panel || !card) return;
+  if (on && x.parentElement !== panel) { panel.append(x); x.classList.add('panel__close--out'); }
+  else if (!on && x.parentElement === panel) { card.prepend(x); x.classList.remove('panel__close--out'); }
 }
 function musicPageOpen() {
   musCloseIn(true);
