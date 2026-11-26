@@ -4881,7 +4881,7 @@ function renderToggleKeys() {
   const rows = [
     ['keyFlat', en ? 'Flat graphics' : 'Gráficos planos', en ? 'Turns flat graphics on and off mid-match.' : 'Prende y apaga los gráficos planos en plena partida.', 'F3'],
     ['keyMirror', en ? 'Fixed side' : 'Lado fijo', en ? 'Cycles: off → always red side → always blue side.' : 'Va pasando: No → siempre del lado rojo → siempre del lado azul.', 'F7'],
-    ['keyTeamColors', en ? 'Custom team colors' : 'Colores propios de los equipos', en ? 'Switches between the room colors and yours.' : 'Cambia entre los colores de la sala y los tuyos.', 'F10']
+    ['keyTeamColors', en ? 'Plain kits' : 'Camisetas lisas', en ? 'Turns the kits the room set on or off. The club kit still shows.' : 'Prende o apaga las camisetas que puso la sala. La del club sigue saliendo.', 'F10']
   ];
   const curOf = (k, def) => (typeof g[k] === 'string' ? g[k] : def);
   host.replaceChildren(...rows.map(([k, label, hint, def]) => {

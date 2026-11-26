@@ -554,9 +554,10 @@ const teamPick = { on: false, red: -1, blue: -1, keep: false };
 function syncTeamPick() {
   const v = state.config.visual || {};
   const hex = (h) => (/^#[0-9a-f]{6}$/i.test(h || '') ? parseInt(h.slice(1), 16) : -1);
-  teamPick.on = v.teamColors === 'mine';
   teamPick.red = hex(v.teamRed);
   teamPick.blue = hex(v.teamBlue);
+  // «Los míos» sin ningún color elegido no cambia nada (y no tapa la del club).
+  teamPick.on = v.teamColors === 'mine' && (teamPick.red >= 0 || teamPick.blue >= 0);
   teamPick.keep = !!v.teamKeepKits;
 }
 /*
@@ -627,8 +628,8 @@ function clubKitFor(team) {
  */
 const plainKitCache = new Map();
 function plainKit(team) {
-  const col = teamPick.on ? (team === 1 ? teamPick.red : team === 2 ? teamPick.blue : -1) : -1;
-  const c = col >= 0 ? col : team === 1 ? HB_RED : HB_BLUE;
+  // El rojo y el azul de siempre de HaxBall: lisas es «sin colores de nadie».
+  const c = team === 1 ? HB_RED : HB_BLUE;
   let k = plainKitCache.get(c);
   if (!k) { k = { sd: 0, pd: 0xffffff, ib: [c] }; plainKitCache.set(c, k); }
   return k;
@@ -655,9 +656,9 @@ function teamKit(team, kit) {
 }
 
 function teamKitPick(team, kit) {
+  // La camiseta del club va primero: sale con las lisas prendidas o apagadas.
+  if (kit && clubKit.teams[team]) return clubKitFor(team) || kit;
   if (kit && (team === 1 || team === 2) && state.config && state.config.pitch && state.config.pitch.plainKits) return plainKit(team);
-  // Los colores que eligió el jugador mandan sobre la camiseta del club.
-  if (!teamPick.on && kit && clubKit.teams[team]) return clubKitFor(team) || kit;
   if (!teamPick.on || !kit) return kit;
   const col = team === 1 ? teamPick.red : team === 2 ? teamPick.blue : -1;
   if (col < 0) return kit;
@@ -4053,9 +4054,11 @@ function toggleHotkey(event) {
     quickSet({ pitch: { mirror: next } }, 'Lado fijo');
     notify(next === 'off' ? 'Lado fijo: no' : next === 'red' ? 'Lado fijo: siempre del lado rojo' : 'Lado fijo: siempre del lado azul');
   } else {
-    const mine = !(cfg.visual && cfg.visual.teamColors === 'mine');
-    quickSet({ visual: { teamColors: mine ? 'mine' : 'room' } }, 'Colores de los equipos');
-    notify(mine ? 'Colores de los equipos: los tuyos' : 'Colores de los equipos: los de la sala');
+    // Camisetas lisas: ignorar (o no) las camisetas que puso la sala. La del
+    // club no depende de esto: si está prendida, sigue saliendo igual.
+    const on = !(cfg.pitch && cfg.pitch.plainKits);
+    quickSet({ pitch: { plainKits: on } }, 'Camisetas lisas');
+    notify(on ? 'Camisetas lisas: sin los colores de la sala' : 'Camisetas lisas: con los colores de la sala');
   }
   return true;
 }
