@@ -9242,3 +9242,11 @@ html:not([data-animations="off"]) .is-bad { animation: fieldShake 0.4s; }
   color: var(--text); background: rgb(var(--bg-0-rgb) / 70%); border: 1px solid rgb(var(--text-rgb) / 16%); box-shadow: 0 6px 18px rgb(0 0 0 / 40%); }
 .panel > .panel__close--out:hover { background: rgb(var(--accent-rgb) / 22%); border-color: var(--accent-line); color: var(--text); }
 .panel > .panel__close--out svg { width: 16px; height: 16px; }
+
+/* ── Música y Club sin marco: las tarjetas con fondo propio (no transparentes) ── */
+#app[data-view="musica"] .page[data-page="musica"] .csec,
+#app[data-view="musica"] .page[data-page="musica"] .mus__hero,
+#app[data-view="club"] .page[data-page="club"] .csec,
+#app[data-view="club"] .page[data-page="club"] .club__hero { background-color: var(--bg-1); }
+#app[data-view="musica"] #panelScrim,
+#app[data-view="club"] #panelScrim { background: rgba(4, 3, 8, 0.8); }
