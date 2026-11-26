@@ -8927,3 +8927,75 @@ html[data-stage="game"] .ambient::after { animation: none !important; }
 
 /* Atajos de la cancha: la lista esperando que aprietes una tecla. */
 select.is-listening { border-color: var(--accent, #ecd593) !important; box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent, #ecd593) 30%, transparent); }
+
+/* ═══ Menú de la izquierda DENTRO de la sala (boceto 10, «dock con nombres») ═══
+   Sólo con la interfaz Clásica: un panel de vidrio flotante, centrado a la
+   izquierda, con tu nivel arriba, las secciones con nombre y, abajo, quién del
+   club está conectado y el botón para salir. Afuera de la sala no cambia nada. */
+.railgame, .profcard__crest { display: none; }
+html:not([data-layout]) .app[data-stage="game"] .rail {
+  top: 50%; bottom: auto; left: 14px;
+  width: 214px; max-height: calc(100% - 28px); overflow-y: auto; overflow-x: hidden; scrollbar-width: none;
+  padding: 12px 10px; gap: 3px; align-items: stretch;
+  border: 1px solid rgb(255 255 255 / 12%); border-radius: 30px;
+  background: linear-gradient(165deg, rgb(24 34 58 / 97%), rgb(10 16 30 / 97%));
+  box-shadow: 0 24px 60px -10px rgb(0 0 0 / 80%), inset 0 1px 0 rgb(255 255 255 / 10%);
+  transform: translate(calc(-100% - 24px), -50%);
+}
+html:not([data-layout]) .app[data-stage="game"] .railedge:hover ~ .rail,
+html:not([data-layout]) .app[data-stage="game"] .rail:hover { transform: translate(0, -50%); }
+html:not([data-layout]) .app[data-stage="game"] .rail::-webkit-scrollbar { display: none; }
+html:not([data-layout]) .app[data-stage="game"] .rail > .roster,
+html:not([data-layout]) .app[data-stage="game"] .rail > .rail__hr { display: none !important; }
+/* Arriba: tu nivel, en una fila. */
+html:not([data-layout]) .app[data-stage="game"] .rail > .profcard {
+  display: flex !important; order: -10; width: 100%; margin: 0 0 6px; padding: 4px 6px 12px;
+  flex-direction: row; align-items: center; gap: 10px; text-align: left;
+  background: none !important; box-shadow: none !important; border-radius: 0;
+  border-bottom: 1px solid rgb(255 255 255 / 9%);
+}
+html:not([data-layout]) .app[data-stage="game"] .rail > .profcard:hover { transform: none; }
+html:not([data-layout]) .app[data-stage="game"] .profcard__glow,
+html:not([data-layout]) .app[data-stage="game"] .profcard__stats,
+html:not([data-layout]) .app[data-stage="game"] .profcard__bar { display: none !important; }
+html:not([data-layout]) .app[data-stage="game"] .profcard__ring { width: 44px !important; height: 44px !important; flex: none; }
+html:not([data-layout]) .app[data-stage="game"] .profcard__badge { transform: scale(.8); transform-origin: 100% 100%; }
+html:not([data-layout]) .app[data-stage="game"] .profcard__info { flex: 1; min-width: 0; align-items: flex-start; }
+html:not([data-layout]) .app[data-stage="game"] .profcard__name { font-size: 14px; font-weight: 900; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+html:not([data-layout]) .app[data-stage="game"] .profcard__lvl { color: #ecd593; font-size: 10px; font-weight: 800; letter-spacing: .16em; }
+html:not([data-layout]) .app[data-stage="game"] .profcard__crest { display: block; width: 30px; height: 30px; object-fit: contain; flex: none; }
+/* Las secciones: ícono y nombre; la activa en dorado. */
+html:not([data-layout]) .app[data-stage="game"] .rail > .railitem {
+  width: 100%; height: 42px; flex-direction: row; justify-content: flex-start; gap: 12px;
+  padding: 0 12px; border-radius: 16px; border: 0;
+  font-size: 14px; font-weight: 800; letter-spacing: 0; color: #aeb8cc;
+}
+html:not([data-layout]) .app[data-stage="game"] .rail > .railitem svg { width: 20px; height: 20px; flex: none; }
+html:not([data-layout]) .app[data-stage="game"] .rail > .railitem:hover { background: rgb(255 255 255 / 7%); color: #fff; }
+html:not([data-layout]) .app[data-stage="game"] .rail > .railitem.is-active {
+  background: linear-gradient(135deg, #f4dd9a, #d9b45a) !important; color: #1a1405 !important;
+  box-shadow: 0 10px 24px -10px rgb(236 200 110 / 80%) !important;
+}
+html:not([data-layout]) .app[data-stage="game"] .rail > .railitem.is-active::before,
+html:not([data-layout]) .app[data-stage="game"] .rail > .railitem.is-active::after { display: none; }
+html:not([data-layout]) .app[data-stage="game"] .rail.has-club > .railitem[data-view="club"]::after {
+  content: ''; position: absolute; right: 14px; top: 50%; width: 8px; height: 8px; margin-top: -4px;
+  border-radius: 50%; background: #3ddc84; box-shadow: 0 0 8px #3ddc84;
+}
+/* Abajo: el club conectado y salir. */
+html:not([data-layout]) .app[data-stage="game"] .railgame { order: 99; display: flex; flex-direction: column; gap: 8px; margin-top: 4px; }
+.railgame__hr { height: 1px; background: rgb(255 255 255 / 9%); margin: 2px 6px 2px; }
+.railgame__club { display: flex; align-items: center; gap: 8px; padding: 2px 10px; }
+.railgame__faces { display: flex; }
+.railgame__faces i { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; font-style: normal;
+  font-size: 11px; font-weight: 900; color: #fff; border: 2px solid #3ddc84; margin-left: -9px; background: #3b7be0; }
+.railgame__faces i:first-child { margin-left: 0; }
+.railgame__txt { font-size: 12px; color: #8f9ab3; font-weight: 700; white-space: nowrap; }
+.railgame__out { display: flex; align-items: center; gap: 12px; height: 42px; padding: 0 12px; border-radius: 16px; border: 0;
+  background: transparent; color: #ff9b9b; font: inherit; font-size: 14px; font-weight: 800; cursor: pointer; }
+.railgame__out svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.railgame__out:hover { background: rgb(229 72 61 / 14%); }
+html:not([data-layout]) .app[data-stage="game"] .rail > .railitem.is-active svg { color: #1a1405 !important; stroke: #1a1405 !important; opacity: 1 !important; }
+html:not([data-layout]) .app[data-stage="game"] .rail > .railitem,
+html:not([data-layout]) .app[data-stage="game"] .railgame__out { font-size: 13.5px !important; }
+html:not([data-layout]) .app[data-stage="game"] .profcard__info { padding-left: 4px; gap: 2px; }

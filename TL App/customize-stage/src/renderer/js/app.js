@@ -12832,7 +12832,39 @@ function paintRosterOnline(online) {
     li.classList.toggle('is-playing', !!(m && m.room));
   }
   rosterFit(true);
+  paintRailGame(online);
 }
+
+/* El pie del menú de la sala (ver `.railgame` en app.css): caritas de los del
+   club conectados (sin vos) y el puntito verde de Club. */
+const RAIL_FACE_COLORS = ['#e2483d', '#3b7be0', '#2fb36b', '#b05be0', '#e08a2f', '#2fb3b3'];
+function paintRailGame(online) {
+  const others = (online || []).filter((m) => m && m.name && !m.self);
+  const rail = document.getElementById('rail');
+  if (rail) rail.classList.toggle('has-club', others.length > 0);
+  const box = document.getElementById('railGameClub');
+  if (!box) return;
+  box.hidden = !others.length;
+  if (!others.length) return;
+  document.getElementById('railGameFaces').replaceChildren(...others.slice(0, 4).map((m) => {
+    const f = document.createElement('i');
+    let h = 0; for (const ch of String(m.name)) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+    f.style.background = RAIL_FACE_COLORS[h % RAIL_FACE_COLORS.length];
+    f.textContent = String(m.name).trim().charAt(0).toUpperCase() || '?';
+    f.title = m.name;
+    return f;
+  }));
+  const en = isEn();
+  document.getElementById('railGameTxt').textContent = en ? `${others.length} from the club` : `${others.length} del club`;
+}
+$('#railGameOut').addEventListener('click', () => {
+  if (state.stage !== 'game') return;
+  hideLoading();
+  setStage('browser');
+  setView('play');
+  syncJoinButton();
+  tvm.rooms.leave().catch(() => {});
+});
 
 function paintClubNow(list) {
   try { updateClubRooms(list); } catch (e) { /* adorno */ }
@@ -14757,6 +14789,8 @@ document.addEventListener('mouseover', (e) => {
   };
   document.addEventListener('mouseover', (e) => {
     const el = e.target.closest && e.target.closest('[title], [data-tip]');
+    // En la sala el menú de la izquierda ya muestra los nombres: sin globito.
+    if (el && state.stage === 'game' && el.closest('#rail')) { hide(); return; }
     if (!el || el.closest('.hint')) { if (current && !(current.contains && current.contains(e.target))) hide(); return; }
     if (el.hasAttribute('title')) {
       const text = el.getAttribute('title');

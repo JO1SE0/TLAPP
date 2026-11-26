@@ -324,6 +324,7 @@
             <span class="profcard__lvl" id="profCardLvl"></span>
             <span class="profcard__bar" aria-hidden="true"><i id="profCardBar"></i></span>
           </span>
+          <img class="profcard__crest" src="../../assets/toda-la-lecce.png" alt="" aria-hidden="true" />
           <span class="profcard__stats">
             <span><b id="pcM">0</b><em>PJ</em></span>
             <span><b id="pcG">0</b><em>G</em></span>
@@ -380,6 +381,12 @@
         <button class="railitem" id="captainBtn" hidden type="button">
           <svg data-icon viewBox="0 0 24 24"><path d="M12 3.2 4.6 6.1v5.3c0 4.4 3 7.9 7.4 9.4 4.4-1.5 7.4-5 7.4-9.4V6.1z"/><path d="m9 12 2.2 2.2L15.2 10"/></svg><span>Admin</span>
         </button>
+      <!-- Sólo dentro de la sala (menú «dock»): quién del club está conectado y salir de la sala. -->
+        <div class="railgame" id="railGame">
+          <span class="railgame__hr" aria-hidden="true"></span>
+          <div class="railgame__club" id="railGameClub" hidden><span class="railgame__faces" id="railGameFaces"></span><span class="railgame__txt" id="railGameTxt"></span></div>
+          <button class="railgame__out" id="railGameOut" type="button"><svg data-icon viewBox="0 0 24 24"><path d="M14 4h5v16h-5"/><path d="M10 8l-4 4 4 4M6 12h11"/></svg><span>Salir de la sala</span></button>
+        </div>
       </nav>
 
     <div class="body">
