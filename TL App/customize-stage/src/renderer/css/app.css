@@ -8924,3 +8924,6 @@ html[data-stage="game"] .ambient::after { animation: none !important; }
 .row.row--stack > .row__text { flex: 1 1 100%; max-width: none; }
 .row.row--stack > .row__ctl { flex: 1 1 100%; display: flex; align-items: center; gap: 12px; justify-content: flex-start; }
 .row.row--stack > .row__ctl input[type="range"] { flex: 1; min-width: 0; }
+
+/* Atajos de la cancha: la lista esperando que aprietes una tecla. */
+select.is-listening { border-color: var(--accent, #ecd593) !important; box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent, #ecd593) 30%, transparent); }

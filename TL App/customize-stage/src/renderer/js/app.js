@@ -4751,6 +4751,28 @@ function renderSummaryKey() {
  * del juego (ver `toggleHotkey` en game-preload.js). F5, F6, F8, F9 y F11 ya tienen dueño.
  */
 const TOGGLE_KEY_OPTS = ['F1', 'F2', 'F3', 'F4', 'F7', 'F10', 'F12', ''];
+const TOGGLE_KEY_CAPTURE = '__capture';
+/* Teclas que ya tienen dueño y no se pueden usar de atajo. */
+const TOGGLE_KEY_TAKEN = { Escape: 'cancela', Enter: 'el chat', F5: 'recarga', F6: 'el medidor', F8: 'el overlay', F9: 'amigos', F11: 'la pantalla completa' };
+let toggleKeyCapture = null;
+function toggleKeyName(code) {
+  if (!code) return isEn() ? 'No key' : 'Sin tecla';
+  return keyLabel(code);
+}
+/* Escucha la próxima tecla y la devuelve (por `code`: no cambia con Shift ni con la distribución). */
+function captureToggleKey(done) {
+  if (toggleKeyCapture) toggleKeyCapture();
+  const onKey = (e) => {
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    if (e.repeat) return;
+    stop();
+    done(e.code === 'Escape' ? null : e.code);
+  };
+  const stop = () => { window.removeEventListener('keydown', onKey, true); toggleKeyCapture = null; };
+  window.addEventListener('keydown', onKey, true);
+  toggleKeyCapture = () => { stop(); done(null); };
+}
 function renderToggleKeys() {
   const host = $('#toggleKeysField');
   if (!host) return;
@@ -4761,13 +4783,38 @@ function renderToggleKeys() {
     ['keyMirror', en ? 'Fixed side' : 'Lado fijo', en ? 'Cycles: off → always red side → always blue side.' : 'Va pasando: No → siempre del lado rojo → siempre del lado azul.', 'F7'],
     ['keyTeamColors', en ? 'Custom team colors' : 'Colores propios de los equipos', en ? 'Switches between the room colors and yours.' : 'Cambia entre los colores de la sala y los tuyos.', 'F10']
   ];
+  const curOf = (k, def) => (typeof g[k] === 'string' ? g[k] : def);
   host.replaceChildren(...rows.map(([k, label, hint, def]) => {
-    const cur = typeof g[k] === 'string' ? g[k] : def;
-    const opts = TOGGLE_KEY_OPTS.map((v) => [v, v || (en ? 'No key' : 'Sin tecla')]);
-    if (cur && !TOGGLE_KEY_OPTS.includes(cur)) opts.push([cur, cur]);
+    const cur = curOf(k, def);
+    const opts = TOGGLE_KEY_OPTS.map((v) => [v, toggleKeyName(v)]);
+    if (cur && !TOGGLE_KEY_OPTS.includes(cur)) opts.splice(opts.length - 1, 0, [cur, toggleKeyName(cur)]);
+    opts.push([TOGGLE_KEY_CAPTURE, en ? 'Press another key…' : 'Apretar otra tecla…']);
+    const save = async (code) => {
+      if (code === cur) { renderToggleKeys(); return; }
+      if (code) {
+        const why = TOGGLE_KEY_TAKEN[code] || (code === g.summaryKey ? (en ? 'the match summary' : 'el resumen del partido') : '');
+        const act = activeKeys()[code];
+        const game = act ? [act] : null;
+        const other = rows.find(([k2, , , d2]) => k2 !== k && curOf(k2, d2) === code);
+        const msg = why ? (en ? `${keyLabel(code)} is already used by ${why}` : `${keyLabel(code)} ya la usa ${why}`)
+          : game ? (en ? `${keyLabel(code)} is a game key (${(ACTION_LABELS.en || {})[game[0]] || game[0]})` : `${keyLabel(code)} es una tecla del juego (${(ACTION_LABELS.es || {})[game[0]] || game[0]})`)
+          : other ? (en ? `${keyLabel(code)} is already used by «${other[1]}»` : `${keyLabel(code)} ya la usa «${other[1]}»`) : '';
+        if (msg) { toast(msg, 'err'); renderToggleKeys(); return; }
+      }
+      await patchConfig({ general: { [k]: code || '' } });
+      renderToggleKeys();
+    };
     return selectRow({
       label, hint, id: `tk-${k}`, options: opts, value: cur,
-      onChange: async (value) => { await patchConfig({ general: { [k]: value } }); renderToggleKeys(); }
+      onChange: (value, select) => {
+        if (value !== TOGGLE_KEY_CAPTURE) { save(value); return; }
+        // Se muestra el pedido en la misma lista hasta que llegue la tecla.
+        const waiting = select.querySelector(`option[value="${TOGGLE_KEY_CAPTURE}"]`);
+        if (waiting) waiting.textContent = en ? 'Press a key… (Esc cancels)' : 'Apretá una tecla… (Esc cancela)';
+        select.classList.add('is-listening');
+        select.blur();
+        captureToggleKey((code) => { if (code) save(code); else renderToggleKeys(); });
+      }
     });
   }));
 }

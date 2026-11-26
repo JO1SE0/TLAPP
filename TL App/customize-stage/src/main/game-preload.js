@@ -4029,7 +4029,8 @@ const HOTKEY_OPTS = { capture: true };
  */
 function toggleHotkey(event) {
   const g = (state.config && state.config.general) || {};
-  const key = event.key;
+  // Por `code` (la tecla física): con letras, Shift o la distribución no la cambian.
+  const key = event.code || event.key;
   if (!key || event.ctrlKey || event.altKey || event.metaKey) return false;
   const pick = (k, def) => (typeof g[k] === 'string' ? g[k] : def);
   const which = key === pick('keyFlat', 'F3') ? 'flat' : key === pick('keyMirror', 'F7') ? 'mirror' : key === pick('keyTeamColors', 'F10') ? 'colors' : '';
