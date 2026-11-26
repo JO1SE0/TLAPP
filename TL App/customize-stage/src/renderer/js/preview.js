@@ -133,7 +133,8 @@
     const ballLine = num(V.ballLine, 0.3, 4, 1);
     const discSize = num(V.discSize, 0.5, 2, 1);
     const ballSize = num(V.ballSize, 0.5, 2, 1);
-    const lineColor = L.safeColor(V.lineColor) || '#c7e6bd';
+    const surfSpec = L.surfaceSpec ? L.surfaceSpec(V.texture) : null;
+    const lineColor = L.safeColor(V.lineColor) || (surfSpec && surfSpec.lines) || '#c7e6bd';
     const postColor = L.safeColor(V.postColor) || '#ffffff';
     const discOutline = L.safeColor(V.discOutline) || '#000000';
     const ballOutline = L.safeColor(V.ballOutline) || '#000000';
@@ -168,6 +169,25 @@
       ctx.globalAlpha = 1;
     }
     ctx.restore();
+
+    // La cancha elegida (look.js · SURFACES): entera y opaca, debajo de las líneas.
+    // La primera vez se genera de a pedazos y la vista previa se repinta al terminar.
+    const surf = L.surfaceSpec && L.surfaceSpec(V.texture)
+      ? L.surfaceImage(document, V.texture, HALF_W, HALF_H, () => { if (typeof window.paintPreview === 'function') window.paintPreview(); })
+      : null;
+    if (surf) {
+      ctx.save();
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.fillStyle = surf.out;
+      ctx.fillRect(0, 0, W, H);
+      ctx.setTransform(world);
+      ctx.beginPath();
+      rounded(ctx, -HALF_W, -HALF_H, 2 * HALF_W, 2 * HALF_H, 6);
+      ctx.clip();
+      ctx.drawImage(surf.canvas, -HALF_W, -HALF_H, 2 * HALF_W, 2 * HALF_H);
+      if (pi) { ctx.globalAlpha = num(skin.imageAlpha, 0.1, 1, 1); cover(ctx, pi, -HALF_W, -HALF_H, 2 * HALF_W, 2 * HALF_H, (cfg.vip || {}).pitchCrop); }
+      ctx.restore();
+    }
 
     ctx.lineWidth = 3 * pitchLine;
     ctx.strokeStyle = lineColor;
@@ -222,7 +242,7 @@
     ctx.shadowColor = 'transparent';
 
     /* ── Color, textura y luz: la misma receta que en el juego ──────── */
-    const modeOn = skin.mode === 'theme' || skin.mode === 'custom';
+    const modeOn = !surf && (skin.mode === 'theme' || skin.mode === 'custom');
     let field = null;
     let outside = null;
     let strength = num(skin.strength, 0, 1, 0.8);

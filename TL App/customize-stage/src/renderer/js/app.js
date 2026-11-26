@@ -11539,7 +11539,7 @@ const FONT_OPTIONS = [
 
 const LOOK_SECTIONS = {
   lookPitch: [
-    { key: 'texture', type: 'select', label: 'look.texture', options: [['none', 'look.opt.none'], ['wood', 'look.tex.wood'], ['ice', 'look.tex.ice'], ['sand', 'look.tex.sand'], ['concrete', 'look.tex.concrete'], ['night', 'look.tex.night'], ['clay', 'look.tex.clay'], ['checker', 'look.tex.checker'], ['carbon', 'look.tex.carbon'], ['marble', 'look.tex.marble'], ['hex', 'look.tex.hex'], ['stars', 'look.tex.stars'], ['brick', 'look.tex.brick'], ['snow', 'look.tex.snow'], ['neon', 'look.tex.neon'], ['lava', 'look.tex.lava'], ['waves', 'look.tex.waves']] },
+    { key: 'texture', type: 'select', label: 'look.texture', options: [['none', 'look.opt.none'], ['potrero', 'look.tex.potrero'], ['playa', 'look.tex.playa'], ['sand', 'look.tex.sand'], ['wood', 'look.tex.wood'], ['night', 'look.tex.night'], ['concrete', 'look.tex.concrete'], ['felpa', 'look.tex.felpa'], ['velvet', 'look.tex.velvet'], ['cielo', 'look.tex.cielo'], ['sunsetClouds', 'look.tex.sunsetClouds'], ['sunsetClear', 'look.tex.sunsetClear'], ['nightMoon', 'look.tex.nightMoon'], ['milkyWay', 'look.tex.milkyWay'], ['stars', 'look.tex.stars'], ['holo', 'look.tex.holo'], ['chrome', 'look.tex.chrome']] },
     { key: 'pitchLight', type: 'select', label: 'look.pitchLight', desc: 'look.pitchLightHelp', options: [['none', 'look.opt.none'], ['vignette', 'look.light.vignette'], ['spot', 'look.light.spot'], ['corners', 'look.light.corners'], ['stadium', 'look.light.stadium'], ['sunset', 'look.light.sunset'], ['night', 'look.light.night'], ['stripes', 'look.light.stripes'], ['cinema', 'look.light.cinema']] },
     { key: 'pitchEnv', type: 'select', label: 'look.pitchEnv', desc: 'look.pitchEnvHelp', options: [['none', 'look.opt.none'], ['noche', 'look.env.noche'], ['barrio', 'look.env.barrio'], ['led', 'look.env.led'], ['f5', 'look.env.f5'], ['playa', 'look.env.playa'], ['campo', 'look.env.campo'], ['azotea', 'look.env.azotea'], ['cortada', 'look.env.cortada'], ['colegio', 'look.env.colegio'], ['estadio', 'look.env.estadio']] },
     { key: 'pitchBright', type: 'range', label: 'look.pitchBright', min: 0.5, max: 1.5, step: 0.05 },
@@ -11664,13 +11664,7 @@ const LOOK_GALLERY = { ballStyle: 'swatch', discStyle: 'swatch', ringStyle: 'swa
  */
 const LOOK_CHIPS = {
   texture: {
-    none: '#5f7a4c', wood: 'linear-gradient(135deg,#c79556,#9a6a35)', ice: 'linear-gradient(135deg,#e6f7ff,#9fd3ec)',
-    sand: 'linear-gradient(135deg,#ecd9a0,#cdb06c)', concrete: 'linear-gradient(135deg,#a2a5ab,#74777d)', night: 'linear-gradient(135deg,#2c5a43,#142a20)',
-    clay: 'linear-gradient(135deg,#d57c4a,#a9502a)', checker: 'conic-gradient(#f2f2f2 25%,#25272c 0 50%,#f2f2f2 0 75%,#25272c 0)',
-    carbon: 'repeating-linear-gradient(45deg,#2a2d33 0 3px,#15171b 3px 6px)', marble: 'linear-gradient(135deg,#f5f3ef,#c9c4bb)',
-    hex: 'radial-gradient(circle,#e8b93a 30%,#7a5a10 32% 60%,#e8b93a 62%)', stars: 'radial-gradient(circle at 30% 30%,#fff 0 6%,transparent 8%),radial-gradient(circle at 70% 65%,#fff 0 5%,transparent 7%),#1c1c4a',
-    brick: 'linear-gradient(135deg,#b9574a,#8a3a30)', snow: 'linear-gradient(135deg,#ffffff,#cfdcec)', neon: 'linear-gradient(135deg,#00e5ff,#7a3cff)',
-    lava: 'linear-gradient(135deg,#ffb12a,#e8321a)', waves: 'linear-gradient(135deg,#46b0f0,#1f5fb8)'
+    none: '#5f7a4c', potrero: 'linear-gradient(135deg,#8a9d4c,#7b6a3e)', playa: 'linear-gradient(135deg,#f0dca8,#d9bd80)', sand: 'repeating-linear-gradient(0deg,#f3dfaa 0 2px,#e3c98c 2px 4px)', wood: 'linear-gradient(135deg,#c79556,#9a6a35)', night: 'linear-gradient(135deg,#2c5a43,#142a20)', concrete: 'linear-gradient(135deg,#a2a5ab,#74777d)', felpa: 'linear-gradient(135deg,#6aa64a,#4c8c3e)', velvet: 'radial-gradient(circle at 40% 35%,#5fae6a,#2f7a3c)', cielo: 'radial-gradient(circle at 35% 40%,#fff 0 18%,#8fc6f0 40%)', sunsetClouds: 'linear-gradient(160deg,#ffb36a,#e78aa8 60%,#8a5a9a)', sunsetClear: 'linear-gradient(180deg,#5a4aa0,#f4a06a)', nightMoon: 'radial-gradient(circle at 70% 30%,#e8eeff 0 12%,#2a3870 30%,#0c1230)', milkyWay: 'linear-gradient(135deg,#0a0e24 30%,#8a86a8 50%,#0a0e24 70%)', stars: 'radial-gradient(circle at 30% 30%,#fff 0 6%,transparent 8%),radial-gradient(circle at 70% 65%,#c49aff 0 10%,transparent 30%),#0b0e26', holo: 'linear-gradient(135deg,#ffd6f0,#d6f0ff,#e8ffd6,#ffe8c8)', chrome: 'linear-gradient(180deg,#e6ebf2,#7a8494 50%,#dfe5ee)'
   },
   pitchLight: {
     none: '#5f7a4c', vignette: 'radial-gradient(circle,#8fb36e 25%,#1c2a16 100%)', spot: 'radial-gradient(circle,#f4ffd0 0,#6f8f4f 55%,#2a3a20 100%)',

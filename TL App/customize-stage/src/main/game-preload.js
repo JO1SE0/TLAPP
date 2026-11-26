@@ -2056,7 +2056,7 @@ function attachHudActions(doc) {
  * teclado (mousedown sin foco, sin <input>): las flechas siguen yendo al
  * juego aunque tengas el menú abierto.
  */
-const QM_TEXTURES = [['none', 'Normal'], ...Object.entries({"wood": "Madera", "ice": "Hielo", "sand": "Arena", "concrete": "Cemento", "night": "Césped nocturno", "clay": "Arcilla", "checker": "Damero", "carbon": "Fibra de carbono", "marble": "Mármol", "hex": "Panal", "stars": "Galaxia", "brick": "Ladrillo", "snow": "Nieve", "neon": "Neón", "lava": "Lava", "waves": "Agua"})];
+const QM_TEXTURES = [['none', 'Normal'], ...Object.entries({"potrero": "Potrero", "playa": "Playa", "sand": "Arena", "wood": "Madera", "night": "Césped nocturno", "concrete": "Cemento", "felpa": "Felpa", "velvet": "Terciopelo", "cielo": "Cielo", "sunsetClouds": "Atardecer en las nubes", "sunsetClear": "Atardecer despejado", "nightMoon": "Noche con luna", "milkyWay": "Vía Láctea", "stars": "Galaxia", "holo": "Holográfico", "chrome": "Cromo"})];
 const QM_WEATHER = [['none', 'Sin clima'], ...Object.entries({"rain": "Lluvia", "storm": "Tormenta", "snow": "Nieve", "fog": "Niebla", "dust": "Polvo y viento", "leaves": "Hojas de otoño", "embers": "Brasas", "fireflies": "Luciérnagas", "blizzard": "Ventisca"})];
 const QM_BALLS = [['default', 'Como viene'], ...Object.entries({"soccer": "Futbolera", "neon": "Neón", "gold": "Dorada", "beach": "Playera", "eight": "Bola 8", "star": "Estrella", "triangles": "Fútbol triángulos", "vintage": "Fútbol de cuero", "tennis": "Tenis", "basket": "Básquet", "volley": "Vóley", "baseball": "Béisbol", "golf": "Golf", "bowling": "Bowling", "earth": "Planeta Tierra", "moon": "Luna", "disco": "Bola de espejos", "orb": "Orbe místico", "pumpkin": "Calabaza", "melon": "Sandía", "eye": "Ojo", "argentina": "Celeste y blanca", "fire": "Bola de fuego", "ice": "Hielo", "yinyang": "Yin yang", "smile": "Carita", "sun": "Sol", "donut": "Dona", "checker": "Cuadros", "candy": "Caramelo", "heart": "Corazón", "saturn": "Planeta", "lava": "Lava", "peso": "Moneda de un peso"})];
 const qmDiscs = () => [['default', 'Como viene'], ...Object.entries(DISC_NAMES)];
@@ -8780,6 +8780,136 @@ function pitchOutsideColor(field) {
   return skin.outside || field;
 }
 
+/*
+ * ── Canchas («superficies», look.js) ─────────────────────────────────
+ *
+ * Las líneas de la cancha (las del fondo de HaxBall: medio, círculo, áreas) se
+ * leen UNA vez por estadio y zoom y se guardan en un canvas en coordenadas de
+ * mundo; si la cámara llega a una zona que todavía no se leyó, se lee sólo esa.
+ * Así cada armado del cache es pegar dos imágenes, sin `getImageData`. Las paredes
+ * y los arcos van después (los dibuja el cache), así que no hace falta cuidarlos.
+ */
+const lineMasks = new Map();
+function lineMaskFor(ctx, world, bounds, stadium, w, h) {
+  const k = Math.hypot(world.a, world.b);
+  if (!(k > 0)) return null;
+  const kq = Math.round(k * 64);
+  const key = `${kq}|${bounds.halfW}|${bounds.halfH}|${visual.lineColor}|${visual.pitchLine}|${flatGraphicsEnabled}`;
+  let lm = lineMasks.get(key);
+  if (lm && lm.stadium !== stadium) { lineMasks.delete(key); lm = null; }
+  if (!lm) {
+    if (lineMasks.size > 3) lineMasks.clear();
+    const pad = 12;
+    const ww = 2 * (bounds.halfW + pad), wh = 2 * (bounds.halfH + pad);
+    const mk = Math.min(k, Math.sqrt(10e6 / (ww * wh)));
+    const doc = ctx.canvas.ownerDocument;
+    const cv = doc.createElement('canvas');
+    cv.width = Math.ceil(ww * mk); cv.height = Math.ceil(wh * mk);
+    lm = { stadium, canvas: cv, mk, pad, cov: [], M: new DOMMatrix([mk, 0, 0, mk, (bounds.halfW + pad) * mk, (bounds.halfH + pad) * mk]) };
+    lineMasks.set(key, lm);
+  }
+  // Lo que de la cancha (con su margen) cae en esta superficie, en píxeles.
+  const pts = [[-bounds.halfW - lm.pad, -bounds.halfH - lm.pad], [bounds.halfW + lm.pad, -bounds.halfH - lm.pad], [bounds.halfW + lm.pad, bounds.halfH + lm.pad], [-bounds.halfW - lm.pad, bounds.halfH + lm.pad]]
+    .map(([x, y]) => [world.a * x + world.c * y + world.e, world.b * x + world.d * y + world.f]);
+  const x0 = Math.max(0, Math.floor(Math.min(...pts.map((p) => p[0]))));
+  const y0 = Math.max(0, Math.floor(Math.min(...pts.map((p) => p[1]))));
+  const x1 = Math.min(w, Math.ceil(Math.max(...pts.map((p) => p[0]))));
+  const y1 = Math.min(h, Math.ceil(Math.max(...pts.map((p) => p[1]))));
+  if (x1 - x0 < 2 || y1 - y0 < 2) return lm;
+  // Ese rectángulo en mundo, para ver si ya está leído.
+  const inv = world.inverse();
+  const wp = [[x0, y0], [x1, y0], [x1, y1], [x0, y1]].map(([x, y]) => [inv.a * x + inv.c * y + inv.e, inv.b * x + inv.d * y + inv.f]);
+  const r = { x0: Math.min(...wp.map((p) => p[0])), y0: Math.min(...wp.map((p) => p[1])), x1: Math.max(...wp.map((p) => p[0])), y1: Math.max(...wp.map((p) => p[1])) };
+  const eps = 2;
+  const covered = lm.cov.some((c) => r.x0 >= c.x0 - eps && r.y0 >= c.y0 - eps && r.x1 <= c.x1 + eps && r.y1 <= c.y1 + eps);
+  if (covered) return lm;
+  const cw = x1 - x0, ch = y1 - y0;
+  if (cw * ch > 16e6) return lm;
+  const data = ctx.getImageData(x0, y0, cw, ch);
+  const px = data.data;
+  const lums = [];
+  for (let gy = 1; gy < 16; gy++) for (let gx = 1; gx < 16; gx++) {
+    const i = ((Math.floor((ch * gy) / 16) * cw) + Math.floor((cw * gx) / 16)) * 4;
+    lums.push(0.2126 * px[i] + 0.7152 * px[i + 1] + 0.0722 * px[i + 2]);
+  }
+  lums.sort((a, b) => a - b);
+  const grass = lums[lums.length >> 1];
+  for (let i = 0; i < px.length; i += 4) {
+    const dl = Math.abs(0.2126 * px[i] + 0.7152 * px[i + 1] + 0.0722 * px[i + 2] - grass);
+    px[i + 3] = dl <= 22 ? 0 : dl >= 48 ? 255 : Math.round(((dl - 22) / 26) * 255);
+  }
+  const doc = ctx.canvas.ownerDocument;
+  const off = doc.createElement('canvas');
+  off.width = cw; off.height = ch;
+  off.getContext('2d').putImageData(data, 0, 0);
+  const mc = lm.canvas.getContext('2d');
+  mc.save();
+  mc.setTransform(lm.M.multiply(inv));
+  mc.globalCompositeOperation = 'copy';
+  mc.beginPath(); mc.rect(x0, y0, cw, ch); mc.clip();
+  mc.drawImage(off, x0, y0);
+  mc.restore();
+  lm.cov.push(r);
+  return lm;
+}
+
+/** La máscara de líneas pintada de un color (se rehace sólo si se leyó otra zona). */
+function tintedMask(lm, col) {
+  if (lm.tint && lm.tint.col === col && lm.tint.n === lm.cov.length) return lm.tint.canvas;
+  const cv = (lm.tint && lm.tint.canvas) || lm.canvas.ownerDocument.createElement('canvas');
+  cv.width = lm.canvas.width; cv.height = lm.canvas.height;
+  const c = cv.getContext('2d');
+  c.drawImage(lm.canvas, 0, 0);
+  c.globalCompositeOperation = 'source-in';
+  c.fillStyle = col;
+  c.fillRect(0, 0, cv.width, cv.height);
+  lm.tint = { col, n: lm.cov.length, canvas: cv };
+  return cv;
+}
+
+/**
+ * Pinta la cancha elegida (si hay una y ya está generada). Devuelve true si la
+ * pintó: ahí el resto de la piel no tiñe ni filtra el campo.
+ */
+function paintSurface(ctx, w, h, stadium) {
+  const id = visual.texture;
+  if (!id || id === 'none' || !lookfx.surfaceSpec(id)) return false;
+  const bounds = pitchBounds(stadium);
+  if (!bounds) return false;
+  const doc = ctx.canvas && ctx.canvas.ownerDocument;
+  const view = doc && doc.defaultView;
+  const surf = lookfx.surfaceImage(doc, id, bounds.halfW, bounds.halfH, () => flushStadiumCache(view));
+  if (!surf) return false;
+  const world = ctx.getTransform();
+  const lm = lineMaskFor(ctx, world, bounds, stadium, w, h);
+  ctx.save();
+  try {
+    ctx.globalAlpha = 1;
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.filter = 'none';
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.fillStyle = surf.out;
+    ctx.fillRect(0, 0, w, h);
+    ctx.setTransform(world);
+    ctx.beginPath();
+    roundedRect(ctx, -bounds.halfW, -bounds.halfH, 2 * bounds.halfW, 2 * bounds.halfH, bounds.corner);
+    ctx.save();
+    ctx.clip();
+    ctx.drawImage(surf.canvas, -bounds.halfW, -bounds.halfH, 2 * bounds.halfW, 2 * bounds.halfH);
+    ctx.restore();
+    if (lm) {
+      ctx.setTransform(world.multiply(lm.M.inverse()));
+      // Las líneas en el color de la cancha (para que se lean sobre arena, cielo…),
+      // salvo que el jugador haya elegido el suyo en Personalizar.
+      const col = !visual.lineColor && surf.lines ? surf.lines : '';
+      ctx.drawImage(col ? tintedMask(lm, col) : lm.canvas, 0, 0);
+    }
+  } finally {
+    ctx.restore();
+  }
+  return true;
+}
+
 /**
  * Repinta la cancha recién dibujada. Ver el bloque de arriba.
  *
@@ -8801,12 +8931,20 @@ function skinPitch(ctx, w, h, stadium, floor3d) {
    * dejaba la cancha oscura y rayada: apagaba el color y nada más. Los valores
    * se guardan igual, para que volver a prenderlo te devuelva lo que tenías.
    */
-  const modeOn = skin.mode === 'theme' || skin.mode === 'custom';
-  const tex = lookfx.textureSpec(visual.texture);
+  /*
+   * Una cancha («superficie») se pinta entera y opaca y manda sobre el color de
+   * la cancha, las franjas, el brillo y el contraste (y no la tocan los gráficos
+   * planos: va por `ownDraw`). Mientras se genera la primera vez, se ve la de
+   * siempre. Lo que va encima —tu imagen, la luz, el clima, los alrededores, el
+   * escudo— se sigue dibujando igual.
+   */
+  const surfOn = paintSurface(ctx, w, h, stadium);
+  const modeOn = !surfOn && (skin.mode === 'theme' || skin.mode === 'custom');
+  const tex = surfOn ? null : lookfx.textureSpec(visual.texture);
   const pimg = pitchImage(ctx);
   const relief = ['sunken', 'raised'].includes(skin.relief) ? skin.relief : '';
   const veil = visual.weather ? lookfx.weatherVeil(visual.weather, visual.weatherAmount) : null;
-  const tone = Math.abs(visual.contrast - 1) > 0.005;
+  const tone = !surfOn && Math.abs(visual.contrast - 1) > 0.005;
   if (!modeOn && !tex && !visual.crest && !visual.light && !pimg && !relief && !veil && !visual.bright && !tone && !visual.env) { return; }
 
   let field = modeOn ? pitchSkinColor() : null;
@@ -8824,7 +8962,7 @@ function skinPitch(ctx, w, h, stadium, floor3d) {
     brightness = tex.lum || 0;
   }
   // El brillo del menú de TL se suma al de la cancha (que sólo vale con color propio).
-  brightness = Math.max(-0.6, Math.min(0.6, brightness + (visual.bright || 0)));
+  brightness = surfOn ? 0 : Math.max(-0.6, Math.min(0.6, brightness + (visual.bright || 0)));
   if (!field && !outside && !brightness && !stripes && !tex && !visual.crest && !visual.light && !pimg && !relief && !veil && !tone && !visual.env) return;
 
   /*
@@ -8873,7 +9011,7 @@ function skinPitch(ctx, w, h, stadium, floor3d) {
   }
 
   const cut = ['diagonal', 'checker', 'circles', 'diamonds'].includes(skin.cut) ? skin.cut : 'lines';
-  if (stripes && bounds) {
+  if (stripes && bounds && !surfOn) {
     if (cut === 'lines') paintStripes(ctx, w, h, world, bounds, stripes);
     else paintCut(ctx, w, h, world, bounds, stripes, cut);
   }
@@ -12897,7 +13035,7 @@ function syncCanvasHotFlags() {
   visual.lines = visual.pitchLine !== 1 || visual.discLine !== 1 || visual.ballLine !== 1;
   visual.sizes = visual.ballSize !== 1 || visual.discSize !== 1;
 
-  visual.texture = lookfx.textureSpec(cfg.texture) ? cfg.texture : 'none';
+  visual.texture = lookfx.surfaceSpec(cfg.texture) ? cfg.texture : 'none';
   visual.crest = !!cfg.crest;
   visual.crestOpacity = clampNum(cfg.crestOpacity, 0.02, 0.9, 0.18);
   visual.crestSize = clampNum(cfg.crestSize, 0.15, 1.2, 0.45);

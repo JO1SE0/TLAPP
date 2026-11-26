@@ -9,7 +9,7 @@ const haxball = require('./haxball-settings');
 const FILE = 'config.json';
 
 const DEFAULTS = {
-  version: 32,
+  version: 33,
   general: {
     gameUrl: 'https://www.haxball.com/play',
     nickname: '',
@@ -967,7 +967,13 @@ function migrate(stored) {
     next.appearance = { ...next.appearance, pageTransition: 'rail' };
   }
 
-  next.version = 32;
+  // v33: las canchas nuevas reemplazan a las texturas viejas. Las que se sacaron
+  // vuelven a «Normal»; las que siguen (madera, arena, cemento…) mantienen el nombre.
+  if (!(next.version >= 33) && next.visual && ['ice', 'clay', 'checker', 'carbon', 'marble', 'hex', 'brick', 'snow', 'neon', 'lava', 'waves'].includes(next.visual.texture)) {
+    next.visual = { ...next.visual, texture: 'none' };
+  }
+
+  next.version = 33;
   return next;
 }
 

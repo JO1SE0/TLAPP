@@ -27,24 +27,9 @@ const TAU = Math.PI * 2;
  * Cada acabado: un tono (se pinta con el modo `color`, que conserva las líneas
  * y las sombras de la cancha) y un tile de grano que se aplica con `overlay`.
  */
-const TEXTURES = {
-  wood: { tint: '#b4803f', strength: 0.88, tile: 'wood', lum: 0 },
-  ice: { tint: '#a8d6ee', strength: 0.82, tile: 'ice', lum: 0.12 },
-  sand: { tint: '#dcbc7a', strength: 0.92, tile: 'sand', lum: 0.28 },
-  concrete: { tint: '#8a949f', strength: 0.9, tile: 'concrete', lum: 0.22 },
-  night: { tint: '#1d4636', strength: 0.92, tile: 'turf', lum: -0.12 },
-  clay: { tint: '#b4573a', strength: 0.92, tile: 'clay', lum: 0.12 },
-  checker: { tint: '#3b6ea5', strength: 0.9, tile: 'checker', lum: 0.1 },
-  carbon: { tint: '#4a4f58', strength: 0.92, tile: 'carbon', lum: -0.05 },
-  marble: { tint: '#c9ccd2', strength: 0.9, tile: 'marble', lum: 0.3 },
-  hex: { tint: '#2f8f9d', strength: 0.9, tile: 'hex', lum: 0.08 },
-  stars: { tint: '#17224a', strength: 0.95, tile: 'stars', lum: -0.18 },
-  brick: { tint: '#a0503c', strength: 0.92, tile: 'brick', lum: 0.06 },
-  snow: { tint: '#e4eef6', strength: 0.92, tile: 'snow', lum: 0.5 },
-  neon: { tint: '#150f3a', strength: 0.97, tile: 'neon', lum: -0.4 },
-  lava: { tint: '#52180a', strength: 0.95, tile: 'lava', lum: -0.05 },
-  waves: { tint: '#2d7fb8', strength: 0.92, tile: 'waves', lum: 0.1 }
-};
+// Las texturas viejas (teñían el pasto de HaxBall) se reemplazaron por las
+// canchas de abajo (SURFACES), que se pintan enteras. Queda vacío por compatibilidad.
+const TEXTURES = {};
 
 function textureSpec(key) {
   return TEXTURES[key] || null;
@@ -2471,8 +2456,275 @@ function paintMatchMark(ctx, o) {
   }
 }
 
+
+/* ══ Canchas («superficies») ═══════════════════════════════════════════
+ *
+ * A diferencia de las texturas viejas (que teñían el pasto de HaxBall y le
+ * ponían un grano), una superficie se pinta ENTERA y opaca: no depende del color
+ * del estadio, ni del brillo/contraste del menú, ni de «gráficos planos». Las
+ * líneas de la cancha se conservan aparte (ver `lineMaskFor` en game-preload).
+ *
+ * Rendimiento: cada superficie se genera UNA vez por tamaño de cancha, en
+ * pedacitos de pocos milisegundos (no traba), y queda en un canvas en
+ * coordenadas de mundo. Cada armado del cache de la cancha sólo la pega con un
+ * `drawImage`. En la partida no cuesta nada.
+ */
+const SPERM = new Uint8Array(512);
+{
+  const R = rng(42);
+  const p = [];
+  for (let i = 0; i < 256; i++) p.push(i);
+  for (let i = 255; i > 0; i--) { const j = (R() * (i + 1)) | 0; const t = p[i]; p[i] = p[j]; p[j] = t; }
+  for (let i = 0; i < 512; i++) SPERM[i] = p[i & 255];
+}
+function svn(x, y) {
+  const xi = Math.floor(x), yi = Math.floor(y), xf = x - xi, yf = y - yi;
+  const h = (a, b) => SPERM[(SPERM[a & 255] + b) & 255] / 255;
+  const u = xf * xf * (3 - 2 * xf), v = yf * yf * (3 - 2 * yf);
+  const a = h(xi, yi), b = h(xi + 1, yi), c = h(xi, yi + 1), d = h(xi + 1, yi + 1);
+  return a + (b - a) * u + (c - a) * v + (a - b - c + d) * u * v;
+}
+function sfbm(x, y, o = 4) {
+  let s = 0, a = 0.5, f = 1, n = 0;
+  for (let i = 0; i < o; i++) { s += a * svn(x * f, y * f); n += a; f *= 2; a *= 0.5; }
+  return s / n;
+}
+const scl = (v) => (v < 0 ? 0 : v > 255 ? 255 : v | 0);
+function shsl(h, s, l) {
+  h = ((h % 1) + 1) % 1;
+  const q = l < 0.5 ? l * (1 + s) : l + s - l * s, p = 2 * l - q;
+  const f = (t) => { t = ((t % 1) + 1) % 1; return t < 1 / 6 ? p + (q - p) * 6 * t : t < 0.5 ? q : t < 2 / 3 ? p + (q - p) * (2 / 3 - t) * 6 : p; };
+  return [f(h + 1 / 3) * 255, f(h) * 255, f(h - 1 / 3) * 255];
+}
+function sblob(c, x, y, r, col, a) {
+  const g = c.createRadialGradient(x, y, 0, x, y, r);
+  g.addColorStop(0, col); g.addColorStop(1, 'rgba(0,0,0,0)');
+  c.globalAlpha = a; c.fillStyle = g; c.fillRect(x - r, y - r, 2 * r, 2 * r); c.globalAlpha = 1;
+}
+function sspeck(R, hw, hh, n, fn) { for (let i = 0; i < n; i++) fn((R() * 2 - 1) * hw, (R() * 2 - 1) * hh); }
+function sblades(c, R, hw, hh, n, a, b) {
+  sspeck(R, hw, hh, n, (x, y) => { c.strokeStyle = R() > 0.5 ? a : b; c.lineWidth = 0.7; c.beginPath(); c.moveTo(x, y); c.lineTo(x + (R() - 0.5) * 1.5, y - 1.5 - R() * 3); c.stroke(); });
+}
+function snoise(c, R, hw, hh, n, a, b) {
+  sspeck(R, hw, hh, n, (x, y) => { c.fillStyle = R() > 0.5 ? `rgba(255,255,255,${a})` : `rgba(0,0,0,${b})`; c.fillRect(x, y, 1, 1); });
+}
+function sclouds(x, y, o, sx, sy) {
+  const d = sfbm(x * 0.011 + o, y * 0.018, 5);
+  const d2 = sfbm((x + sx) * 0.011 + o, (y + sy) * 0.018, 5);
+  return [Math.max(0, d - 0.47) * 3.2, Math.max(0, d - d2) * 14];
+}
+
+/*
+ * Cada superficie: `out` (el color de afuera de la cancha), y uno o más de:
+ *  · `base`: color de fondo liso del campo.
+ *  · `px(x, y, R, hw, hh)`: color por punto (coordenadas de mundo, origen en el centro).
+ *  · `relief: { hf(x, y, hw), col(x, y, h, nx, ny, R, hw, hh) }`: con relieve.
+ *  · `post(c, R, hw, hh, A)`: lo que se dibuja encima (vectorial, en unidades de
+ *    mundo). `A` = área relativa a la del boceto, para escalar las cantidades.
+ */
+const SURFACES = {
+  potrero: { out: '#4b5a2a', lines: '#f6f4ea', base: '#7b9142', post(c, R, hw, hh, A) {
+    for (let i = 0; i < 40 * A; i++) sblob(c, (R() * 2 - 1) * hw, (R() * 2 - 1) * hh, hh * (0.15 + R() * 0.35), R() > 0.5 ? '#6c8438' : '#8a9d4c', 0.6);
+    for (const [x, y, r] of [[-hw * 0.86, 0, hh * 0.42], [hw * 0.86, 0, hh * 0.42], [0, 0, hh * 0.3]]) for (let i = 0; i < 6; i++) sblob(c, x + (R() - 0.5) * r * 0.8, y + (R() - 0.5) * r * 1.2, r * (0.4 + R() * 0.5), 'rgba(140,105,62,1)', 0.7);
+    sblades(c, R, hw, hh, 1400 * A, 'rgba(255,255,200,.12)', 'rgba(0,0,0,.12)');
+  } },
+  playa: { out: '#c8a86a', lines: '#3f6fae', base: '#e6cf98', post(c, R, hw, hh, A) {
+    c.strokeStyle = 'rgba(160,125,70,.25)'; c.lineWidth = 1;
+    for (let y = -hh; y < hh; y += 7) { c.beginPath(); for (let x = -hw; x <= hw; x += 8) c.lineTo(x, y + Math.sin(x / 18 + y) * 2.2); c.stroke(); }
+    sspeck(R, hw, hh, 60 * A, (x, y) => { c.fillStyle = 'rgba(150,115,65,.35)'; c.beginPath(); c.ellipse(x, y, 2.2, 3.6, R(), 0, 7); c.fill(); });
+    sspeck(R, hw, hh, 14 * A, (x, y) => { c.fillStyle = '#fff3dc'; c.beginPath(); c.arc(x, y, 1.8, 0, 7); c.fill(); });
+    sspeck(R, hw, hh, 900 * A, (x, y) => { c.fillStyle = R() > 0.5 ? 'rgba(255,255,255,.25)' : 'rgba(120,90,40,.2)'; c.fillRect(x, y, 1, 1); });
+  } },
+  sand: { out: '#d8bf86', lines: '#2f62a8', base: '#efd9a2', post(c, R, hw, hh, A) {
+    for (let y = -hh; y < hh; y += 5) {
+      c.strokeStyle = 'rgba(255,248,225,.55)'; c.lineWidth = 1.2; c.beginPath(); for (let x = -hw; x <= hw; x += 6) c.lineTo(x, y + Math.sin(x / 30 + y / 9) * 1.4); c.stroke();
+      c.strokeStyle = 'rgba(205,170,105,.35)'; c.lineWidth = 0.8; c.beginPath(); for (let x = -hw; x <= hw; x += 6) c.lineTo(x, y + 1.8 + Math.sin(x / 30 + y / 9) * 1.4); c.stroke();
+    }
+    sspeck(R, hw, hh, 1600 * A, (x, y) => { c.fillStyle = R() > 0.5 ? 'rgba(255,255,255,.4)' : 'rgba(190,150,90,.25)'; c.fillRect(x, y, 1, 1); });
+  } },
+  wood: { out: '#5a3a1e', lines: '#1e1a16', base: '#c58e54', post(c, R, hw, hh) {
+    const ph = 9;
+    for (let y = -hh, r = 0; y < hh; y += ph, r++) {
+      let x = -hw - ((r * 37) % 60);
+      while (x < hw) {
+        const L = 50 + R() * 70, t = R();
+        c.fillStyle = `rgb(${196 + t * 22 | 0},${142 + t * 20 | 0},${84 + t * 14 | 0})`; c.fillRect(x, y, L, ph);
+        c.strokeStyle = 'rgba(90,55,25,.22)'; c.lineWidth = 0.6;
+        for (let k = 0; k < 3; k++) { const yy = y + 1.5 + R() * (ph - 3); c.beginPath(); c.moveTo(x, yy); c.bezierCurveTo(x + L * 0.3, yy + (R() - 0.5) * 2, x + L * 0.7, yy + (R() - 0.5) * 2, x + L, yy); c.stroke(); }
+        c.fillStyle = 'rgba(60,35,15,.45)'; c.fillRect(x + L - 0.6, y, 0.6, ph); x += L;
+      }
+      c.fillStyle = 'rgba(60,35,15,.35)'; c.fillRect(-hw, y + ph - 0.6, 2 * hw, 0.6);
+    }
+    for (const sx of [-1, 1]) { c.fillStyle = 'rgba(176,40,40,.55)'; c.fillRect(sx > 0 ? hw - hw * 0.28 : -hw, -hh * 0.3, hw * 0.28, hh * 0.6); }
+    for (const x of [-hw * 0.5, hw * 0.5]) sblob(c, x, -hh * 0.3, hh * 0.9, 'rgba(255,240,210,1)', 0.22);
+  } },
+  concrete: { out: '#5b5e63', lines: '#f4f5f6', base: '#9a9ea4', post(c, R, hw, hh, A) {
+    const s = hh / 2;
+    for (let x = -hw; x < hw; x += s) for (let y = -hh; y < hh; y += s) {
+      const t = (R() - 0.5) * 0.12; c.fillStyle = t > 0 ? `rgba(255,255,255,${t})` : `rgba(0,0,0,${-t})`; c.fillRect(x, y, s, s);
+      c.strokeStyle = 'rgba(50,52,56,.5)'; c.lineWidth = 1; c.strokeRect(x, y, s, s);
+    }
+    for (let i = 0; i < 6 * A; i++) sblob(c, (R() * 2 - 1) * hw, (R() * 2 - 1) * hh, 10 + R() * 22, 'rgba(70,72,78,1)', 0.35);
+    c.strokeStyle = 'rgba(40,40,44,.7)'; c.lineWidth = 0.8;
+    for (let i = 0; i < 6 * A; i++) { let x = (R() * 2 - 1) * hw, y = (R() * 2 - 1) * hh; c.beginPath(); c.moveTo(x, y); for (let k = 0; k < 5; k++) { x += (R() - 0.5) * 22; y += (R() - 0.5) * 22; c.lineTo(x, y); } c.stroke(); }
+    snoise(c, R, hw, hh, 2000 * A, 0.15, 0.2);
+  } },
+  night: { out: '#08130e', lines: '#f2f7f2', base: '#1f4a36', post(c, R, hw, hh, A) {
+    const w = (2 * hw) / 12; c.fillStyle = 'rgba(255,255,255,.04)';
+    for (let i = 1; i < 12; i += 2) c.fillRect(-hw + i * w, -hh, w, 2 * hh);
+    for (const [x, y] of [[-hw, -hh], [hw, -hh], [-hw, hh], [hw, hh]]) sblob(c, x * 0.6, y * 0.6, hh * 1.1, 'rgba(220,255,230,1)', 0.18);
+    snoise(c, R, hw, hh, 1200 * A, 0.06, 0.15);
+  } },
+  stars: { out: '#04050d', lines: '#cfe0ff', base: '#070a1f', post(c, R, hw, hh, A) {
+    for (let i = 0; i < 500 * A; i++) { const a = R() * 7, d = R() * hh * 0.9; c.fillStyle = `rgba(${150 + R() * 80 | 0},${70 + R() * 40 | 0},220,${0.05 + R() * 0.08})`; c.beginPath(); c.arc(-hw * 0.25 + Math.cos(a) * d * 1.6, -hh * 0.05 + Math.sin(a) * d * 0.6, 3 + R() * 7, 0, 7); c.fill(); }
+    for (let i = 0; i < 300 * A; i++) { const a = R() * 7, d = R() * hh * 0.6; c.fillStyle = `rgba(60,${150 + R() * 60 | 0},230,${0.05 + R() * 0.08})`; c.beginPath(); c.arc(hw * 0.4 + Math.cos(a) * d * 1.3, hh * 0.3 + Math.sin(a) * d * 0.7, 2 + R() * 6, 0, 7); c.fill(); }
+    c.save(); c.translate(hw * 0.62, -hh * 0.55); c.rotate(-0.4);
+    for (let i = 0; i < 260; i++) { const t = R() * 9, arm = i % 2 ? 0 : Math.PI, r2 = t * 3.2; c.fillStyle = `rgba(255,240,220,${0.25 + R() * 0.5})`; c.fillRect(Math.cos(t + arm) * r2 * 1.4, Math.sin(t + arm) * r2 * 0.6, 1, 1); }
+    sblob(c, 0, 0, 8, 'rgba(255,235,210,1)', 0.9); c.restore();
+    sspeck(R, hw, hh, 420 * A, (x, y) => { const s = R(); c.fillStyle = `rgba(255,255,255,${0.35 + s * 0.65})`; c.fillRect(Math.round(x), Math.round(y), s > 0.93 ? 2 : 1, s > 0.93 ? 2 : 1); });
+    sspeck(R, hw, hh, 9 * A, (x, y) => { c.strokeStyle = 'rgba(255,255,255,.85)'; c.lineWidth = 0.8; const L = 5 + R() * 5; c.beginPath(); c.moveTo(x - L, y); c.lineTo(x + L, y); c.moveTo(x, y - L); c.lineTo(x, y + L); c.stroke(); c.fillStyle = '#fff'; c.fillRect(x - 1, y - 1, 2, 2); });
+    const px = -hw * 0.7, py = hh * 0.55; const pg = c.createLinearGradient(px - 10, py - 10, px + 10, py + 10); pg.addColorStop(0, '#f2b36a'); pg.addColorStop(1, '#a3542a'); c.fillStyle = pg; c.beginPath(); c.arc(px, py, 10, 0, 7); c.fill();
+    c.strokeStyle = 'rgba(240,210,160,.8)'; c.lineWidth = 1.4; c.beginPath(); c.ellipse(px, py, 17, 4.5, -0.3, 0, 7); c.stroke();
+    const sg = c.createLinearGradient(hw * 0.05, -hh * 0.7, hw * 0.35, -hh * 0.45); sg.addColorStop(0, 'rgba(255,255,255,0)'); sg.addColorStop(1, 'rgba(255,255,255,.95)'); c.strokeStyle = sg; c.lineWidth = 1.3; c.beginPath(); c.moveTo(hw * 0.05, -hh * 0.7); c.lineTo(hw * 0.35, -hh * 0.45); c.stroke();
+  } },
+  holo: { out: '#1c1730', lines: '#4a3a86', px(x, y) {
+    const f = sfbm(x * 0.012, y * 0.012, 3); const h = (x * 0.004 + y * 0.007 + f * 2.2) * 6.283; const s = 0.5 + 0.5 * Math.sin(x * 0.05 + y * 0.05 + f * 8);
+    return [scl(200 + 40 * Math.sin(h) + s * 15), scl(200 + 40 * Math.sin(h + 2.1) + s * 15), scl(215 + 40 * Math.sin(h + 4.2) + s * 15)];
+  } },
+  cielo: { out: '#5f9ed8', lines: '#ffffff', px(x, y, R, hw, hh) {
+    const t = (y + hh) / (2 * hh); let r = 110 + t * 50, g = 170 + t * 40, b = 235;
+    const k = Math.min(1, Math.max(0, sfbm(x * 0.012, y * 0.02, 5) - 0.48) * 3.2);
+    r += (255 - r) * k; g += (255 - g) * k; b += (255 - b) * k; return [scl(r), scl(g), scl(b)];
+  }, post(c, R, hw, hh) { sblob(c, -hw * 0.9, -hh * 0.9, hh * 1.2, 'rgba(255,250,220,1)', 0.5); } },
+  sunsetClouds: { out: '#5a2e3a', lines: '#fff6ea', px(x, y, R, hw, hh) {
+    const t = (y + hh) / (2 * hh); let r = 255 - t * 90, g = 150 - t * 70, b = 110 + t * 40;
+    const [den, lit] = sclouds(x, y, 3, -6, -4); const k = Math.min(1, den);
+    r += (245 + lit * 10 - r) * k; g += (150 + lit * 90 - g) * k; b += (150 + lit * 30 - b) * k;
+    const sun = Math.exp(-((x + hw * 0.85) ** 2 + (y + hh * 0.8) ** 2) / (hh * hh * 0.15)); r += sun * 60; g += sun * 80; b += sun * 40;
+    return [scl(r), scl(g), scl(b)];
+  }, post(c, R, hw, hh) { sblob(c, -hw * 0.85, -hh * 0.8, hh * 0.9, 'rgba(255,235,180,1)', 0.55); } },
+  sunsetClear: { out: '#4a2a4a', lines: '#fff6ea', px(x, y, R, hw, hh) {
+    const t = (y + hh) / (2 * hh); let r = 90 + t * 170, g = 80 + t * 110, b = 160 - t * 40;
+    const k = Math.min(1, Math.max(0, sfbm(x * 0.004, y * 0.06, 4) - 0.5) * 3);
+    r += (255 - r) * k * 0.9; g += (170 + t * 50 - g) * k * 0.9; b += (170 - b) * k * 0.6; return [scl(r), scl(g), scl(b)];
+  } },
+  nightMoon: { out: '#0a1024', lines: '#e6eeff', px(x, y, R, hw, hh) {
+    const t = (y + hh) / (2 * hh); let r = 10 + t * 16, g = 18 + t * 24, b = 48 + t * 36;
+    const [den, lit] = sclouds(x, y, 7, 8, 6); const k = Math.min(1, den);
+    const moon = Math.exp(-((x - hw * 0.6) ** 2 + (y + hh * 0.5) ** 2) / (hh * hh * 0.9));
+    r += (60 + lit * 60 * moon + moon * 40 - r) * k; g += (72 + lit * 70 * moon + moon * 45 - g) * k; b += (110 + lit * 80 * moon + moon * 50 - b) * k;
+    if (k < 0.05 && R() > 0.9965) { r = g = b = 255; }
+    return [scl(r), scl(g), scl(b)];
+  }, post(c, R, hw, hh) { sblob(c, hw * 0.6, -hh * 0.5, hh * 0.6, 'rgba(210,225,255,1)', 0.4); c.fillStyle = '#f3f6ff'; c.beginPath(); c.arc(hw * 0.6, -hh * 0.5, 11, 0, 7); c.fill(); } },
+  milkyWay: { out: '#05070f', lines: '#e6eeff', px(x, y, R, hw, hh) {
+    let r = 8, g = 12, b = 30; const u = (x * 0.5 + y) / hh; const band = Math.exp(-u * u * 3);
+    const dust = sfbm(x * 0.02, y * 0.02, 5), dark = sfbm(x * 0.05 + 9, y * 0.05, 3);
+    const m = band * (0.4 + dust * 0.9) * (dark > 0.58 ? 0.4 : 1); r += m * 120; g += m * 110; b += m * 130;
+    if (R() > 0.993 - band * 0.01) { const v = 150 + R() * 105; r = v; g = v; b = v + 10; }
+    const low = Math.max(0, (y - hh * 0.5) / (hh * 0.5)); const cld = Math.max(0, sfbm(x * 0.015, y * 0.04, 4) - 0.5) * 3 * low;
+    r += cld * 50; g += cld * 55; b += cld * 70; return [scl(r), scl(g), scl(b)];
+  } },
+  felpa: { out: '#24451f', lines: '#f8faf4', relief: {
+    hf(x, y, hw) { const bw = (2 * hw) / 12; const band = Math.floor((x + hw) / bw) % 2; return sfbm(x * 0.4, y * 0.4, 3) * 0.45 + sfbm((x + (band ? 0.3 : -0.3) * y) * 1.4, y * 0.45, 2) * 0.55; },
+    col(x, y, h, nx, ny, R, hw) { const bw = (2 * hw) / 12; const band = Math.floor((x + hw) / bw) % 2; const fx = (((x + hw) % bw) + bw) % bw / bw; const big = sfbm(x * 0.008, y * 0.008, 3);
+      let s = 0.82 + (nx * 0.5 + ny * 0.8) * 2.4 + (band ? 0.14 : -0.02) + Math.sin(fx * 3.14) * 0.06; s = Math.max(0.55, Math.min(1.35, s)); const b = band ? [100, 166, 70] : [76, 140, 62]; const v = 0.94 + big * 0.12;
+      return [scl(b[0] * s * v), scl(b[1] * s * v), scl(b[2] * s * v + (band ? 0 : 4))]; }
+  } },
+  velvet: { out: '#173a1d', lines: '#f4f8f2', relief: {
+    hf(x, y) { return sfbm(x * 0.6, y * 0.6, 2) * 0.5 + sfbm(x * 2.2, y * 2.2, 2) * 0.5; },
+    col(x, y, h, nx, ny, R, hw, hh) { const bw = (2 * hw) / 10; const band = Math.floor((x + hw) / bw) % 2; const fx = (((x + hw) % bw) + bw) % bw / bw, fy = (y + hh) / (2 * hh);
+      const sheen = Math.pow(Math.sin(fx * 3.14), 2) * (band ? 0.28 : 0.1) * (0.7 + 0.3 * Math.sin(fy * 3.14));
+      let s = 0.78 + (nx * 0.4 + ny * 0.6) * 1.8 + sheen; s = Math.max(0.6, Math.min(1.4, s)); const b = band ? [64, 140, 70] : [48, 116, 60];
+      return [scl(b[0] * s), scl(b[1] * s), scl(b[2] * s)]; }
+  } },
+  chrome: { out: '#0d1016', lines: '#18233a', px(x, y, R, hw, hh) {
+    const brush = sfbm(x * 1.2, y * 0.004, 3); const t = (y + hh) / (2 * hh);
+    const env = 0.45 + 0.3 * Math.sin(t * 5.5 + 1) + 0.15 * Math.sin(t * 13); const spec = Math.exp(-Math.pow((x - y * 0.8 + hw * 0.2) / 30, 2)) * 0.5;
+    const l = env + (brush - 0.5) * 0.2 + spec; return [scl(110 + l * 120), scl(120 + l * 124), scl(138 + l * 120)];
+  } }
+};
+const SURFACE_IDS = Object.keys(SURFACES);
+function surfaceSpec(id) { return Object.prototype.hasOwnProperty.call(SURFACES, id) ? SURFACES[id] : null; }
+
+/** Cuánto pesa la generación: se corta en pedazos de ~6 ms. */
+const SURF_SLICE_MS = 6;
+const surfCache = new Map();
+
+/**
+ * La superficie ya pintada para una cancha de `halfW × halfH`: un canvas en
+ * coordenadas de mundo (k píxeles por unidad) que cubre el campo. Si todavía no
+ * está, la empieza a generar de a pedazos y devuelve null; cuando termina llama
+ * a `onReady` (para tirar el cache de la cancha y que se vea).
+ */
+function surfaceImage(doc, id, halfW, halfH, onReady) {
+  const spec = surfaceSpec(id);
+  if (!spec || !doc || !(halfW > 0) || !(halfH > 0)) return null;
+  const key = `${id}|${Math.round(halfW)}|${Math.round(halfH)}`;
+  const hit = surfCache.get(key);
+  if (hit) { if (hit.ready) return hit; if (onReady) hit.wait.add(onReady); return null; }
+  if (surfCache.size > 8) surfCache.clear();
+  const area = 4 * halfW * halfH;
+  const k = Math.max(0.5, Math.min(1.5, Math.sqrt(900000 / area)));
+  const W = Math.max(8, Math.ceil(2 * halfW * k)), H = Math.max(8, Math.ceil(2 * halfH * k));
+  const cv = doc.createElement('canvas'); cv.width = W; cv.height = H;
+  const entry = { canvas: cv, k, halfW, halfH, out: spec.out, lines: spec.lines || '', ready: false, wait: new Set() };
+  if (onReady) entry.wait.add(onReady);
+  surfCache.set(key, entry);
+  const c = cv.getContext('2d');
+  const R = rng(9);
+  const view = doc.defaultView || (typeof window !== 'undefined' ? window : null);
+  const later = (fn) => (view && view.setTimeout ? view.setTimeout(fn, 0) : setTimeout(fn, 0));
+  const now = () => (view && view.performance ? view.performance.now() : Date.now());
+  const finish = () => {
+    if (spec.post) {
+      c.save();
+      c.setTransform(k, 0, 0, k, halfW * k, halfH * k);
+      c.beginPath(); c.rect(-halfW, -halfH, 2 * halfW, 2 * halfH); c.clip();
+      try { spec.post(c, rng(5), halfW, halfH, (halfW * halfH) / 26800); } catch (e) {}
+      c.restore();
+    }
+    entry.ready = true;
+    const fns = [...entry.wait]; entry.wait.clear();
+    for (const fn of fns) { try { fn(); } catch (e) {} }
+  };
+  if (spec.base) { c.fillStyle = spec.base; c.fillRect(0, 0, W, H); }
+  if (!spec.px && !spec.relief) { later(finish); return null; }
+  const img = c.createImageData(W, 1);
+  const d = img.data;
+  let row = 0;
+  const step = () => {
+    const t0 = now();
+    while (row < H) {
+      const wy = (row + 0.5) / k - halfH;
+      for (let px = 0; px < W; px++) {
+        const wx = (px + 0.5) / k - halfW;
+        let o;
+        if (spec.relief) {
+          const rf = spec.relief;
+          const nx = rf.hf(wx + 1, wy, halfW) - rf.hf(wx - 1, wy, halfW);
+          const ny = rf.hf(wx, wy + 1, halfW) - rf.hf(wx, wy - 1, halfW);
+          o = rf.col(wx, wy, rf.hf(wx, wy, halfW), nx, ny, R, halfW, halfH);
+        } else {
+          o = spec.px(wx, wy, R, halfW, halfH);
+        }
+        const i = px * 4; d[i] = o[0]; d[i + 1] = o[1]; d[i + 2] = o[2]; d[i + 3] = 255;
+      }
+      c.putImageData(img, 0, row);
+      row++;
+      if (now() - t0 > SURF_SLICE_MS) { later(step); return; }
+    }
+    finish();
+  };
+  later(step);
+  return null;
+}
+
 module.exports = {
   warmBallModel,
+  SURFACES,
+  SURFACE_IDS,
+  surfaceSpec,
+  surfaceImage,
   TEXTURES,
   textureSpec,
   paintTexture,
