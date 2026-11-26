@@ -2539,8 +2539,6 @@ function buildQuickMenu() {
   when = () => !!(cfg().visual.pitchEnv && cfg().visual.pitchEnv !== 'none');
   const vb = (k) => () => cfg().visual[k] !== false;
   toggle('Alrededores con vida', vb('envAlive'), (v) => quickSet({ visual: { envAlive: v } }));
-  toggle('Fresa, la DT', vb('envFresa'), (v) => quickSet({ visual: { envFresa: v } }));
-  toggle('Joaquín, el rival', vb('envJoaquin'), (v) => quickSet({ visual: { envJoaquin: v } }));
   toggle('Recibimiento al salir', vb('envWelcome'), (v) => quickSet({ visual: { envWelcome: v } }));
   toggle('Tifo del que gana', vb('envTifo'), (v) => quickSet({ visual: { envTifo: v } }));
   toggle('Festejo de la tribuna', vb('envCheer'), (v) => quickSet({ visual: { envCheer: v } }));
@@ -9572,7 +9570,7 @@ function pitchSkinPrint() {
   const skin = (state.config.pitch && state.config.pitch.skin) || {};
   const field = pitchSkinColor();
   const vip = state.config.vip || {};
-  return `${skin.mode}|${field}|${pitchOutsideColor(field)}|${skin.strength}|${skin.brightness}|${skin.stripes}|${skin.cut}|${skin.imageAlpha}|${skin.relief}|${skin.reliefAmount}|${visual.weather}|${visual.weatherAmount}|${vip.pitchImage}|${JSON.stringify(vip.pitchCrop || null)}|${visual.pitchLine}|${flatGraphicsEnabled}|${visual.texture}|${visual.light}|${visual.crest}|${visual.crestOpacity}|${visual.crestSize}|${visual.lineColor}|${visual.lineGlow}|${visual.bright}|${visual.contrast}|${visual.env}|${visual.env ? `${visual.weather}/${visual.light}/${['envAlive', 'envFresa', 'envJoaquin', 'envTifo', 'envCheer', 'envScoreLed', 'envNames', 'envFireworks'].map((k) => (state.config.visual || {})[k] !== false ? 1 : 0).join('')}` : ''}`;
+  return `${skin.mode}|${field}|${pitchOutsideColor(field)}|${skin.strength}|${skin.brightness}|${skin.stripes}|${skin.cut}|${skin.imageAlpha}|${skin.relief}|${skin.reliefAmount}|${visual.weather}|${visual.weatherAmount}|${vip.pitchImage}|${JSON.stringify(vip.pitchCrop || null)}|${visual.pitchLine}|${flatGraphicsEnabled}|${visual.texture}|${visual.light}|${visual.crest}|${visual.crestOpacity}|${visual.crestSize}|${visual.lineColor}|${visual.lineGlow}|${visual.bright}|${visual.contrast}|${visual.env}|${visual.env ? `${visual.weather}/${visual.light}/${['envAlive', 'envTifo', 'envCheer', 'envScoreLed', 'envNames', 'envFireworks'].map((k) => (state.config.visual || {})[k] !== false ? 1 : 0).join('')}` : ''}`;
 }
 
 /** Le tira el cache al estadio para que se vuelva a dibujar con el color nuevo. */
@@ -9609,7 +9607,7 @@ function envLook() {
   return {
     weather: visual.weather || '', night: visual.light === 'night',
     fireworks: c.envFireworks === false ? null : env.fireworks,
-    fresa: c.envFresa !== false, joaquin: c.envJoaquin !== false, tifo: c.envTifo !== false, fresaTeam: env.team, alive: envAliveOn(), kits: env.kits, fill: env.fill
+    fresa: false, joaquin: false, tifo: c.envTifo !== false, fresaTeam: env.team, alive: envAliveOn(), kits: env.kits, fill: env.fill
   };
 }
 
@@ -9875,7 +9873,7 @@ function openEnvPreview(doc, start) {
       bx.setTransform(s, 0, 0, s, bg.width / 2, bg.height / 2);
       const reg = pitchEnv.paintEnv(bx, id, B, {
         alive: true, fill: 1, score: 'ROJO 2 - 1 AZUL', names: ['TL', 'APP'],
-        fresa: c().envFresa !== false, joaquin: c().envJoaquin !== false, fresaTeam: 'Red'
+        fresa: false, joaquin: false, fresaTeam: 'Red'
       });
       // La cancha: franjas, líneas y arcos.
       for (let i = 0; i < 10; i++) { bx.fillStyle = i % 2 ? '#5f8a4c' : '#5a8447'; bx.fillRect(-B.halfW + i * (B.halfW / 5), -B.halfH, B.halfW / 5, B.halfH * 2); }
