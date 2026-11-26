@@ -8995,8 +8995,18 @@ function skinPitch(ctx, w, h, stadium, floor3d) {
    * siempre. Lo que va encima —tu imagen, la luz, el clima, los alrededores, el
    * escudo— se sigue dibujando igual.
    */
-  const surfOn = paintSurface(ctx, w, h, stadium);
-  const modeOn = !surfOn && (skin.mode === 'theme' || skin.mode === 'custom');
+  /*
+   * Tu imagen de césped se ve con sus colores de verdad: con imagen, encima del
+   * campo no va ni el tinte de la cancha, ni las franjas, ni la luz, ni el
+   * brillo ni el contraste del menú (antes la teñían y la oscurecían). Las
+   * líneas se leen ANTES de pintar nada (máscara guardada por estadio).
+   */
+  const imgOn = !!(pitchImage(ctx) && pitchBounds(stadium));
+  const imgLines = imgOn ? lineMaskFor(ctx, ctx.getTransform(), pitchBounds(stadium), stadium, w, h) : null;
+  const surfReal = paintSurface(ctx, w, h, stadium);
+  const surfOn = surfReal || imgOn;
+  // El color de afuera de la cancha sigue valiendo con tu imagen (el campo lo tapa la foto).
+  const modeOn = !surfReal && (skin.mode === 'theme' || skin.mode === 'custom');
   const tex = surfOn ? null : lookfx.textureSpec(visual.texture);
   const pimg = pitchImage(ctx);
   const relief = ['sunken', 'raised'].includes(skin.relief) ? skin.relief : '';
@@ -9043,22 +9053,27 @@ function skinPitch(ctx, w, h, stadium, floor3d) {
     tintRegion(ctx, w, h, world, null, 'all', field, strength);
   }
 
-  // Tu imagen de césped: adentro del campo, debajo de los cortes, la luz y el escudo.
+  // Tu imagen de césped: adentro del campo, opaca y con sus colores; las líneas
+  // de la cancha encima (las originales, sin tocar).
   if (pimg && bounds) {
-    let lines = null;
-    try { lines = keepLines(ctx, world, bounds, w, h); } catch (err) { lines = null; }
     ctx.save();
     try {
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.filter = 'none';
       ctx.setTransform(world);
       ctx.beginPath();
       roundedRect(ctx, -bounds.halfW, -bounds.halfH, 2 * bounds.halfW, 2 * bounds.halfH, bounds.corner);
       ctx.clip();
+      // Debajo, el color medio de la foto: si queda corrida, achicada o con
+      // transparencia, no asoma el pasto de HaxBall con otro color.
+      ctx.fillStyle = imageAverage(pimg);
+      ctx.fillRect(-bounds.halfW, -bounds.halfH, 2 * bounds.halfW, 2 * bounds.halfH);
       ctx.globalAlpha = clampNum(skin.imageAlpha, 0.1, 1, 1);
       paintCover(ctx, pimg, -bounds.halfW, -bounds.halfH, 2 * bounds.halfW, 2 * bounds.halfH, (state.config.vip || {}).pitchCrop);
-      if (lines) {
-        ctx.setTransform(1, 0, 0, 1, 0, 0);
-        ctx.globalAlpha = 1;
-        ctx.drawImage(lines.canvas, lines.x, lines.y);
+      ctx.globalAlpha = 1;
+      if (imgLines) {
+        ctx.setTransform(world.multiply(imgLines.M.inverse()));
+        ctx.drawImage(imgLines.canvas, 0, 0);
       }
     } catch (err) {
       log('error', `la imagen de la cancha no se pudo dibujar: ${err.message}`, 'vip');
@@ -9088,9 +9103,9 @@ function skinPitch(ctx, w, h, stadium, floor3d) {
     }
   }
 
-  if (visual.light) lookfx.paintLight(ctx, w, h, world, bounds, visual.light);
+  if (visual.light && !imgOn) lookfx.paintLight(ctx, w, h, world, bounds, visual.light);
 
-  if (relief && bounds) paintRelief(ctx, w, h, world, bounds, relief, clampNum(skin.reliefAmount, 0.1, 1, 0.6));
+  if (relief && bounds && !imgOn) paintRelief(ctx, w, h, world, bounds, relief, clampNum(skin.reliefAmount, 0.1, 1, 0.6));
 
   // El velo del clima (piso mojado, niebla tenue…): plano y debajo de los jugadores.
   if (veil) {
@@ -9169,6 +9184,26 @@ let crestImg = null;
  */
 let pitchImg = null;
 let pitchImgFile = '';
+/** El color medio de una imagen (una vez por imagen): fondo debajo de la foto. */
+const imgAvg = new WeakMap();
+function imageAverage(img) {
+  let c = imgAvg.get(img);
+  if (c) return c;
+  c = '#3c5a34';
+  try {
+    const cv = img.ownerDocument ? img.ownerDocument.createElement('canvas') : document.createElement('canvas');
+    cv.width = 8; cv.height = 8;
+    const g = cv.getContext('2d');
+    g.drawImage(img, 0, 0, 8, 8);
+    const d = g.getImageData(0, 0, 8, 8).data;
+    let r = 0, gg = 0, b = 0;
+    for (let i = 0; i < d.length; i += 4) { r += d[i]; gg += d[i + 1]; b += d[i + 2]; }
+    c = `rgb(${Math.round(r / 64)},${Math.round(gg / 64)},${Math.round(b / 64)})`;
+  } catch (e) { /* imagen de otro origen: queda el verde */ }
+  imgAvg.set(img, c);
+  return c;
+}
+
 function pitchImage(ctx) {
   const file = (state.config.vip && state.config.vip.pitchImage) || '';
   if (!file) { pitchImg = null; pitchImgFile = ''; return null; }
@@ -9234,8 +9269,11 @@ function paintCover(ctx, img, x, y, W, H, c) {
   ctx.save();
   ctx.translate(x + W / 2, y + H / 2);
   ctx.rotate(((+cc.r || 0) * Math.PI) / 180);
-  const k = Math.min(8, Math.max(0.2, +cc.z || 1)) * Math.max(W / sw, H / sh);
-  ctx.scale(cc.fx ? -k : k, k);
+  const z = Math.min(8, Math.max(0.2, +cc.z || 1));
+  // «Estirar»: la foto entera ocupa la cancha exacta (cada eje por su lado).
+  const k = cc.st ? z * (W / sw) : z * Math.max(W / sw, H / sh);
+  const ky = cc.st ? z * (H / sh) : k;
+  ctx.scale(cc.fx ? -k : k, ky);
   ctx.translate(-(sw / 2 + ((+cc.x || 0) * sw) / 2), -(sh / 2 + ((+cc.y || 0) * sh) / 2));
   ctx.drawImage(img, 0, 0, sw, sh);
   ctx.restore();

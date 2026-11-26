@@ -104,8 +104,10 @@
     ctx.save();
     ctx.translate(x + W / 2, y + H / 2);
     ctx.rotate(((+cc.r || 0) * Math.PI) / 180);
-    const k = Math.min(8, Math.max(0.2, +cc.z || 1)) * Math.max(W / sw, H / sh);
-    ctx.scale(cc.fx ? -k : k, k);
+    const z = Math.min(8, Math.max(0.2, +cc.z || 1));
+    const k = cc.st ? z * (W / sw) : z * Math.max(W / sw, H / sh);
+    const ky = cc.st ? z * (H / sh) : k;
+    ctx.scale(cc.fx ? -k : k, ky);
     ctx.translate(-(sw / 2 + ((+cc.x || 0) * sw) / 2), -(sh / 2 + ((+cc.y || 0) * sh) / 2));
     ctx.drawImage(img, 0, 0, sw, sh);
     ctx.restore();

@@ -351,7 +351,7 @@ const DEFAULTS = {
     ballCrop: { on: false, z: 1, x: 0, y: 0, r: 0, fx: false },
     /** Imagen propia de césped (sólo la ves vos) y su zoom/posición/giro. */
     pitchImage: '',
-    pitchCrop: { on: false, z: 1, x: 0, y: 0, r: 0, fx: false },
+    pitchCrop: { on: false, z: 1, x: 0, y: 0, r: 0, fx: false, st: false },
     /** Sonido de gol propio. Idem: archivo copiado a userData. */
     goalSound: '',
     goalVolume: 0.7,

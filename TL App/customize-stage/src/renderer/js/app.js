@@ -7997,8 +7997,11 @@ function drawCropped(ctx, img, dx, dy, S, c, SH) {
   ctx.translate(dx + S / 2, dy + H / 2);
   ctx.rotate(((+c.r || 0) * Math.PI) / 180);
   // Igual que `paintCropped`/`paintCover` del juego: cubre el recuadro entero.
-  const k = Math.min(8, Math.max(0.2, +c.z || 1)) * Math.max(S / sw, H / sh);
-  ctx.scale(c.fx ? -k : k, k);
+  const z = Math.min(8, Math.max(0.2, +c.z || 1));
+  // Estirada: cada eje por su lado, la foto entera ocupa el recuadro exacto.
+  const kx = c.st ? z * (S / sw) : z * Math.max(S / sw, H / sh);
+  const ky = c.st ? z * (H / sh) : kx;
+  ctx.scale(c.fx ? -kx : kx, ky);
   ctx.translate(-(sw / 2 + ((+c.x || 0) * sw) / 2), -(sh / 2 + ((+c.y || 0) * sh) / 2));
   ctx.drawImage(img, 0, 0, sw, sh);
   ctx.restore();
@@ -8187,6 +8190,7 @@ function openCrop(kind) {
   $('#cropFill').textContent = en ? 'Fill' : 'Llenar';
   $('#cropFit').textContent = en ? 'Fit whole' : 'Encajar entera';
   $('#cropCenter').textContent = en ? 'Center' : 'Centrar';
+  $('#cropStretch').textContent = en ? 'Stretch' : 'Estirar';
   $('#cropFlip').textContent = en ? 'Mirror' : 'Espejo';
   $('#cropReset').textContent = en ? 'Original' : 'Como estaba';
   $('#cropCancel').textContent = en ? 'Cancel' : 'Cancelar';
@@ -8204,7 +8208,7 @@ function closeCrop() { $('#cropModal').hidden = true; crop.img = null; crop.drag
 async function saveCrop(value) {
   const key = cropKeyOf(crop.kind);
   const c = value || crop.c;
-  const clean = { on: !!c.on, z: +(+c.z).toFixed(4), x: +(+c.x).toFixed(4), y: +(+c.y).toFixed(4), r: Math.round(+c.r || 0), fx: !!c.fx };
+  const clean = { on: !!c.on, z: +(+c.z).toFixed(4), x: +(+c.x).toFixed(4), y: +(+c.y).toFixed(4), r: Math.round(+c.r || 0), fx: !!c.fx, ...(crop.kind === 'pitch' ? { st: !!c.st } : {}) };
   await patchConfig({ vip: { [key]: clean } });
   if (crop.kind === 'ball') renderBallImage(); else if (crop.kind === 'pitch') renderPitchSkin(); else renderAvatarImage();
 }
@@ -8261,8 +8265,10 @@ async function saveCrop(value) {
   const rot = (d) => { let r = Math.round((crop.c.r + d) / 90) * 90; if (r > 180) r -= 360; if (r < -180) r += 360; crop.c.r = r; cropQueue(); };
   $('#cropRotL').addEventListener('click', () => rot(-90));
   $('#cropRotR').addEventListener('click', () => rot(90));
-  $('#cropFill').addEventListener('click', () => { crop.c.z = 1; crop.c.x = 0; crop.c.y = 0; crop.snap = true; cropQueue(); });
+  $('#cropFill').addEventListener('click', () => { crop.c.st = false; crop.c.z = 1; crop.c.x = 0; crop.c.y = 0; crop.snap = true; cropQueue(); });
+  $('#cropStretch').addEventListener('click', () => { crop.c.st = true; crop.c.z = 1; crop.c.x = 0; crop.c.y = 0; crop.c.r = 0; crop.snap = true; cropQueue(); });
   $('#cropFit').addEventListener('click', () => {
+    crop.c.st = false;
     const img = crop.img; if (!img) return;
     const sw = img.naturalWidth || img.width; const sh = img.naturalHeight || img.height;
     const gg = cropGeom();
