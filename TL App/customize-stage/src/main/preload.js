@@ -279,9 +279,10 @@ contextBridge.exposeInMainWorld('tvm', {
   },
 
   vip: {
-    pickAvatar: () => call('vip:pickAvatar'),
-    pickBall: () => call('vip:pickBall'),
-    pickPitch: () => call('vip:pickPitch'),
+    /** Sin argumento abre el diálogo; con la ruta de un archivo soltado, usa ese. */
+    pickAvatar: (dropped) => call('vip:pickAvatar', typeof dropped === 'string' ? dropped : undefined),
+    pickBall: (dropped) => call('vip:pickBall', typeof dropped === 'string' ? dropped : undefined),
+    pickPitch: (dropped) => call('vip:pickPitch', typeof dropped === 'string' ? dropped : undefined),
     pickGoalSound: () => call('vip:pickGoalSound'),
     /** El sonido que suena con cada golpe a la pelota, sea de quien sea. */
     pickHitSound: () => call('vip:pickHitSound'),

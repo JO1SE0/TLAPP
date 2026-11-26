@@ -4011,7 +4011,7 @@ function closeCreateModal() {
 
 $('#actCreate').addEventListener('click', () => {
   if (!state.config.general.nickname) {
-    $('#nickInput').focus();
+    fieldError($('#nickInput'), isEn() ? 'First choose your nick' : 'Primero elegí tu nick');
     return;
   }
   openCreateModal();
@@ -4030,7 +4030,7 @@ $('#createForm').addEventListener('submit', async (e) => {
     maxPlayers: Number($('#createMax').value),
     listed: state.createListed
   };
-  if (!options.name) return;
+  if (!options.name) { fieldError($('#createName'), isEn() ? 'Give the room a name' : 'Ponele un nombre a la sala'); return; }
 
   closeCreateModal();
   const res = await guard(tvm.rooms.create(options), 'Error');
@@ -4055,7 +4055,7 @@ function renderNickCard() {
 $('#nickForm').addEventListener('submit', async (e) => {
   e.preventDefault();
   const nick = $('#nickInput').value.trim();
-  if (!nick) return;
+  if (!nick) { fieldError($('#nickInput'), isEn() ? 'Write your nick' : 'Escribí tu nick'); return; }
   await patchConfig({ general: { nickname: nick } });
   renderNickCard();
   renderSettings();
@@ -4871,14 +4871,22 @@ function toggleKeyName(code) {
 /* Escucha la próxima tecla y la devuelve (por `code`: no cambia con Shift ni con la distribución). */
 function captureToggleKey(done) {
   if (toggleKeyCapture) toggleKeyCapture();
+  // 47 · Una tecla de teclado en pantalla que se hunde con la que apretás.
+  const cap = document.createElement('div');
+  cap.className = 'keycap-pop';
+  cap.innerHTML = `<span class="keycap-pop__hint">${isEn() ? 'Press a key…' : 'Apretá una tecla…'}</span><span class="keycap-pop__key">?</span>`;
+  document.body.append(cap);
   const onKey = (e) => {
     e.preventDefault();
     e.stopImmediatePropagation();
     if (e.repeat) return;
-    stop();
-    done(e.code === 'Escape' ? null : e.code);
+    const key = cap.querySelector('.keycap-pop__key');
+    key.textContent = e.code === 'Escape' ? 'Esc' : toggleKeyName(e.code) || e.key;
+    key.classList.add('is-down');
+    window.removeEventListener('keydown', onKey, true);
+    setTimeout(() => { stop(); done(e.code === 'Escape' ? null : e.code); }, animOn() ? 380 : 0);
   };
-  const stop = () => { window.removeEventListener('keydown', onKey, true); toggleKeyCapture = null; };
+  const stop = () => { window.removeEventListener('keydown', onKey, true); toggleKeyCapture = null; cap.classList.add('is-out'); setTimeout(() => cap.remove(), 200); };
   window.addEventListener('keydown', onKey, true);
   toggleKeyCapture = () => { stop(); done(null); };
 }
@@ -5300,9 +5308,10 @@ function renderThemes() {
       refreshThemeVars();
     });
 
-    card.addEventListener('click', async () => {
+    card.addEventListener('click', async (ev) => {
       clearTimeout(hoverTimer);
       hoverTimer = null;
+      themeWipe(ev);
       /*
        * Sin el rol se avisa acá y no se manda nada. `cfg:set` lo rechaza igual
        * —esa es la guarda de verdad—, pero devolver un error genérico por algo
@@ -5449,6 +5458,15 @@ function skinCfg() {
  * claro, que no da ventaja— está en el `ⓘ` del título de la sección, en el
  * HTML. Acá abajo cada control dice lo suyo en media línea.
  */
+async function pickPitchImage(dropped) {
+  const before = (state.config.vip || {}).pitchImage;
+  const next = await guard(tvm.vip.pickPitch(dropped), 'Error');
+  if (!next) return;
+  state.config.vip = next;
+  if (next.pitchImage && next.pitchImage !== before) { crop.kind = 'pitch'; await saveCrop({ ...CROP_DEF, on: false }); openCrop('pitch'); }
+  renderPitchSkin();
+}
+
 function renderPitchSkin() {
   const box = $('#pitchSkin');
   if (!box) return;
@@ -5491,14 +5509,9 @@ function renderPitchSkin() {
       face.append(cv);
     } else face.textContent = '—';
     const mk = (txt, fn, ghost = true) => { const b = document.createElement('button'); b.type = 'button'; b.className = `btn btn--sm${ghost ? ' btn--ghost' : ''}`; b.textContent = txt; b.addEventListener('click', fn); return b; };
-    ctl.append(face, mk(en ? 'Choose…' : 'Elegir…', async () => {
-      const before = (state.config.vip || {}).pitchImage;
-      const next = await guard(tvm.vip.pickPitch(), 'Error');
-      if (!next) return;
-      state.config.vip = next;
-      if (next.pitchImage && next.pitchImage !== before) { crop.kind = 'pitch'; await saveCrop({ ...CROP_DEF, on: false }); openCrop('pitch'); }
-      renderPitchSkin();
-    }));
+    ctl.dataset.drop = 'pitch';
+    ctl.dataset.dropHint = en ? 'Drop your image here' : 'Soltá tu imagen acá';
+    ctl.append(face, mk(en ? 'Choose…' : 'Elegir…', () => pickPitchImage()));
     if (file) {
       ctl.append(mk(en ? 'Adjust' : 'Ajustar', () => openCrop('pitch')), mk(en ? 'Remove' : 'Quitar', async () => {
         const next = await guard(tvm.vip.clearAsset('pitch'), 'Error');
@@ -7929,29 +7942,35 @@ function fileUrl(filePath) {
  */
 // La imagen del avatar ya no vive en la tarjeta VIP: lo que se repinta es la
 // tarjeta «Tu avatar», que se ve con rol y sin él.
-$('#vipPickAvatar').addEventListener('click', async () => {
+async function pickAvatarImage(dropped) {
   const before = (state.config.vip || {}).avatarImage;
-  const next = await guard(tvm.vip.pickAvatar(), 'Error');
+  const next = await guard(tvm.vip.pickAvatar(dropped), 'Error');
   if (next) {
     state.config.vip = next;
     renderAvatarImage();
     // Imagen nueva: arranca sin ajuste y se abre el editor para acomodarla.
     if (next.avatarImage && next.avatarImage !== before) { crop.kind = 'avatar'; await saveCrop({ ...CROP_DEF, on: false }); openCrop('avatar'); }
   }
-});
+}
+$('#vipPickAvatar').addEventListener('click', () => pickAvatarImage());
+$('#vipPickAvatar').closest('.assetrow').dataset.drop = 'avatar';
+$('#vipPickAvatar').closest('.assetrow').dataset.dropHint = isEn() ? 'Drop your image here' : 'Soltá tu imagen acá';
 $('#vipClearAvatar').addEventListener('click', async () => {
   const next = await guard(tvm.vip.clearAsset('avatar'), 'Error');
   if (next) { state.config.vip = next; renderAvatarImage(); }
 });
-$('#vipPickBall').addEventListener('click', async () => {
+async function pickBallImage(dropped) {
   const before = (state.config.vip || {}).ballImage;
-  const next = await guard(tvm.vip.pickBall(), 'Error');
+  const next = await guard(tvm.vip.pickBall(dropped), 'Error');
   if (next) {
     state.config.vip = next;
     renderBallImage();
     if (next.ballImage && next.ballImage !== before) { crop.kind = 'ball'; await saveCrop({ ...CROP_DEF, on: false }); openCrop('ball'); }
   }
-});
+}
+$('#vipPickBall').addEventListener('click', () => pickBallImage());
+$('#vipPickBall').closest('.assetrow').dataset.drop = 'ball';
+$('#vipPickBall').closest('.assetrow').dataset.dropHint = isEn() ? 'Drop your image here' : 'Soltá tu imagen acá';
 $('#vipClearBall').addEventListener('click', async () => {
   const next = await guard(tvm.vip.clearAsset('ball'), 'Error');
   if (next) { state.config.vip = next; renderBallImage(); }
@@ -11975,7 +11994,7 @@ function renderLooks() {
 $('#lookSave').addEventListener('click', async () => {
   const input = $('#lookName');
   const name = input.value.trim().slice(0, 24);
-  if (!name) { toast(t('looks.needName'), 'err'); return; }
+  if (!name) { fieldError(input, t('looks.needName')); return; }
   const saved = (((state.config.looks || {}).saved) || []).filter((x) => x.name !== name);
   if (saved.length >= LOOK_MAX) { toast(t('looks.full', { max: LOOK_MAX }), 'err'); return; }
   saved.push({ name, data: currentLookData() });
@@ -15062,3 +15081,183 @@ document.addEventListener('mouseover', (e) => {
   document.addEventListener('click', (e) => { if (row && e.target.closest && e.target.closest('#gameChat, #lookChat')) setTimeout(repaint, 120); });
   document.addEventListener('scroll', () => { if (row) { row = null; box.classList.remove('is-on'); } }, true);
 })();
+
+
+/* ══ Micro-animaciones ═══════════════════════════════════════════════════════
+ * Todas cortas, sólo con transform/opacity, y se apagan con «Animaciones».
+ * Ninguna corre dentro de la sala (eso es el juego, aparte).
+ */
+const animOn = () => document.documentElement.dataset.animations !== 'off';
+
+/* 4 · Cambio de tema en círculo: el color de fondo de antes queda encima y se
+   le abre un agujero redondo desde donde tocaste, mostrando el tema nuevo. */
+function themeWipe(ev) {
+  if (!animOn() || !ev || !Number.isFinite(ev.clientX)) return;
+  document.querySelectorAll('.themewipe').forEach((n) => n.remove());
+  const bg = getComputedStyle(document.body).backgroundColor || '#0b1426';
+  const w = document.createElement('div');
+  w.className = 'themewipe';
+  w.style.background = bg;
+  w.style.setProperty('--cx', `${ev.clientX}px`);
+  w.style.setProperty('--cy', `${ev.clientY}px`);
+  w.style.setProperty('--r', `${Math.hypot(Math.max(ev.clientX, innerWidth - ev.clientX), Math.max(ev.clientY, innerHeight - ev.clientY)) + 40}px`);
+  document.body.append(w);
+  // El tema nuevo se pinta debajo; al siguiente cuadro se abre el agujero.
+  requestAnimationFrame(() => requestAnimationFrame(() => w.classList.add('is-open')));
+  setTimeout(() => w.remove(), 900);
+}
+
+/* 5 · Copiar → tilde: cualquier copia que salga de un botón recién tocado le
+   cambia el ícono por un tilde dorado un segundo. */
+const COPY_TICK = '<svg class="copytick" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
+function copyTick(el) {
+  if (!animOn() || !el || el.dataset.ticking) return;
+  el.dataset.ticking = '1';
+  const svg = el.querySelector('svg');
+  const holder = document.createElement('span');
+  holder.className = 'copytick-wrap';
+  holder.innerHTML = COPY_TICK;
+  if (svg) { svg.classList.add('copytick-out'); svg.after(holder); }
+  else el.prepend(holder);
+  setTimeout(() => { holder.remove(); if (svg) svg.classList.remove('copytick-out'); delete el.dataset.ticking; }, 1300);
+}
+try {
+  const cb = navigator.clipboard;
+  if (cb) for (const m of ['writeText', 'write']) {
+    const orig = cb[m] && cb[m].bind(cb);
+    if (!orig) continue;
+    cb[m] = (...args) => orig(...args).then((r) => {
+      const el = lastPress && Date.now() - lastPress.at < 2000 ? lastPress.el : null;
+      if (el && el.closest) copyTick(el.closest('button, .btn, [role="button"]') || el);
+      return r;
+    });
+  }
+} catch (e) { /* sin portapapeles */ }
+
+/* 9 · La píldora de las opciones viaja a la que tocaste. Las filas se
+   redibujan enteras al elegir, así que se mide la vieja antes del clic y la
+   nueva después, y una píldora flotante hace el viaje entre las dos. */
+const PILL_GROUPS = '.chips, .lookchips, .seg, .segmented';
+const PILL_ON = ':scope > .is-active, :scope > .is-on';
+document.addEventListener('pointerdown', (e) => {
+  if (!animOn()) return;
+  const chip = e.target.closest && e.target.closest('.chips > .chip, .lookchips > .lookchip');
+  if (!chip) return;
+  const group = chip.parentElement;
+  const old = group.querySelector(PILL_ON);
+  if (!old || old === chip) return;
+  const from = old.getBoundingClientRect();
+  const at = { x: e.clientX, y: e.clientY };
+  let tries = 0;
+  const look = () => {
+    const hit = document.elementFromPoint(at.x, at.y);
+    const g2 = hit && hit.closest && hit.closest(PILL_GROUPS);
+    const now = g2 && g2.querySelector(PILL_ON);
+    if (!now) { if (++tries < 12) requestAnimationFrame(look); return; }
+    const to = now.getBoundingClientRect();
+    if (Math.abs(to.left - from.left) < 2 && Math.abs(to.top - from.top) < 2) { if (++tries < 12) requestAnimationFrame(look); return; }
+    const pill = document.createElement('i');
+    pill.className = 'pillfly';
+    const cs = getComputedStyle(now);
+    pill.style.borderRadius = cs.borderRadius;
+    Object.assign(pill.style, { left: `${from.left}px`, top: `${from.top}px`, width: `${from.width}px`, height: `${from.height}px` });
+    document.body.append(pill);
+    now.classList.add('pill-arriving');
+    requestAnimationFrame(() => {
+      pill.style.transform = `translate(${to.left - from.left}px, ${to.top - from.top}px)`;
+      pill.style.width = `${to.width}px`; pill.style.height = `${to.height}px`;
+    });
+    setTimeout(() => { now.classList.remove('pill-arriving'); pill.classList.add('is-done'); }, 300);
+    setTimeout(() => pill.remove(), 520);
+  };
+  // Después del clic (que es el que cambia la opción).
+  chip.addEventListener('click', () => requestAnimationFrame(look), { once: true });
+}, true);
+
+/* 10 · Favorito: la estrella gira, se llena y suelta chispitas. */
+document.addEventListener('click', (e) => {
+  if (!animOn()) return;
+  const star = e.target.closest && e.target.closest('.rrow__fav, .replay__star');
+  if (!star) return;
+  const r = star.getBoundingClientRect();
+  setTimeout(() => {
+    // La fila se puede haber redibujado: se busca la estrella en el mismo lugar.
+    const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+    const now = (hit && hit.closest && hit.closest('.rrow__fav, .replay__star')) || star;
+    if (!now.classList.contains('is-on')) return;
+    now.classList.remove('is-pop'); void now.offsetWidth; now.classList.add('is-pop');
+    for (let i = 0; i < 10; i++) {
+      const s = document.createElement('i');
+      s.className = 'starspark';
+      const a = (i / 10) * Math.PI * 2;
+      s.style.left = `${r.left + r.width / 2}px`; s.style.top = `${r.top + r.height / 2}px`;
+      s.style.setProperty('--x', `${Math.cos(a) * 26}px`); s.style.setProperty('--y', `${Math.sin(a) * 26}px`);
+      document.body.append(s);
+      setTimeout(() => s.remove(), 700);
+    }
+  }, 60);
+});
+
+/* 30 · Tarjetas que se inclinan en 3D con el mouse, con un reflejo. */
+const TILT_SEL = '#profileModal .modal__card, html[data-roomview="cards"] .rrow';
+let tiltEl = null, tiltRaf = 0, tiltEv = null;
+document.addEventListener('pointermove', (e) => {
+  if (!animOn()) return;
+  tiltEv = e;
+  if (tiltRaf) return;
+  tiltRaf = requestAnimationFrame(() => {
+    tiltRaf = 0;
+    const ev = tiltEv;
+    const el = ev.target && ev.target.closest ? ev.target.closest(TILT_SEL) : null;
+    if (tiltEl && tiltEl !== el) { tiltEl.classList.remove('is-tilting'); tiltEl.style.transform = ''; tiltEl = null; }
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    const x = (ev.clientX - r.left) / r.width - 0.5, y = (ev.clientY - r.top) / r.height - 0.5;
+    const k = r.width > 500 ? 5 : 10;
+    el.classList.add('is-tilting');
+    el.style.transform = `perspective(900px) rotateY(${(x * k).toFixed(2)}deg) rotateX(${(-y * k).toFixed(2)}deg)`;
+    el.style.setProperty('--gx', `${((x + 0.5) * 100).toFixed(1)}%`);
+    el.style.setProperty('--gy', `${((y + 0.5) * 100).toFixed(1)}%`);
+    tiltEl = el;
+  });
+}, { passive: true });
+
+/* 58 · Soltar una imagen sobre su fila (avatar, pelota, césped). */
+const DROP_PICK = { avatar: (p) => pickAvatarImage(p), ball: (p) => pickBallImage(p), pitch: (p) => pickPitchImage(p) };
+// Soltar un archivo afuera de una zona no tiene que abrirlo como página.
+window.addEventListener('dragover', (e) => e.preventDefault());
+window.addEventListener('drop', (e) => e.preventDefault());
+document.addEventListener('dragover', (e) => {
+  const z = e.target.closest && e.target.closest('[data-drop]');
+  document.querySelectorAll('[data-drop].is-dropover').forEach((n) => { if (n !== z) n.classList.remove('is-dropover'); });
+  if (z) { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; z.classList.add('is-dropover'); }
+});
+document.addEventListener('dragleave', (e) => {
+  const z = e.target.closest && e.target.closest('[data-drop]');
+  if (z && !z.contains(e.relatedTarget)) z.classList.remove('is-dropover');
+});
+document.addEventListener('drop', (e) => {
+  const z = e.target.closest && e.target.closest('[data-drop]');
+  document.querySelectorAll('[data-drop].is-dropover').forEach((n) => n.classList.remove('is-dropover'));
+  if (!z) return;
+  e.preventDefault();
+  const f = e.dataTransfer.files && e.dataTransfer.files[0];
+  const fn = DROP_PICK[z.dataset.drop];
+  if (!f || !fn) return;
+  if (!/\.(png|jpe?g|gif|webp)$/i.test(f.name || '')) { toast(isEn() ? 'That is not an image' : 'Eso no es una imagen', 'err'); return; }
+  if (!f.path) { toast(isEn() ? 'Could not read that file' : 'No se pudo leer ese archivo', 'err'); return; }
+  fn(f.path);
+});
+
+/* 63 · Un campo mal: se sacude, borde rojo y el mensaje baja debajo. */
+function fieldError(input, msg) {
+  if (!input) return;
+  input.classList.remove('is-bad'); void input.offsetWidth; input.classList.add('is-bad');
+  let m = input.parentElement && input.parentElement.querySelector(':scope > .fielderr');
+  if (!m) { m = document.createElement('span'); m.className = 'fielderr'; input.after(m); }
+  m.textContent = msg;
+  requestAnimationFrame(() => m.classList.add('is-on'));
+  const clear = () => { input.classList.remove('is-bad'); m.classList.remove('is-on'); input.removeEventListener('input', clear); };
+  input.addEventListener('input', clear);
+  try { input.focus(); } catch (e) { /* sin foco */ }
+}

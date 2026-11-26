@@ -9140,3 +9140,81 @@ html:not([data-animations="off"]):not(.tl-enter) :is(.modal:not([hidden]) > .mod
   animation: cardIn 0.26s cubic-bezier(0.2, 0.8, 0.2, 1) both;
 }
 html:not([data-animations="off"]) .secmodal:not([hidden]) > .secmodal__scrim { animation: fadeIn 0.2s ease both; }
+
+/* ══ Micro-animaciones (ver el bloque del mismo nombre en app.js) ══════════ */
+/* 4 · Tema en círculo */
+.themewipe { position: fixed; inset: 0; z-index: 100003; pointer-events: none; --r0: 0px;
+  -webkit-mask: radial-gradient(circle at var(--cx) var(--cy), transparent var(--r0), #000 calc(var(--r0) + 1px));
+  mask: radial-gradient(circle at var(--cx) var(--cy), transparent var(--r0), #000 calc(var(--r0) + 1px)); }
+@property --r0 { syntax: '<length>'; inherits: false; initial-value: 0px; }
+.themewipe.is-open { --r0: var(--r); transition: --r0 0.7s cubic-bezier(0.6, 0, 0.2, 1); }
+
+/* 5 · Copiar → tilde */
+.copytick-out { opacity: 0 !important; transform: scale(0.4) rotate(30deg); transition: opacity 0.15s, transform 0.2s; }
+.copytick-wrap { display: inline-grid; place-items: center; width: 1.05em; height: 1.05em; margin-right: 0.15em; vertical-align: -0.15em; }
+button svg + .copytick-wrap, .btn svg + .copytick-wrap { margin: 0 0 0 -1.05em; }
+.copytick { width: 100%; height: 100%; fill: none; stroke: #e2c46f; stroke-width: 2.8; stroke-linecap: round; stroke-linejoin: round; animation: copyTickIn 0.32s cubic-bezier(0.3, 1.5, 0.5, 1) both; }
+@keyframes copyTickIn { from { opacity: 0; transform: scale(0.4) rotate(-30deg); } }
+
+/* 7 · Mouse por las salas: se corre, rayita dorada y un brillo que la cruza */
+html:not([data-animations="off"]):not([data-roomview="cards"]) .rtable .rrow { transition: transform 0.18s cubic-bezier(0.2, 0.8, 0.2, 1), background-color 0.18s; }
+html:not([data-animations="off"]):not([data-roomview="cards"]) .rtable .rrow:hover { transform: translateX(3px); }
+html:not([data-roomview="cards"]) .rtable .rrow::before { transform: scaleY(0); transition: transform 0.2s ease, opacity 0.2s; background: #e2c46f; }
+html:not([data-roomview="cards"]) .rtable .rrow:hover::before { transform: scaleY(1); opacity: 1; }
+html:not([data-animations="off"]):not([data-roomview="cards"]) .rtable .rrow:hover {
+  background-image: linear-gradient(100deg, transparent 0%, rgb(255 255 255 / 7%) 50%, transparent 100%);
+  background-size: 35% 100%; background-repeat: no-repeat;
+  animation: rrowSheen 0.7s ease forwards;
+}
+@keyframes rrowSheen { from { background-position: -40% 0; } to { background-position: 140% 0; } }
+
+/* 9 · Píldora que viaja */
+.pillfly { position: fixed; z-index: 100002; pointer-events: none; box-sizing: border-box;
+  border: 1px solid rgb(226 196 111 / 85%); background: rgb(226 196 111 / 22%); box-shadow: 0 0 12px rgb(226 196 111 / 35%);
+  transition: transform 0.3s cubic-bezier(0.3, 1.3, 0.5, 1), width 0.3s cubic-bezier(0.3, 1.3, 0.5, 1), height 0.3s, opacity 0.2s; }
+.pillfly.is-done { opacity: 0; }
+.pill-arriving { transition: none !important; }
+
+/* 10 · Estrella de favorito */
+.rrow__fav.is-pop, .replay__star.is-pop { animation: starPop 0.55s cubic-bezier(0.3, 1.5, 0.5, 1); }
+@keyframes starPop { 0% { transform: scale(0.5) rotate(-70deg); } 100% { transform: none; } }
+.starspark { position: fixed; z-index: 100002; width: 4px; height: 4px; margin: -2px 0 0 -2px; border-radius: 50%; pointer-events: none;
+  background: #f6d987; box-shadow: 0 0 6px #f6d987; animation: starSpark 0.65s ease-out forwards; }
+@keyframes starSpark { to { transform: translate(var(--x), var(--y)) scale(0.2); opacity: 0; } }
+
+/* 30 · Tarjetas que se inclinan (con un reflejo que sigue al mouse) */
+.is-tilting { transition: transform 0.12s ease-out !important; will-change: transform; }
+#profileModal .modal__card, html[data-roomview="cards"] .rrow { transition: transform 0.35s ease; }
+
+/* 45 · Miniaturas de Personalizar que se levantan */
+html:not([data-animations="off"]) .lookgal__item { transition: transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.25s, border-color 0.25s; }
+html:not([data-animations="off"]) .lookgal__item:hover { transform: translateY(-4px) scale(1.06); box-shadow: 0 12px 22px -8px rgb(0 0 0 / 70%); border-color: #e2c46f; z-index: 2; position: relative; }
+
+/* 47 · Tecla que se aprieta */
+.keycap-pop { position: fixed; left: 50%; bottom: 14vh; z-index: 100004; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 10px; pointer-events: none;
+  animation: keycapIn 0.25s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+.keycap-pop.is-out { animation: keycapOut 0.2s ease forwards; }
+@keyframes keycapIn { from { opacity: 0; transform: translate(-50%, 12px); } }
+@keyframes keycapOut { to { opacity: 0; transform: translate(-50%, 8px); } }
+.keycap-pop__hint { font-size: 12px; font-weight: 600; letter-spacing: 0.06em; color: var(--text-dim); background: rgb(8 16 31 / 85%); padding: 5px 10px; border-radius: 8px; }
+.keycap-pop__key { min-width: 64px; height: 54px; padding: 0 14px; display: grid; place-items: center; border-radius: 11px; font-size: 16px; font-weight: 700; color: #eef1f8;
+  background: linear-gradient(180deg, #2a3a62, #1a2748); border: 1px solid rgb(255 255 255 / 15%); box-shadow: 0 5px 0 #0d1530, 0 14px 26px -10px rgb(0 0 0 / 80%);
+  transition: transform 0.08s, box-shadow 0.08s, border-color 0.2s; }
+.keycap-pop__key.is-down { transform: translateY(4px); box-shadow: 0 1px 0 #0d1530, 0 6px 12px -6px rgb(0 0 0 / 80%); border-color: #e2c46f; color: #f6d987; }
+
+/* 53 · La X de cerrar gira y se pone rojiza */
+:is(.panel__close, .secmodal__close, .modal__head .iconbtn, [aria-label="Cerrar"], [aria-label="Close"]) svg { transition: transform 0.35s cubic-bezier(0.3, 1.5, 0.5, 1), color 0.2s; }
+html:not([data-animations="off"]) :is(.panel__close, .secmodal__close, .modal__head .iconbtn, [aria-label="Cerrar"], [aria-label="Close"]):hover svg { transform: rotate(90deg); }
+:is(.panel__close, .secmodal__close, .modal__head .iconbtn, [aria-label="Cerrar"], [aria-label="Close"]):hover { color: #ff8a7a; }
+
+/* 58 · Soltar una imagen: la fila se ilumina */
+[data-drop] { position: relative; border-radius: 10px; transition: background-color 0.2s, box-shadow 0.2s, transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1); }
+[data-drop].is-dropover { background-color: rgb(226 196 111 / 10%); box-shadow: 0 0 0 2px #e2c46f inset; transform: scale(1.02); }
+[data-drop].is-dropover::after { content: attr(data-drop-hint); position: absolute; inset: 0; display: grid; place-items: center; border-radius: inherit; font-size: 12px; font-weight: 700; letter-spacing: 0.04em; color: #f6d987; background: rgb(8 16 31 / 72%); pointer-events: none; }
+
+/* 63 · Campo mal: se sacude, borde rojo y el mensaje baja */
+.is-bad { border-color: #e56e56 !important; box-shadow: 0 0 0 3px rgb(229 110 86 / 18%) !important; }
+html:not([data-animations="off"]) .is-bad { animation: fieldShake 0.4s; }
+@keyframes fieldShake { 20% { transform: translateX(-6px); } 40% { transform: translateX(5px); } 60% { transform: translateX(-4px); } 80% { transform: translateX(2px); } }
+.fielderr { display: block; overflow: hidden; max-height: 0; opacity: 0; transform: translateY(-4px); font-size: 11.5px; font-weight: 600; color: #ff8a7a; transition: max-height 0.25s, opacity 0.25s, transform 0.25s, margin 0.25s; }
+.fielderr.is-on { max-height: 40px; opacity: 1; transform: none; margin-top: 6px; }

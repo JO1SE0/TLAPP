@@ -3506,8 +3506,55 @@ function skipNicknameScreen(doc) {
  * le deja el cursor en el campo para que la escriba y listo.
  */
 function focusPasswordField(doc) {
-  const input = doc.querySelector('.room-password-view input');
-  if (input) input.focus();
+  const view = doc.querySelector('.room-password-view');
+  const input = view && view.querySelector('input');
+  if (!input) return;
+  input.focus();
+  safe(passwordLock, doc, view, input);
+}
+
+/*
+ * 62 · Sala con clave: un candado arriba del campo. Al mandar la clave se abre;
+ * si la sala vuelve a pedirla (estaba mal), el candado y el campo se sacuden en
+ * rojo. Sólo DOM de la pantalla de la clave, nada en la cancha.
+ */
+const pwTry = { at: 0 };
+function passwordLock(doc, view, input) {
+  if (!doc.getElementById('tvm-pwlock-css')) {
+    const st = doc.createElement('style');
+    st.id = 'tvm-pwlock-css';
+    st.textContent = `
+      .tvm-pwlock { display: block; width: 34px; height: 40px; margin: 0 auto 10px; }
+      .tvm-pwlock path, .tvm-pwlock rect { fill: none; stroke: #e2c46f; stroke-width: 2.4; stroke-linecap: round; }
+      .tvm-pwlock .sh { transition: transform .35s cubic-bezier(.3,1.5,.5,1); transform-origin: 24px 16px; }
+      .tvm-pwlock.is-open .sh { transform: translateY(-5px) rotate(28deg); }
+      .tvm-pwlock.is-bad path, .tvm-pwlock.is-bad rect { stroke: #ff7a6a; }
+      .tvm-pwlock.is-bad, .room-password-view input.tvm-pwbad { animation: tvmPwShake .4s; }
+      .room-password-view input.tvm-pwbad { border-color: #e56e56 !important; box-shadow: 0 0 0 3px rgba(229,110,86,.2) !important; }
+      @keyframes tvmPwShake { 20% { transform: translateX(-6px); } 40% { transform: translateX(5px); } 60% { transform: translateX(-4px); } 80% { transform: translateX(2px); } }
+      html.tvm-noanim .tvm-pwlock, html.tvm-noanim .room-password-view input { animation: none !important; }`;
+    (doc.head || doc.documentElement).appendChild(st);
+  }
+  let lock = view.querySelector('.tvm-pwlock');
+  if (!lock) {
+    lock = doc.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    lock.setAttribute('viewBox', '0 0 34 40');
+    lock.setAttribute('class', 'tvm-pwlock');
+    lock.innerHTML = '<path class="sh" d="M10 18v-6a7 7 0 0 1 14 0v6"/><rect x="5" y="18" width="24" height="18" rx="4"/>';
+    input.parentElement.insertBefore(lock, input);
+    const sent = () => { pwTry.at = Date.now(); lock.classList.add('is-open'); };
+    input.addEventListener('keydown', (e) => { if (e.key === 'Enter') sent(); });
+    const ok = view.querySelector('[data-hook="ok"]');
+    if (ok) ok.addEventListener('click', sent);
+    input.addEventListener('input', () => { lock.classList.remove('is-bad'); input.classList.remove('tvm-pwbad'); });
+  }
+  // Volvió a pedirla poco después de mandarla: estaba mal.
+  if (Date.now() - pwTry.at < 15000) {
+    pwTry.at = 0;
+    lock.classList.remove('is-open', 'is-bad'); input.classList.remove('tvm-pwbad');
+    void lock.getBoundingClientRect();
+    lock.classList.add('is-bad'); input.classList.add('tvm-pwbad');
+  } else lock.classList.remove('is-open', 'is-bad');
 }
 
 /**
@@ -10980,6 +11027,37 @@ const lastGoal = { team: null, at: 0 };
 function noteGoalTeam(team) {
   lastGoal.team = team;
   lastGoal.at = Date.now();
+  safe(goalPulse, gameDocument(), team);
+}
+
+/*
+ * 1 · Gol: el borde de la pantalla destella dorado un instante y el marcador
+ * late, con el número del que metió cayendo. Sin tapar nada de la cancha:
+ * un marco con sombra interna y el marcador de HaxBall, sólo transform/opacity.
+ */
+function goalPulse(doc, team) {
+  if (!doc || !doc.body || (state.config.appearance && state.config.appearance.animations === false)) return;
+  if (!doc.getElementById('tvm-goalpulse-css')) {
+    const st = doc.createElement('style');
+    st.id = 'tvm-goalpulse-css';
+    st.textContent = `
+      #tvm-goalpulse { position: fixed; inset: 0; z-index: 2147482500; pointer-events: none; opacity: 0;
+        box-shadow: inset 0 0 0 3px rgba(226,196,111,.95), inset 0 0 60px rgba(226,196,111,.5); }
+      #tvm-goalpulse.is-on { animation: tvmGoalEdge 1.6s ease-out forwards; }
+      @keyframes tvmGoalEdge { 0% { opacity: 0; } 12% { opacity: 1; } 100% { opacity: 0; } }
+      .tvm-sbpulse { animation: tvmSbPulse .9s cubic-bezier(.2,.8,.2,1); }
+      @keyframes tvmSbPulse { 20% { transform: scale(1.25); filter: drop-shadow(0 0 10px rgba(226,196,111,.75)); } 100% { transform: none; } }
+      .tvm-scdrop { display: inline-block; animation: tvmScDrop .5s .12s cubic-bezier(.3,1.4,.5,1) both; }
+      @keyframes tvmScDrop { 0% { transform: translateY(-10px); opacity: 0; } 100% { transform: none; opacity: 1; } }`;
+    (doc.head || doc.documentElement).appendChild(st);
+  }
+  let edge = doc.getElementById('tvm-goalpulse');
+  if (!edge) { edge = doc.createElement('div'); edge.id = 'tvm-goalpulse'; doc.body.appendChild(edge); }
+  edge.classList.remove('is-on'); void edge.offsetWidth; edge.classList.add('is-on');
+  const board = doc.querySelector('.game-state-view .scoreboard') || doc.querySelector('[data-hook="red-score"]')?.parentElement;
+  if (board) { board.classList.remove('tvm-sbpulse'); void board.offsetWidth; board.classList.add('tvm-sbpulse'); board.style.transformOrigin = 'center top'; }
+  const num = doc.querySelector(`[data-hook="${team === 'Blue' ? 'blue' : 'red'}-score"]`);
+  if (num) { num.classList.remove('tvm-scdrop'); void num.offsetWidth; num.classList.add('tvm-scdrop'); }
 }
 
 /**

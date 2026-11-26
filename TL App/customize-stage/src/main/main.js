@@ -3701,11 +3701,18 @@ function isVip() {
  *
  * Estos recursos son locales a la instalación del club.
  */
-async function pickAsset(title, filters, name) {
-  const res = await dialog.showOpenDialog(mainWindow, { title, filters, properties: ['openFile'] });
-  if (res.canceled || !res.filePaths[0]) return null;
-
-  const source = res.filePaths[0];
+async function pickAsset(title, filters, name, dropped) {
+  let source;
+  // Arrastrada a la zona de la app: la ruta del archivo que soltó el usuario.
+  // Pasa por los mismos controles (que exista, extensión de la lista, 8 MB).
+  if (typeof dropped === 'string' && dropped) {
+    if (!path.isAbsolute(dropped) || !fs.existsSync(dropped) || !fs.statSync(dropped).isFile()) throw new Error('No se pudo leer ese archivo.');
+    source = dropped;
+  } else {
+    const res = await dialog.showOpenDialog(mainWindow, { title, filters, properties: ['openFile'] });
+    if (res.canceled || !res.filePaths[0]) return null;
+    source = res.filePaths[0];
+  }
   const stat = fs.statSync(source);
   if (stat.size > 8 * 1024 * 1024) throw new Error('El archivo no puede pasar los 8 MB.');
 
@@ -3725,31 +3732,34 @@ async function pickAsset(title, filters, name) {
   return target;
 }
 
-handle('vip:pickAvatar', async () => {
+handle('vip:pickAvatar', async (_event, dropped) => {
   const file = await pickAsset(
     'Elegí la imagen de tu avatar',
     [{ name: 'Imágenes', extensions: ['png', 'jpg', 'jpeg', 'gif', 'webp'] }],
-    'avatar'
+    'avatar',
+    dropped
   );
   if (!file) return store.get().vip;
   return broadcastConfig(store.set({ vip: { avatarImage: file } })).vip;
 });
 
-handle('vip:pickBall', async () => {
+handle('vip:pickBall', async (_event, dropped) => {
   const file = await pickAsset(
     'Elegí la imagen de la pelota',
     [{ name: 'Imágenes', extensions: ['png', 'jpg', 'jpeg', 'gif', 'webp'] }],
-    'ball'
+    'ball',
+    dropped
   );
   if (!file) return store.get().vip;
   return broadcastConfig(store.set({ vip: { ballImage: file } })).vip;
 });
 
-handle('vip:pickPitch', async () => {
+handle('vip:pickPitch', async (_event, dropped) => {
   const file = await pickAsset(
     'Elegí la imagen del césped',
     [{ name: 'Imágenes', extensions: ['png', 'jpg', 'jpeg', 'webp'] }],
-    'pitch'
+    'pitch',
+    dropped
   );
   if (!file) return store.get().vip;
   return broadcastConfig(store.set({ vip: { pitchImage: file } })).vip;
