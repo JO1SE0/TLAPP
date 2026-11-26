@@ -679,6 +679,8 @@ const DEFAULTS = {
     clubArrival: true,
     /** Resumen al final del partido: resultado, goles en su minuto y la figura. */
     matchSummary: true,
+    /** Al terminar: el resumen completo (franja con goles y figura) en vez del marcador con FINAL. */
+    matchFull: false,
     /** Línea de posesión en el borde de abajo del marcador. */
     possessionBar: true,
     /**

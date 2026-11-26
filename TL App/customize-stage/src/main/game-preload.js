@@ -2579,7 +2579,8 @@ function buildQuickMenu() {
     if (!recBtn) noteRecButton(doc);
     if (recBtn) { recBtn.click(); setTimeout(() => safe(refreshQuickMenu), 80); }
   });
-  toggle('Resumen al terminar', () => cfg().pitch.matchSummary !== false, (v) => quickSet({ pitch: { matchSummary: v } }));
+  toggle('Final del partido', () => cfg().pitch.matchSummary !== false, (v) => quickSet({ pitch: { matchSummary: v } }));
+  toggle('Resumen completo al final', () => !!cfg().pitch.matchFull, (v) => quickSet({ pitch: { matchFull: v } }));
   toggle('Posesión en el marcador', () => cfg().pitch.possessionBar !== false, (v) => quickSet({ pitch: { possessionBar: v } }));
   row('Grabar partido', rec, () => {
     const on = !!(recBtn && recBtn.classList.contains('active'));
@@ -12013,7 +12014,52 @@ function summaryReset() {
   msum.keys.clear();
   msum.sec = NaN;
   const doc = gameDocument();
-  if (doc) doc.getElementById('tvm-summary')?.remove();
+  if (doc) { doc.getElementById('tvm-summary')?.remove(); doc.getElementById('tvm-final')?.remove(); }
+}
+
+/**
+ * Final del partido «El marcador»: un marcador propio (el de HaxBall ya no está
+ * cuando el partido terminó) sale del lugar del de arriba, baja, se agranda con
+ * borde dorado y dice FINAL; después vuelve y se va. Un solo nodo, sólo
+ * transform/opacity, y se borra al terminar.
+ */
+function showFinalBoard(doc, red, blue, endSec, ms) {
+  doc.getElementById('tvm-final')?.remove();
+  if (!doc.getElementById('tvm-final-css')) {
+    const st = doc.createElement('style');
+    st.id = 'tvm-final-css';
+    st.textContent = `
+      #tvm-final { position: fixed; left: 50%; top: 8px; z-index: 2147482550; pointer-events: none; display: flex; align-items: center; gap: 10px;
+        padding: 6px 16px; border-radius: 10px; background: rgba(8,16,31,.92); color: #eef1f8; transform-origin: top center;
+        font-family: Outfit, Bahnschrift, 'Segoe UI', sans-serif; font-size: 18px; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap;
+        transform: translateX(-50%); opacity: 0; animation: tvmFinal var(--dur, 4s) cubic-bezier(.2,.8,.2,1) forwards; }
+      #tvm-final.bot { top: auto; bottom: 8px; transform-origin: bottom center; animation-name: tvmFinalBot; }
+      #tvm-final .tag { font-size: 11px; letter-spacing: .24em; color: #e2c46f; font-weight: 800; padding-right: 2px; }
+      #tvm-final .d { width: 14px; height: 14px; border-radius: 50%; border: 1.5px solid #000; box-sizing: border-box; }
+      #tvm-final .r { background: #e56e56; } #tvm-final .b { background: #5689e5; }
+      #tvm-final .t { font-size: 13px; color: #e2c46f; font-weight: 600; padding-left: 4px; }
+      @keyframes tvmFinal {
+        0% { opacity: 0; transform: translateX(-50%) scale(1); box-shadow: none; }
+        6% { opacity: 1; }
+        16%, 84% { opacity: 1; transform: translateX(-50%) translateY(70px) scale(1.9); box-shadow: 0 0 0 1px #e2c46f, 0 0 26px rgba(226,196,111,.35), 0 18px 40px rgba(0,0,0,.5); }
+        100% { opacity: 0; transform: translateX(-50%) scale(1); box-shadow: none; } }
+      @keyframes tvmFinalBot {
+        0% { opacity: 0; transform: translateX(-50%) scale(1); box-shadow: none; }
+        6% { opacity: 1; }
+        16%, 84% { opacity: 1; transform: translateX(-50%) translateY(-70px) scale(1.9); box-shadow: 0 0 0 1px #e2c46f, 0 0 26px rgba(226,196,111,.35), 0 18px 40px rgba(0,0,0,.5); }
+        100% { opacity: 0; transform: translateX(-50%) scale(1); box-shadow: none; } }`;
+    (doc.head || doc.documentElement).appendChild(st);
+  }
+  const box = doc.createElement('div');
+  box.id = 'tvm-final';
+  if ((state.config.appearance || {}).scoreboardPos === 'bottom') box.className = 'bot';
+  const dur = Math.max(3000, Math.min(5000, (ms || 9000) / 2));
+  box.style.setProperty('--dur', `${dur}ms`);
+  const span = (cls, text) => { const e = doc.createElement('span'); e.className = cls; if (text != null) e.textContent = text; return e; };
+  box.append(span('tag', 'FINAL'), span('d r'), span('n', `${red} - ${blue}`), span('d b'));
+  if (Number.isFinite(endSec) && endSec > 0) box.append(span('t', `${Math.floor(endSec / 60)}:${String(endSec % 60).padStart(2, '0')}`));
+  doc.body.appendChild(box);
+  setTimeout(() => box.remove(), dur + 100);
 }
 const clockSec = (c) => {
   const m = /^(\d+):(\d{2})$/.exec(String(c || '').trim());
@@ -12091,6 +12137,8 @@ function showSummary(f, room, ms) {
   // Lo jugado: el reloj del motor (siempre está); el del HUD sólo si no hay otro.
   const endSec = Number.isFinite(msum.sec) ? Math.floor(msum.sec) : clockSec(matchClock(doc));
   if (!msum.goals.length && !(endSec >= 30)) return;
+  // Por defecto, el final es el marcador agrandado con FINAL (ver `showFinalBoard`).
+  if (!state.config.pitch.matchFull) { showFinalBoard(doc, red, blue, endSec, ms); return; }
 
   // Figura.
   const pts = new Map();

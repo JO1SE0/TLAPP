@@ -563,7 +563,7 @@ syncMinimap();
     const SUM = between(GP, 'const msum', '/** «MM:SS» a partir');
     const html = `<!doctype html><html><body style="margin:0;width:1280px;height:720px;background:#3d6e36">
 <script>
-const state={config:{pitch:{matchSummary:true},appearance:{}},view:'game'};
+const state={config:{pitch:{matchSummary:true,matchFull:true},appearance:{}},view:'game'};
 const gameDocument=()=>document;const visual={};const lastScore={red:2,blue:1};const assetUrl=()=>'';const peers=new Map();
 const safe=(f,...a)=>{try{return f(...a)}catch(e){console.error(e.message)}};
 const matchClock=()=>null;function sendHeatmap(){}const myNick=()=>"Ana";let sharedAvatar="";
@@ -599,11 +599,20 @@ ${SUM}
       // Partido parado de una (sin goles y < 30 s): no sale.
       state.config.pitch.matchSummary = true; summaryReset(); msum.sec = 8; closeMatch({}, {}, false);
       out.short = !document.getElementById('tvm-summary');
+      // Por defecto (sin «resumen completo»): el marcador agrandado con FINAL, y se va solo.
+      state.config.pitch.matchFull = false; summaryReset(); msum.sec = 125; lastScore.red = 3; lastScore.blue = 1;
+      closeMatch({}, {}, true);
+      const fin = document.getElementById('tvm-final');
+      out.final = fin ? fin.textContent : '';
+      out.finalNoSummary = !document.getElementById('tvm-summary');
+      await new Promise((res) => setTimeout(res, 3300));
+      out.finalGone = !document.getElementById('tvm-final');
       return out;
     });
     check('resumen: sale también sin goles (con el reloj del motor)', r.noGoals && /game:match-end/.test(r.sent), JSON.stringify(r));
     check('resumen: goles, resultado y figura', r.goals === 3 && r.score === '2-1' && r.mvp === 'Ana', JSON.stringify(r));
     check('resumen: con el partido siguiente ya arrancado se va a los 6 s', r.goals === 3 && r.goneQuick, JSON.stringify(r));
+    check('final: por defecto sale el marcador con FINAL (3-1, 2:05) y se va solo', r.final === 'FINAL3 - 12:05' && r.finalNoSummary && r.finalGone, JSON.stringify(r));
     check('resumen: respeta el apagado y no sale en un partido parado de una', r.off && r.short && errs.length === 0, JSON.stringify(r) + errs.join(' | '));
     await p.close();
   }

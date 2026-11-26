@@ -771,6 +771,46 @@ const recentToasts = new Map();
  * @param {{label:string, run:Function}} [action] Botón dentro del aviso. Con uno,
  *   el aviso dura más: hay algo que decidir y tres segundos no alcanzan.
  */
+/**
+ * Avisos «Junto al botón»: si el aviso sale de algo que se acaba de tocar
+ * (copiar, guardar, un error al apretar), aparece chiquito arriba de ese botón
+ * en vez de abajo en la esquina. Lo que no viene de un toque (actualizaciones,
+ * entrar a una sala) o es largo o trae botón sigue siendo un aviso común.
+ */
+let lastPress = null;
+document.addEventListener('pointerdown', (e) => {
+  const el = e.target && e.target.closest ? e.target.closest('button, .btn, .chip, [role="button"], a, label, input, select') : null;
+  lastPress = el ? { el, at: Date.now() } : null;
+}, true);
+
+function pressTip(text, kind) {
+  if (!lastPress || Date.now() - lastPress.at > 1500 || text.length > 60) return null;
+  const el = lastPress.el;
+  if (!el || !el.isConnected) return null;
+  const r = el.getBoundingClientRect();
+  if (!r.width || !r.height || r.bottom < 0 || r.top > innerHeight) return null;
+  lastPress = null;
+  document.querySelectorAll('.presstip').forEach((n) => n.remove());
+  const tip = document.createElement('div');
+  tip.className = `presstip${kind === 'err' ? ' is-err' : ''}`;
+  tip.setAttribute('role', 'status');
+  const ic = document.createElement('i');
+  ic.textContent = kind === 'err' ? '!' : '✓';
+  tip.append(ic, document.createTextNode(text));
+  document.body.append(tip);
+  const w = tip.offsetWidth, h = tip.offsetHeight;
+  const below = r.top < h + 14;
+  const x = Math.max(8, Math.min(innerWidth - w - 8, r.left + r.width / 2 - w / 2));
+  const y = below ? r.bottom + 10 : r.top - h - 10;
+  tip.style.left = `${Math.round(x)}px`;
+  tip.style.top = `${Math.round(y)}px`;
+  tip.style.setProperty('--ax', `${Math.round(r.left + r.width / 2 - x)}px`);
+  if (below) tip.classList.add('is-below');
+  const life = kind === 'err' ? 3200 : 2000;
+  setTimeout(() => dismissToast(tip), life);
+  return tip;
+}
+
 function toast(message, kind = '', action = null) {
   const text = String(message || '').trim();
   if (!text) return null;
@@ -780,6 +820,8 @@ function toast(message, kind = '', action = null) {
   if (last && now - last < 1200) return null;
   recentToasts.set(text, now);
   if (recentToasts.size > 30) recentToasts.clear();
+
+  if (!action) { const tip = pressTip(text, kind); if (tip) return tip; }
 
   const node = document.createElement('div');
   node.className = `toast${kind ? ` is-${kind}` : ''}`;
@@ -5052,7 +5094,8 @@ const PITCH_SWITCHES = {
     { key: 'goalClub', label: 'Festejo del plantel', description: 'Lluvia dorada y «Toda la Lecce» cuando mete un gol alguien del plantel.', hint: 'Sólo se activa con jugadores verificados con su clave, así que nadie puede fingirlo.' },
     { key: 'clubKit', label: 'Camiseta del club', description: 'Si en un equipo hay dos o más socios, ese equipo se ve con la camiseta de Toda la Lecce.', hint: 'Sólo en tu pantalla y sólo con socios verificados. Si elegiste colores propios para los equipos, mandan los tuyos.' },
     { key: 'clubArrival', label: 'Llegada del club', description: 'Un cartel con el escudo cuando hay tres o más socios en la sala.', hint: 'Sale una vez por sala y dura unos segundos.' },
-    { key: 'matchSummary', label: 'Resumen del partido', description: 'Al terminar: el resultado, cada gol en su minuto y la figura del partido.', hint: 'Dura unos segundos; se cierra tocándolo o con Esc. La figura sale de 3 puntos por gol y 2 por asistencia.' },
+    { key: 'matchSummary', label: 'Final del partido', description: 'Al terminar, el marcador baja, se agranda en dorado y dice FINAL.', hint: 'Dura unos segundos y vuelve a su lugar.' },
+    { key: 'matchFull', label: 'Resumen completo al final', description: 'En vez del marcador con FINAL: el resultado, cada gol en su minuto y la figura del partido.', hint: 'Dura unos segundos; se cierra tocándolo o con Esc. La figura sale de 3 puntos por gol y 2 por asistencia.' },
     { key: 'possessionBar', label: 'Posesión en el marcador', description: 'Una línea roja y azul abajo del marcador con quién tuvo más la pelota.', hint: 'Se actualiza una vez por segundo y aparece a los pocos segundos de empezar.' },
   ],
   en: [
@@ -5063,7 +5106,8 @@ const PITCH_SWITCHES = {
     { key: 'goalClub', label: 'Squad celebration', description: 'Golden rain and "Toda la Lecce" when a squad member scores.', hint: 'Only fires for players verified with their key, so nobody can fake it.' },
     { key: 'clubKit', label: 'Club kit', description: 'If a team has two or more club members, that team shows the Toda la Lecce kit.', hint: 'Only on your screen and only with verified members. If you picked your own team colours, yours win.' },
     { key: 'clubArrival', label: 'Club arrival', description: 'A banner with the crest when three or more club members are in the room.', hint: 'Shows once per room and lasts a few seconds.' },
-    { key: 'matchSummary', label: 'Match summary', description: 'When the match ends: the score, every goal at its minute and the man of the match.', hint: 'Lasts a few seconds; tap it or press Esc to close. Man of the match: 3 points per goal, 2 per assist.' },
+    { key: 'matchSummary', label: 'Match end', description: 'When the match ends, the scoreboard drops down, grows in gold and reads FINAL.', hint: 'Lasts a few seconds and goes back to its place.' },
+    { key: 'matchFull', label: 'Full summary at the end', description: 'Instead of the FINAL scoreboard: the score, every goal at its minute and the man of the match.', hint: 'Lasts a few seconds; tap it or press Esc to close. Man of the match: 3 points per goal, 2 per assist.' },
     { key: 'possessionBar', label: 'Possession on the scoreboard', description: 'A red and blue line under the scoreboard showing who had the ball more.', hint: 'Updates once a second and shows up a few seconds into the match.' },
   ]
 };
@@ -5826,7 +5870,7 @@ function renderPitch() {
   // Los aros van con las fichas y los festejos con lo de la partida; la cancha
   // se queda con lo que es de la cancha.
   const RING_KEYS = ['selfRing', 'teamRings'];
-  const GOAL_KEYS = ['goalFlash', 'goalShake', 'goalClub', 'clubKit', 'clubArrival', 'matchSummary', 'possessionBar'];
+  const GOAL_KEYS = ['goalFlash', 'goalShake', 'goalClub', 'clubKit', 'clubArrival', 'matchSummary', 'matchFull', 'possessionBar'];
   const pitchSwitch = (i) => ({ ...i, value: () => live(i.key) });
   const pitchSave = (item, value) => patchConfig({ pitch: { [item.key]: value } });
   buildSwitches(

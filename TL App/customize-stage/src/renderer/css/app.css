@@ -9096,3 +9096,30 @@ html[data-animations="off"] .railind { transition: none !important; }
 @keyframes pgRailUp   { from { opacity: 0; transform: translateY(-14px); } to { opacity: 1; transform: none; } }
 html:not([data-animations="off"])[data-page-trans="rail"] .page.is-active { animation: pgRailDown .32s cubic-bezier(.2, .8, .2, 1); }
 html:not([data-animations="off"])[data-page-trans="rail"][data-pg-dir="up"] .page.is-active { animation-name: pgRailUp; }
+
+/* ═══ Avisos «Junto al botón» (ver `pressTip`): cartelito arriba del botón que se
+   tocó, con flechita. Entra y sale con transform/opacity y se borra solo. ═══ */
+.presstip {
+  position: fixed; z-index: 100002; pointer-events: none; display: flex; align-items: center; gap: 8px;
+  padding: 7px 12px; border-radius: 9px; max-width: 320px;
+  background: #eef1f8; color: #0b1427; font-size: 12.5px; font-weight: 600; line-height: 1.25;
+  box-shadow: 0 10px 24px -8px rgb(0 0 0 / 60%);
+  animation: pressTipIn .22s cubic-bezier(.2, .8, .2, 1) both;
+}
+.presstip::after {
+  content: ""; position: absolute; left: var(--ax, 50%); bottom: -4px; width: 9px; height: 9px; margin-left: -4.5px;
+  background: inherit; transform: rotate(45deg); border-radius: 2px;
+}
+.presstip.is-below::after { bottom: auto; top: -4px; }
+.presstip i {
+  flex: none; width: 17px; height: 17px; border-radius: 50%; display: grid; place-items: center;
+  background: #e2c46f; color: #0b1427; font-size: 10.5px; font-style: normal; font-weight: 800;
+}
+.presstip.is-err { background: #2a1216; color: #ffd9d4; box-shadow: 0 0 0 1px rgb(229 110 86 / 55%), 0 10px 24px -8px rgb(0 0 0 / 60%); }
+.presstip.is-err i { background: #e56e56; color: #fff; }
+.presstip.is-out { animation: pressTipOut .2s ease both; }
+@keyframes pressTipIn { from { opacity: 0; transform: translateY(6px) scale(.92); } to { opacity: 1; transform: none; } }
+@keyframes pressTipOut { to { opacity: 0; transform: translateY(-4px); } }
+.presstip.is-below { animation-name: pressTipInB; }
+@keyframes pressTipInB { from { opacity: 0; transform: translateY(-6px) scale(.92); } to { opacity: 1; transform: none; } }
+html[data-animations="off"] .presstip { animation: none !important; }
