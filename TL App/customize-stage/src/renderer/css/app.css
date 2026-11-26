@@ -8999,3 +8999,55 @@ html:not([data-layout]) .app[data-stage="game"] .rail > .railitem.is-active svg 
 html:not([data-layout]) .app[data-stage="game"] .rail > .railitem,
 html:not([data-layout]) .app[data-stage="game"] .railgame__out { font-size: 13.5px !important; }
 html:not([data-layout]) .app[data-stage="game"] .profcard__info { padding-left: 4px; gap: 2px; }
+
+/* ═══ Carga v5 · «Ambiente»: una luz dorada grande y tenue que respira detrás
+   del escudo e ilumina todo el fondo. Versión y estado en las esquinas de abajo.
+   Pisa todas las capas anteriores (cancha, haces, anillo, reflejo). Sólo anima
+   transform/opacity de una capa, y la pantalla se borra del DOM al terminar. ═══ */
+.splash {
+  background-color: #08101f;
+  background-image: radial-gradient(120% 90% at 50% 40%, #0f1d3a 0%, #08101f 70%);
+}
+.splash::before { display: none; }
+.splash__halo {
+  position: absolute; z-index: 0; left: 50%; top: 42%;
+  width: 920px; height: 920px; margin: -460px 0 0 -460px; border-radius: 50%; pointer-events: none;
+  background: radial-gradient(circle closest-side, rgb(226 196 111 / 21%), rgb(226 196 111 / 8%) 45%, transparent 100%);
+  will-change: transform, opacity;
+  animation: splashAmbient 3.2s ease-in-out infinite;
+}
+@keyframes splashAmbient {
+  0%, 100% { transform: scale(1); opacity: .9; }
+  50% { transform: scale(1.18); opacity: .5; }
+}
+.splash__inner { gap: 0; padding-top: 0 !important; margin-top: -2vh; }
+.splash__crest { position: relative; display: inline-block; line-height: 0; }
+.splash__logo {
+  height: 124px; animation: none !important;
+  filter: drop-shadow(0 14px 30px rgb(0 0 0 / 55%)) drop-shadow(0 0 22px rgb(226 196 111 / 22%));
+}
+.splash__word {
+  margin: 30px 0 0; padding-left: .42em; margin-right: 0;
+  font-family: var(--font-display); font-size: 22px; font-weight: 600;
+  letter-spacing: .42em; text-transform: uppercase;
+  color: #eef1f8; background: none; -webkit-text-fill-color: #eef1f8; filter: none;
+  text-shadow: 0 2px 14px rgb(0 0 0 / 55%);
+}
+.splash__word::after { display: none; }
+.splash__sub {
+  margin: 12px 0 0; padding-left: .32em;
+  font-size: 11px; font-weight: 600; letter-spacing: .32em; text-transform: uppercase;
+  color: #7f8aa3;
+}
+.splash__foot {
+  position: absolute !important; left: 26px; right: 26px; bottom: 20px;
+  display: flex; align-items: center; justify-content: space-between; gap: 20px;
+}
+.splash__foot .splash__version,
+.splash__foot .splash__status {
+  position: static; margin: 0; min-height: 0;
+  font-size: 10.5px; font-weight: 600; letter-spacing: .18em; text-transform: uppercase;
+  color: #55617b; font-variant-numeric: tabular-nums;
+}
+.splash__foot .splash__status { text-align: right; max-width: 70%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.splash__foot .splash__version { text-transform: none; }
