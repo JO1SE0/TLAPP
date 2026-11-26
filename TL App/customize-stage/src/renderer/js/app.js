@@ -293,6 +293,7 @@ async function hideSplash() {
   if (left > 0) await new Promise((resolve) => setTimeout(resolve, left));
 
   splash.classList.add('is-out');
+  placeRailInd();
   setTimeout(() => splash.remove(), 450);
   setTimeout(startWelcome, 470);
 }
@@ -896,7 +897,7 @@ function applyConfig(config) {
     window.TLSparks.setEnabled(config.appearance.sparks !== false && config.appearance.animations !== false);
   }
   const rd = document.documentElement.dataset;
-  rd.pageTrans = config.appearance.pageTransition || 'fade';
+  rd.pageTrans = config.appearance.pageTransition || 'rail';
   { const rr = config.appearance.roomRows; const prev = rd.roomRows; if (rr === 'dense' || rr === 'large') rd.roomRows = rr; else delete rd.roomRows; if (prev !== rd.roomRows) { try { if (roomParts) paintRoomWindow(true); } catch (e) { /* aún no hay lista */ } } }
   if (LAYOUT_IDS.includes(config.appearance.layout)) rd.layout = config.appearance.layout; else delete rd.layout;
   if (state.layoutSeen !== rd.layout) {
@@ -2208,13 +2209,46 @@ function openPanel(open) {
   for (const evt of PANEL_BLOCK_EVENTS) panel.addEventListener(evt, panelBlockHandler);
 }
 
+/**
+ * La rayita dorada del riel: un solo nodo que se corre con `transform` hasta el
+ * ítem activo (sin maquetar nada más). Sólo se ve en la interfaz clásica, fuera
+ * de una sala y con la transición «Rayita dorada»; en otro caso el CSS la esconde.
+ */
+function placeRailInd() {
+  const rail = $('#rail');
+  if (!rail) return;
+  let ind = rail.querySelector('.railind');
+  if (!ind) {
+    ind = document.createElement('i');
+    ind.className = 'railind';
+    ind.setAttribute('aria-hidden', 'true');
+    rail.append(ind);
+  }
+  const item = rail.querySelector('.railitem.is-active');
+  if (!item || !item.offsetHeight) { ind.style.opacity = '0'; return; }
+  const first = !ind.dataset.placed;
+  if (first) ind.style.transition = 'none';
+  ind.style.opacity = '';
+  ind.style.transform = `translate(${Math.max(0, item.offsetLeft - 10)}px, ${item.offsetTop + 11}px)`;
+  ind.style.height = `${Math.max(8, item.offsetHeight - 22)}px`;
+  if (first) { void ind.offsetWidth; ind.style.transition = ''; ind.dataset.placed = '1'; }
+}
+window.addEventListener('resize', () => requestAnimationFrame(placeRailInd));
+
 function setView(name) {
   if (state.hub) openHub(false);
   state.view = name;
   $('#app').dataset.view = name;
   document.documentElement.dataset.view = name;
 
-  $$('.railitem').forEach((item) => item.classList.toggle('is-active', item.dataset.view === name));
+  const items = $$('.railitem');
+  const from = items.findIndex((item) => item.classList.contains('is-active'));
+  items.forEach((item) => item.classList.toggle('is-active', item.dataset.view === name));
+  // «Rayita dorada»: el contenido entra desde el lado hacia donde se fue en el
+  // riel (más abajo → sube desde abajo) y la rayita viaja hasta el ítem nuevo.
+  const to = items.findIndex((item) => item.dataset.view === name);
+  if (from >= 0 && to >= 0 && from !== to) document.documentElement.dataset.pgDir = to > from ? 'down' : 'up';
+  placeRailInd();
 
   // Primero todos los cambios de clase y recién después el scroll. Escribir
   // `scrollTop` en el medio del bucle obliga a maquetar ahí mismo, y con cuatro
@@ -2345,6 +2379,7 @@ function setStage(kind) {
   state.stage = kind;
   $('#app').dataset.stage = kind;
   if (kind === 'game') roomCurtain();
+  else requestAnimationFrame(placeRailInd);
   /* Ya en la cancha, la interfaz suelta la memoria que no está usando (recursos
      e imágenes sin uso). Va unos segundos después para no caer en la entrada, y
      no toca nada de lo que se ve: lo que está en pantalla queda como está. */
@@ -6988,7 +7023,7 @@ const ANIM_SWITCHES = {
     { key: 'joinSparkle', label: 'Sparkles when a teammate joins', description: 'The name glows when a verified club member joins the room.' }
   ]
 };
-const PAGE_TRANS = [['off', 'Sin transición', 'None'], ['fade', 'Fundido', 'Fade'], ['slide', 'Deslizar', 'Slide'], ['zoom', 'Zoom', 'Zoom']];
+const PAGE_TRANS = [['off', 'Sin transición', 'None'], ['rail', 'Rayita dorada', 'Gold line'], ['fade', 'Fundido', 'Fade'], ['slide', 'Deslizar', 'Slide'], ['zoom', 'Zoom', 'Zoom']];
 const SPARK_STYLES = [['oro', 'Oro', 'Gold'], ['estrellas', 'Estrellas', 'Stars'], ['luciernagas', 'Luciérnagas', 'Fireflies'], ['nieve', 'Nieve', 'Snow'], ['confeti', 'Confeti', 'Confetti'], ['brasas', 'Brasas', 'Embers'], ['neon', 'Neón', 'Neon'], ['petalos', 'Pétalos', 'Petals']];
 const SPARK_COUNTS = [[20, 'Pocas', 'Few'], [40, 'Normal', 'Normal'], [80, 'Muchas', 'Many']];
 
@@ -7023,7 +7058,7 @@ function paintAnimations() {
       el.append(b);
     }
   };
-  fill($('#pageTransChips'), PAGE_TRANS, ap.pageTransition || 'fade', 'pt');
+  fill($('#pageTransChips'), PAGE_TRANS, ap.pageTransition || 'rail', 'pt');
   fill($('#sparkStyleChips'), SPARK_STYLES, ap.sparkStyle || 'oro', 'ss');
   fill($('#sparkDensChips'), SPARK_COUNTS, ap.sparkCount || 40, 'sc');
 }

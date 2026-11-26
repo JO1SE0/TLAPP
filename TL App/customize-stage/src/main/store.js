@@ -9,7 +9,7 @@ const haxball = require('./haxball-settings');
 const FILE = 'config.json';
 
 const DEFAULTS = {
-  version: 31,
+  version: 32,
   general: {
     gameUrl: 'https://www.haxball.com/play',
     nickname: '',
@@ -86,7 +86,7 @@ const DEFAULTS = {
     /** Cantidad de partículas: 20 | 40 | 80. */
     sparkCount: 40,
     /** Transición entre pantallas del menú: off | fade | slide | zoom. */
-    pageTransition: 'fade',
+    pageTransition: 'rail',
     themeHover: false,
     /** Densidad de los menús: compact | normal | comfy. Sólo espaciado, no toca el juego. */
     density: 'normal',
@@ -959,7 +959,13 @@ function migrate(stored) {
     next.vip = { ...next.vip, cosmetics: { ...next.vip.cosmetics, style: 'galaxia' } };
   }
 
-  next.version = 31;
+  // v32: la transición entre pantallas pasa a ser la «Rayita dorada». 'fade' era
+  // el valor por defecto guardado aunque nadie lo eligiera, así que se pasa una vez.
+  if (!(next.version >= 32) && next.appearance && (!next.appearance.pageTransition || next.appearance.pageTransition === 'fade')) {
+    next.appearance = { ...next.appearance, pageTransition: 'rail' };
+  }
+
+  next.version = 32;
   return next;
 }
 

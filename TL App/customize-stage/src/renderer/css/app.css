@@ -9079,3 +9079,20 @@ html:not([data-layout]) .app[data-stage="game"] .profcard__info { padding-left: 
   animation: curtainIn .5s .55s cubic-bezier(.2, .8, .2, 1) both;
 }
 @keyframes curtainIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+/* ═══ Transición «Rayita dorada»: una sola rayita en el riel que viaja con
+   transform hasta el ítem activo, y la página entra corrida desde el lado hacia
+   donde se fue (data-pg-dir). Sólo interfaz clásica y fuera de una sala. ═══ */
+.railind { display: none; }
+html:not([data-layout="bottom"]):not([data-layout="comando"]):not([data-layout="consola"]):not([data-layout="dock"]):not([data-layout="island"]):not([data-layout="mini"]):not([data-layout="radial"]):not([data-layout="top"])[data-page-trans="rail"] .app:not([data-stage="game"]) .railind {
+  display: block; position: absolute; left: 0; top: 0; width: 3px; height: 20px; z-index: 2; pointer-events: none;
+  border-radius: 0 3px 3px 0; background: #e2c46f; box-shadow: 0 0 10px rgb(226 196 111 / 60%);
+  transition: transform .35s cubic-bezier(.6, 0, .2, 1), height .35s cubic-bezier(.6, 0, .2, 1), opacity .2s;
+  will-change: transform;
+}
+html:not([data-layout="bottom"]):not([data-layout="comando"]):not([data-layout="consola"]):not([data-layout="dock"]):not([data-layout="island"]):not([data-layout="mini"]):not([data-layout="radial"]):not([data-layout="top"])[data-page-trans="rail"] .app:not([data-stage="game"]) .railitem.is-active::before { display: none; }
+html[data-animations="off"] .railind { transition: none !important; }
+@keyframes pgRailDown { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+@keyframes pgRailUp   { from { opacity: 0; transform: translateY(-14px); } to { opacity: 1; transform: none; } }
+html:not([data-animations="off"])[data-page-trans="rail"] .page.is-active { animation: pgRailDown .32s cubic-bezier(.2, .8, .2, 1); }
+html:not([data-animations="off"])[data-page-trans="rail"][data-pg-dir="up"] .page.is-active { animation-name: pgRailUp; }
