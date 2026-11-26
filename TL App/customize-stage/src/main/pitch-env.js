@@ -306,9 +306,18 @@ function crowd(ctx, rnd, x0, y0, x1, y1, o, gapX = 16, gapY = 15, density = 0.9)
   // Cuánta gente hay en la sala llena más o menos la tribuna.
   density *= LIVE.fill;
   const seed = Math.floor(rnd() * 1e9);
-  if (REG) REG.crowds.push({ x0, y0, x1, y1, gapX, gapY, density, seed });
-  // Con vida, la tribuna entera la dibuja la capa viva (se mueve toda junta).
-  if (LIVE.alive) return;
+  const B = { x0, y0, x1, y1, gapX, gapY, density, seed };
+  if (REG) REG.crowds.push(B);
+  /*
+   * Con vida, la gente queda DIBUJADA ACÁ, quieta, adentro del cache del
+   * estadio (no cuesta nada por cuadro), con la misma gente en el mismo lugar
+   * que usa la capa viva. La capa viva sólo pinta encima lo que se mueve: la
+   * franja de la ola y la mitad que festeja el gol. Antes la capa viva
+   * redibujaba las tribunas enteras en cada cuadro para que «respiraran»: media
+   * pantalla de píxeles por cuadro, que en una compu sin placa de video eran
+   * muchos FPS.
+   */
+  if (LIVE.alive) { crowdPaint(ctx, B, 'a'); return; }
   for (let y = y0; y <= y1; y += gapY) {
     const shift = (Math.round((y - y0) / gapY) % 2) * gapX * 0.5;
     for (let x = x0 + shift; x <= x1; x += gapX) {
@@ -438,8 +447,8 @@ function fence(ctx, x, y, w, h, alpha = 0.5) {
 
 /** Un trapo colgado (bandera de la hinchada) con texto o franjas. */
 function trapo(ctx, x, y, w, h, kind, text, mirror) {
-  // Con vida, los trapos van arriba de la tribuna que se mueve: los pega la capa viva.
-  if (REG && LIVE.alive && !REG.__inTrapo) { REG.trapos.push({ x, y, w, h, kind, text }); return; }
+  // La tribuna ya no se redibuja en cada cuadro (la gente queda en el cache), así
+  // que los trapos también van quietos al cache: cero costo por cuadro.
   ctx.fillStyle = 'rgba(0,0,0,0.25)';
   ctx.fillRect(x + 2, y + 3, w, h);
   if (kind === 'franjas-r' || kind === 'franjas-b') {
@@ -1961,9 +1970,10 @@ function stamp(ctx, sp, x, y, a) {
  * (ámbar, blanco y los de las camisetas) y los puntos prendidos con su brillo.
  * En el gol, dorado y rojo. `unit` es lo que mide una vuelta completa.
  */
-function ledStrip(text, w, h, hot) {
+function ledStrip(text, w, h, hot, res = S_PX) {
+  const S_PX = res;
   const cols = hot ? ['#ffd34d', '#ff6a4a'] : ['#ffb347', '#f4f6ff', tint(RED, 0.25), tint(BLUE, 0.3)];
-  const key = `${text}|${w}|${h}|${hot ? 1 : 0}|${cols.join('')}`;
+  const key = `${text}|${w}|${h}|${hot ? 1 : 0}|${cols.join('')}|${res}`;
   let st = STRIPS.get(key);
   if (st) return st;
   if (STRIPS.size > 40) STRIPS.clear();
@@ -2008,24 +2018,29 @@ function ledStrip(text, w, h, hot) {
   }
   // Reflejo arriba, como un panel con vidrio.
   g.fillStyle = 'rgba(255,255,255,0.05)'; g.fillRect(0, 0, cw, ch * 0.4);
-  st = { cv, unit: period * pitch };
+  st = { cv, unit: period * pitch, res };
   STRIPS.set(key, st);
   return st;
 }
 
+/*
+ * El LED que corre. Se guarda a la escala de la pantalla (B_PX, como la gente):
+ * así se pega casi 1 a 1 en cada cuadro en vez de achicar una imagen tres veces
+ * más grande. Sin recorte (`clip`): el pedazo justo se toma de la imagen.
+ */
 function aliveLed(ctx, L, t, mirror) {
-  const st = ledStrip(L.text, L.w, L.h, L.hot);
+  const R = B_PX;
+  const st = ledStrip(L.text, L.w, L.h, L.hot, R);
   const off = ((t / 1000) * 34) % st.unit;
   if (!L.vertical && !mirror) {
-    ctx.drawImage(st.cv, (off + 1) * S_PX, S_PX, (L.w - 2) * S_PX, (L.h - 2) * S_PX, L.x + 1, L.y + 1, L.w - 2, L.h - 2);
+    ctx.drawImage(st.cv, (off + 1) * R, R, (L.w - 2) * R, (L.h - 2) * R, L.x + 1, L.y + 1, L.w - 2, L.h - 2);
     return;
   }
   ctx.save();
   if (L.vertical) { ctx.translate(L.x + L.h, L.y); ctx.rotate(Math.PI / 2); } else ctx.translate(L.x, L.y);
   if (mirror && !L.vertical) { ctx.translate(L.w, 0); ctx.scale(-1, 1); }
   if (mirror && L.vertical) { ctx.translate(0, L.h); ctx.scale(1, -1); }
-  ctx.beginPath(); ctx.rect(1, 1, L.w - 2, L.h - 2); ctx.clip();
-  ctx.drawImage(st.cv, off * S_PX, 0, L.w * S_PX, L.h * S_PX, 0, 0, L.w, L.h);
+  ctx.drawImage(st.cv, (off + 1) * R, R, (L.w - 2) * R, (L.h - 2) * R, 1, 1, L.w - 2, L.h - 2);
   ctx.restore();
 }
 
@@ -2048,17 +2063,14 @@ let blocksScene = '';
 // se pegan casi 1 a 1 y el navegador no tiene que achicar ni agrandar en cada cuadro.
 let B_PX = 1.6;
 
-function crowdBlock(B, mode, tag) {
-  const key = `${B.seed}|${B.density}|${mode}|${tag}`;
-  let bl = BLOCKS.get(key);
-  if (bl) return bl;
-  const pad = 14;
-  const w = B.x1 - B.x0 + pad * 2, h = B.y1 - B.y0 + pad * 2;
-  const cv = mkCanvas(Math.ceil(w * B_PX), Math.ceil(h * B_PX));
-  const g = cv.getContext('2d');
-  g.setTransform(B_PX, 0, 0, B_PX, (pad - B.x0) * B_PX, (pad - B.y0) * B_PX);
+/**
+ * La gente de una tribuna. 'a': quieta (algunos con los brazos arriba); 'up':
+ * la MISMA gente en el mismo lugar con los brazos arriba, para pintarla encima
+ * de la quieta (la ola, el festejo) sin que se vea doble.
+ */
+function crowdPaint(g, B, mode) {
   const rnd = seeded(B.seed);
-  const jit = seeded(B.seed + (mode === 'b' ? 7919 : mode === 'up' ? 104729 : 1));
+  const jit = seeded(B.seed + (mode === 'up' ? 104729 : 1));
   for (let y = B.y0; y <= B.y1; y += B.gapY) {
     const shift = (Math.round((y - B.y0) / B.gapY) % 2) * B.gapX * 0.5;
     for (let x = B.x0 + shift; x <= B.x1; x += B.gapX) {
@@ -2068,11 +2080,22 @@ function crowdBlock(B, mode, tag) {
       const team = px < 0 ? 'Red' : 'Blue';
       const shirt = shirtFor(rnd, team);
       const look = rnd() * 1e9;
-      const dx = mode === 'a' ? 0 : (jit() - 0.5) * 1.6, dy = mode === 'a' ? 0 : (jit() - 0.5) * 1.4;
       const up = mode === 'up' ? jit() < 0.9 : jit() < 0.04;
-      person(g, seeded(look), px + dx, py + dy - (up ? 1.5 : 0), shirt, up);
+      person(g, seeded(look), px, py, shirt, up);
     }
   }
+}
+
+function crowdBlock(B, mode, tag) {
+  const key = `${B.seed}|${B.density}|${mode}|${tag}`;
+  let bl = BLOCKS.get(key);
+  if (bl) return bl;
+  const pad = 14;
+  const w = B.x1 - B.x0 + pad * 2, h = B.y1 - B.y0 + pad * 2;
+  const cv = mkCanvas(Math.ceil(w * B_PX), Math.ceil(h * B_PX));
+  const g = cv.getContext('2d');
+  g.setTransform(B_PX, 0, 0, B_PX, (pad - B.x0) * B_PX, (pad - B.y0) * B_PX);
+  crowdPaint(g, B, mode);
   // De noche, la gente se oscurece igual que el resto del fondo.
   if (tag.includes('n')) {
     g.setTransform(1, 0, 0, 1, 0, 0);
@@ -2148,20 +2171,19 @@ function paintAliveU(ctx, id, bounds, t, reg, o = {}, vis = null) {
     const m = ctx.getTransform();
     const px = Math.min(3, Math.max(0.75, Math.round(Math.hypot(m.a, m.b) * 4) / 4));
     if (blocksScene !== id + tag + px) { BLOCKS.clear(); blocksScene = id + tag + px; B_PX = px; }
-    const beat = Math.floor(t / 420) % 2;
     const wf = (t % 24000) / 24000;
     const waveX = wf < 0.4 ? -W - 300 + (wf / 0.4) * (2 * W + 600) : NaN;
     for (const B of reg.crowds) {
       if (!see((B.x0 + B.x1) / 2, (B.y0 + B.y1) / 2, Math.max(B.x1 - B.x0, B.y1 - B.y0) / 2 + 20)) continue;
       const cheering = o.hot && o.cheer;
-      drawBlock(ctx, crowdBlock(B, beat ? 'b' : 'a', tag)); n++;
+      // La gente quieta ya está en el cache del estadio: acá sólo lo que se mueve.
       // Festejo: la mitad del que metió, toda arriba y saltando.
       if (cheering) {
         const side = o.cheer === 'Red' ? -1 : 1;
-        drawBlockPart(ctx, crowdBlock(B, 'up', tag), side < 0 ? -1e9 : 0, side < 0 ? 0 : 1e9, -Math.abs(Math.sin(t / 150)) * 2.5); n++;
+        drawBlockPart(ctx, crowdBlock(B, 'up', tag), side < 0 ? -1e9 : 0, side < 0 ? 0 : 1e9, -Math.abs(Math.sin(t / 150)) * 1.2); n++;
       } else if (waveX === waveX && waveX + 50 > B.x0 && waveX - 50 < B.x1) {
         // La ola: una franja que avanza con todos arriba.
-        drawBlockPart(ctx, crowdBlock(B, 'up', tag), waveX - 50, waveX + 50, -2); n++;
+        drawBlockPart(ctx, crowdBlock(B, 'up', tag), waveX - 50, waveX + 50, 0); n++;
       }
     }
     // Ganó alguno: su tribuna arma el tifo, con un brillo que la recorre.
