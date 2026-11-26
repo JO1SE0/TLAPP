@@ -6336,6 +6336,16 @@ function paintPeers(doc) {
     marks.logo.dataset.tvmTip = tip;
     if (peer.name || peer.soc) { name.title = tip; name.dataset.tvmTip = tip; } else delete name.dataset.tvmTip;
     // Distintivo de socio: una chapita plateada «SOCIO», distinta del escudo del plantel.
+    // Al aparecer la marca de socio (entró a la sala o se acaba de verificar),
+    // entra con un saltito una sola vez. Nada más: sin brillos ni avisos.
+    // HaxBall rearma las filas seguido: sólo salta si hacía rato que no estaba.
+    if (peer.soc) {
+      const key = nick;
+      const seen = socioSeen.get(key) || 0, now = Date.now();
+      if (marks.socio.hidden && now - seen > 30000) { marks.socio.classList.remove('tvm-mark--in'); void marks.socio.offsetWidth; marks.socio.classList.add('tvm-mark--in'); }
+      socioSeen.set(key, now);
+      if (socioSeen.size > 200) socioSeen.clear();
+    }
     marks.socio.hidden = !peer.soc;
     marks.socio.dataset.tvmTip = tip;
     installTip(doc);
@@ -6695,6 +6705,8 @@ function logoMark(doc) {
  * VIP, que está a dos píxeles. A 14 px lo único que separa dos insignias es el
  * color, así que la tercera tenía que ser un tono que no estuviera en juego.
  */
+/** Socio → última vez que se vio su fila (para que la marca salte sólo al entrar). */
+const socioSeen = new Map();
 function socioMark(doc) {
   const mark = doc.createElement('span');
   mark.className = 'tvm-mark tvm-mark--socio';

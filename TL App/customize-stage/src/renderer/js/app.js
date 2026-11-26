@@ -2662,6 +2662,10 @@ window.addEventListener('resize', () => {
    Salas
    ══════════════════════════════════════════════════════════ */
 let roomsEnter = false;
+/** Salas nuevas desde el refresco anterior (por clave) y cuándo se vieron. */
+let freshRooms = new Set();
+let freshAt = 0;
+const roomKey = (r) => (r && (r.token || r.link || r.name)) || '';
 async function loadRooms() {
   state.rooms.loading = true;
   state.rooms.error = null;
@@ -2672,6 +2676,10 @@ async function loadRooms() {
   if (hadRows) roomHost.classList.add('is-loading');
   try {
     const data = await tvm.rooms.list();
+    // Las salas que no estaban en la lista anterior brillan un segundo al aparecer.
+    const prevKeys = new Set((state.rooms.list || []).map(roomKey));
+    freshRooms = hadRows && prevKeys.size ? new Set((data.rooms || []).map(roomKey).filter((k) => !prevKeys.has(k))) : new Set();
+    freshAt = Date.now();
     state.rooms = { ...data, list: data.rooms, loading: false, error: null };
     state.roomsFailures = 0;
     roomsEnter = hadRows;
@@ -3354,6 +3362,7 @@ function roomRow(room) {
   const sponsored = isSponsored(room);
   const row = document.createElement('div');
   row.className = 'rrow';
+  if (freshRooms.size && Date.now() - freshAt < 2500 && freshRooms.has(roomKey(room))) row.classList.add('is-fresh');
   if (full) row.classList.add('is-full');
   else if (almostFull) row.classList.add('is-almost-full');
   else if (openRoom) row.classList.add('is-open-room');

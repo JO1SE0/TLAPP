@@ -9123,3 +9123,20 @@ html:not([data-animations="off"])[data-page-trans="rail"][data-pg-dir="up"] .pag
 .presstip.is-below { animation-name: pressTipInB; }
 @keyframes pressTipInB { from { opacity: 0; transform: translateY(-6px) scale(.92); } to { opacity: 1; transform: none; } }
 html[data-animations="off"] .presstip { animation: none !important; }
+
+/* Salas nuevas desde el último refresco: un destello dorado al aparecer (una vez). */
+@keyframes rrowFresh {
+  0%, 100% { box-shadow: inset 0 0 0 1px rgb(226 196 111 / 0%); background-color: transparent; }
+  30% { box-shadow: inset 0 0 0 1px rgb(226 196 111 / 80%); background-color: rgb(226 196 111 / 14%); }
+}
+html:not([data-animations="off"]) .rrow.is-fresh { animation: rrowFresh 1.5s 0.45s ease both; }
+html:not([data-animations="off"]):not([data-list-stagger="off"]) .rtable[data-enter] .rrow.is-fresh { animation: rowIn 0.34s cubic-bezier(0.2, 0.7, 0.2, 1) backwards, rrowFresh 1.5s 0.45s ease both; }
+
+/* ═══ Abrir paneles: el velo se funde y la tarjeta entra con un desplazamiento
+   chiquito y un casi nada de zoom (sólo opacity/transform: lo resuelve la placa
+   de video, sin repintar el contenido). Un cuarto de segundo, sólo al abrir. ═══ */
+@keyframes cardIn { from { opacity: 0; transform: translateY(10px) scale(0.985); } to { opacity: 1; transform: none; } }
+html:not([data-animations="off"]):not(.tl-enter) :is(.modal:not([hidden]) > .modal__card, .secmodal:not([hidden]) > .secmodal__card, .panel.is-open > .panel__card) {
+  animation: cardIn 0.26s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+html:not([data-animations="off"]) .secmodal:not([hidden]) > .secmodal__scrim { animation: fadeIn 0.2s ease both; }

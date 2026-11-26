@@ -444,6 +444,8 @@ function css(p, opts = {}) {
 }
 /* Socio: chapita plateada con texto, para que no se confunda con el escudo
    dorado del plantel ni con los íconos de VIP y amigo. */
+@keyframes tvmMarkIn { 0% { opacity: 0; transform: translateX(-4px) scale(0.6); } 60% { opacity: 1; transform: scale(1.12); } 100% { transform: none; } }
+:root:not(.tvm-noanim) .player-list-item .tvm-mark--socio.tvm-mark--in { animation: tvmMarkIn 0.42s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
 .player-list-item .tvm-mark--socio {
   width: auto; height: 15px; padding: 0 5px; border-radius: 5px;
   font: 800 9px/15px system-ui, sans-serif; letter-spacing: .08em;
