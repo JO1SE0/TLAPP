@@ -9051,3 +9051,31 @@ html:not([data-layout]) .app[data-stage="game"] .profcard__info { padding-left: 
 }
 .splash__foot .splash__status { text-align: right; max-width: 70%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .splash__foot .splash__version { text-transform: none; }
+
+/* ═══ Entrada a sala v2 · «Fundido»: el mismo fondo y luz de la carga; el escudo,
+   el nombre de la sala y la línea chica entran de a uno, y todo se funde. Sólo
+   opacity/transform y el nodo se borra a los 2,25 s. ═══ */
+.room-curtain {
+  flex-direction: column;
+  --cr: 0px;
+  background: radial-gradient(60% 55% at 50% 44%, rgb(226 196 111 / 12%), transparent 70%), radial-gradient(120% 90% at 50% 40%, #0f1d3a 0%, #08101f 70%);
+  animation: curtainFade 2.2s ease both;
+}
+@keyframes curtainFade { 0% { opacity: 0; } 10% { opacity: 1; } 72% { opacity: 1; } 100% { opacity: 0; } }
+.room-curtain img {
+  width: 96px; height: 96px;
+  filter: drop-shadow(0 12px 26px rgb(0 0 0 / 55%)) drop-shadow(0 0 20px rgb(226 196 111 / 22%));
+  animation: curtainIn .5s .1s cubic-bezier(.2, .8, .2, 1) both;
+}
+.room-curtain__name {
+  margin-top: 24px; padding-left: .3em; max-width: 80vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-family: var(--font-display); font-size: 20px; font-weight: 600; letter-spacing: .3em; text-transform: uppercase;
+  color: #eef1f8; text-shadow: 0 2px 14px rgb(0 0 0 / 55%);
+  animation: curtainIn .5s .35s cubic-bezier(.2, .8, .2, 1) both;
+}
+.room-curtain__sub {
+  margin-top: 10px; padding-left: .24em;
+  font-size: 11px; font-weight: 600; letter-spacing: .24em; text-transform: uppercase; color: #7f8aa3;
+  animation: curtainIn .5s .55s cubic-bezier(.2, .8, .2, 1) both;
+}
+@keyframes curtainIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }

@@ -295,6 +295,11 @@ const STRINGS = {
 
     'game.leave': 'Salir de la sala',
     'game.connecting': 'Conectando…',
+    'curtain.entering': 'Entrando…',
+    'curtain.players': '{n} jugadores',
+    'curtain.onePlayer': '1 jugador',
+    'curtain.newRoom': 'Sala nueva',
+    'curtain.replay': 'Repetición',
     'game.loading': 'Cargando HaxBall…',
     'game.error': 'No se pudo cargar HaxBall',
     'game.errorText': 'Revisá tu conexión a internet.',
@@ -1223,6 +1228,11 @@ const STRINGS = {
 
     'game.leave': 'Leave room',
     'game.connecting': 'Connecting…',
+    'curtain.entering': 'Joining…',
+    'curtain.players': '{n} players',
+    'curtain.onePlayer': '1 player',
+    'curtain.newRoom': 'New room',
+    'curtain.replay': 'Replay',
     'game.loading': 'Loading HaxBall…',
     'game.error': 'Could not load HaxBall',
     'game.errorText': 'Check your internet connection.',

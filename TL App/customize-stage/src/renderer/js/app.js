@@ -2303,8 +2303,16 @@ function focusGameSoon() {
   for (const ms of [150, 450, 1000, 1800]) setTimeout(focusGame, ms);
 }
 
-/** Cortina con el escudo al entrar a una sala: un solo nodo que se borra al terminar. */
+/**
+ * Entrada a una sala «Fundido»: sobre el fondo azul entran de a uno el escudo,
+ * el nombre de la sala y una línea chica (jugadores, sala nueva o repetición);
+ * después todo se funde. No toca el juego (ni zoom ni nada sobre el webview):
+ * es un solo nodo que se borra al terminar: fuera de esos dos segundos no cuesta nada.
+ * Quien entra deja el texto en `state.curtainInfo` justo antes de `setStage`.
+ */
 function roomCurtain() {
+  const info = state.curtainInfo || {};
+  state.curtainInfo = null;
   const rd = document.documentElement.dataset;
   if (rd.animations === 'off' || rd.roomCurtain === 'off' || document.querySelector('.room-curtain')) return;
   const c = document.createElement('div');
@@ -2313,9 +2321,22 @@ function roomCurtain() {
   const img = document.createElement('img');
   img.src = '../../assets/toda-la-lecce.png';
   img.alt = '';
-  c.append(img);
+  const name = document.createElement('b');
+  name.className = 'room-curtain__name';
+  name.textContent = info.name || 'Toda la Lecce';
+  const sub = document.createElement('span');
+  sub.className = 'room-curtain__sub';
+  sub.textContent = info.sub || t('curtain.entering');
+  c.append(img, name, sub);
   document.body.append(c);
-  setTimeout(() => c.remove(), 1350);
+  setTimeout(() => c.remove(), 2250);
+}
+
+/** El texto de la entrada para una sala de la lista (o sólo el nombre si no está). */
+function curtainForRoom(room, fallbackName) {
+  if (!room) return { name: fallbackName || null };
+  const n = Number(room.players) || 0;
+  return { name: room.name, sub: n === 1 ? t('curtain.onePlayer') : n > 1 ? t('curtain.players', { n }) : null };
 }
 
 /** El juego se muestra sólo dentro de una sala; si no, mandamos nuestra lista. */
@@ -3539,6 +3560,7 @@ async function doJoin(tokenOrLink) {
   // sala anterior durante ese instante.
   state.gameRoomName = null;
   state.joinedRoomName = room ? room.name : null;
+  state.curtainInfo = curtainForRoom(room);
   setView('play');
   setStage('game');
   showLoading(t('game.connecting'));
@@ -3931,6 +3953,7 @@ $('#createForm').addEventListener('submit', async (e) => {
   // leyendo el título de la sala; hasta entonces éste es el bueno.
   state.gameRoomName = null;
   state.joinedRoomName = options.name;
+  state.curtainInfo = { name: options.name, sub: t('curtain.newRoom') };
   // HaxBall puede pedir su verificación anti-bot: hay que mostrarle el juego.
   setStage('game');
   toast(t('create.creating'), 'ok');
@@ -8582,6 +8605,7 @@ async function playReplay(replay) {
      botón del propio HaxBall no pasa por acá y queda sin ruta: se la analiza
      igual, sólo que sin archivar. */
   state.replayPath = replay.path;
+  state.curtainInfo = { name: state.replayName, sub: t('curtain.replay') };
   setView('play');
   setStage('game');
   pushPresence();
