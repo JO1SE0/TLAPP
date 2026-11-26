@@ -6112,7 +6112,21 @@ window.addEventListener('tl:track', () => setTimeout(pulseStart, 60));
 window.addEventListener('tl:musicstate', () => setTimeout(pulseStart, 30));
 document.addEventListener('visibilitychange', () => setTimeout(pulseStart, 30));
 
+/*
+ * Música va sin marco: las tarjetas flotan sobre el fondo oscuro y la X vive
+ * adentro del reproductor (arriba a la derecha), así scrollea con él y no
+ * queda una X suelta encima de la lista. Al salir vuelve a la tarjeta.
+ */
+function musCloseIn(on) {
+  const x = $('#panelClose');
+  const hero = $('.page[data-page="musica"] .mus__hero');
+  const card = $('#panel .panel__card');
+  if (!x || !hero || !card) return;
+  if (on && x.parentElement !== hero) { hero.append(x); x.classList.add('panel__close--mus'); }
+  else if (!on && x.parentElement !== card) { card.prepend(x); x.classList.remove('panel__close--mus'); }
+}
 function musicPageOpen() {
+  musCloseIn(true);
   if (window.TLMusic) window.TLMusic.spotifyRefresh();
   paintMusicPage();
   paintSpotify();
@@ -6120,7 +6134,7 @@ function musicPageOpen() {
   clearInterval(musTimer);
   musTimer = setInterval(musicPageTick, 500);
 }
-function musicPageClose() { clearInterval(musTimer); musTimer = null; pulseStop(); }
+function musicPageClose() { musCloseIn(false); clearInterval(musTimer); musTimer = null; pulseStop(); }
 function musicPageTick() {
   const M = window.TLMusic;
   if (!M || state.view !== 'musica' || state.stage === 'game' || document.hidden) return;
