@@ -1152,6 +1152,20 @@ function applyClientStyles(doc) {
     .tvm-boardbar button.sw.is-on { border-color: #fff; background: none; }
     .tvm-boardbar button.sw i { width: 16px; height: 16px; border-radius: 50%; display: block; }
     .tvm-boardbar button.cta { background: ${p.accent || p.blue}; opacity: 1; }
+    .tvm-boardbar button svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+    /* Herramientas: columna a la izquierda, centrada en el alto. */
+    .tvm-boardbar.tvm-bb-tools { left: 14px; top: 50%; transform: translateY(-50%); flex-direction: column; padding: 6px; }
+    .tvm-boardbar.tvm-bb-tools .grp { flex-direction: column; }
+    .tvm-boardbar.tvm-bb-tools button { width: 40px; height: 40px; padding: 0; border-radius: 12px; }
+    /* Acciones: arriba a la derecha. */
+    .tvm-boardbar.tvm-bb-acts { left: auto; right: 14px; transform: none; gap: 8px; padding: 6px; }
+    .tvm-boardbar.tvm-bb-acts button { padding: 0 9px; }
+    .tvm-boardbar.tvm-bb-style { padding: 6px 10px; gap: 10px; }
+    .tvm-boardtext {
+      position: fixed; z-index: 2147481300; transform: translateY(-50%); min-width: 160px;
+      background: rgba(0, 0, 0, .55); border: 1px dashed rgba(255, 255, 255, .6); border-radius: 6px;
+      padding: 2px 6px; font-family: system-ui, sans-serif; font-weight: 800; outline: none;
+    }
 
     /* El cartelito del carrete de goles. Arriba y al medio, que es donde no
        tapa ni el marcador ni el chat, y por encima de todo lo del juego. */
@@ -3300,12 +3314,56 @@ function openBoard(doc, game) {
   };
 
   const pos = (e) => ({ x: e.clientX, y: e.clientY });
+  // Goma: borra el dibujo que está debajo del mouse (el de más arriba primero).
+  let erasing = false;
+  const eraseAt = (p) => {
+    for (let i = shapes.length - 1; i >= 0; i--) {
+      if (boardHit(ctx, shapes[i], p)) { shapes.splice(i, 1); paint(); return; }
+    }
+  };
+  // Texto: aparece un campo donde hiciste clic; Enter lo deja, Esc lo cancela.
+  let typing = null;
+  const commitText = () => {
+    if (!typing) return;
+    const { input, at, col, sz } = typing;
+    typing = null;
+    const text = input.value.trim();
+    input.remove();
+    if (text) shapes.push({ tool: 'text', color: col, size: sz, text, a: at, b: at, pts: [at] });
+    paint();
+  };
+  const placeText = (at) => {
+    commitText();
+    const input = doc.createElement('input');
+    input.type = 'text';
+    input.className = 'tvm-boardtext';
+    input.maxLength = 60;
+    input.placeholder = 'Escribí y Enter';
+    input.style.left = `${at.x}px`;
+    input.style.top = `${at.y}px`;
+    input.style.color = color;
+    input.style.fontSize = `${boardFont(size)}px`;
+    input.addEventListener('keydown', (ev) => {
+      ev.stopPropagation();
+      if (ev.key === 'Enter') { ev.preventDefault(); commitText(); }
+      else if (ev.key === 'Escape') { ev.preventDefault(); input.value = ''; commitText(); }
+    });
+    input.addEventListener('blur', () => setTimeout(commitText, 0));
+    doc.body.append(input);
+    boardState.root.push(input);
+    typing = { input, at, col: color, sz: size };
+    setTimeout(() => input.focus(), 0);
+  };
   canvas.addEventListener('pointerdown', (e) => {
-    canvas.setPointerCapture(e.pointerId);
     const a = pos(e);
+    if (tool === 'text') { e.preventDefault(); placeText(a); return; }
+    commitText();
+    canvas.setPointerCapture(e.pointerId);
+    if (tool === 'eraser') { erasing = true; eraseAt(a); return; }
     cur = { tool, color, size, pts: [a], a, b: a };
   });
   canvas.addEventListener('pointermove', (e) => {
+    if (erasing) { eraseAt(pos(e)); return; }
     if (!cur) return;
     const b = pos(e);
     if (cur.tool === 'pen') cur.pts.push(b);
@@ -3313,6 +3371,7 @@ function openBoard(doc, game) {
     paint();
   });
   const end = () => {
+    erasing = false;
     if (!cur) return;
     const moved = Math.hypot(cur.b.x - cur.a.x, cur.b.y - cur.a.y) > 3 || cur.pts.length > 2;
     if (moved) shapes.push(cur);
@@ -3322,14 +3381,17 @@ function openBoard(doc, game) {
   canvas.addEventListener('pointerup', end);
   canvas.addEventListener('pointercancel', end);
 
-  // La barra de herramientas.
-  const bar = doc.createElement('div');
-  bar.className = 'tvm-boardbar';
-  const group = () => { const g = doc.createElement('div'); g.className = 'grp'; bar.append(g); return g; };
+  // Las barras: herramientas en columna a la izquierda, color y grosor arriba
+  // al medio, y las acciones arriba a la derecha.
+  const mkBar = (cls) => { const el = doc.createElement('div'); el.className = `tvm-boardbar ${cls}`; return el; };
+  const toolBar = mkBar('tvm-bb-tools');
+  const bar = mkBar('tvm-bb-style');
+  const actBar = mkBar('tvm-bb-acts');
+  const group = (parent = bar) => { const g = doc.createElement('div'); g.className = 'grp'; parent.append(g); return g; };
   const mk = (parent, label, title, fn, cls = '') => {
     const b = doc.createElement('button');
     b.type = 'button';
-    b.textContent = label;
+    b.innerHTML = label;
     b.title = title;
     if (cls) b.className = cls;
     b.addEventListener('click', (e) => { e.preventDefault(); fn(b); });
@@ -3337,11 +3399,21 @@ function openBoard(doc, game) {
     return b;
   };
 
-  const tools = group();
+  const tools = group(toolBar);
   const toolBtns = {};
-  for (const [id, label, title] of [['pen', '✎ Lápiz', 'Dibujo libre'], ['arrow', '➚ Flecha', 'Flecha: arrastrá de un punto a otro'], ['zone', '◯ Zona', 'Marcar una zona']]) {
-    toolBtns[id] = mk(tools, label, title, () => {
+  const CURSORS = { text: 'text', eraser: 'cell' };
+  for (const [id, title] of [
+    ['pen', 'Lápiz: dibujo libre'],
+    ['arrow', 'Flecha: arrastrá de un punto a otro'],
+    ['pass', 'Pase: flecha punteada'],
+    ['zone', 'Zona: marcá un sector'],
+    ['text', 'Texto: hacé clic donde va'],
+    ['eraser', 'Goma: borrá un dibujo']
+  ]) {
+    toolBtns[id] = mk(tools, BOARD_ICON[id], title, () => {
+      commitText();
       tool = id;
+      canvas.style.cursor = CURSORS[id] || 'crosshair';
       for (const k in toolBtns) toolBtns[k].classList.toggle('is-on', k === id);
     });
   }
@@ -3363,7 +3435,7 @@ function openBoard(doc, game) {
 
   const sizes = group();
   const sizeBtns = [];
-  for (const [n, label] of [[3, '·'], [6, '●'], [10, '⬤']]) {
+  for (const [n, label] of [[3, 'Fino'], [6, 'Medio'], [10, 'Grueso']]) {
     const b = mk(sizes, label, 'Grosor', () => {
       size = n;
       sizeBtns.forEach((x) => x.classList.toggle('is-on', x === b));
@@ -3373,32 +3445,79 @@ function openBoard(doc, game) {
   sizeBtns[0].classList.add('is-on');
   size = 3;
 
-  const acts = group();
-  mk(acts, '↶ Deshacer', 'Deshacer (Ctrl+Z)', () => { shapes.pop(); paint(); });
-  mk(acts, 'Limpiar', 'Borrar todo', () => { shapes.length = 0; paint(); });
+  const acts = group(actBar);
+  mk(acts, BOARD_ICON.undo, 'Deshacer (Ctrl+Z)', () => { shapes.pop(); paint(); });
+  mk(acts, BOARD_ICON.trash, 'Borrar todo', () => { shapes.length = 0; paint(); });
 
-  const out = group();
+  const out = group(actBar);
   const png = () => new Promise((resolve) => canvas.toBlob((b) => {
     const r = new view.FileReader();
     r.onload = () => resolve(String(r.result));
     r.readAsDataURL(b);
   }, 'image/png'));
-  mk(out, 'Copiar', 'Copiar la imagen para pegarla en un chat', async () => ipcRenderer.send('game:board-image', { mode: 'copy', url: await png() }));
-  mk(out, 'Guardar', 'Guardar como imagen', async () => ipcRenderer.send('game:board-image', { mode: 'save', url: await png() }), 'cta');
-  mk(out, '✕', 'Cerrar (Esc)', closeBoard);
+  mk(out, BOARD_ICON.copy, 'Copiar la imagen para pegarla en un chat', async () => ipcRenderer.send('game:board-image', { mode: 'copy', url: await png() }));
+  mk(out, `${BOARD_ICON.save}Guardar`, 'Guardar como imagen', async () => ipcRenderer.send('game:board-image', { mode: 'save', url: await png() }), 'cta');
+  mk(out, BOARD_ICON.close, 'Cerrar (Esc)', closeBoard);
 
   const onKey = (e) => {
+    if (typing) return;
     if (e.key === 'Escape') { e.preventDefault(); closeBoard(); doc.removeEventListener('keydown', onKey, true); }
     else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); shapes.pop(); paint(); }
   };
   doc.addEventListener('keydown', onKey, true);
 
-  doc.body.append(canvas, bar);
-  boardState.root = [canvas, bar];
+  doc.body.append(canvas, toolBar, bar, actBar);
+  boardState.root = [canvas, toolBar, bar, actBar];
   boardState.open = true;
   const btn = doc.querySelector('.tvm-board-btn');
   if (btn) btn.classList.add('is-on');
   paint();
+}
+
+const BOARD_ICON = (() => {
+  const i = (d) => `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="${d}"/></svg>`;
+  return {
+    pen: i('M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16v4zM13.5 6.5l4 4'),
+    arrow: i('M6 18 18 6M9 6h9v9'),
+    pass: i('M5 19l2-2M10 14l2-2M15 9l3-3M11 6h7v7'),
+    zone: i('M12 4a8 8 0 0 1 0 16a8 8 0 0 1 0-16'),
+    text: i('M5 6V4.5h14V6M12 4.5v15M9 19.5h6'),
+    eraser: i('M8 20h11M5.5 13.5l7-7a2 2 0 0 1 2.8 0l3.2 3.2a2 2 0 0 1 0 2.8L12 19H8.5l-3-3a1.8 1.8 0 0 1 0-2.5zM10 9l5 5'),
+    undo: i('M9 14 4 9l5-5M4 9h10a6 6 0 0 1 0 12h-3'),
+    trash: i('M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3'),
+    copy: i('M9 9h10v10H9zM5 15V5h10'),
+    save: i('M12 4v11M7 10l5 5 5-5M5 20h14'),
+    close: i('M6.4 6.4l11.2 11.2M17.6 6.4 6.4 17.6')
+  };
+})();
+const boardFont = (size) => 14 + size * 2;
+
+/** ¿El punto `p` toca el dibujo `s`? (para la goma). */
+function boardHit(ctx, s, p) {
+  const tol = 10 + (s.size || 3);
+  const segDist = (a, b) => {
+    const dx = b.x - a.x; const dy = b.y - a.y;
+    const L = dx * dx + dy * dy || 1;
+    const t = Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.y - a.y) * dy) / L));
+    return Math.hypot(p.x - (a.x + t * dx), p.y - (a.y + t * dy));
+  };
+  if (s.tool === 'pen') {
+    for (let i = 1; i < s.pts.length; i++) if (segDist(s.pts[i - 1], s.pts[i]) < tol) return true;
+    return s.pts.length === 1 && Math.hypot(p.x - s.pts[0].x, p.y - s.pts[0].y) < tol;
+  }
+  if (s.tool === 'arrow' || s.tool === 'pass') return segDist(s.a, s.b) < tol;
+  if (s.tool === 'zone') {
+    const cx = (s.a.x + s.b.x) / 2; const cy = (s.a.y + s.b.y) / 2;
+    const rx = Math.max(1, Math.abs(s.b.x - s.a.x) / 2); const ry = Math.max(1, Math.abs(s.b.y - s.a.y) / 2);
+    return ((p.x - cx) / rx) ** 2 + ((p.y - cy) / ry) ** 2 <= 1.15;
+  }
+  if (s.tool === 'text') {
+    ctx.font = `800 ${boardFont(s.size)}px system-ui, sans-serif`;
+    const w = ctx.measureText(s.text).width;
+    const h = boardFont(s.size);
+    return p.x >= s.a.x - 4 && p.x <= s.a.x + w + 4 && Math.abs(p.y - s.a.y) <= h / 2 + 4;
+  }
+  return false;
 }
 
 function drawShape(ctx, s) {
@@ -3411,14 +3530,20 @@ function drawShape(ctx, s) {
     ctx.beginPath();
     s.pts.forEach((p, i) => (i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y)));
     ctx.stroke();
-  } else if (s.tool === 'arrow') {
+  } else if (s.tool === 'text') {
+    ctx.font = `800 ${boardFont(s.size)}px system-ui, sans-serif`;
+    ctx.textBaseline = 'middle';
+    ctx.fillText(s.text, s.a.x, s.a.y);
+  } else if (s.tool === 'arrow' || s.tool === 'pass') {
     const { a, b } = s;
     const ang = Math.atan2(b.y - a.y, b.x - a.x);
     const head = 10 + s.size * 2.2;
     ctx.beginPath();
     ctx.moveTo(a.x, a.y);
     ctx.lineTo(b.x - Math.cos(ang) * head * 0.6, b.y - Math.sin(ang) * head * 0.6);
+    if (s.tool === 'pass') ctx.setLineDash([s.size * 3 + 6, s.size * 2 + 6]);
     ctx.stroke();
+    ctx.setLineDash([]);
     ctx.beginPath();
     ctx.moveTo(b.x, b.y);
     ctx.lineTo(b.x - head * Math.cos(ang - 0.45), b.y - head * Math.sin(ang - 0.45));
