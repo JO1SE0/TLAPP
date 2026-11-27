@@ -1111,17 +1111,28 @@ function applyClientStyles(doc) {
        Una píldora flotante angosta: ya no hay franja de lado a lado ni se le
        quita alto a la cancha. Si no movés el mouse 2,5 s mientras se reproduce,
        se esconde (sólo opacidad); al mover el mouse vuelve. */
-    html body { --tvm-card: min(940px, calc(100vw - 24px)); --tvm-side: calc((100vw - var(--tvm-card)) / 2); }
+    html body { --tvm-card: min(1100px, calc(100vw - 24px)); --tvm-side: calc((100vw - var(--tvm-card)) / 2); }
     html body .game-view.replayer { padding-bottom: 0 !important; }
     html body .replay-controls-view { gap: 6px !important; padding: 6px calc(var(--tvm-side) + 8px) !important; transition: opacity .25s ease; }
     html body .replay-controls-view.tvm-idle { opacity: 0; }
     html.tvm-noanim body .replay-controls-view { transition: none; }
     html body .replay-controls-view::before {
       left: var(--tvm-side); right: var(--tvm-side); top: 0; bottom: 0; height: auto;
-      border: 1px solid rgba(255, 255, 255, .1); border-radius: 16px;
-      background: ${p.panel || '#141a2c'}e8;
-      box-shadow: 0 10px 26px -12px rgba(0, 0, 0, .8);
+      border: 1px solid rgba(255, 255, 255, .14); border-radius: 16px;
+      /* «Vidrio» sin desenfoque (el desenfoque encima de la cancha costaría FPS):
+         translúcido, con un brillo arriba y el borde claro. */
+      background: linear-gradient(180deg, rgba(255, 255, 255, .10), rgba(255, 255, 255, .03) 55%), rgba(12, 18, 34, .42);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, .16), 0 8px 22px -12px rgba(0, 0, 0, .7);
     }
+    /* Los grupos siempre en fila (HaxBall apilaba los div en columna y la barra crecía). */
+    html body .replay-controls-view .tvm-seg { display: inline-flex !important; flex-direction: row !important; align-items: center; flex-wrap: nowrap; height: 28px; }
+    html body .replay-controls-view .tvm-seg button,
+    html body .replay-controls-view button { background-color: rgba(255, 255, 255, .06) !important; }
+    html body .replay-controls-view .tvm-seg button { background: transparent !important; }
+    html body .replay-controls-view .tvm-seg { background: rgba(255, 255, 255, .06); }
+    html body .replay-controls-view > .tvm-play { background: linear-gradient(135deg, ${p.accent || p.blue}, ${p.accent2 || p.accent || p.blue}) !important; }
+    html body .replay-controls-view .tvm-spdbtn { background: ${p.accent || p.blue}22 !important; }
+    html body .replay-controls-view > .tvm-leave { background: rgba(255, 90, 90, .1) !important; }
     html body .replay-controls-view button { height: 28px; min-width: 30px; font-size: 12px; border-radius: 9px !important; }
     html body .replay-controls-view button svg { width: 14px; height: 14px; }
     html body .replay-controls-view > .tvm-play { width: 32px; min-width: 32px; height: 32px; }
@@ -3209,7 +3220,10 @@ async function watchReplayView(doc) {
   // Saltos en una sola pieza: ◀ Gol | −5 s | +5 s | Gol ▶.
   const jump = doc.createElement('div');
   jump.className = 'tvm-seg tvm-jump';
-  jump.append(goalBar.children[0], skipBar.children[0], skipBar.children[0], goalBar.children[0]);
+  // (Se toman antes de mover: `append` saca cada botón de su barra al moverlo.)
+  const [goalPrev, goalNext] = [...goalBar.children];
+  const [skipBack, skipFwd] = [...skipBar.children];
+  jump.append(goalPrev, skipBack, skipFwd, goalNext);
   // Velocidad: una perilla «1x ▴» que despliega las seis.
   const spdWrap = doc.createElement('div');
   spdWrap.className = 'tvm-spd';
