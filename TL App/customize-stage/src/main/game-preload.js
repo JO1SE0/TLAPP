@@ -3097,6 +3097,8 @@ async function watchReplayView(doc) {
   const root = doc.documentElement;
   let lastReserve = -1;
   const syncHeight = () => {
+    // Cada replay trae su barra nueva: la de uno anterior ya no mide nada.
+    if (!controls.isConnected) return;
     try {
       root.style.setProperty('--tvm-replay-h', `${controls.offsetHeight}px`);
       root.style.setProperty('--tvm-dy', '0px');
@@ -3108,8 +3110,8 @@ async function watchReplayView(doc) {
       if (reserve !== lastReserve) {
         lastReserve = reserve;
         root.style.setProperty('--tvm-reserve', `${reserve}px`);
-        // El juego se acomoda al alto nuevo cuando se le avisa que cambió el tamaño.
-        view.requestAnimationFrame(() => { try { view.dispatchEvent(new view.Event('resize')); } catch (_) { /* sin resize */ } });
+        // (La barra ya no le quita alto a la cancha —flota—, así que no hace
+        // falta avisarle al juego: cada aviso le hacía rearmar el lienzo.)
       }
     } catch (_) { /* sin medidas */ }
   };
@@ -3254,6 +3256,10 @@ async function watchReplayView(doc) {
 
   // La tecla P abre y cierra la pizarra.
   doc.addEventListener('keydown', (event) => {
+    // Sólo con ESTE replay en pantalla: si no, cada replay visto sumaba otra
+    // tecla P (dos replays = abre y cierra a la vez) y en un partido la P abría
+    // la pizarra.
+    if (!controls.isConnected) return;
     const tag = event.target && event.target.tagName;
     if (event.key && event.key.toLowerCase() === 'p' && !event.ctrlKey && !event.metaKey && tag !== 'INPUT' && tag !== 'TEXTAREA') {
       safe(toggleBoard);
@@ -3273,7 +3279,13 @@ async function watchReplayView(doc) {
   // Se esconde sola: 2,5 s sin mover el mouse mientras se reproduce. Pausada,
   // con el mouse encima o con la velocidad desplegada, queda a la vista.
   let idleT = 0;
+  let lastWake = 0;
   const wake = () => {
+    if (!controls.isConnected) return;
+    // Mover el mouse dispara esto cientos de veces: con una vez cada 200 ms alcanza.
+    const now = Date.now();
+    if (now - lastWake < 200 && !controls.classList.contains('tvm-idle')) return;
+    lastWake = now;
     controls.classList.remove('tvm-idle');
     view.clearTimeout(idleT);
     idleT = view.setTimeout(() => {
@@ -12900,7 +12912,22 @@ const ROSTER_EVERY = 60;
  * Recorre la grabación abierta de punta a punta y devuelve todo lo que pasó.
  * Deja el reproductor exactamente donde estaba.
  */
+/*
+ * El análisis simula la grabación ENTERA de un tirón: es lo que más cuesta de
+ * un replay. Se guarda el resultado por reproductor, así «Resumen», «◀ Gol» y
+ * «Gol ▶» no lo vuelven a hacer cada vez.
+ */
+let analysisCache = { player: null, result: null };
 function analyzeReplay(opts) {
+  const doc0 = gameDocument();
+  const pl0 = doc0 && doc0.defaultView && doc0.defaultView.__tvmReplay && doc0.defaultView.__tvmReplay.player;
+  const wantReport0 = !!(opts && opts.report);
+  if (!wantReport0 && pl0 && analysisCache.player === pl0 && analysisCache.result) return analysisCache.result;
+  const result = analyzeReplayNow(opts);
+  if (!wantReport0 && pl0 && result && result.ok && !result.partial) analysisCache = { player: pl0, result };
+  return result;
+}
+function analyzeReplayNow(opts) {
   const wantReport = !!(opts && opts.report);
   const reports = [];
   const doc = gameDocument();

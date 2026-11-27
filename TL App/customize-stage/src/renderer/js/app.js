@@ -12470,8 +12470,9 @@ async function boot() {
         return;
       }
     }
-    // El usuario puede haber salido de la grabación mientras se leía el archivo.
-    if (state.gameView === 'replay') runAnalysis();
+    // Sin análisis guardado NO se analiza solo: simular la grabación entera
+    // congela el juego un momento (el bajón de FPS al rato de abrir un replay).
+    // Se hace cuando lo pedís: «Resumen» o «◀ Gol / Gol ▶».
   }
 
   function scheduleAutoAnalyze() {
