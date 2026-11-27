@@ -9278,3 +9278,8 @@ body:has(#app:not([data-stage="game"])) .cap { -webkit-backdrop-filter: blur(8px
   color: var(--c-ink); background: var(--c-bg); border: 1px solid var(--c-line); box-shadow: 0 6px 18px rgb(0 0 0 / 40%); }
 .cap > .cap__x--out:hover { border-color: var(--c-accent); color: var(--c-accent-hi); background: var(--c-bg); }
 .cap > .cap__x--out svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
+
+/* La X del panel siempre arriba de todo: al bajar, las tarjetas y la barra de
+   pestañas pasaban por encima y la tapaban. Fondo sólido para que se lea. */
+.panel__card > .panel__close { z-index: 12; background: var(--bg-1); }
+.panel__card .tabbar { padding-right: 52px; }
