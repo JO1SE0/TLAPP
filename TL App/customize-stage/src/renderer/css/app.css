@@ -9256,10 +9256,10 @@ html:not([data-animations="off"]) .is-bad { animation: fieldShake 0.4s; }
  * Sólo en el menú: con la cancha atrás el desenfoque se recalcularía en cada
  * cuadro del juego y costaría FPS, así que en la sala queda el velo oscuro solo.
  */
-#app:not([data-stage="game"]) .panel.is-open .panel__scrim {
-  -webkit-backdrop-filter: blur(8px);
-  backdrop-filter: blur(8px);
-}
+/* (El backdrop-filter del velo no se veía: el panel tiene `will-change: opacity`
+   y eso corta el desenfoque. Se desenfoca directamente la lista de salas de atrás.) */
+#app:not([data-view="play"]):not([data-stage="game"]) #browser,
+body:has(> .cap) #app:not([data-stage="game"]) #browser { filter: blur(7px); }
 
 /* ── Informes y Hostear sin marco, igual que Club: cabecera pegada arriba, X afuera, tarjetas sólidas ── */
 #app[data-view="informes"] .panel, #app[data-view="hostear"] .panel { padding-top: 0; }
@@ -9272,7 +9272,6 @@ html:not([data-animations="off"]) .is-bad { animation: fieldShake 0.4s; }
 #app[data-view="informes"] #panelScrim, #app[data-view="hostear"] #panelScrim { background: rgba(4, 3, 8, 0.8); }
 
 /* ── Admin: fondo desenfocado (sólo en el menú), tarjeta sin borde y X afuera ── */
-body:has(#app:not([data-stage="game"])) .cap { -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
 .cap__card { border: 0; }
 .cap > .cap__x--out { position: absolute; top: 16px; right: 18px; z-index: 2; width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; padding: 0;
   color: var(--c-ink); background: var(--c-bg); border: 1px solid var(--c-line); box-shadow: 0 6px 18px rgb(0 0 0 / 40%); }
@@ -9283,3 +9282,10 @@ body:has(#app:not([data-stage="game"])) .cap { -webkit-backdrop-filter: blur(8px
    pestañas pasaban por encima y la tapaban. Fondo sólido para que se lea. */
 .panel__card > .panel__close { z-index: 12; background: var(--bg-1); }
 .panel__card .tabbar { padding-right: 52px; }
+
+/* ── Música en modo Spotify: paneles con fondo sólido y el selector de dispositivo sin pisar la X ── */
+#app[data-view="musica"] .page[data-page="musica"] .sp__panel,
+#app[data-view="musica"] .page[data-page="musica"] .sp__login,
+#app[data-view="musica"] .page[data-page="musica"] .sp__foot { background-color: var(--bg-1); }
+#app[data-view="musica"] .page[data-page="musica"] .sp__msg { background-color: #2a2312; }
+#app[data-view="musica"] .page[data-page="musica"] .spdev { right: 64px; }
