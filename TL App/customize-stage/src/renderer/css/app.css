@@ -9260,3 +9260,21 @@ html:not([data-animations="off"]) .is-bad { animation: fieldShake 0.4s; }
   -webkit-backdrop-filter: blur(8px);
   backdrop-filter: blur(8px);
 }
+
+/* ── Informes y Hostear sin marco, igual que Club: cabecera pegada arriba, X afuera, tarjetas sólidas ── */
+#app[data-view="informes"] .panel, #app[data-view="hostear"] .panel { padding-top: 0; }
+#app[data-view="informes"] .panel__card, #app[data-view="hostear"] .panel__card { border: 0; background: none; box-shadow: none; border-radius: 0; }
+#app[data-view="informes"] .page[data-page="informes"] .page__inner,
+#app[data-view="hostear"] .page[data-page="hostear"] .page__inner { padding: 0 2px 24px; }
+#app[data-view="informes"] .club__hero, #app[data-view="hostear"] .club__hero { border-top: 0; border-radius: 0 0 24px 24px; padding-top: 30px; }
+#app[data-view="informes"] .csec, #app[data-view="informes"] .club__hero,
+#app[data-view="hostear"] .csec, #app[data-view="hostear"] .club__hero { background-color: var(--bg-1); }
+#app[data-view="informes"] #panelScrim, #app[data-view="hostear"] #panelScrim { background: rgba(4, 3, 8, 0.8); }
+
+/* ── Admin: fondo desenfocado (sólo en el menú), tarjeta sin borde y X afuera ── */
+body:has(#app:not([data-stage="game"])) .cap { -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
+.cap__card { border: 0; }
+.cap > .cap__x--out { position: absolute; top: 16px; right: 18px; z-index: 2; width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; padding: 0;
+  color: var(--c-ink); background: var(--c-bg); border: 1px solid var(--c-line); box-shadow: 0 6px 18px rgb(0 0 0 / 40%); }
+.cap > .cap__x--out:hover { border-color: var(--c-accent); color: var(--c-accent-hi); background: var(--c-bg); }
+.cap > .cap__x--out svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }

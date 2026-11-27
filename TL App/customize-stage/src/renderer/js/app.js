@@ -2339,9 +2339,10 @@ function setView(name) {
   if (name === 'replays') loadReplays();
   if (name === 'cuenta') loadAuth();
   if (name === 'club') { loadClubRank(); loadKings(); }
-  if (name !== 'club') clubCloseOut(false);
+  const bare = name === 'club' || name === 'informes' || name === 'hostear';
+  if (!bare) clubCloseOut(false);
   if (name === 'musica') musicPageOpen(); else musicPageClose();
-  if (name === 'club') clubCloseOut(true);
+  if (bare) clubCloseOut(true);
   // El tema del club suena sólo con la página Club abierta y en el menú.
   if (window.TLClubTheme) { if (name === 'club' && state.stage !== 'game') window.TLClubTheme.start(); else window.TLClubTheme.stop(); }
   if (name === 'hostear') loadHostState();

@@ -667,7 +667,10 @@
     for (const [v, t] of THEMES) { const o = el('option', null, `Tema: ${t}`); o.value = v; if (v === theme) o.selected = true; sel.append(o); }
     sel.addEventListener('change', () => { theme = sel.value; store.set('tl_cap_theme', theme); box.dataset.theme = theme; });
     const x = el('button', 'cap__x', '×'); x.type = 'button'; x.addEventListener('click', close);
-    tools.append(undo, sel, x);
+    tools.append(undo, sel);
+    // La X va afuera de la tarjeta, arriba a la derecha de la pantalla (como Club).
+    x.classList.add('cap__x--out'); x.textContent = ''; x.setAttribute('aria-label', 'Cerrar'); x.title = 'Cerrar (Esc)';
+    x.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.4 6.4l11.2 11.2M17.6 6.4 6.4 17.6"/></svg>';
     head.append(tools);
     const tabs = el('div', 'cap__tabs');
     for (const [id, label] of [['plantel', 'Plantel'], ['avisos', 'Avisos'], ['acceso', 'Acceso y versión'], ['historial', 'Historial']]) {
@@ -676,7 +679,7 @@
       tabs.append(b);
     }
     card.append(head, tabs, el('div', 'cap__body'));
-    box.append(card);
+    box.append(card, x);
     box.addEventListener('mousedown', (e) => { if (e.target === box) close(); });
     document.body.append(box);
     document.addEventListener('keydown', onKey, true);
