@@ -9250,3 +9250,13 @@ html:not([data-animations="off"]) .is-bad { animation: fieldShake 0.4s; }
 #app[data-view="club"] .page[data-page="club"] .club__hero { background-color: var(--bg-1); }
 #app[data-view="musica"] #panelScrim,
 #app[data-view="club"] #panelScrim { background: rgba(4, 3, 8, 0.8); }
+
+/*
+ * Fondo desenfocado detrás de las ventanas (Música, Club, Replays, ajustes…).
+ * Sólo en el menú: con la cancha atrás el desenfoque se recalcularía en cada
+ * cuadro del juego y costaría FPS, así que en la sala queda el velo oscuro solo.
+ */
+#app:not([data-stage="game"]) .panel.is-open .panel__scrim {
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+}
