@@ -11368,8 +11368,14 @@ const SETTLED = new Set(['roomlist', 'room', 'game', 'disconnected', 'dialog', '
 function onGameView(kind) {
   // Qué pantalla del juego está puesta decide de qué es el resumen: de la
   // partida en curso o de la grabación entera.
+  const wasReplay = state.gameView === 'replay';
   state.gameView = kind;
   setStage(GAME_STAGES[kind] || 'browser');
+  // Saliendo de un replay (con «Salir» del menú o con el de la barra) se vuelve
+  // a la lista de replays, que es de donde se vino, y no a la lista de salas.
+  if (wasReplay && kind !== 'replay' && !GAME_STAGES[kind]) setView('replays');
+  const outTx = $('#railGameOut span');
+  if (outTx) outTx.textContent = kind === 'replay' ? (isEn() ? 'Leave replay' : 'Salir del replay') : t('game.leave');
   // El «Conectando…» se mantiene hasta estar realmente dentro de la sala.
   // Estar en la sala o en la partida no necesita que el tema ya esté confirmado:
   // esperar ese aviso era lo que dejaba el velo puesto con la sala ya conectada.
@@ -13034,9 +13040,10 @@ function paintRailGame(online) {
 }
 $('#railGameOut').addEventListener('click', () => {
   if (state.stage !== 'game') return;
+  const fromReplay = state.gameView === 'replay';
   hideLoading();
   setStage('browser');
-  setView('play');
+  setView(fromReplay ? 'replays' : 'play');
   syncJoinButton();
   tvm.rooms.leave().catch(() => {});
 });
