@@ -1054,6 +1054,59 @@ function applyClientStyles(doc) {
       color: #fff !important;
     }
 
+    /* ── Barra del replay «16B»: UNA fila de lado a lado ─────────────────
+       reiniciar · play · [◀ Gol | −5 s | +5 s | Gol ▶] · tiempo · línea ·
+       perilla de velocidad · [Resumen | Pizarra] · salir. */
+    html body .replay-controls-view { flex-wrap: nowrap !important; gap: 8px !important; padding: 10px calc(var(--tvm-side) + 14px) !important; }
+    html body .replay-controls-view::after { display: none !important; }
+    html body .replay-controls-view > .tvm-restart { order: 1; }
+    html body .replay-controls-view > .tvm-play { order: 2; }
+    html body .replay-controls-view > .tvm-jump { order: 3; }
+    html body .replay-controls-view > [data-hook="time"] { order: 4; margin-left: 6px; font-size: 14px; min-width: 44px; }
+    html body .replay-controls-view > .timebar { order: 5; flex: 1 1 auto !important; min-width: 120px !important; }
+    html body .replay-controls-view > .tvm-spd { order: 6; }
+    html body .replay-controls-view > .tvm-tools { order: 7; }
+    html body .replay-controls-view > .tvm-leave { order: 8; }
+    html body .replay-controls-view button {
+      height: 34px; border-radius: 10px !important;
+      background: rgba(255, 255, 255, .07) !important;
+      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .1) !important;
+      display: inline-flex; align-items: center; justify-content: center; gap: 5px;
+      font-weight: 700; font-size: 13px;
+    }
+    html body .replay-controls-view button:hover:not(:disabled) { background: rgba(255, 255, 255, .14) !important; transform: none; }
+    html body .replay-controls-view button svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+    html body .replay-controls-view > .tvm-play { width: 40px; min-width: 40px; height: 40px; border-radius: 50% !important; box-shadow: 0 6px 16px -8px ${p.accent || p.blue} !important; }
+    html body .replay-controls-view .tvm-seg {
+      flex: 0 0 auto; display: inline-flex; border-radius: 11px; overflow: hidden;
+      background: rgba(255, 255, 255, .07); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .1);
+    }
+    html body .replay-controls-view .tvm-seg button {
+      background: transparent !important; box-shadow: none !important; border-radius: 0 !important;
+      padding: 0 10px !important; min-width: 36px; border-right: 1px solid rgba(255, 255, 255, .1) !important;
+    }
+    html body .replay-controls-view .tvm-seg button:last-child { border-right: 0 !important; }
+    html body .replay-controls-view .tvm-seg button:hover:not(:disabled) { background: rgba(255, 255, 255, .1) !important; }
+    html body .replay-controls-view .tvm-tools .tvm-board-btn.is-on { background: ${p.accent || p.blue} !important; }
+    html body .replay-controls-view .tvm-spd { position: relative; flex: 0 0 auto; }
+    html body .replay-controls-view .tvm-spdbtn {
+      padding: 0 10px 0 12px !important; min-width: 62px;
+      color: ${p.accent2 || p.accent || '#fff'} !important;
+      background: ${p.accent || p.blue}22 !important;
+      box-shadow: inset 0 0 0 1px ${p.accent || p.blue}aa !important;
+    }
+    html body .replay-controls-view .tvm-spdbtn svg { width: 13px; height: 13px; transition: transform .15s ease; }
+    html body .replay-controls-view .tvm-spd.is-open .tvm-spdbtn svg { transform: rotate(180deg); }
+    html body .replay-controls-view .tvm-spdmenu {
+      display: none; position: absolute; bottom: calc(100% + 10px); left: 50%; transform: translateX(-50%);
+      flex-direction: column-reverse; gap: 2px; padding: 4px; border-radius: 12px;
+      background: ${p.panel || '#141a2c'}; box-shadow: 0 10px 28px rgba(0, 0, 0, .6), inset 0 0 0 1px rgba(255, 255, 255, .1);
+    }
+    html body .replay-controls-view .tvm-spd.is-open .tvm-spdmenu { display: flex; }
+    html body .replay-controls-view .tvm-spdmenu button { min-width: 62px; height: 28px; box-shadow: none !important; background: transparent !important; }
+    html body .replay-controls-view .tvm-spdmenu button.is-on { background: linear-gradient(135deg, ${p.accent || p.blue}, ${p.accent2 || p.accent || p.blue}) !important; }
+    html body .replay-controls-view > .tvm-leave { color: #ff9a9a !important; background: rgba(255, 90, 90, .1) !important; box-shadow: inset 0 0 0 1px rgba(255, 90, 90, .3) !important; padding: 0 11px !important; }
+
     /* ── Pizarra táctica ─────────────────────────────────────────────────
        La cancha congelada con tus dibujos encima. Los controles van arriba. */
     .tvm-board { position: fixed; inset: 0; z-index: 2147480500; touch-action: none; cursor: crosshair; background: #000; }
@@ -2945,6 +2998,16 @@ function waitForReplayInput(doc) {
  * ver `analyzeReplay`.
  */
 const REPLAY_SPEEDS = [0.25, 0.5, 1, 2, 4, 8];
+/* Íconos de la barra del replay (trazos simples, se pintan con el color del texto). */
+const RP_ICON = {
+  prevGoal: '<svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg>',
+  nextGoal: '<svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>',
+  back5: '<svg viewBox="0 0 24 24"><path d="M11 7l-5 5 5 5M18 7l-5 5 5 5"/></svg>',
+  fwd5: '<svg viewBox="0 0 24 24"><path d="M13 7l5 5-5 5M6 7l5 5-5 5"/></svg>',
+  stats: '<svg viewBox="0 0 24 24"><path d="M9 6h11M9 12h11M9 18h11M4.5 6h.01M4.5 12h.01M4.5 18h.01"/></svg>',
+  board: '<svg viewBox="0 0 24 24"><path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16v4zM13.5 6.5l4 4"/></svg>',
+  chev: '<svg viewBox="0 0 24 24"><path d="M6 15l6-6 6 6"/></svg>'
+};
 
 async function watchReplayView(doc) {
   const controls = await waitFor(doc, '.replay-controls-view');
@@ -2967,6 +3030,8 @@ async function watchReplayView(doc) {
   const spd = controls.querySelector('[data-hook="spd"]');
   if (spd) spd.classList.add('tvm-dup');
   for (const el of own) if (/^[-+−]$/.test((el.textContent || '').trim())) el.classList.add('tvm-dup');
+  // Lo que queda de HaxBall (el botón de salir) va al final, en rojo suave.
+  for (const el of own.slice(2)) if (!el.classList.contains('tvm-dup')) el.classList.add('tvm-leave');
 
   // El chat se corre lo que mide la barra para no quedar tapado (ver el CSS), y
   // la barra se sube lo que haga falta si el contenedor de HaxBall la corre y el
@@ -3042,7 +3107,7 @@ async function watchReplayView(doc) {
   const stats = doc.createElement('button');
   stats.type = 'button';
   stats.className = 'tvm-stats-btn';
-  stats.textContent = 'Resumen';
+  stats.innerHTML = RP_ICON.stats;
   stats.title = 'Resumen de toda la grabación';
   // Acá el resumen es de la grabación ENTERA, no de lo que se vio hasta ahora:
   // el análisis simula lo que falta sin reproducirlo. Ver `analyzeReplay`.
@@ -3064,7 +3129,7 @@ async function watchReplayView(doc) {
   for (const dir of [-1, 1]) {
     const b = doc.createElement('button');
     b.type = 'button';
-    b.textContent = dir < 0 ? '◀ Gol' : 'Gol ▶';
+    b.innerHTML = dir < 0 ? `${RP_ICON.prevGoal}Gol` : `Gol${RP_ICON.nextGoal}`;
     b.title = dir < 0 ? 'Ir al gol anterior' : 'Ir al gol siguiente';
     b.addEventListener('click', (event) => {
       event.preventDefault();
@@ -3079,7 +3144,7 @@ async function watchReplayView(doc) {
   for (const sec of [-5, 5]) {
     const b = doc.createElement('button');
     b.type = 'button';
-    b.textContent = sec < 0 ? '⏪ 5s' : '5s ⏩';
+    b.innerHTML = sec < 0 ? `${RP_ICON.back5}5s` : `5s${RP_ICON.fwd5}`;
     b.title = sec < 0 ? 'Retroceder 5 segundos' : 'Adelantar 5 segundos';
     b.addEventListener('click', (event) => {
       event.preventDefault();
@@ -3092,7 +3157,7 @@ async function watchReplayView(doc) {
   const boardBtn = doc.createElement('button');
   boardBtn.type = 'button';
   boardBtn.className = 'tvm-board-btn';
-  boardBtn.textContent = '✎ Pizarra';
+  boardBtn.innerHTML = RP_ICON.board;
   boardBtn.title = 'Dibujar jugadas sobre la cancha (P)';
   boardBtn.addEventListener('click', (event) => {
     event.preventDefault();
@@ -3102,11 +3167,29 @@ async function watchReplayView(doc) {
   // Antes del cronómetro: los botones de velocidad quedan todos juntos y la
   // barra de tiempo no se corre de lugar.
   const time = controls.querySelector('[data-hook="time"]');
-  controls.insertBefore(bar, time);
-  controls.insertBefore(skipBar, time);
-  controls.insertBefore(goalBar, time);
-  controls.insertBefore(stats, time);
-  controls.insertBefore(boardBtn, time);
+  // Saltos en una sola pieza: ◀ Gol | −5 s | +5 s | Gol ▶.
+  const jump = doc.createElement('div');
+  jump.className = 'tvm-seg tvm-jump';
+  jump.append(goalBar.children[0], skipBar.children[0], skipBar.children[0], goalBar.children[0]);
+  // Velocidad: una perilla «1x ▴» que despliega las seis.
+  const spdWrap = doc.createElement('div');
+  spdWrap.className = 'tvm-spd';
+  const spdBtn = doc.createElement('button');
+  spdBtn.type = 'button';
+  spdBtn.className = 'tvm-spdbtn';
+  spdBtn.title = 'Velocidad';
+  spdBtn.addEventListener('click', (event) => { event.preventDefault(); spdWrap.classList.toggle('is-open'); });
+  bar.classList.add('tvm-spdmenu');
+  bar.addEventListener('click', () => spdWrap.classList.remove('is-open'));
+  doc.addEventListener('pointerdown', (event) => { if (!spdWrap.contains(event.target)) spdWrap.classList.remove('is-open'); }, true);
+  spdWrap.append(spdBtn, bar);
+  // Resumen y Pizarra en otra pieza.
+  const tools = doc.createElement('div');
+  tools.className = 'tvm-seg tvm-tools';
+  tools.append(stats, boardBtn);
+  controls.insertBefore(jump, time);
+  controls.insertBefore(spdWrap, time);
+  controls.insertBefore(tools, time);
 
   // La tecla P abre y cierra la pizarra.
   doc.addEventListener('keydown', (event) => {
@@ -3123,6 +3206,7 @@ async function watchReplayView(doc) {
     for (const button of bar.children) {
       button.classList.toggle('is-on', Number(button.dataset.tvmSpeed) === Number(current));
     }
+    spdBtn.innerHTML = `${Number(current) || 1}x${RP_ICON.chev}`;
   };
 
   // El `+`/`-` de HaxBall también cambia la velocidad, así que se repinta con
