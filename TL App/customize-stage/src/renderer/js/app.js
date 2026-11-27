@@ -2339,6 +2339,8 @@ function setView(name) {
   if (name === 'replays') loadReplays();
   if (name === 'cuenta') loadAuth();
   if (name === 'club') { loadClubRank(); loadKings(); }
+  // Una ventana a la vez: abrir cualquier pestaña cierra el panel del admin.
+  if (name !== 'play' && window.TLCaptain && $('.cap')) window.TLCaptain.close();
   const bare = name === 'club' || name === 'informes' || name === 'hostear' || name === 'replays';
   if (!bare) clubCloseOut(false);
   if (name === 'musica') musicPageOpen(); else musicPageClose();
@@ -3938,7 +3940,7 @@ setInterval(refreshCaptainDot, 60000);
 setTimeout(refreshCaptainDot, 8000);
 
 const capBtnEl = $('#captainBtn');
-if (capBtnEl) capBtnEl.addEventListener('click', () => { if (window.TLCaptain) { window.TLCaptain.open(); capBtnEl.classList.remove('has-alert'); } });
+if (capBtnEl) capBtnEl.addEventListener('click', () => { if (window.TLCaptain) { if (state.view !== 'play') closePanel(); window.TLCaptain.open(); capBtnEl.classList.remove('has-alert'); } });
 
 /** «Ocultar con clave» y «Ocultar llenas»: botones que se prenden y se apagan, y se recuerdan. */
 for (const [id, key, store] of [['#hideLocked', 'hideLocked', 'tl_hide_locked'], ['#hideFull', 'hideFull', 'tl_hide_full']]) {
