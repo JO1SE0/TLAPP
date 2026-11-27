@@ -9289,3 +9289,12 @@ body:has(> .cap) #app:not([data-stage="game"]) #browser { filter: blur(7px); }
 #app[data-view="musica"] .page[data-page="musica"] .sp__foot { background-color: var(--bg-1); }
 #app[data-view="musica"] .page[data-page="musica"] .sp__msg { background-color: #2a2312; }
 #app[data-view="musica"] .page[data-page="musica"] .spdev { right: 64px; }
+
+/* ── Replays sin marco, igual que Club: cabecera pegada arriba, X afuera, todo con fondo sólido ── */
+#app[data-view="replays"] .panel { padding-top: 0; }
+#app[data-view="replays"] .panel__card { border: 0; background: none; box-shadow: none; border-radius: 0; }
+#app[data-view="replays"] #panelScrim { background: rgba(4, 3, 8, 0.8); }
+#app[data-view="replays"] .page[data-page="replays"] .page__inner { padding: 0 2px 24px; }
+#app[data-view="replays"] .page[data-page="replays"] .pagehead { border-top: 0; border-radius: 0 0 24px 24px; padding-top: 30px; }
+#app[data-view="replays"] .page[data-page="replays"] :is(.pagehead, .searchbar, .sortselect, .replay, .chips > .chip) { background-color: var(--bg-1); }
+#app[data-view="replays"] .page[data-page="replays"] .replaytools { padding: 8px 12px; border-radius: 18px; background: var(--bg-1); border: 1px solid var(--line); }

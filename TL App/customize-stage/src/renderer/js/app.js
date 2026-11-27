@@ -2339,7 +2339,7 @@ function setView(name) {
   if (name === 'replays') loadReplays();
   if (name === 'cuenta') loadAuth();
   if (name === 'club') { loadClubRank(); loadKings(); }
-  const bare = name === 'club' || name === 'informes' || name === 'hostear';
+  const bare = name === 'club' || name === 'informes' || name === 'hostear' || name === 'replays';
   if (!bare) clubCloseOut(false);
   if (name === 'musica') musicPageOpen(); else musicPageClose();
   if (bare) clubCloseOut(true);
