@@ -2339,8 +2339,8 @@ function setView(name) {
   if (name === 'replays') loadReplays();
   if (name === 'cuenta') loadAuth();
   if (name === 'club') { loadClubRank(); loadKings(); }
-  // Una ventana a la vez: abrir cualquier pestaña cierra el panel del admin.
-  if (name !== 'play' && window.TLCaptain && $('.cap')) window.TLCaptain.close();
+  // Una ventana a la vez: abrir cualquier pestaña cierra las demás ventanas.
+  if (name !== 'play') soloWindow('panel');
   const bare = name === 'club' || name === 'informes' || name === 'hostear' || name === 'replays';
   if (!bare) clubCloseOut(false);
   if (name === 'musica') musicPageOpen(); else musicPageClose();
@@ -2494,6 +2494,19 @@ nav.addEventListener('click', (e) => {
 });
 
 /** Cierra el panel y vuelve al fondo (la cancha o la lista de salas). */
+/*
+ * Una ventana a la vez: al abrir una (panel, Admin, Amigos, perfil, crear sala)
+ * se cierran las otras, así nunca queda una abierta detrás de la nueva. Amigos y
+ * el perfil van juntos (el perfil se abre desde Amigos).
+ */
+function soloWindow(keep) {
+  const pair = keep === 'friends' || keep === 'profile';
+  if (keep !== 'panel' && state.view !== 'play') closePanel();
+  if (keep !== 'admin' && window.TLCaptain && $('.cap')) window.TLCaptain.close();
+  if (!pair && state.friendsOpen) setFriendsOpen(false);
+  if (!pair && state.profileOpen) closeProfile();
+  if (keep !== 'create' && !$('#createModal').hidden) closeCreateModal();
+}
 function closePanel() {
   closeSecModal();
   // La búsqueda no sobrevive al cierre: volver a abrir y encontrarse media
@@ -3940,7 +3953,7 @@ setInterval(refreshCaptainDot, 60000);
 setTimeout(refreshCaptainDot, 8000);
 
 const capBtnEl = $('#captainBtn');
-if (capBtnEl) capBtnEl.addEventListener('click', () => { if (window.TLCaptain) { if (state.view !== 'play') closePanel(); window.TLCaptain.open(); capBtnEl.classList.remove('has-alert'); } });
+if (capBtnEl) capBtnEl.addEventListener('click', () => { if (window.TLCaptain) { soloWindow('admin'); window.TLCaptain.open(); capBtnEl.classList.remove('has-alert'); } });
 
 /** «Ocultar con clave» y «Ocultar llenas»: botones que se prenden y se apagan, y se recuerdan. */
 for (const [id, key, store] of [['#hideLocked', 'hideLocked', 'tl_hide_locked'], ['#hideFull', 'hideFull', 'tl_hide_full']]) {
@@ -3983,6 +3996,7 @@ const CREATE_SWITCH = {
 };
 
 function openCreateModal() {
+  soloWindow('create');
   const lang = isEn() ? 'en' : 'es';
   const nick = state.config.general.nickname || 'HaxBall';
 
@@ -9004,6 +9018,7 @@ function faceEl(person, online) {
 /* ── Abrir y cerrar ─────────────────────────────────────── */
 
 function openFriends(pick) {
+  soloWindow('friends');
   if (pick) state.friendPick = pick;
   setFriendsOpen(true);
   // Y repintar aunque ya estuviera abierto: `setFriendsOpen` corta cuando no hay
@@ -9570,6 +9585,7 @@ function withLevel(stats) {
  * pedir, ya llegó todo.
  */
 async function openProfile(id) {
+  soloWindow('profile');
   state.profileMine = !id;
   state.profileWho = id ? friendById(id) : myProfile();
   state.profileOpen = true;
