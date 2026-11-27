@@ -1107,6 +1107,31 @@ function applyClientStyles(doc) {
     html body .replay-controls-view .tvm-spdmenu button.is-on { background: linear-gradient(135deg, ${p.accent || p.blue}, ${p.accent2 || p.accent || p.blue}) !important; }
     html body .replay-controls-view > .tvm-leave { color: #ff9a9a !important; background: rgba(255, 90, 90, .1) !important; box-shadow: inset 0 0 0 1px rgba(255, 90, 90, .3) !important; padding: 0 11px !important; }
 
+    /* ── Barra del replay, versión mínima ────────────────────────────────
+       Una píldora flotante angosta: ya no hay franja de lado a lado ni se le
+       quita alto a la cancha. Si no movés el mouse 2,5 s mientras se reproduce,
+       se esconde (sólo opacidad); al mover el mouse vuelve. */
+    html body { --tvm-card: min(940px, calc(100vw - 24px)); --tvm-side: calc((100vw - var(--tvm-card)) / 2); }
+    html body .game-view.replayer { padding-bottom: 0 !important; }
+    html body .replay-controls-view { gap: 6px !important; padding: 6px calc(var(--tvm-side) + 8px) !important; transition: opacity .25s ease; }
+    html body .replay-controls-view.tvm-idle { opacity: 0; }
+    html.tvm-noanim body .replay-controls-view { transition: none; }
+    html body .replay-controls-view::before {
+      left: var(--tvm-side); right: var(--tvm-side); top: 0; bottom: 0; height: auto;
+      border: 1px solid rgba(255, 255, 255, .1); border-radius: 16px;
+      background: ${p.panel || '#141a2c'}e8;
+      box-shadow: 0 10px 26px -12px rgba(0, 0, 0, .8);
+    }
+    html body .replay-controls-view button { height: 28px; min-width: 30px; font-size: 12px; border-radius: 9px !important; }
+    html body .replay-controls-view button svg { width: 14px; height: 14px; }
+    html body .replay-controls-view > .tvm-play { width: 32px; min-width: 32px; height: 32px; }
+    html body .replay-controls-view .tvm-seg { border-radius: 10px; }
+    html body .replay-controls-view .tvm-seg button { padding: 0 8px !important; min-width: 30px; }
+    html body .replay-controls-view > [data-hook="time"] { font-size: 12.5px; min-width: 38px; margin-left: 2px; }
+    html body .replay-controls-view .timebar .barbg { height: 5px !important; margin-top: 6px !important; }
+    html body .replay-controls-view .tvm-spdbtn { min-width: 52px; padding: 0 8px 0 10px !important; }
+    html body .replay-controls-view > .tvm-leave { padding: 0 9px !important; }
+
     /* ── Pizarra táctica ─────────────────────────────────────────────────
        La cancha congelada con tus dibujos encima. Los controles van arriba. */
     .tvm-board { position: fixed; inset: 0; z-index: 2147480500; touch-action: none; cursor: crosshair; background: #000; }
@@ -3223,6 +3248,23 @@ async function watchReplayView(doc) {
     spdBtn.innerHTML = `${Number(current) || 1}x${RP_ICON.chev}`;
   };
 
+  // Se esconde sola: 2,5 s sin mover el mouse mientras se reproduce. Pausada,
+  // con el mouse encima o con la velocidad desplegada, queda a la vista.
+  let idleT = 0;
+  const wake = () => {
+    controls.classList.remove('tvm-idle');
+    view.clearTimeout(idleT);
+    idleT = view.setTimeout(() => {
+      if (!controls.isConnected) return;
+      const playing = !!(view.__tvmReplay && view.__tvmReplay.playing);
+      if (!playing || controls.matches(':hover') || spdWrap.classList.contains('is-open')) return wake();
+      controls.classList.add('tvm-idle');
+    }, 2500);
+  };
+  doc.addEventListener('pointermove', wake, true);
+  doc.addEventListener('keydown', wake, true);
+  wake();
+
   // El `+`/`-` de HaxBall también cambia la velocidad, así que se repinta con
   // cualquier click de la barra —el nuestro incluido— en vez de sondear.
   controls.addEventListener('click', () => setTimeout(paint, 0), true);
@@ -3261,10 +3303,22 @@ function toggleBoard() {
   if (!doc) return;
   const game = [...doc.querySelectorAll('canvas')].sort((a, b) => (b.width * b.height) - (a.width * a.height))[0];
   if (!game) return notify('No encontré la cancha para dibujar', 'err');
+  // Con la pizarra abierta el replay se pausa (si no, sigue sonando de fondo).
+  boardState.paused = false;
+  const rp = doc.defaultView && doc.defaultView.__tvmReplay;
+  const play = doc.querySelector('.replay-controls-view .tvm-play');
+  if (rp && rp.playing && play) { play.click(); boardState.paused = true; }
   openBoard(doc, game);
 }
 
 function closeBoard() {
+  // Si la pizarra pausó el replay, al cerrarla sigue desde donde estaba.
+  if (boardState.paused) {
+    boardState.paused = false;
+    const d = gameDocument();
+    const play = d && d.querySelector('.replay-controls-view .tvm-play');
+    if (play) play.click();
+  }
   if (boardState.root) boardState.root.forEach((el) => el.remove());
   boardState.root = null;
   boardState.open = false;
