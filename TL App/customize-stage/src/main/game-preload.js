@@ -1142,6 +1142,14 @@ function applyClientStyles(doc) {
     html body .replay-controls-view .timebar .barbg { height: 5px !important; margin-top: 6px !important; }
     html body .replay-controls-view .tvm-spdbtn { min-width: 52px; padding: 0 8px 0 10px !important; }
     html body .replay-controls-view > .tvm-leave { padding: 0 9px !important; }
+    /* El cartelito del tiempo de la línea no agarra el mouse: seguía debajo del
+       cursor al pasar a la velocidad y la línea creía que seguías encima. Los
+       botones de al lado van por encima de la línea, por las dudas. */
+    html body .replay-controls-view .timebar .timetooltip { pointer-events: none !important; }
+    html body .replay-controls-view > .timebar { z-index: 1; margin-right: 6px !important; }
+    html body .replay-controls-view > .tvm-spd,
+    html body .replay-controls-view > .tvm-tools,
+    html body .replay-controls-view > .tvm-leave { position: relative; z-index: 3; }
 
     /* ── Pizarra táctica ─────────────────────────────────────────────────
        La cancha congelada con tus dibujos encima. Los controles van arriba. */
